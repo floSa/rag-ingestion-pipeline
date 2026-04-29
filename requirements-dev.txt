@@ -1,0 +1,12 @@
+# Development & quality tools
+ruff
+mypy
+pre-commit
+pytest
+pytest-cov
+pytest-mock
+pytest-asyncio
+httpx
+pip-audit
+pydantic-settings
+types-requests
