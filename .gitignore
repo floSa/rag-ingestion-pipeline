@@ -1,0 +1,49 @@
+# Environment & secrets
+.env
+.env.dev
+.env.prod
+.env.test
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Tools cache
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data volumes (managed by Docker, not versioned)
+Datas/database/
+Datas/pdfs/
+Datas/htms/
+Datas/scratch/
+data/
+
+# Scratch / temp
+scratch/
+tmp/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker override (local debug, not shared)
+docker-compose.override.yml
