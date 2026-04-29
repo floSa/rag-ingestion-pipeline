@@ -1,136 +1,180 @@
-from dagster import asset, DynamicPartitionsDefinition, AssetExecutionContext
-import requests
-import chromadb
-from nebula3.gclient.net import ConnectionPool
-from nebula3.Config import Config
+"""Assets Dagster principaux : extraction, knowledge graph, vectorisation."""
+
+from __future__ import annotations
+
 import os
+from typing import Any
 
-DOCLING_API_URL = "http://docling-service:8000/extract"
+import chromadb
+import requests
+from dagster import AssetExecutionContext, DynamicPartitionsDefinition, asset
+from nebula3.Config import Config
+from nebula3.gclient.net import ConnectionPool
 
-# Définition des partitions pour les PDFs (un dynamique par nom de fichier)
+from src.pipeline.resources import EmbeddingsResource  # type: ignore[attr-defined]
+
+DOCLING_API_URL: str = os.getenv("DOCLING_SERVICE_URL", "http://docling-service:8000") + "/extract"
+
 pdf_partitions = DynamicPartitionsDefinition(name="pdf_partitions")
 
+
 @asset(group_name="extraction", partitions_def=pdf_partitions)
-def extract_structured_json(context: AssetExecutionContext) -> dict:
-    """Appelle le microservice Docling pour le fichier de la partition actuelle."""
+def extract_structured_json(context: AssetExecutionContext) -> dict[str, Any]:
+    """Appelle le microservice Docling pour le fichier de la partition actuelle.
+
+    Args:
+        context: Contexte d'exécution Dagster contenant la partition key.
+
+    Returns:
+        Dictionnaire JSON avec les clés ``metadata`` et ``elements``.
+    """
     file_path = context.partition_key
     if not os.path.exists(file_path):
-        # On pourrait être dans le cas d'un fichier supprimé mais dont la partition existe encore
-        print(f"File not found for partition: {file_path}")
+        context.log.warning(f"File not found for partition: {file_path}")
         return {}
-        
-    print(f"Requesting extraction for: {file_path}")
+
+    context.log.info(f"Requesting extraction for: {file_path}")
     resp = requests.post(DOCLING_API_URL, json={"filepath": file_path}, timeout=1200)
     resp.raise_for_status()
-    print(f"Successfully extracted: {file_path}")
-    return resp.json()
+    context.log.info(f"Successfully extracted: {file_path}")
+    result: dict[str, Any] = resp.json()
+    return result
+
 
 @asset(group_name="knowledge_graph", partitions_def=pdf_partitions)
-def build_knowledge_graph(context: AssetExecutionContext, extract_structured_json: dict):
-    """Construit les noeuds et les relations dans NebulaGraph pour UN document."""
+def build_knowledge_graph(
+    context: AssetExecutionContext,
+    extract_structured_json: dict[str, Any],
+) -> bool:
+    """Construit les noeuds et relations dans NebulaGraph pour un document.
+
+    Args:
+        context: Contexte d'exécution Dagster.
+        extract_structured_json: Résultat de l'extraction Docling.
+
+    Returns:
+        ``True`` si le graphe a été construit, ``False`` sinon.
+    """
     if not extract_structured_json:
-        print("No data extracted, skipping graph build.")
+        context.log.warning("No data extracted, skipping graph build.")
         return False
-        
+
+    nebula_host = os.getenv("NEBULA_HOST", "graphd")
+    nebula_port = int(os.getenv("NEBULA_PORT", "9669"))
+
     config = Config()
     config.max_connection_pool_size = 10
     pool = ConnectionPool()
-    if not pool.init([('graphd', 9669)], config):
-        raise Exception("NebulaGraph init failed")
-        
+    if not pool.init([(nebula_host, nebula_port)], config):
+        raise RuntimeError("NebulaGraph init failed")
+
     try:
-        session = pool.get_session('root', 'nebula')
-        session.execute('CREATE SPACE IF NOT EXISTS rag_space(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));')
-        
-        import time
-        # Propagation de l'espace (Standard Nebula)
-        session.execute('USE rag_space;')
-        
-        # Création du schéma (Tags et Edges)
-        session.execute('CREATE TAG IF NOT EXISTS Document(filename string, type_file string);')
-        session.execute('CREATE TAG IF NOT EXISTS Element(label string, type string, page_no int, text string, minio_url string);')
-        session.execute('CREATE EDGE IF NOT EXISTS HAS_PARENT();')
-        
-        doc = extract_structured_json
-        metadata = doc.get("metadata", {})
-        elements = doc.get("elements", [])
-        filename = metadata.get("filename", "unknown")
-        type_file = metadata.get("type_file", "unknown")
-        
-        # Insertion du noeud Document racine
+        session = pool.get_session("root", "nebula")
+        session.execute(
+            "CREATE SPACE IF NOT EXISTS rag_space"
+            "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));"
+        )
+        session.execute("USE rag_space;")
+
+        session.execute("CREATE TAG IF NOT EXISTS Document(filename string, type_file string);")
+        session.execute(
+            "CREATE TAG IF NOT EXISTS Element"
+            "(label string, type string, page_no int, text string, minio_url string);"
+        )
+        session.execute("CREATE EDGE IF NOT EXISTS HAS_PARENT();")
+
+        metadata: dict[str, Any] = extract_structured_json.get("metadata", {})
+        elements: list[dict[str, Any]] = extract_structured_json.get("elements", [])
+        filename: str = metadata.get("filename", "unknown")
+        type_file: str = metadata.get("type_file", "unknown")
+
         doc_vid = f"doc_{filename}"
-        session.execute(f'INSERT VERTEX Document(filename, type_file) VALUES "{doc_vid}":("{filename}", "{type_file}");')
+        session.execute(
+            f"INSERT VERTEX Document(filename, type_file) "
+            f'VALUES "{doc_vid}":("{filename}", "{type_file}");'
+        )
 
         for elem in elements:
-            vid = elem["id"]
-            label = elem.get("label", "text")
-            elem_type = elem.get("type", "text")
-            page_no = elem.get("page_no", 1)
+            vid: str = elem["id"]
+            label: str = elem.get("label", "text")
+            elem_type: str = elem.get("type", "text")
+            page_no: int = elem.get("page_no", 1)
             text_clean = (elem.get("text") or "").replace('"', '\\"').replace("'", "\\'")[:1000]
             minio_url = (elem.get("minio_url") or "").replace('"', '\\"')
-            
-            # Insertion du noeud Element
-            query_node = (
-                f'INSERT VERTEX Element(label, type, page_no, text, minio_url) '
-                f'VALUES "{vid}":("{label}", "{elem_type}", {page_no}, "{text_clean}", "{minio_url}");'
+
+            session.execute(
+                f"INSERT VERTEX Element(label, type, page_no, text, minio_url) "
+                f'VALUES "{vid}":("{label}", "{elem_type}", {page_no}, '
+                f'"{text_clean}", "{minio_url}");'
             )
-            session.execute(query_node)
-            
-            # Création de la relation parentale
+
             parent_id = elem.get("reference_id")
             target_vid = doc_vid if parent_id == "DOC" else parent_id
-                
             if target_vid:
-                query_edge = f'INSERT EDGE HAS_PARENT() VALUES "{vid}" -> "{target_vid}":();'
-                session.execute(query_edge)
+                session.execute(f'INSERT EDGE HAS_PARENT() VALUES "{vid}" -> "{target_vid}":();')
 
-    except Exception as e:
-        print(f"Error building knowledge graph: {e}")
+        session.release()
+    except Exception as exc:
+        context.log.error(f"Error building knowledge graph: {exc}")
         return False
     finally:
         pool.close()
-        
+
     return True
 
-from src.pipeline.resources import EmbeddingsResource
 
 @asset(group_name="vector_db", partitions_def=pdf_partitions)
-def vectorize_content(context: AssetExecutionContext, embeddings: EmbeddingsResource, extract_structured_json: dict):
-    """Génère les embeddings pour la partition actuelle (un document)."""
+def vectorize_content(
+    context: AssetExecutionContext,
+    embeddings: EmbeddingsResource,
+    extract_structured_json: dict[str, Any],
+) -> bool:
+    """Génère les embeddings et les insère dans ChromaDB.
+
+    Args:
+        context: Contexte d'exécution Dagster.
+        embeddings: Ressource fournissant le modèle d'embeddings.
+        extract_structured_json: Résultat de l'extraction Docling.
+
+    Returns:
+        ``True`` si la vectorisation a réussi, ``False`` sinon.
+    """
     if not extract_structured_json:
         return False
 
-    chroma_client = chromadb.HttpClient(host='chromadb', port=8000)
+    chroma_host = os.getenv("CHROMA_HOST", "chromadb")
+    chroma_port = int(os.getenv("CHROMA_PORT", "8000"))
+
+    chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
     collection = chroma_client.get_or_create_collection(name="rag_documents")
-    
+
     model = embeddings.get_model()
-    doc = extract_structured_json
-    elements = doc.get("elements", [])
-    
+    elements: list[dict[str, Any]] = extract_structured_json.get("elements", [])
+
     for elem in elements:
-        text = elem.get("text") or elem.get("content")
+        text: str | None = elem.get("text") or elem.get("content")
         if not text:
             continue
-            
-        chunks = [text[i:i+500] for i in range(0, len(text), 500)]
-        
+
+        chunks = [text[i : i + 500] for i in range(0, len(text), 500)]
+
         for i, chunk in enumerate(chunks):
             chunk_id = f"{elem['id']}_part{i}"
-            vector = model.encode(chunk).tolist()
-            
-            metadata = {
+            vector: list[float] = model.encode(chunk).tolist()
+
+            metadata: dict[str, Any] = {
                 "element_id": elem["id"],
                 "graph_node_id": elem["id"],
                 "page_position": elem.get("page_position", 0),
                 "ref_position": elem.get("ref_position", 0),
-                "minio_url": elem.get("minio_url", "")
+                "minio_url": elem.get("minio_url", ""),
             }
-            
+
             collection.upsert(
                 ids=[chunk_id],
                 embeddings=[vector],
                 metadatas=[metadata],
-                documents=[chunk]
+                documents=[chunk],
             )
-                
+
     return True
