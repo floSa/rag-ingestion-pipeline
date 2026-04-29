@@ -1,0 +1,182 @@
+services:
+  # Base Vectorielle
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./Datas/database/chromadb:/chroma/chroma
+    networks:
+      - rag_network
+
+  # Base Graphe - Nebula
+  metad:
+    image: vesoft/nebula-metad:v3.6.0
+    restart: unless-stopped
+    container_name: metad
+    command:
+      - --data_path=/data/meta
+      - --port=9559
+      - --ws_http_port=19559
+      - --local_ip=metad
+      - --meta_server_addrs=metad:9559
+    volumes:
+      - ./Datas/database/nebula/meta:/data/meta
+    networks:
+      - rag_network
+
+  storaged:
+    image: vesoft/nebula-storaged:v3.6.0
+    restart: unless-stopped
+    container_name: storaged
+    command:
+      - --data_path=/data/storage
+      - --port=9779
+      - --ws_http_port=19779
+      - --local_ip=storaged
+      - --meta_server_addrs=metad:9559
+    volumes:
+      - ./Datas/database/nebula/storage:/data/storage
+    depends_on:
+      - metad
+    networks:
+      - rag_network
+
+  graphd:
+    image: vesoft/nebula-graphd:v3.6.0
+    restart: unless-stopped
+    container_name: graphd
+    ports:
+      - "9669:9669"
+    command:
+      - --port=9669
+      - --ws_http_port=19669
+      - --local_ip=graphd
+      - --meta_server_addrs=metad:9559
+    depends_on:
+      - storaged
+    networks:
+      - rag_network
+
+  nebula-studio:
+    image: vesoft/nebula-graph-studio:v3.8.0
+    restart: unless-stopped
+    ports:
+      - "7001:7001"
+    networks:
+      - rag_network
+
+  # Object Storage
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9101:9001"
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./Datas/database/minio:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - rag_network
+
+  # Orchestrateur ETL - Dagster
+  postgres-dagster:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DAGSTER_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${DAGSTER_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DAGSTER_POSTGRES_DB}
+    volumes:
+      - ./Datas/database/postgres:/var/lib/postgresql/data
+    networks:
+      - rag_network
+
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      DAGSTER_POSTGRES_USER: ${DAGSTER_POSTGRES_USER}
+      DAGSTER_POSTGRES_PASSWORD: ${DAGSTER_POSTGRES_PASSWORD}
+      DAGSTER_POSTGRES_DB: ${DAGSTER_POSTGRES_DB}
+      DAGSTER_POSTGRES_HOST: ${DAGSTER_POSTGRES_HOST}
+    volumes:
+      - ./src:/opt/dagster/app/src
+      - ./Datas:/opt/dagster/app/Datas
+      - ./dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/opt/dagster/app/src/workspace.yaml"]
+    depends_on:
+      - postgres-dagster
+    networks:
+      - rag_network
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DAGSTER_POSTGRES_USER: ${DAGSTER_POSTGRES_USER}
+      DAGSTER_POSTGRES_PASSWORD: ${DAGSTER_POSTGRES_PASSWORD}
+      DAGSTER_POSTGRES_DB: ${DAGSTER_POSTGRES_DB}
+      DAGSTER_POSTGRES_HOST: ${DAGSTER_POSTGRES_HOST}
+    volumes:
+      - ./src:/opt/dagster/app/src
+      - ./Datas:/opt/dagster/app/Datas
+      - ./dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
+    command: ["dagster-daemon", "run", "-w", "/opt/dagster/app/src/workspace.yaml"]
+    depends_on:
+      - postgres-dagster
+    networks:
+      - rag_network
+
+  # Microservice d'extraction
+  docling-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.docling
+    container_name: rag_assistant-docling-service-1
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Datas:/opt/dagster/app/Datas
+      - ./src:/app/src
+    env_file: .env
+    environment:
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - NEBULA_HOST=${NEBULA_HOST}
+      - NEBULA_PORT=${NEBULA_PORT}
+      - CHROMA_HOST=${CHROMA_HOST}
+      - CHROMA_PORT=${CHROMA_PORT}
+    shm_size: 2gb
+    deploy:
+      resources:
+        limits:
+          memory: 10G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - rag_network
+
+networks:
+  rag_network:
+    driver: bridge

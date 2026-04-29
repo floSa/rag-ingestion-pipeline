@@ -1,0 +1,11 @@
+dagster
+dagster-webserver
+dagster-postgres
+dagster-docker
+beautifulsoup4
+minio
+requests
+chromadb
+nebula3-python
+sentence-transformers
+PyMuPDF
