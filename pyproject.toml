@@ -52,6 +52,7 @@ module = [
     "fastapi.*",
     "uvicorn",
     "requests.*",
+    "pydantic_settings.*",
 ]
 ignore_missing_imports = true
 

@@ -1,20 +1,24 @@
-"""Ressources Dagster partagées."""
+"""Ressources Dagster partagees."""
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from dagster import ConfigurableResource
+from pydantic import Field
+
+from src.pipeline.settings import get_settings
 
 
 class EmbeddingsResource(ConfigurableResource):  # type: ignore[misc]
-    """Ressource Dagster pour charger le modèle d'embeddings une seule fois."""
+    """Ressource Dagster pour charger le modele d'embeddings une seule fois."""
 
-    model_name: str = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+    model_name: str = Field(
+        default_factory=lambda: get_settings().embedding_model_name,
+    )
 
     def get_model(self) -> Any:
-        """Charge et retourne le modèle SentenceTransformer."""
+        """Charge et retourne le modele SentenceTransformer."""
         from sentence_transformers import SentenceTransformer
 
         return SentenceTransformer(self.model_name)
