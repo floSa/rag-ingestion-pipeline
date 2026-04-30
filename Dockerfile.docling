@@ -1,20 +1,19 @@
-FROM python:3.10-slim
+FROM python:3.10.17-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY src/docling_service/requirements.txt .
 
-RUN pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
 
-# Pré-installation de PyTorch et Torchvision compatibles avec CUDA 12.1
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+RUN pip install --no-cache-dir \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-# Installation propre des paquets
 RUN pip install --no-cache-dir \
     docling \
     fastapi \
@@ -30,5 +29,11 @@ RUN pip install --no-cache-dir \
     antlr4-python3-runtime==4.9.3
 
 COPY src/docling_service /app/src/docling_service
+
+RUN groupadd --gid 1000 docling \
+    && useradd --uid 1000 --gid docling --no-create-home docling \
+    && chown -R docling:docling /app
+
+USER docling
 
 CMD ["uvicorn", "src.docling_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

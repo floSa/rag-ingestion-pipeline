@@ -1,16 +1,16 @@
 services:
-  # Base Vectorielle
+  # Base Vectorielle (interne uniquement)
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.6.3
     restart: unless-stopped
-    ports:
-      - "8080:8000"
+    expose:
+      - "8000"
     volumes:
       - ./Datas/database/chromadb:/chroma/chroma
     networks:
       - rag_network
 
-  # Base Graphe - Nebula
+  # Base Graphe - Nebula (interne uniquement)
   metad:
     image: vesoft/nebula-metad:v3.6.0
     restart: unless-stopped
@@ -47,8 +47,8 @@ services:
     image: vesoft/nebula-graphd:v3.6.0
     restart: unless-stopped
     container_name: graphd
-    ports:
-      - "9669:9669"
+    expose:
+      - "9669"
     command:
       - --port=9669
       - --ws_http_port=19669
@@ -59,6 +59,7 @@ services:
     networks:
       - rag_network
 
+  # Studio UI (exposé pour visualisation du graphe)
   nebula-studio:
     image: vesoft/nebula-graph-studio:v3.8.0
     restart: unless-stopped
@@ -67,13 +68,13 @@ services:
     networks:
       - rag_network
 
-  # Object Storage
+  # Object Storage (interne uniquement)
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-04-22T22-12-39Z
     restart: unless-stopped
-    ports:
-      - "9000:9000"
-      - "9101:9001"
+    expose:
+      - "9000"
+      - "9001"
     env_file: .env
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -88,6 +89,8 @@ services:
   postgres-dagster:
     image: postgres:15-alpine
     restart: unless-stopped
+    expose:
+      - "5432"
     env_file: .env
     environment:
       POSTGRES_USER: ${DAGSTER_POSTGRES_USER}
@@ -142,15 +145,15 @@ services:
     networks:
       - rag_network
 
-  # Microservice d'extraction
+  # Microservice d'extraction (interne uniquement)
   docling-service:
     build:
       context: .
       dockerfile: Dockerfile.docling
     container_name: rag_assistant-docling-service-1
     restart: always
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ./Datas:/opt/dagster/app/Datas
       - ./src:/app/src
