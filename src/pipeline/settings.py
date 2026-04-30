@@ -7,7 +7,7 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class PipelineSettings(BaseSettings):  # type: ignore[misc]
+class PipelineSettings(BaseSettings):
     """Variables d'environnement du pipeline d'ingestion."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

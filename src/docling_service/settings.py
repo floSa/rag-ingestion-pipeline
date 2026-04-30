@@ -7,7 +7,7 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class DoclingSettings(BaseSettings):  # type: ignore[misc]
+class DoclingSettings(BaseSettings):
     """Variables d'environnement du service d'extraction Docling."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
