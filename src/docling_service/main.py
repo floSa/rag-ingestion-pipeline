@@ -1,11 +1,10 @@
-"""Service FastAPI d'extraction structurée de documents via Docling."""
+"""Service FastAPI d'extraction structuree de documents via Docling."""
 
 from __future__ import annotations
 
 import asyncio
 import hashlib
 import io
-import os
 import time
 from collections import deque
 from pathlib import Path
@@ -22,20 +21,12 @@ from nebula3.gclient.net import ConnectionPool
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-# ---------------------------------------------------------------------------
-# Configuration via variables d'environnement (voir .env.example)
-# ---------------------------------------------------------------------------
-MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "minio:9000")
-MINIO_ACCESS_KEY: str = os.getenv("MINIO_ROOT_USER", "")
-MINIO_SECRET_KEY: str = os.getenv("MINIO_ROOT_PASSWORD", "")
-MINIO_BUCKET: str = os.getenv("MINIO_BUCKET", "documents")
+from src.docling_service.settings import get_settings
 
-NEBULA_HOST: str = os.getenv("NEBULA_HOST", "graphd")
-NEBULA_PORT: int = int(os.getenv("NEBULA_PORT", "9669"))
-CHROMA_HOST: str = os.getenv("CHROMA_HOST", "chromadb")
-CHROMA_PORT: int = int(os.getenv("CHROMA_PORT", "8000"))
-
-EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+# ---------------------------------------------------------------------------
+# Configuration centralisee via pydantic-settings
+# ---------------------------------------------------------------------------
+_settings = get_settings()
 
 # ---------------------------------------------------------------------------
 # Mapping Docling labels -> NebulaGraph tags
@@ -67,11 +58,11 @@ pipeline_options = PdfPipelineOptions(do_ocr=False, do_table_structure=False)
 converter = DocumentConverter(
     format_options={"pdf": PdfFormatOption(pipeline_options=pipeline_options)}
 )
-embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+embedding_model = SentenceTransformer(_settings.embedding_model_name)
 minio_client = Minio(
-    MINIO_ENDPOINT,
-    access_key=MINIO_ACCESS_KEY,
-    secret_key=MINIO_SECRET_KEY,
+    _settings.minio_endpoint,
+    access_key=_settings.minio_root_user,
+    secret_key=_settings.minio_root_password,
     secure=False,
 )
 
@@ -105,7 +96,7 @@ def _connect_nebula(max_attempts: int = 15, wait_seconds: int = 10) -> Connectio
     for attempt in range(1, max_attempts + 1):
         pool = ConnectionPool()
         try:
-            if pool.init([(NEBULA_HOST, NEBULA_PORT)], config):
+            if pool.init([(_settings.nebula_host, _settings.nebula_port)], config):
                 return pool
             print(f"Nebula attempt {attempt}/{max_attempts} returned False. Retrying...")
         except Exception as exc:
@@ -161,11 +152,11 @@ def init_minio() -> None:
     max_attempts = 15
     for attempt in range(1, max_attempts + 1):
         try:
-            if not minio_client.bucket_exists(MINIO_BUCKET):
-                minio_client.make_bucket(MINIO_BUCKET)
-                print(f"MinIO Bucket '{MINIO_BUCKET}' created.")
+            if not minio_client.bucket_exists(_settings.minio_bucket):
+                minio_client.make_bucket(_settings.minio_bucket)
+                print(f"MinIO Bucket '{_settings.minio_bucket}' created.")
             else:
-                print(f"MinIO Bucket '{MINIO_BUCKET}' ready.")
+                print(f"MinIO Bucket '{_settings.minio_bucket}' ready.")
             return
         except Exception as exc:
             print(f"MinIO not ready ({exc}). Attempt {attempt}/{max_attempts}. Waiting 5s...")
@@ -216,7 +207,7 @@ def crop_and_upload_image(
 
         try:
             minio_client.put_object(
-                MINIO_BUCKET,
+                _settings.minio_bucket,
                 object_name,
                 io.BytesIO(image_bytes),
                 length=len(image_bytes),
@@ -229,7 +220,7 @@ def crop_and_upload_image(
             return None
 
         doc_fitz.close()
-        return f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET}/{object_name}"
+        return f"http://{_settings.minio_endpoint}/{_settings.minio_bucket}/{object_name}"
     except Exception as exc:
         print(f"Crop Error: {exc}")
         return None
@@ -295,7 +286,7 @@ def _flush_to_nebula(elements: list[dict[str, Any]], filename: str, type_file: s
 
 def _flush_to_chroma(elements: list[dict[str, Any]], filename: str) -> None:
     try:
-        chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+        chroma_client = chromadb.HttpClient(host=_settings.chroma_host, port=_settings.chroma_port)
         collection = chroma_client.get_or_create_collection(name="rag_documents")
         for elem in elements:
             text = elem.get("text")
@@ -332,7 +323,7 @@ FLUSH_BUFFER_SIZE: int = 1
 async def extract_document(req: ExtractRequest) -> dict[str, str]:
     """Extrait le contenu structuré d'un document et le persiste dans les stores."""
     pdf_path = req.filepath
-    if not os.path.exists(pdf_path):
+    if not Path(pdf_path).exists():
         raise HTTPException(status_code=404, detail="File not found")
 
     path_obj = Path(pdf_path)

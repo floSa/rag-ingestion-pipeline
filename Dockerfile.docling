@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
     pydantic \
+    pydantic-settings \
     requests \
     python-multipart \
     minio \

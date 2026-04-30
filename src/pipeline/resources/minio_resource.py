@@ -2,36 +2,36 @@
 
 from __future__ import annotations
 
-import os
-
 from dagster import ConfigurableResource
 from minio import Minio
 from pydantic import Field
 
+from src.pipeline.settings import get_settings
+
 
 class MinIOResource(ConfigurableResource):  # type: ignore[misc]
-    """Client MinIO configurable via variables d'environnement."""
+    """Client MinIO configurable via pydantic-settings."""
 
     endpoint: str = Field(
-        default_factory=lambda: os.getenv("MINIO_ENDPOINT", "minio:9000"),
+        default_factory=lambda: get_settings().minio_endpoint,
         description="MinIO endpoint",
     )
     access_key: str = Field(
-        default_factory=lambda: os.getenv("MINIO_ROOT_USER", ""),
+        default_factory=lambda: get_settings().minio_root_user,
         description="MinIO Access Key",
     )
     secret_key: str = Field(
-        default_factory=lambda: os.getenv("MINIO_ROOT_PASSWORD", ""),
+        default_factory=lambda: get_settings().minio_root_password,
         description="MinIO Secret Key",
     )
     secure: bool = Field(default=False, description="Use HTTPS")
     bucket_name: str = Field(
-        default_factory=lambda: os.getenv("MINIO_BUCKET", "documents"),
-        description="Bucket pour les médias",
+        default_factory=lambda: get_settings().minio_bucket,
+        description="Bucket pour les medias",
     )
 
     def get_client(self) -> Minio:
-        """Crée et retourne un client MinIO."""
+        """Cree et retourne un client MinIO."""
         return Minio(
             endpoint=self.endpoint,
             access_key=self.access_key,
@@ -40,7 +40,7 @@ class MinIOResource(ConfigurableResource):  # type: ignore[misc]
         )
 
     def init_bucket(self) -> None:
-        """Crée le bucket s'il n'existe pas."""
+        """Cree le bucket s'il n'existe pas."""
         client = self.get_client()
         if not client.bucket_exists(self.bucket_name):
             client.make_bucket(self.bucket_name)

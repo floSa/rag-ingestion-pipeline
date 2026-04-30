@@ -9,3 +9,4 @@ chromadb
 nebula3-python
 sentence-transformers
 PyMuPDF
+pydantic-settings

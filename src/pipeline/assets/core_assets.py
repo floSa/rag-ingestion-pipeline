@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 from typing import Any
 
 import chromadb
@@ -12,8 +12,7 @@ from nebula3.Config import Config
 from nebula3.gclient.net import ConnectionPool
 
 from src.pipeline.resources import EmbeddingsResource  # type: ignore[attr-defined]
-
-DOCLING_API_URL: str = os.getenv("DOCLING_SERVICE_URL", "http://docling-service:8000") + "/extract"
+from src.pipeline.settings import get_settings
 
 pdf_partitions = DynamicPartitionsDefinition(name="pdf_partitions")
 
@@ -29,12 +28,14 @@ def extract_structured_json(context: AssetExecutionContext) -> dict[str, Any]:
         Dictionnaire JSON avec les clés ``metadata`` et ``elements``.
     """
     file_path = context.partition_key
-    if not os.path.exists(file_path):
+    if not Path(file_path).exists():
         context.log.warning(f"File not found for partition: {file_path}")
         return {}
 
+    settings = get_settings()
+    docling_url = settings.docling_service_url + "/extract"
     context.log.info(f"Requesting extraction for: {file_path}")
-    resp = requests.post(DOCLING_API_URL, json={"filepath": file_path}, timeout=1200)
+    resp = requests.post(docling_url, json={"filepath": file_path}, timeout=1200)
     resp.raise_for_status()
     context.log.info(f"Successfully extracted: {file_path}")
     result: dict[str, Any] = resp.json()
@@ -59,8 +60,9 @@ def build_knowledge_graph(
         context.log.warning("No data extracted, skipping graph build.")
         return False
 
-    nebula_host = os.getenv("NEBULA_HOST", "graphd")
-    nebula_port = int(os.getenv("NEBULA_PORT", "9669"))
+    settings = get_settings()
+    nebula_host = settings.nebula_host
+    nebula_port = settings.nebula_port
 
     config = Config()
     config.max_connection_pool_size = 10
@@ -142,8 +144,9 @@ def vectorize_content(
     if not extract_structured_json:
         return False
 
-    chroma_host = os.getenv("CHROMA_HOST", "chromadb")
-    chroma_port = int(os.getenv("CHROMA_PORT", "8000"))
+    settings = get_settings()
+    chroma_host = settings.chroma_host
+    chroma_port = settings.chroma_port
 
     chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
     collection = chroma_client.get_or_create_collection(name="rag_documents")
