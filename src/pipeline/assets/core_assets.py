@@ -18,7 +18,7 @@ pdf_partitions = DynamicPartitionsDefinition(name="pdf_partitions")
 
 
 @asset(group_name="extraction", partitions_def=pdf_partitions)
-def extract_structured_json(context: AssetExecutionContext) -> dict[str, Any]:
+def extract_structured_json(context) -> dict[str, Any]:
     """Appelle le microservice Docling pour le fichier de la partition actuelle.
 
     Args:
@@ -27,7 +27,9 @@ def extract_structured_json(context: AssetExecutionContext) -> dict[str, Any]:
     Returns:
         Dictionnaire JSON avec les clés ``metadata`` et ``elements``.
     """
-    file_path = context.partition_key
+    # Reconstruire le chemin absolu à partir de la clé de partition relative
+    base_dir = "/opt/dagster/app/Datas"
+    file_path = str(Path(base_dir) / context.partition_key)
     if not Path(file_path).exists():
         context.log.warning(f"File not found for partition: {file_path}")
         return {}
@@ -44,7 +46,7 @@ def extract_structured_json(context: AssetExecutionContext) -> dict[str, Any]:
 
 @asset(group_name="knowledge_graph", partitions_def=pdf_partitions)
 def build_knowledge_graph(
-    context: AssetExecutionContext,
+    context,
     extract_structured_json: dict[str, Any],
 ) -> bool:
     """Construit les noeuds et relations dans NebulaGraph pour un document.
@@ -127,7 +129,7 @@ def build_knowledge_graph(
 
 @asset(group_name="vector_db", partitions_def=pdf_partitions)
 def vectorize_content(
-    context: AssetExecutionContext,
+    context,
     embeddings: EmbeddingsResource,
     extract_structured_json: dict[str, Any],
 ) -> bool:

@@ -70,7 +70,7 @@ services:
 
   # Object Storage (interne uniquement)
   minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-39Z
+    image: minio/minio:latest
     restart: unless-stopped
     expose:
       - "9000"
@@ -114,6 +114,8 @@ services:
       DAGSTER_POSTGRES_PASSWORD: ${DAGSTER_POSTGRES_PASSWORD}
       DAGSTER_POSTGRES_DB: ${DAGSTER_POSTGRES_DB}
       DAGSTER_POSTGRES_HOST: ${DAGSTER_POSTGRES_HOST}
+      DAGSTER_TELEMETRY_DISABLED: 1
+      HOME: /tmp
     volumes:
       - ./src:/opt/dagster/app/src
       - ./Datas:/opt/dagster/app/Datas
@@ -135,6 +137,8 @@ services:
       DAGSTER_POSTGRES_PASSWORD: ${DAGSTER_POSTGRES_PASSWORD}
       DAGSTER_POSTGRES_DB: ${DAGSTER_POSTGRES_DB}
       DAGSTER_POSTGRES_HOST: ${DAGSTER_POSTGRES_HOST}
+      DAGSTER_TELEMETRY_DISABLED: 1
+      HOME: /tmp
     volumes:
       - ./src:/opt/dagster/app/src
       - ./Datas:/opt/dagster/app/Datas
@@ -167,6 +171,7 @@ services:
       - NEBULA_PORT=${NEBULA_PORT}
       - CHROMA_HOST=${CHROMA_HOST}
       - CHROMA_PORT=${CHROMA_PORT}
+      - HOME=/tmp
     shm_size: 2gb
     deploy:
       resources:
