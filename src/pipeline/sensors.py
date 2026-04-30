@@ -39,14 +39,15 @@ def pdf_sensor(context: SensorEvaluationContext) -> SensorResult:
     new_cursor = dict(cursor_data)
 
     for f in files:
-        partition_key = f
+        # Utiliser un chemin relatif pour éviter que l'IOManager n'écrase le fichier source
+        partition_key = os.path.relpath(f, source_dir)
 
         if not context.instance.has_dynamic_partition(pdf_partitions.name, partition_key):
-            context.log.info(f"Adding new partition for file: {f}")
+            context.log.info(f"Adding new partition for file: {partition_key}")
             partition_requests.append(pdf_partitions.build_add_request([partition_key]))
 
         mtime = os.path.getmtime(f)
-        cursor_key = f"mtime:{f}"
+        cursor_key = f"mtime:{partition_key}"
         last_mtime = cursor_data.get(cursor_key)
 
         if not last_mtime or float(last_mtime) < mtime:
