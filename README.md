@@ -7,11 +7,29 @@ Ce projet est un pipeline d'ingestion de documents (HTML et PDF) conçu pour ali
 ## 🛠 Architecture & Technologies
 
 - **Docling-Service (FastAPI)** : Microservice dédié à l'extraction de documents via Docling (sur GPU). Les images et tableaux complexes en sont extraits et découpés *(crop)* avec PyMuPDF.
-- **Orchestration (Dagster)** : Capteurs intelligents par type de ficher (HTML vs PDF) et gestion d'Assets.
+- **Orchestration (Dagster)** : Les sources sont déclarées dans `src/pipeline/sources.yaml` ; une factory génère pour chacune ses partitions (une par fichier), son job et son sensor. Les sources HTML passent par un asset de nettoyage universel (trafilatura + readability) avant extraction.
 - **Base Graphe** : [NebulaGraph](https://nebula-graph.io/) couplé au Studio pour créer la cartographie relationnelle (Document > Section > Text > Image/Table).
 - **Base Vectorielle** : [ChromaDB](https://www.trychroma.com/) couplé à des modèles d'embeddings locaux (`SentenceTransformers`).
 - **Stockage Objet** : [MinIO](https://min.io/) pour héberger les images extraites et récupérables via la clé `minio_url`.
 - **Plateforme** : Entièrement déployé sous forme de conteneurs multi-services via Docker-Compose.
+
+### Schéma du pipeline
+
+```mermaid
+flowchart TD
+    A["Datas/ — tes fichiers PDF & HTML"] --> S1["pdfs_sensor (scan 30 s)"]
+    A --> S2["livres_html_sensor (scan 30 s)"]
+    S1 -- "1 partition + 1 run par fichier" --> E1["asset pdfs/extracted_document"]
+    S2 -- "1 partition + 1 run par fichier" --> C["asset livres_html/cleaned_html<br/>nettoyage universel"]
+    C -- "chemin du HTML nettoyé" --> E2["asset livres_html/extracted_document"]
+    E1 -- "POST /extract (chemin du PDF)" --> D["Service Docling (GPU)<br/>PDF : lots de 5 pages, ordre + n° de page<br/>HTML : conversion directe"]
+    E2 -- "POST /extract (chemin nettoyé)" --> D
+    D --> N["NebulaGraph<br/>graphe du document"]
+    D --> V["ChromaDB<br/>vecteurs du texte"]
+    D --> M["MinIO<br/>images croppées"]
+```
+
+Chaque source déclarée dans `sources.yaml` génère sa propre chaîne (sensor → partitions → assets → job), préfixée par son nom. Le service Docling est le seul à écrire dans les trois stores.
 
 ---
 
@@ -42,10 +60,35 @@ docker compose up -d --build
 | **ChromaDB** | `http://localhost:8080/api/v1` | Point d'entrée de la base vectorielle. |
 
 ### 4. Lancer l'ingestion
-1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet.
-2. Ouvrez l'interface **Dagster**.
-3. Activez le **Sensor PDF** ou le **Sensor HTML** (ou les deux) dans l'onglet **Overview -> Sensors**. 
-4. Le système détectera automatiquement un nouveau fichier et lancera le pipeline complet pour l'ingérer dans Nebula, ChromaDB, et MinIO !
+1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML).
+2. Ouvrez l'interface **Dagster** : chaque source déclarée dans `src/pipeline/sources.yaml` a son propre sensor (`pdfs_sensor`, `livres_html_sensor`, ...), actif par défaut dans **Overview -> Sensors**.
+3. Le système détecte automatiquement un nouveau fichier (une partition par fichier) et lance le pipeline complet pour l'ingérer dans Nebula, ChromaDB, et MinIO !
+
+---
+
+## ➕ Ajouter une nouvelle source
+
+Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gildas-lormeau/SingleFile)) ne demande **aucun code Python** :
+
+1. Déposez les fichiers dans un sous-dossier de `./Datas`, ex. `Datas/captures/monsite/`.
+2. Déclarez la source dans `src/pipeline/sources.yaml` :
+   ```yaml
+   - name: capture_monsite
+     glob: "captures/monsite/**/*.html"
+     type: html
+     cleaning:                                    # optionnel
+       extra_remove_selectors: [".cookie-banner"]
+   ```
+3. Rechargez le code location dans l'UI Dagster (bouton **Reload definitions**). Un sensor `capture_monsite_sensor` apparaît et ingère les fichiers.
+
+### Nettoyage HTML universel
+
+Les sources HTML passent par un nettoyage en étages, sans configuration par site :
+1. **Pré-passe** : suppression des scripts, styles, nav/header/footer, commentaires et images `data:` volumineuses (captures SingleFile).
+2. **Extraction de contenu** : [trafilatura](https://trafilatura.readthedocs.io/), puis readability-lxml en secours.
+3. **Garde-fou** : si trop peu de texte est extrait, le HTML pré-nettoyé est conservé tel quel (rien n'est perdu) et un warning apparaît dans les logs Dagster.
+
+La stratégie retenue et les tailles avant/après sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition.
 
 ---
 
@@ -96,10 +139,16 @@ Pour un rendu optimal, configurez les couleurs par **Tag** dans l'interface :
 ```text
 RAG_Assistant/
 ├── Datas/                      # Dossier source partagé pour vos livres (HTML/PDF)
+│   └── .cleaned/               # HTML nettoyés (générés par le pipeline)
 ├── documentation/              # Documentation technique détaillée de l'architecture
 ├── src/
 │   ├── docling_service/        # API FastAPI pour l'extraction et PyMuPDF
 │   └── pipeline/               # Orchestration Dagster
+│       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
+│       ├── sources.py          # Modèles de configuration des sources
+│       ├── factory.py          # Génération assets/jobs/sensors par source
+│       ├── cleaning.py         # Nettoyage HTML universel (trafilatura/readability)
+│       └── definitions.py      # Point d'entrée Dagster
 ├── docker-compose.yml          # Configuration de la stack
 ├── Dockerfile.dagster          # Environnement Dagster
 └── Dockerfile.docling          # Environnement extraction GPU

@@ -14,10 +14,12 @@ Il se compose de plusieurs sous-services distincts :
 
 ## 🗂️ Structure et définition des données
 Côté développement, les éléments vitaux composant le graphe de données Dagster sont :
-- **Les Sensors (`sensors.py`)** : Ce sont les écouteurs. Le `pdf_sensor` parcours continuellement le dossier source `/opt/dagster/app/Datas` pour y trouver des PDFs.
-- **La persistance des tâches (Le Curseur)** : Pour éviter qu'un livre ne soit ingéré à chaque redémarrage, Dagster utilise un objet appelé "curseur". À chaque découverte d'un document, la date et l'heure exacte de sa modification (`mtime`) est sauvegardée dans le curseur PostgreSQL. Si le fichier n'a pas été modifié depuis son traitement, Dagster l'ignore de manière silencieuse et robuste.
-- **Les Assets (`core_assets.py`)** : Ils représentent des lots "matériels" à créer, qui vont appeler la fonction API FastAPI (`/extract`). 
-- **Les Partitions** : Définie de façon dynamique, chaque type ou nom de document est une "Partition" pour simplifier la réexécution d'un échec sur un livre précis (au lieu de réexécuter tout le pipeline global).
+- **La déclaration des sources (`sources.yaml` + `sources.py`)** : Chaque source de documents (un dossier de PDFs, une capture de site en HTML...) est un bloc YAML : nom, motif glob relatif à `/opt/dagster/app/Datas`, type (`pdf` ou `html`) et options de nettoyage. Ajouter une source ne demande aucun code Python.
+- **La factory (`factory.py`)** : Pour chaque source déclarée, elle génère les partitions dynamiques (une par fichier), les assets, le job (`{name}_job`) et le sensor (`{name}_sensor`). PDF et HTML suivent le même mécanisme ; les sources HTML ont simplement un asset de nettoyage (`cleaned_html`) en amont de l'extraction.
+- **Le nettoyage HTML (`cleaning.py`)** : Pré-passe déterministe (scripts, styles, nav, images `data:` SingleFile) puis extraction du contenu principal via trafilatura, avec readability-lxml en secours et conservation du HTML pré-nettoyé en dernier recours.
+- **La persistance des tâches (Le Curseur)** : Pour éviter qu'un livre ne soit ingéré à chaque redémarrage, chaque sensor sauvegarde la date de modification (`mtime`) de chaque fichier dans son curseur PostgreSQL. Si le fichier n'a pas été modifié depuis son traitement, Dagster l'ignore de manière silencieuse et robuste.
+- **Les Partitions** : Définies dynamiquement, chaque fichier est une "Partition" (clé = chemin relatif) pour simplifier la réexécution d'un échec sur un livre précis (au lieu de réexécuter tout le pipeline global).
+- **L'extraction** : L'asset `extracted_document` appelle l'API FastAPI du service Docling (`/extract`), qui persiste lui-même les résultats dans NebulaGraph, ChromaDB et MinIO.
 
 ## 💻 Commandes Utiles
 Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :

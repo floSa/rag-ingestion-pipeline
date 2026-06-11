@@ -6,26 +6,13 @@ from src.pipeline.settings import PipelineSettings
 
 
 class TestPipelineSettingsDefaults:
-    def test_minio_defaults(self):
+    def test_source_dir_default(self):
         s = PipelineSettings(_env_file=None)
-        assert s.minio_endpoint == "minio:9000"
-        assert s.minio_root_user == ""
-        assert s.minio_root_password == ""
-        assert s.minio_bucket == "documents"
+        assert s.source_dir == "/opt/dagster/app/Datas"
 
-    def test_nebula_defaults(self):
+    def test_cleaned_subdir_default(self):
         s = PipelineSettings(_env_file=None)
-        assert s.nebula_host == "graphd"
-        assert s.nebula_port == 9669
-
-    def test_chroma_defaults(self):
-        s = PipelineSettings(_env_file=None)
-        assert s.chroma_host == "chromadb"
-        assert s.chroma_port == 8000
-
-    def test_embedding_default(self):
-        s = PipelineSettings(_env_file=None)
-        assert s.embedding_model_name == "all-MiniLM-L6-v2"
+        assert s.cleaned_subdir == ".cleaned"
 
     def test_docling_default(self):
         s = PipelineSettings(_env_file=None)
@@ -33,38 +20,17 @@ class TestPipelineSettingsDefaults:
 
 
 class TestPipelineSettingsEnvOverride:
-    def test_override_minio(self, monkeypatch):
-        monkeypatch.setenv("MINIO_ENDPOINT", "localhost:9000")
-        monkeypatch.setenv("MINIO_ROOT_USER", "testuser")
-        monkeypatch.setenv("MINIO_ROOT_PASSWORD", "testpass")
-        monkeypatch.setenv("MINIO_BUCKET", "test-bucket")
+    def test_override_source_dir(self, monkeypatch):
+        monkeypatch.setenv("SOURCE_DIR", "/tmp/datas")
         s = PipelineSettings(_env_file=None)
-        assert s.minio_endpoint == "localhost:9000"
-        assert s.minio_root_user == "testuser"
-        assert s.minio_root_password == "testpass"
-        assert s.minio_bucket == "test-bucket"
+        assert s.source_dir == "/tmp/datas"
 
-    def test_override_nebula(self, monkeypatch):
-        monkeypatch.setenv("NEBULA_HOST", "localhost")
-        monkeypatch.setenv("NEBULA_PORT", "19669")
+    def test_override_docling_url(self, monkeypatch):
+        monkeypatch.setenv("DOCLING_SERVICE_URL", "http://localhost:8000")
         s = PipelineSettings(_env_file=None)
-        assert s.nebula_host == "localhost"
-        assert s.nebula_port == 19669
+        assert s.docling_service_url == "http://localhost:8000"
 
-    def test_override_chroma(self, monkeypatch):
-        monkeypatch.setenv("CHROMA_HOST", "localhost")
-        monkeypatch.setenv("CHROMA_PORT", "18000")
+    def test_override_cleaned_subdir(self, monkeypatch):
+        monkeypatch.setenv("CLEANED_SUBDIR", ".propre")
         s = PipelineSettings(_env_file=None)
-        assert s.chroma_host == "localhost"
-        assert s.chroma_port == 18000
-
-    def test_override_embedding(self, monkeypatch):
-        monkeypatch.setenv("EMBEDDING_MODEL_NAME", "custom-model")
-        s = PipelineSettings(_env_file=None)
-        assert s.embedding_model_name == "custom-model"
-
-    def test_port_type_coercion(self, monkeypatch):
-        monkeypatch.setenv("NEBULA_PORT", "1234")
-        s = PipelineSettings(_env_file=None)
-        assert s.nebula_port == 1234
-        assert isinstance(s.nebula_port, int)
+        assert s.cleaned_subdir == ".propre"
