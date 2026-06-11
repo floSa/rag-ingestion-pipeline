@@ -1,38 +1,19 @@
-"""Definition du pipeline Dagster RAG Assistant."""
+"""Definition du pipeline Dagster RAG Assistant.
 
-from dagster import Definitions, define_asset_job, load_assets_from_modules
+Les sources sont declarees dans ``sources.yaml`` : la factory genere pour
+chacune ses partitions, assets, job et sensor. La persistance (NebulaGraph,
+ChromaDB, MinIO) est assuree par le service Docling lui-meme.
+"""
 
-import src.pipeline.assets.core_assets as core_assets
-import src.pipeline.assets.html_assets as html_assets
-import src.pipeline.assets.pdf_assets as pdf_assets
-from src.pipeline.resources import EmbeddingsResource  # type: ignore[attr-defined]
-from src.pipeline.sensors import html_sensor, pdf_sensor
+from dagster import Definitions
 
-all_assets = load_assets_from_modules([pdf_assets, html_assets, core_assets])
+from src.pipeline.factory import build_source
+from src.pipeline.sources import load_sources
 
-pdf_pipeline_job = define_asset_job(
-    name="pdf_pipeline_job",
-    selection=[
-        "pre_process_pdf",
-        "extract_structured_json*",
-        "build_knowledge_graph",
-        "vectorize_content",
-    ],
-)
-
-html_pipeline_job = define_asset_job(
-    name="html_pipeline_job",
-    selection=[
-        "pre_process_html",
-        "extract_structured_json*",
-        "build_knowledge_graph",
-        "vectorize_content",
-    ],
-)
+_built = [build_source(source) for source in load_sources()]
 
 defs = Definitions(
-    assets=all_assets,
-    jobs=[pdf_pipeline_job, html_pipeline_job],
-    sensors=[pdf_sensor, html_sensor],
-    resources={"embeddings": EmbeddingsResource()},
+    assets=[asset_def for built in _built for asset_def in built.assets],
+    jobs=[built.job for built in _built],
+    sensors=[built.sensor for built in _built],
 )

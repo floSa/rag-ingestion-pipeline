@@ -1,4 +1,4 @@
-"""Tests unitaires pour les fonctions helpers (compute_id, extract_bbox, chunking)."""
+"""Tests unitaires pour les fonctions helpers (compute_id, extract_bbox)."""
 
 from __future__ import annotations
 
@@ -87,44 +87,3 @@ class TestExtractBbox:
         assert result["t"] == 2.56
         assert result["r"] == 4.0
         assert result["b"] == 4.0
-
-
-class TestChunking:
-    """Tests pour la logique de chunking de core_assets.py."""
-
-    @staticmethod
-    def _chunk(text: str, size: int = 500) -> list[str]:
-        return [text[i : i + size] for i in range(0, len(text), size)]
-
-    def test_short_text_single_chunk(self):
-        text = "Hello world"
-        chunks = self._chunk(text)
-        assert chunks == ["Hello world"]
-
-    def test_exact_boundary(self):
-        text = "a" * 500
-        chunks = self._chunk(text)
-        assert len(chunks) == 1
-        assert chunks[0] == text
-
-    def test_just_over_boundary(self):
-        text = "a" * 501
-        chunks = self._chunk(text)
-        assert len(chunks) == 2
-        assert len(chunks[0]) == 500
-        assert len(chunks[1]) == 1
-
-    def test_multiple_chunks(self):
-        text = "b" * 1500
-        chunks = self._chunk(text)
-        assert len(chunks) == 3
-        assert all(len(c) == 500 for c in chunks)
-
-    def test_empty_text(self):
-        chunks = self._chunk("")
-        assert chunks == []
-
-    def test_preserves_content(self):
-        text = "abc" * 200
-        chunks = self._chunk(text)
-        assert "".join(chunks) == text

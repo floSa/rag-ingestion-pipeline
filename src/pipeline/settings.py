@@ -8,22 +8,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class PipelineSettings(BaseSettings):
-    """Variables d'environnement du pipeline d'ingestion."""
+    """Variables d'environnement du pipeline d'ingestion.
+
+    Les credentials des stores (MinIO, Nebula, Chroma) vivent dans
+    ``src.docling_service.settings`` : seul le service Docling y ecrit.
+    """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    minio_endpoint: str = "minio:9000"
-    minio_root_user: str = ""
-    minio_root_password: str = ""
-    minio_bucket: str = "documents"
-
-    nebula_host: str = "graphd"
-    nebula_port: int = 9669
-
-    chroma_host: str = "chromadb"
-    chroma_port: int = 8000
-
-    embedding_model_name: str = "all-MiniLM-L6-v2"
+    source_dir: str = "/opt/dagster/app/Datas"
+    cleaned_subdir: str = ".cleaned"
     docling_service_url: str = "http://docling-service:8000"
 
 

@@ -122,6 +122,9 @@ def init_nebula() -> None:
 
     try:
         session = pool.get_session("root", "nebula")
+        # Add storage hosts manually, as required by NebulaGraph when not using an orchestrator
+        session.execute('ADD HOSTS "storaged":9779;')
+        time.sleep(3)
         session.execute(
             "CREATE SPACE IF NOT EXISTS rag_space"
             "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));"
@@ -318,17 +321,47 @@ BATCH_PAGE_SIZE: int = 5
 BATCH_OVERLAP: int = 2
 FLUSH_BUFFER_SIZE: int = 1
 
+HTML_SUFFIXES: set[str] = {".html", ".htm"}
 
-@app.post("/extract")
-async def extract_document(req: ExtractRequest) -> dict[str, str]:
-    """Extrait le contenu structuré d'un document et le persiste dans les stores."""
-    pdf_path = req.filepath
-    if not Path(pdf_path).exists():
-        raise HTTPException(status_code=404, detail="File not found")
 
-    path_obj = Path(pdf_path)
+def _element_from_item(item: Any, filename_stem: str, global_order: int) -> dict[str, Any]:
+    """Construit le dict element commun a partir d'un item Docling."""
+    lbl = str(getattr(item, "label", "text")).lower()
+    prov = item.prov[0] if getattr(item, "prov", None) else None
+    text: str = getattr(item, "text", "").strip() if hasattr(item, "text") else ""
+
+    return {
+        "id": compute_id(
+            filename_stem,
+            prov.page_no if prov else 1,
+            global_order,
+            text,
+        ),
+        "label": lbl,
+        "page_no": prov.page_no if prov else 1,
+        "bbox": extract_bbox(prov.bbox if prov else None),
+        "text": text,
+        "order": global_order,
+    }
+
+
+def _extract_html(path_obj: Path) -> None:
+    """Convertit un fichier HTML d'un seul tenant (pas de pagination ni de crop)."""
     filename_stem = path_obj.stem
-    type_file = path_obj.suffix.lstrip(".")
+    print(f"[{filename_stem}] HTML conversion...")
+
+    conv_res = converter.convert(str(path_obj))
+    elements: list[dict[str, Any]] = []
+    for global_order, (item, _) in enumerate(conv_res.document.iterate_items()):
+        elements.append(_element_from_item(item, filename_stem, global_order))
+
+    flush_chunk_to_storage(elements, filename_stem, "html")
+
+
+def _extract_pdf(path_obj: Path) -> None:
+    """Convertit un PDF par batchs de pages, avec crop des elements visuels."""
+    pdf_path = str(path_obj)
+    filename_stem = path_obj.stem
 
     with fitz.open(pdf_path) as doc:
         total_pages: int = len(doc)
@@ -346,31 +379,15 @@ async def extract_document(req: ExtractRequest) -> dict[str, str]:
             chunk_elements: list[dict[str, Any]] = []
 
             for item, _ in conv_res.document.iterate_items():
-                lbl = str(getattr(item, "label", "text")).lower()
-                prov = item.prov[0] if item.prov else None
-                text: str = getattr(item, "text", "").strip() if hasattr(item, "text") else ""
+                elem = _element_from_item(item, filename_stem, global_order)
 
-                elem: dict[str, Any] = {
-                    "id": compute_id(
-                        filename_stem,
-                        prov.page_no if prov else 1,
-                        global_order,
-                        text,
-                    ),
-                    "label": lbl,
-                    "page_no": prov.page_no if prov else 1,
-                    "bbox": extract_bbox(prov.bbox if prov else None),
-                    "text": text,
-                    "order": global_order,
-                }
-
-                if type_file == "pdf" and lbl in VISUAL_LABELS and elem["bbox"]:
+                if elem["label"] in VISUAL_LABELS and elem["bbox"]:
                     elem["minio_url"] = crop_and_upload_image(
                         pdf_path,
                         elem["page_no"],
                         elem["bbox"],
                         elem["id"],
-                        lbl,
+                        elem["label"],
                     )
 
                 chunk_elements.append(elem)
@@ -378,7 +395,7 @@ async def extract_document(req: ExtractRequest) -> dict[str, str]:
 
             chunk_buffer.append(chunk_elements)
             if len(chunk_buffer) >= FLUSH_BUFFER_SIZE:
-                flush_chunk_to_storage(chunk_buffer.popleft(), filename_stem, type_file)
+                flush_chunk_to_storage(chunk_buffer.popleft(), filename_stem, "pdf")
 
             if hasattr(conv_res.input, "_backend") and conv_res.input._backend:
                 conv_res.input._backend.unload()
@@ -391,7 +408,20 @@ async def extract_document(req: ExtractRequest) -> dict[str, str]:
         start_page = end_page - BATCH_OVERLAP + 1
 
     while chunk_buffer:
-        flush_chunk_to_storage(chunk_buffer.popleft(), filename_stem, type_file)
+        flush_chunk_to_storage(chunk_buffer.popleft(), filename_stem, "pdf")
+
+
+@app.post("/extract")
+async def extract_document(req: ExtractRequest) -> dict[str, str]:
+    """Extrait le contenu structuré d'un document et le persiste dans les stores."""
+    path_obj = Path(req.filepath)
+    if not path_obj.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if path_obj.suffix.lower() in HTML_SUFFIXES:
+        _extract_html(path_obj)
+    else:
+        _extract_pdf(path_obj)
 
     return {"status": "success"}
 
