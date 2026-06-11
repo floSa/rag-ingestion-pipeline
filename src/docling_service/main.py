@@ -353,7 +353,15 @@ def _extract_html(path_obj: Path) -> None:
     conv_res = converter.convert(str(path_obj))
     elements: list[dict[str, Any]] = []
     for global_order, (item, _) in enumerate(conv_res.document.iterate_items()):
-        elements.append(_element_from_item(item, filename_stem, global_order))
+        elem = _element_from_item(item, filename_stem, global_order)
+
+        # Les images des captures HTML ont deja ete exportees vers MinIO par le
+        # pipeline (src reecrit) : on propage l'URL sur le noeud Picture.
+        image_uri = getattr(getattr(item, "image", None), "uri", None)
+        if image_uri and str(image_uri).startswith("http"):
+            elem["minio_url"] = str(image_uri)
+
+        elements.append(elem)
 
     flush_chunk_to_storage(elements, filename_stem, "html")
 

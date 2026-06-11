@@ -17,12 +17,34 @@ DEFAULT_SOURCES_FILE = Path(__file__).resolve().parent / "sources.yaml"
 SourceType = str  # voir SourceConfig.type pour les valeurs admises
 
 
+class ExtractionProfile(BaseModel):
+    """Profil d'extraction dedie a un site precis (prioritaire sur le generique).
+
+    Si ``detect`` matche dans la page, seul le contenu de ``content`` est garde,
+    apres suppression des selecteurs ``strip``.
+    """
+
+    name: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    detect: str
+    content: str
+    strip: list[str] = Field(default_factory=list)
+
+
 class CleaningOptions(BaseModel):
     """Options de nettoyage HTML, ajustables par source."""
 
     extra_remove_selectors: list[str] = Field(
         default_factory=list,
         description="Selecteurs CSS supplementaires a supprimer (ex: '.cookie-banner').",
+    )
+    profiles: list[ExtractionProfile] = Field(
+        default_factory=list,
+        description="Profils d'extraction par site, prioritaires sur le mode generique.",
+    )
+    export_images: bool = Field(
+        default=True,
+        description="Exporter les images base64 volumineuses vers MinIO "
+        "au lieu de les supprimer.",
     )
     min_text_chars: int = Field(
         default=250,

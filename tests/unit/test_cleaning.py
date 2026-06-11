@@ -2,13 +2,29 @@
 
 from __future__ import annotations
 
+import base64
+
 from src.pipeline.cleaning import (
     PRECLEANED_FALLBACK,
     clean_html,
     clean_html_file,
     preclean_html,
 )
-from src.pipeline.sources import CleaningOptions
+from src.pipeline.sources import CleaningOptions, ExtractionProfile
+
+
+class FakeExporter:
+    """Exporteur d'images factice pour les tests (pas de MinIO)."""
+
+    def __init__(self, fail: bool = False):
+        self.fail = fail
+        self.calls: list[tuple[bytes, str, int]] = []
+
+    def __call__(self, payload: bytes, mime: str, index: int) -> str | None:
+        self.calls.append((payload, mime, index))
+        if self.fail:
+            return None
+        return f"http://minio:9000/documents/images/html/test/img_{index:04d}.png"
 
 FAKE_DATA_URI = "data:image/png;base64," + "A" * 10_000
 
@@ -132,6 +148,97 @@ class TestPrecleanHtml:
         assert "contenu" in result
         assert "menu lateral" not in result
         assert "popup newsletter" not in result
+
+
+class TestImageExport:
+    PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8_000
+    DATA_URI = "data:image/png;base64," + base64.b64encode(PNG_BYTES).decode()
+
+    def _html(self) -> str:
+        return (
+            f"<html><body><p>{'texte ' * 100}</p>"
+            f'<img src="{self.DATA_URI}" alt="figure"/></body></html>'
+        )
+
+    def test_big_image_exported_and_src_rewritten(self):
+        exporter = FakeExporter()
+        result = preclean_html(self._html(), CleaningOptions(), image_exporter=exporter)
+        assert len(exporter.calls) == 1
+        payload, mime, index = exporter.calls[0]
+        assert payload == self.PNG_BYTES
+        assert mime == "image/png"
+        assert f"img_{index:04d}.png" in result
+        assert "data:image/png" not in result
+
+    def test_export_failure_drops_src(self):
+        exporter = FakeExporter(fail=True)
+        result = preclean_html(self._html(), CleaningOptions(), image_exporter=exporter)
+        assert len(exporter.calls) == 1
+        assert "data:image/png" not in result
+        assert "figure" in result  # le alt reste
+
+    def test_without_exporter_src_dropped(self):
+        result = preclean_html(self._html(), CleaningOptions())
+        assert "data:image/png" not in result
+
+    def test_small_image_kept_inline_untouched(self):
+        small_uri = "data:image/png;base64,AAAA"
+        html = f'<html><body><p>texte</p><img src="{small_uri}"/></body></html>'
+        exporter = FakeExporter()
+        result = preclean_html(html, CleaningOptions(), image_exporter=exporter)
+        assert exporter.calls == []
+        assert small_uri in result
+
+    def test_invalid_base64_dropped_not_crashed(self):
+        bad_uri = "data:image/png;base64,!!!" + "x" * 5_000
+        html = f'<html><body><p>texte</p><img src="{bad_uri}"/></body></html>'
+        exporter = FakeExporter()
+        result = preclean_html(html, CleaningOptions(), image_exporter=exporter)
+        assert exporter.calls == []
+        assert bad_uri not in result
+
+
+class TestProfiles:
+    PROFILED_HTML = (
+        "<html><body>"
+        '<div class="site-shell">'
+        '<div class="article-reader"><main>'
+        f"<h1>Mon article</h1><p>{'contenu utile ' * 50}</p>"
+        '<div class="newsletter-banner">Abonnez-vous !</div>'
+        "</main></div>"
+        f"<div class='junk'>{'bruit lateral ' * 80}</div>"
+        "</div></body></html>"
+    )
+
+    def _options(self) -> CleaningOptions:
+        return CleaningOptions(
+            profiles=[
+                ExtractionProfile(
+                    name="monsite",
+                    detect=".article-reader",
+                    content=".article-reader main",
+                    strip=[".newsletter-banner"],
+                )
+            ]
+        )
+
+    def test_matching_profile_wins(self):
+        cleaned, report = clean_html(self.PROFILED_HTML, self._options())
+        assert report.strategy == "monsite"
+        assert "contenu utile" in cleaned
+        assert "bruit lateral" not in cleaned
+
+    def test_strip_applied_inside_content(self):
+        cleaned, _ = clean_html(self.PROFILED_HTML, self._options())
+        assert "Abonnez-vous" not in cleaned
+
+    def test_non_matching_profile_falls_back_to_generic(self):
+        options = CleaningOptions(
+            profiles=[ExtractionProfile(name="autre", detect="#nexiste-pas", content="main")]
+        )
+        cleaned, report = clean_html(SINGLEFILE_LIKE_HTML, options)
+        assert report.strategy in (*KNOWN_STRATEGIES, PRECLEANED_FALLBACK)
+        assert "paragraphe numero 5" in cleaned
 
 
 class TestCleanHtml:

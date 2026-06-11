@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     )
 
 from src.pipeline.cleaning import clean_html_file
+from src.pipeline.media import MinioImageExporter
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig
 
@@ -90,7 +91,13 @@ def _build_html_assets(
             raise FileNotFoundError(f"Source file not found: {source_path}")
 
         dest_path = Path(settings.source_dir) / settings.cleaned_subdir / context.partition_key
-        report = clean_html_file(source_path, dest_path, source.cleaning)
+
+        exporter: MinioImageExporter | None = None
+        if source.cleaning.export_images:
+            doc_key = Path(context.partition_key).with_suffix("").as_posix()
+            exporter = MinioImageExporter(doc_key=doc_key)
+
+        report = clean_html_file(source_path, dest_path, source.cleaning, image_exporter=exporter)
 
         if report.strategy == "precleaned":
             context.log.warning(
@@ -103,6 +110,7 @@ def _build_html_assets(
                 "raw_bytes": report.raw_bytes,
                 "cleaned_bytes": report.cleaned_bytes,
                 "text_chars": report.text_chars,
+                "images_exported": exporter.exported if exporter else 0,
             }
         )
         return str(dest_path)

@@ -21,6 +21,8 @@ une (ex: nettoyage par LLM) revient a ajouter une classe dans ``_STRATEGIES``.
 
 from __future__ import annotations
 
+import base64
+import binascii
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +32,7 @@ import trafilatura
 from bs4 import BeautifulSoup, Comment, Tag
 from readability import Document
 
-from src.pipeline.sources import CleaningOptions
+from src.pipeline.sources import CleaningOptions, ExtractionProfile
 
 # Balises qui ne portent jamais de contenu a ingerer.
 NOISE_TAGS: list[str] = [
@@ -103,6 +105,27 @@ class CleaningStrategy(Protocol):
         ...
 
 
+class ImageExporter(Protocol):
+    """Exporte une image decodee et retourne son URL, ou None si echec."""
+
+    def __call__(self, payload: bytes, mime: str, index: int) -> str | None:
+        """Upload l'image ``payload`` (type ``mime``) et retourne son URL."""
+        ...
+
+
+def _decode_data_uri(value: str) -> tuple[str, bytes] | None:
+    """Decode une URI ``data:...;base64,...`` en (mime, octets), ou None."""
+    header, _, payload = value.partition(",")
+    if not payload or ";base64" not in header:
+        return None
+    mime = header[5:].split(";")[0] or "application/octet-stream"
+    payload = "".join(payload.split())  # certains generateurs inserent des sauts de ligne
+    try:
+        return mime, base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+
+
 def _visible_text_length(html: str) -> int:
     """Longueur du texte visible d'un fragment HTML."""
     return len(BeautifulSoup(html, "lxml").get_text(" ", strip=True))
@@ -123,6 +146,28 @@ def _top_level_only(tags: list[Tag]) -> list[Tag]:
     """Ne garde que les elements dont aucun ancetre n'est lui-meme selectionne."""
     selected = {id(t) for t in tags}
     return [t for t in tags if not any(id(p) in selected for p in t.parents)]
+
+
+class ProfileStrategy:
+    """Extraction par profil dedie a un site (selecteurs declares en YAML)."""
+
+    def __init__(self, profile: ExtractionProfile, min_chars: int) -> None:
+        self.profile = profile
+        self.min_chars = min_chars
+
+    def extract(self, html: str) -> ExtractionCandidate | None:
+        soup = BeautifulSoup(html, "lxml")
+        if not soup.select_one(self.profile.detect):
+            return None
+        tags = _top_level_only(soup.select(self.profile.content))
+        for selector in self.profile.strip:
+            for tag in tags:
+                _decompose_all(tag.select(selector))
+        text_len = sum(len(t.get_text(strip=True)) for t in tags)
+        if text_len < self.min_chars:
+            return None
+        fragment = "\n".join(str(t) for t in tags)
+        return ExtractionCandidate(strategy=self.profile.name, html=fragment)
 
 
 class SemanticContainerStrategy:
@@ -170,16 +215,23 @@ class ReadabilityStrategy:
         return ExtractionCandidate(strategy="readability", html=summary)
 
 
-def preclean_html(raw: str, options: CleaningOptions) -> str:
+def preclean_html(
+    raw: str,
+    options: CleaningOptions,
+    image_exporter: ImageExporter | None = None,
+) -> str:
     """Pre-passe d'hygiene : retire le bruit non ambigu sans toucher au contenu.
 
     Concu pour les captures SingleFile : elements caches, chrome de page,
-    attributs ``style``, handlers ``on*`` et images ``data:`` au-dela d'un
-    seuil sont supprimes, ce qui divise la taille du fichier avant extraction.
+    attributs ``style``, handlers ``on*`` sont supprimes, ce qui divise la
+    taille du fichier avant extraction. Les images ``data:`` au-dela d'un
+    seuil sont exportees via ``image_exporter`` (src reecrit avec l'URL),
+    ou supprimees si aucun exporteur n'est fourni / si l'export echoue.
 
     Args:
         raw: HTML brut.
         options: Options de nettoyage de la source.
+        image_exporter: Destination des images base64 volumineuses (MinIO).
 
     Returns:
         HTML allege, structure du contenu intacte.
@@ -218,6 +270,7 @@ def preclean_html(raw: str, options: CleaningOptions) -> str:
     for comment in soup.find_all(string=lambda s: isinstance(s, Comment)):
         comment.extract()
 
+    image_index = 0
     for element in soup.find_all(True):
         if not isinstance(element, Tag):
             continue
@@ -226,34 +279,70 @@ def preclean_html(raw: str, options: CleaningOptions) -> str:
             del element.attrs[attr]
         for attr in URI_ATTRS:
             value = element.attrs.get(attr)
-            if (
-                isinstance(value, str)
-                and value.startswith("data:")
-                and len(value) > options.max_data_uri_bytes
-            ):
+            if not (isinstance(value, str) and value.startswith("data:")):
+                continue
+            if len(value) <= options.max_data_uri_bytes:
+                continue
+
+            exported_url: str | None = None
+            if image_exporter is not None and element.name == "img" and attr == "src":
+                decoded = _decode_data_uri(value)
+                if decoded is not None:
+                    mime, payload = decoded
+                    exported_url = image_exporter(payload, mime, image_index)
+                    image_index += 1
+
+            if exported_url:
+                element.attrs[attr] = exported_url
+            else:
                 del element.attrs[attr]
 
     return str(soup)
 
 
-def clean_html(raw: str, options: CleaningOptions) -> tuple[str, CleaningReport]:
+def _build_report(raw: str, precleaned: str, html: str, strategy: str) -> CleaningReport:
+    """Construit le bilan d'un nettoyage."""
+    return CleaningReport(
+        strategy=strategy,
+        raw_bytes=len(raw.encode("utf-8")),
+        precleaned_bytes=len(precleaned.encode("utf-8")),
+        cleaned_bytes=len(html.encode("utf-8")),
+        text_chars=_visible_text_length(html),
+    )
+
+
+def clean_html(
+    raw: str,
+    options: CleaningOptions,
+    image_exporter: ImageExporter | None = None,
+) -> tuple[str, CleaningReport]:
     """Nettoie un HTML quelconque et retourne (html_nettoye, bilan).
 
-    Un conteneur semantique HTML5 (<article>, <main>) qui passe les seuils fait
-    autorite : c'est la delimitation posee par l'auteur de la page. A defaut,
-    trafilatura et readability sont compares et le candidat qui conserve le
-    plus de texte gagne. En dernier recours, le HTML pre-nettoye est conserve
-    tel quel.
+    Ordre de priorite :
+
+    1. Un **profil par site** (``options.profiles``) qui matche : choix
+       explicite de l'utilisateur, il gagne directement.
+    2. Un **conteneur semantique HTML5** (<article>, <main>) qui passe les
+       seuils : delimitation posee par l'auteur de la page.
+    3. **trafilatura** et **readability** compares : le candidat qui conserve
+       le plus de texte gagne.
+    4. En dernier recours, le HTML pre-nettoye est conserve tel quel.
 
     Args:
         raw: HTML brut (capture SingleFile, export editeur, etc.).
         options: Options de nettoyage de la source.
+        image_exporter: Destination des images base64 volumineuses (MinIO).
 
     Returns:
         Le HTML nettoye et le :class:`CleaningReport` associe.
     """
-    precleaned = preclean_html(raw, options)
+    precleaned = preclean_html(raw, options, image_exporter)
     reference_chars = _visible_text_length(precleaned)
+
+    for profile in options.profiles:
+        profiled = ProfileStrategy(profile, options.min_text_chars).extract(precleaned)
+        if profiled is not None:
+            return profiled.html, _build_report(raw, precleaned, profiled.html, profiled.strategy)
 
     strategies: tuple[CleaningStrategy, ...] = (
         SemanticContainerStrategy(min_chars=options.min_text_chars),
@@ -281,39 +370,31 @@ def clean_html(raw: str, options: CleaningOptions) -> tuple[str, CleaningReport]
         accepted = semantic
 
     if accepted:
-        text_chars, best = max(accepted, key=lambda c: c[0])
-        report = CleaningReport(
-            strategy=best.strategy,
-            raw_bytes=len(raw.encode("utf-8")),
-            precleaned_bytes=len(precleaned.encode("utf-8")),
-            cleaned_bytes=len(best.html.encode("utf-8")),
-            text_chars=text_chars,
-        )
-        return best.html, report
+        _, best = max(accepted, key=lambda c: c[0])
+        return best.html, _build_report(raw, precleaned, best.html, best.strategy)
 
-    report = CleaningReport(
-        strategy=PRECLEANED_FALLBACK,
-        raw_bytes=len(raw.encode("utf-8")),
-        precleaned_bytes=len(precleaned.encode("utf-8")),
-        cleaned_bytes=len(precleaned.encode("utf-8")),
-        text_chars=reference_chars,
-    )
-    return precleaned, report
+    return precleaned, _build_report(raw, precleaned, precleaned, PRECLEANED_FALLBACK)
 
 
-def clean_html_file(source_path: Path, dest_path: Path, options: CleaningOptions) -> CleaningReport:
+def clean_html_file(
+    source_path: Path,
+    dest_path: Path,
+    options: CleaningOptions,
+    image_exporter: ImageExporter | None = None,
+) -> CleaningReport:
     """Nettoie un fichier HTML et ecrit le resultat.
 
     Args:
         source_path: Fichier HTML source.
         dest_path: Destination du HTML nettoye (les dossiers sont crees).
         options: Options de nettoyage de la source.
+        image_exporter: Destination des images base64 volumineuses (MinIO).
 
     Returns:
         Le :class:`CleaningReport` du nettoyage.
     """
     raw = source_path.read_text(encoding="utf-8", errors="ignore")
-    cleaned, report = clean_html(raw, options)
+    cleaned, report = clean_html(raw, options, image_exporter)
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     dest_path.write_text(cleaned, encoding="utf-8")
     return report

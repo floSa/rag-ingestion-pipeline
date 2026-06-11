@@ -84,11 +84,11 @@ Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gi
 ### Nettoyage HTML universel
 
 Les sources HTML passent par un nettoyage en étages, sans configuration par site :
-1. **Pré-passe** : suppression des scripts, styles, nav/header/footer, commentaires et images `data:` volumineuses (captures SingleFile).
-2. **Extraction de contenu** : [trafilatura](https://trafilatura.readthedocs.io/), puis readability-lxml en secours.
+1. **Pré-passe d'hygiène** : suppression des scripts, styles, éléments cachés (`sf-hidden`, `display:none`), chrome de page (nav, rôles ARIA), commentaires. Les **images base64 volumineuses sont exportées vers MinIO** et leur `src` réécrit (comme les crops PDF) ; les `header`/`footer` internes à un `<article>` sont conservés (ils portent le titre).
+2. **Extraction de contenu** : un profil par site (s'il est déclaré) gagne directement ; sinon les conteneurs sémantiques HTML5 (`<article>`, `<main>`) font autorité ; sinon [trafilatura](https://trafilatura.readthedocs.io/) et readability-lxml sont comparés et le plus complet gagne.
 3. **Garde-fou** : si trop peu de texte est extrait, le HTML pré-nettoyé est conservé tel quel (rien n'est perdu) et un warning apparaît dans les logs Dagster.
 
-La stratégie retenue et les tailles avant/après sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition.
+La stratégie retenue, les tailles avant/après et le nombre d'images exportées sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition. Si un site ressort mal, déclarez-lui un profil `detect`/`content`/`strip` dans `sources.yaml` (voir l'exemple en tête du fichier).
 
 ---
 
