@@ -20,6 +20,13 @@ class PipelineSettings(BaseSettings):
     cleaned_subdir: str = ".cleaned"
     docling_service_url: str = "http://docling-service:8000"
 
+    # MinIO : utilise uniquement pour exporter les images base64 des captures
+    # HTML (le service Docling gere lui-meme les images des PDF).
+    minio_endpoint: str = "minio:9000"
+    minio_root_user: str = ""
+    minio_root_password: str = ""
+    minio_bucket: str = "documents"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> PipelineSettings:

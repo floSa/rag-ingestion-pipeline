@@ -8,7 +8,11 @@
 #   cleaning (optionnel, html uniquement) :
 #     extra_remove_selectors : selecteurs CSS a supprimer en plus des heuristiques
 #     min_text_chars / min_text_ratio : seuils d'acceptation du nettoyage
-#     max_data_uri_bytes : taille max des images inline data: conservees
+#     max_data_uri_bytes : taille au-dela de laquelle les images inline data:
+#       sont exportees vers MinIO (ou supprimees si export_images: false)
+#     export_images : true par defaut
+#     profiles : profils d'extraction dedies a un site, prioritaires sur le
+#       mode generique (article/main, trafilatura, readability)
 #
 # Exemple — capture SingleFile d'un site :
 #   - name: capture_monsite
@@ -16,6 +20,11 @@
 #     type: html
 #     cleaning:
 #       extra_remove_selectors: [".cookie-banner", "#sidebar"]
+#       profiles:
+#         - name: monsite_article          # s'applique si detect matche
+#           detect: ".article-reader"
+#           content: ".article-reader main" # ce qu'on garde
+#           strip: [".newsletter-banner"]   # supprime DANS le contenu garde
 
 sources:
   - name: pdfs

@@ -43,6 +43,34 @@ sources:
         assert source.cleaning.min_text_chars == 100
         # Les options non precisees gardent leur defaut
         assert source.cleaning.max_data_uri_bytes == CleaningOptions().max_data_uri_bytes
+        assert source.cleaning.export_images is True
+        assert source.cleaning.profiles == []
+
+    def test_profiles_parsed(self, tmp_path):
+        yaml_file = tmp_path / "sources.yaml"
+        yaml_file.write_text(
+            """
+sources:
+  - name: capture
+    glob: "captures/**/*.html"
+    type: html
+    cleaning:
+      export_images: false
+      profiles:
+        - name: monsite
+          detect: ".reader"
+          content: ".reader main"
+          strip: [".banner"]
+""",
+            encoding="utf-8",
+        )
+        source = load_sources(yaml_file)[0]
+        assert source.cleaning.export_images is False
+        profile = source.cleaning.profiles[0]
+        assert profile.name == "monsite"
+        assert profile.detect == ".reader"
+        assert profile.content == ".reader main"
+        assert profile.strip == [".banner"]
 
     def test_duplicate_names_rejected(self, tmp_path):
         yaml_file = tmp_path / "sources.yaml"
