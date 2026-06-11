@@ -26,7 +26,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ANN"]
+# E741 : les mocks bbox repliquent les attributs Docling (l, t, r, b)
+"tests/**/*.py" = ["ANN", "E741"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
@@ -52,6 +53,8 @@ module = [
     "fastapi.*",
     "uvicorn",
     "requests.*",
+    "trafilatura.*",
+    "readability.*",
 ]
 ignore_missing_imports = true
 
