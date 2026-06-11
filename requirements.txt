@@ -1,12 +1,14 @@
+# Dependances de l'image Dagster (orchestration + nettoyage HTML).
+# Les dependances d'extraction/persistance (docling, torch, chromadb, nebula3,
+# sentence-transformers, minio, PyMuPDF) vivent dans Dockerfile.docling.
 dagster==1.13.2
 dagster-webserver==1.13.2
 dagster-postgres==0.29.2
 dagster-docker==0.29.2
-beautifulsoup4==4.14.3
-minio==7.2.20
-requests==2.33.1
-chromadb==0.6.3
-nebula3-python==3.8.3
-sentence-transformers==5.4.1
-PyMuPDF==1.27.2.3
-pydantic-settings==2.14.0
+beautifulsoup4==4.15.0
+lxml==6.1.1
+trafilatura==2.1.0
+readability-lxml==0.8.4.1
+PyYAML==6.0.3
+requests==2.34.2
+pydantic-settings==2.14.1

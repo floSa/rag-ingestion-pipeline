@@ -1,0 +1,27 @@
+# Declaration des sources d'ingestion.
+#
+# Ajouter une source = ajouter un bloc ici, aucun code Python a modifier.
+# Champs :
+#   name : identifiant unique (minuscules, chiffres, underscores)
+#   glob : motif de recherche relatif au dossier Datas/
+#   type : pdf | html
+#   cleaning (optionnel, html uniquement) :
+#     extra_remove_selectors : selecteurs CSS a supprimer en plus des heuristiques
+#     min_text_chars / min_text_ratio : seuils d'acceptation du nettoyage
+#     max_data_uri_bytes : taille max des images inline data: conservees
+#
+# Exemple — capture SingleFile d'un site :
+#   - name: capture_monsite
+#     glob: "captures/monsite/**/*.html"
+#     type: html
+#     cleaning:
+#       extra_remove_selectors: [".cookie-banner", "#sidebar"]
+
+sources:
+  - name: pdfs
+    glob: "pdfs/**/*.pdf"
+    type: pdf
+
+  - name: livres_html
+    glob: "htms/**/*.html"
+    type: html
