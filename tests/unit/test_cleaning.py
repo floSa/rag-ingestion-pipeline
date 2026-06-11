@@ -89,11 +89,22 @@ class TestPrecleanHtml:
         # L'image reste presente (alt conserve), seule l'URI data: est retiree
         assert "figure 3.1" in result
 
-    def test_keeps_small_data_uris(self):
+    def test_small_data_uri_image_dropped_as_icon(self):
         small_uri = "data:image/png;base64,AAAA"
-        html = f'<html><body><p>texte</p><img src="{small_uri}"/></body></html>'
+        html = f'<html><body><p>texte</p><img src="{small_uri}" alt="puce"/></body></html>'
         result = preclean_html(html, CleaningOptions())
-        assert small_uri in result
+        assert small_uri not in result
+        assert "puce" not in result  # icone d'interface : jetee entiere
+
+    def test_tidy_headings_removes_anchor_decorations(self):
+        html = (
+            "<html><body>"
+            '<h2>Introduction <a class="anchor" href="#intro">¶</a></h2>'
+            "<p>texte</p></body></html>"
+        )
+        result = preclean_html(html, CleaningOptions())
+        assert "Introduction" in result
+        assert "¶" not in result
 
     def test_keeps_main_content(self):
         result = preclean_html(SINGLEFILE_LIKE_HTML, CleaningOptions())
@@ -181,13 +192,13 @@ class TestImageExport:
         result = preclean_html(self._html(), CleaningOptions())
         assert "data:image/png" not in result
 
-    def test_small_image_kept_inline_untouched(self):
+    def test_small_image_dropped_without_export(self):
         small_uri = "data:image/png;base64,AAAA"
         html = f'<html><body><p>texte</p><img src="{small_uri}"/></body></html>'
         exporter = FakeExporter()
         result = preclean_html(html, CleaningOptions(), image_exporter=exporter)
         assert exporter.calls == []
-        assert small_uri in result
+        assert small_uri not in result
 
     def test_invalid_base64_dropped_not_crashed(self):
         bad_uri = "data:image/png;base64,!!!" + "x" * 5_000
@@ -196,6 +207,81 @@ class TestImageExport:
         result = preclean_html(html, CleaningOptions(), image_exporter=exporter)
         assert exporter.calls == []
         assert bad_uri not in result
+
+
+class TestMathConversion:
+    def test_mathjax_v2_script_to_latex(self):
+        html = (
+            "<html><body><p>Einstein :</p>"
+            '<script type="math/tex">E = mc^2</script>'
+            '<script type="math/tex; mode=display">\\int_0^1 f(x)dx</script>'
+            "</body></html>"
+        )
+        result = preclean_html(html, CleaningOptions())
+        assert "$E = mc^2$" in result
+        assert "$$\\int_0^1 f(x)dx$$" in result
+
+    def test_katex_annotation_to_latex_without_duplication(self):
+        html = (
+            "<html><body><p>Pythagore :</p>"
+            '<span class="katex">'
+            '<span class="katex-mathml"><math><semantics><mrow></mrow>'
+            '<annotation encoding="application/x-tex">x^2 + y^2 = z^2</annotation>'
+            "</semantics></math></span>"
+            '<span class="katex-html" aria-hidden="true">'
+            "<span>x</span><span>2</span><span>+</span><span>y</span><span>2</span>"
+            "</span></span>"
+            "</body></html>"
+        )
+        result = preclean_html(html, CleaningOptions())
+        assert "$x^2 + y^2 = z^2$" in result
+        # le rendu duplique (katex-html) a disparu avec l'element remplace
+        assert "<span>x</span>" not in result
+
+    def test_mathjax_v3_container_aria_label(self):
+        html = (
+            "<html><body>"
+            '<mjx-container display="true" aria-label="a + b = c"></mjx-container>'
+            "</body></html>"
+        )
+        result = preclean_html(html, CleaningOptions())
+        assert "$$a + b = c$$" in result
+
+    def test_native_mathml_annotation(self):
+        html = (
+            "<html><body><math>"
+            '<semantics><annotation encoding="application/x-tex">\\frac{1}{2}</annotation>'
+            "</semantics></math></body></html>"
+        )
+        result = preclean_html(html, CleaningOptions())
+        assert "$\\frac{1}{2}$" in result
+
+    def test_formulas_survive_full_cleaning(self):
+        html = (
+            "<html><head><title>Maths</title></head><body><article>"
+            f"<h1>Chapitre</h1><p>{'texte explicatif ' * 50}</p>"
+            '<p>Donc <script type="math/tex">E = mc^2</script> est fondamental.</p>'
+            "</article></body></html>"
+        )
+        cleaned, report = clean_html(html, CleaningOptions())
+        assert report.strategy == "article"
+        assert "$E = mc^2$" in cleaned
+
+
+class TestTitleGuarantee:
+    def test_h1_prepended_from_title_without_site_suffix(self):
+        html = (
+            "<html><head><title>Mon chapitre - MonSite.com</title></head>"
+            f"<body><main><p>{'contenu long ' * 50}</p></main></body></html>"
+        )
+        cleaned, report = clean_html(html, CleaningOptions())
+        assert report.strategy == "main"
+        assert "<h1>Mon chapitre</h1>" in cleaned
+        assert "MonSite.com" not in cleaned
+
+    def test_existing_h1_untouched(self):
+        cleaned, _ = clean_html(SINGLEFILE_LIKE_HTML, CleaningOptions())
+        assert cleaned.count("<h1>") == 1
 
 
 class TestProfiles:
