@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import base64
 import binascii
+import html as html_module
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +32,7 @@ from typing import Any, Protocol
 
 import trafilatura
 from bs4 import BeautifulSoup, Comment, Tag
+from bs4.element import NavigableString
 from readability import Document
 
 from src.pipeline.sources import CleaningOptions, ExtractionProfile
@@ -76,6 +79,25 @@ URI_ATTRS: tuple[str, ...] = ("src", "srcset", "href", "poster", "data-src")
 SEMANTIC_SELECTORS: tuple[str, ...] = ("article", "main", "[role=main]")
 
 PRECLEANED_FALLBACK = "precleaned"
+
+# Formules : source LaTeX laissee dans le DOM par les moteurs de rendu web.
+_MATH_TEX_TYPE = re.compile(r"^\s*math/tex", re.I)
+
+# Restes de rendu MathJax v2 a purger une fois la source recuperee.
+_MATHJAX_RENDER_SELECTORS: list[str] = [
+    ".MathJax",
+    ".MathJax_Display",
+    ".MathJax_Preview",
+    ".MathJax_SVG",
+    ".MathJax_SVG_Display",
+    ".MathJax_CHTML",
+]
+
+# Decorations d'ancres frequentes a l'interieur des titres (liens « # », « ¶ »).
+_ANCHOR_DECORATIONS: set[str] = {"#", "##", "¶", "§"}
+
+# Separateurs usuels entre titre d'article et nom de site dans <title>.
+_TITLE_SEP = re.compile(r"\s+[-–—|·»]\s+")
 
 
 @dataclass
@@ -215,6 +237,96 @@ class ReadabilityStrategy:
         return ExtractionCandidate(strategy="readability", html=summary)
 
 
+def _convert_math_to_latex(soup: BeautifulSoup) -> int:
+    """Remplace in-place les formules rendues par leur source LaTeX en texte.
+
+    Les moteurs de rendu web gardent presque toujours la source LaTeX dans le
+    DOM : KaTeX (``<annotation encoding="application/x-tex">``), MathJax v2
+    (``<script type="math/tex">``), MathJax v3 (``<mjx-container>``), MathML
+    natif (``<math>``). Chaque formule devient ``$latex$`` (inline) ou
+    ``$$latex$$`` (bloc) — texte simple qui traverse l'extraction et que
+    Docling indexera tel quel.
+
+    A appeler AVANT la suppression du bruit, qui supprime les <script>.
+
+    Returns:
+        Nombre de formules converties.
+    """
+    converted = 0
+
+    def replace(element: Tag, latex: str, display: bool) -> None:
+        nonlocal converted
+        latex = latex.strip()
+        if not latex:
+            element.decompose()
+            return
+        element.replace_with(NavigableString(f"$${latex}$$" if display else f"${latex}$"))
+        converted += 1
+
+    # MathJax v2 : la source est dans un <script type="math/tex[; mode=display]">.
+    for script in soup.find_all("script", type=_MATH_TEX_TYPE):
+        display = "mode=display" in (script.get("type") or "")
+        replace(script, script.get_text(), display)
+    for selector in _MATHJAX_RENDER_SELECTORS:
+        _decompose_all(soup.select(selector))
+
+    # KaTeX : on remplace .katex-display entier si present, sinon .katex.
+    for katex in soup.select(".katex"):
+        if katex.decomposed:
+            continue
+        annotation = katex.select_one('annotation[encoding="application/x-tex"]')
+        latex = annotation.get_text() if annotation else katex.get_text(" ", strip=True)
+        wrapper = katex.find_parent(class_="katex-display")
+        replace(wrapper or katex, latex, display=wrapper is not None)
+
+    # MathJax v3 : <mjx-container display="true|false">.
+    for container in soup.find_all("mjx-container"):
+        annotation = container.select_one('annotation[encoding="application/x-tex"]')
+        latex = (
+            annotation.get_text()
+            if annotation
+            else str(container.get("aria-label") or container.get_text(" ", strip=True))
+        )
+        replace(container, latex, display=container.get("display") == "true")
+
+    # MathML natif restant.
+    for math in soup.find_all("math"):
+        if math.decomposed:
+            continue
+        annotation = math.select_one('annotation[encoding="application/x-tex"]')
+        latex = annotation.get_text() if annotation else math.get_text(" ", strip=True)
+        replace(math, latex, display=math.get("display") == "block")
+
+    return converted
+
+
+def _tidy_headings(soup: BeautifulSoup) -> None:
+    """Retire les decorations d'ancres dans les titres (ex. « ## # Intro »)."""
+    for heading in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+        for child in list(heading.children):
+            if isinstance(child, Tag) and child.get_text(strip=True) in _ANCHOR_DECORATIONS:
+                child.decompose()
+            elif isinstance(child, NavigableString) and child.strip() in _ANCHOR_DECORATIONS:
+                child.extract()
+
+
+def _page_title(html: str) -> str:
+    """Titre d'article du <title>, sans le suffixe du site (« X - MonSite »)."""
+    match = re.search(r"<title[^>]*>([^<]{1,300})</title>", html, re.IGNORECASE)
+    if not match:
+        return ""
+    title = html_module.unescape(match.group(1)).strip()
+    parts = _TITLE_SEP.split(title)
+    return " ".join(parts[:-1]).strip() if len(parts) >= 2 else title
+
+
+def _ensure_heading(fragment: str, title: str) -> str:
+    """Prefixe un <h1> si aucun n'a survecu a l'extraction (structure Docling)."""
+    if not title or re.search(r"<h1[\s>]", fragment, re.IGNORECASE):
+        return fragment
+    return f"<h1>{html_module.escape(title)}</h1>\n{fragment}"
+
+
 def preclean_html(
     raw: str,
     options: CleaningOptions,
@@ -237,6 +349,10 @@ def preclean_html(
         HTML allege, structure du contenu intacte.
     """
     soup = BeautifulSoup(raw, "lxml")
+
+    # Formules d'abord : leur source LaTeX vit dans des <script>/<svg>/MathML
+    # que la suppression du bruit detruirait.
+    _convert_math_to_latex(soup)
 
     _decompose_all(soup.find_all(NOISE_TAGS))
     _decompose_all(soup.find_all(CHROME_TAGS))
@@ -272,7 +388,7 @@ def preclean_html(
 
     image_index = 0
     for element in soup.find_all(True):
-        if not isinstance(element, Tag):
+        if not isinstance(element, Tag) or element.decomposed:
             continue
         element.attrs.pop("style", None)
         for attr in [a for a in element.attrs if a.startswith("on")]:
@@ -281,7 +397,12 @@ def preclean_html(
             value = element.attrs.get(attr)
             if not (isinstance(value, str) and value.startswith("data:")):
                 continue
+
             if len(value) <= options.max_data_uri_bytes:
+                # Petite image inline = icone d'interface : on la jette entiere.
+                if element.name == "img" and attr == "src":
+                    element.decompose()
+                    break
                 continue
 
             exported_url: str | None = None
@@ -296,6 +417,8 @@ def preclean_html(
                 element.attrs[attr] = exported_url
             else:
                 del element.attrs[attr]
+
+    _tidy_headings(soup)
 
     return str(soup)
 
@@ -338,11 +461,13 @@ def clean_html(
     """
     precleaned = preclean_html(raw, options, image_exporter)
     reference_chars = _visible_text_length(precleaned)
+    title = _page_title(precleaned)
 
     for profile in options.profiles:
         profiled = ProfileStrategy(profile, options.min_text_chars).extract(precleaned)
         if profiled is not None:
-            return profiled.html, _build_report(raw, precleaned, profiled.html, profiled.strategy)
+            fragment = _ensure_heading(profiled.html, title)
+            return fragment, _build_report(raw, precleaned, fragment, profiled.strategy)
 
     strategies: tuple[CleaningStrategy, ...] = (
         SemanticContainerStrategy(min_chars=options.min_text_chars),
@@ -371,8 +496,10 @@ def clean_html(
 
     if accepted:
         _, best = max(accepted, key=lambda c: c[0])
-        return best.html, _build_report(raw, precleaned, best.html, best.strategy)
+        fragment = _ensure_heading(best.html, title)
+        return fragment, _build_report(raw, precleaned, fragment, best.strategy)
 
+    # Le repli est le document entier (avec son <head>) : pas de h1 a prefixer.
     return precleaned, _build_report(raw, precleaned, precleaned, PRECLEANED_FALLBACK)
 
 
