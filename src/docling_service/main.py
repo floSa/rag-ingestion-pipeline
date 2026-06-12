@@ -77,9 +77,14 @@ app = FastAPI(title="Docling Streaming Extraction API")
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def compute_id(filename: str, page_no: int, order: int, text: str) -> str:
-    """Génère un identifiant court déterministe pour un élément."""
-    raw = f"{filename}|{page_no}|{order}|{text[:50]}"
+def compute_id(filename: str, page_no: int, position_in_page: int, text: str) -> str:
+    """Génère un identifiant court déterministe pour un élément.
+
+    La position DANS LA PAGE (et non l'ordre global de lecture) rend l'id
+    stable entre les batchs PDF qui se chevauchent : une page re-convertie
+    produit les mêmes ids, et les flushs écrasent au lieu de dupliquer.
+    """
+    raw = f"{filename}|{page_no}|{position_in_page}|{text[:50]}"
     return hashlib.sha256(raw.encode()).hexdigest()[:10]
 
 
@@ -381,8 +386,14 @@ FLUSH_BUFFER_SIZE: int = 1
 HTML_SUFFIXES: set[str] = {".html", ".htm"}
 
 
-def _element_from_item(item: Any, filename_stem: str, global_order: int) -> dict[str, Any]:
-    """Construit le dict element commun a partir d'un item Docling."""
+def _element_from_item(
+    item: Any, filename_stem: str, global_order: int, position_in_page: int
+) -> dict[str, Any]:
+    """Construit le dict element commun a partir d'un item Docling.
+
+    `global_order` sert a la sequence des edges (ordre de lecture) ;
+    `position_in_page` sert a l'id (stable entre batchs qui se chevauchent).
+    """
     lbl = str(getattr(item, "label", "text")).lower()
     prov = item.prov[0] if getattr(item, "prov", None) else None
     text: str = getattr(item, "text", "").strip() if hasattr(item, "text") else ""
@@ -391,7 +402,7 @@ def _element_from_item(item: Any, filename_stem: str, global_order: int) -> dict
         "id": compute_id(
             filename_stem,
             prov.page_no if prov else 1,
-            global_order,
+            position_in_page,
             text,
         ),
         "label": lbl,
@@ -411,7 +422,9 @@ def _extract_html(path_obj: Path) -> None:
     elements: list[dict[str, Any]] = []
     current_section_id: str | None = None
     for global_order, (item, _) in enumerate(conv_res.document.iterate_items()):
-        elem = _element_from_item(item, filename_stem, global_order)
+        # HTML : conversion d'un seul tenant (page unique), la position dans
+        # la page est l'ordre global
+        elem = _element_from_item(item, filename_stem, global_order, global_order)
 
         # Hiérarchie : les en-têtes restent rattachés au Document, les autres
         # éléments à la dernière section rencontrée.
@@ -452,9 +465,17 @@ def _extract_pdf(path_obj: Path) -> None:
         try:
             conv_res = converter.convert(pdf_path, page_range=(start_page, end_page))
             chunk_elements: list[dict[str, Any]] = []
+            # Position de chaque élément dans sa page : recalculée à l'identique
+            # quand une page de chevauchement est re-convertie par le batch suivant
+            page_counters: dict[int, int] = {}
 
             for item, _ in conv_res.document.iterate_items():
-                elem = _element_from_item(item, filename_stem, global_order)
+                prov = item.prov[0] if getattr(item, "prov", None) else None
+                page_no = prov.page_no if prov else 1
+                position_in_page = page_counters.get(page_no, 0)
+                page_counters[page_no] = position_in_page + 1
+
+                elem = _element_from_item(item, filename_stem, global_order, position_in_page)
 
                 # Hiérarchie : les en-têtes restent rattachés au Document,
                 # les autres éléments à la dernière section rencontrée.
