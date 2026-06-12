@@ -4,7 +4,9 @@
 
 Pipeline d'ingestion documentaire qui transforme des PDF et HTML en données structurées,
 stockées dans une base vectorielle (ChromaDB) et un graphe de connaissances (NebulaGraph).
-Pas de couche LLM/agent pour le moment — c'est une pipeline d'ingestion pure.
+La couche LLM/agent vit dans un projet séparé, [rag-agent-chat](https://github.com/floSa/rag-agent-chat),
+qui consomme ces stores en lecture via le réseau Docker `rag_network` (nom stable,
+déclaré en externe côté agent).
 
 ## Services Docker
 
@@ -32,10 +34,12 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
    balises `nav`, `header`, `footer` et classes éditeurs (`.packt-header`, `.sbo-site-nav`)
 4. **Docling Service** reçoit le chemin en POST, extrait la structure via Docling v9.1,
    crop les images/tableaux via PyMuPDF, les pousse sur MinIO, retourne un JSON structuré
-5. **build_knowledge_graph** : crée les nœuds et relations dans NebulaGraph via nGQL
-6. **vectorize_content** : découpe le texte en chunks (500 chars), génère les embeddings
-   avec `all-MiniLM-L6-v2` (384 dim), upsert dans ChromaDB avec métadonnées de liaison
-   vers le graphe (`graph_node_id`)
+5. **Flush NebulaGraph** : crée les nœuds et la hiérarchie `Document → SectionHeader →
+   Éléments` (chaque élément est rattaché au dernier en-tête de section rencontré) ;
+   les échecs nGQL sont loggés et font échouer le run — pas de perte silencieuse
+6. **Flush ChromaDB** : un vecteur par élément (texte tronqué à 1000 caractères),
+   embeddings `all-MiniLM-L6-v2` (384 dim), upsert avec les métadonnées du contrat
+   d'interface : `element_id`, `graph_node_id`, `filename`, `label`, `page_no`, `minio_url`
 
 ## Décisions d'architecture
 
