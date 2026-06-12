@@ -17,9 +17,10 @@ API REST standard ChromaDB. Consommee par le pipeline Dagster
 ## Collection
 
 - `rag_documents` : collection principale
+  - **ids** : `element_id` (hash sha256[:10], stable entre batchs — un vecteur par element)
   - **embeddings** : vecteurs 384 dimensions (all-MiniLM-L6-v2)
-  - **metadatas** : `element_id`, `graph_node_id`, `page_position`, `ref_position`, `minio_url`
-  - **documents** : texte du chunk (max 500 caracteres)
+  - **metadatas** : `element_id`, `graph_node_id`, `filename`, `label`, `page_no`, `minio_url`
+  - **documents** : texte de l'element (tronque a 1000 caracteres)
 
 ## Variables d'environnement
 
