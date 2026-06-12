@@ -187,4 +187,6 @@ services:
 
 networks:
   rag_network:
+    # Nom stable (sans préfixe de projet) : rag-agent-chat le référence en externe
+    name: rag_network
     driver: bridge

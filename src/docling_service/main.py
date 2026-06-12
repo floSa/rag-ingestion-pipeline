@@ -95,6 +95,15 @@ def extract_bbox(bbox: Any) -> dict[str, float]:
     }
 
 
+def _exec_checked(session: Any, nql: str) -> bool:
+    """Exécute une requête nGQL en signalant l'échec (jamais silencieux)."""
+    result = session.execute(nql)
+    if not result.is_succeeded():
+        print(f"Nebula statement FAILED: {result.error_msg()} -- {nql[:80]}")
+        return False
+    return True
+
+
 def _connect_nebula(max_attempts: int = 15, wait_seconds: int = 10) -> ConnectionPool | None:
     """Tente de se connecter à NebulaGraph avec retry."""
     config = Config()
@@ -128,25 +137,46 @@ def init_nebula() -> None:
     try:
         session = pool.get_session("root", "nebula")
         # Add storage hosts manually, as required by NebulaGraph when not using an orchestrator
-        session.execute('ADD HOSTS "storaged":9779;')
+        session.execute('ADD HOSTS "storaged":9779;')  # échoue si déjà enregistré : OK
         time.sleep(3)
-        session.execute(
-            "CREATE SPACE IF NOT EXISTS rag_space"
-            "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));"
-        )
-        time.sleep(5)
-        session.execute("USE rag_space;")
 
-        session.execute("CREATE TAG IF NOT EXISTS Document(filename string, type_file string);")
+        # CREATE SPACE échoue tant que storaged n'a pas terminé son heartbeat
+        # d'enregistrement : on retente jusqu'à ce que le space existe VRAIMENT
+        # (sinon tous les flushs partent dans le vide en silence).
+        for attempt in range(1, 13):
+            _exec_checked(
+                session,
+                "CREATE SPACE IF NOT EXISTS rag_space"
+                "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));",
+            )
+            time.sleep(5)
+            result = session.execute("SHOW SPACES;")
+            names = [result.row_values(i)[0].as_string() for i in range(result.row_size())]
+            if "rag_space" in names:
+                break
+            print(f"rag_space absent (tentative {attempt}/12), nouvel essai dans 5s...")
+        else:
+            print("CRITICAL: rag_space n'a pas pu etre cree, schema NON initialise.")
+            return
+
+        time.sleep(5)  # propagation du space avant USE
+        _exec_checked(session, "USE rag_space;")
+
+        _exec_checked(
+            session, "CREATE TAG IF NOT EXISTS Document(filename string, type_file string);"
+        )
         for tag in set(TAG_MAP.values()):
-            session.execute(
+            _exec_checked(
+                session,
                 f"CREATE TAG IF NOT EXISTS {tag}"
-                "(label string, page_no int, text string, minio_url string);"
+                "(label string, page_no int, text string, minio_url string);",
             )
 
-        session.execute("CREATE EDGE IF NOT EXISTS PARENT_OF(sequence int);")
-        session.execute("CREATE EDGE IF NOT EXISTS LINKED_TO(relation string);")
-        session.execute("CREATE TAG INDEX IF NOT EXISTS doc_index ON Document(filename(20));")
+        _exec_checked(session, "CREATE EDGE IF NOT EXISTS PARENT_OF(sequence int);")
+        _exec_checked(session, "CREATE EDGE IF NOT EXISTS LINKED_TO(relation string);")
+        _exec_checked(
+            session, "CREATE TAG INDEX IF NOT EXISTS doc_index ON Document(filename(20));"
+        )
         session.release()
         print("NebulaGraph Semantic Schema Ready.")
     except Exception as exc:
@@ -251,11 +281,16 @@ def _flush_to_nebula(elements: list[dict[str, Any]], filename: str, type_file: s
 
     try:
         session = pool.get_session("root", "nebula")
-        session.execute("USE rag_space;")
+        use_res = session.execute("USE rag_space;")
+        if not use_res.is_succeeded():
+            # Échec BRUYANT : sans ça, tous les INSERT échouent en silence et
+            # le run Dagster passe au vert avec un graphe vide.
+            raise RuntimeError(f"USE rag_space a echoue : {use_res.error_msg()}")
         doc_vid = f"doc_{filename}"
-        session.execute(
+        _exec_checked(
+            session,
             f"INSERT VERTEX Document(filename, type_file) "
-            f'VALUES "{doc_vid}":("{filename}", "{type_file}");'
+            f'VALUES "{doc_vid}":("{filename}", "{type_file}");',
         )
 
         last_visual_id: str | None = None
@@ -267,22 +302,25 @@ def _flush_to_nebula(elements: list[dict[str, Any]], filename: str, type_file: s
             text_clean = (elem.get("text") or "").replace('"', '\\"').replace("'", "\\'")[:1000]
             m_url = (elem.get("minio_url") or "").replace('"', '\\"')
 
-            session.execute(
+            _exec_checked(
+                session,
                 f"INSERT VERTEX {tag}(label, page_no, text, minio_url) "
                 f'VALUES "{vid}":("{lbl}", {elem["page_no"]}, '
-                f'"{text_clean}", "{m_url}");'
+                f'"{text_clean}", "{m_url}");',
             )
             # Hiérarchie : un élément est rattaché à sa section parente si elle
             # existe, sinon directement au Document (en-têtes et orphelins).
             parent_vid = elem.get("parent_id") or doc_vid
-            session.execute(
-                f'INSERT EDGE PARENT_OF(sequence) VALUES "{parent_vid}" -> "{vid}":({elem["order"]});'
+            _exec_checked(
+                session,
+                f'INSERT EDGE PARENT_OF(sequence) VALUES "{parent_vid}" -> "{vid}":({elem["order"]});',
             )
 
             if tag == "Caption" and last_visual_id:
-                session.execute(
+                _exec_checked(
+                    session,
                     f"INSERT EDGE LINKED_TO(relation) "
-                    f'VALUES "{vid}" -> "{last_visual_id}":("describes");'
+                    f'VALUES "{vid}" -> "{last_visual_id}":("describes");',
                 )
 
             if tag in ("Table", "Picture"):
@@ -291,6 +329,7 @@ def _flush_to_nebula(elements: list[dict[str, Any]], filename: str, type_file: s
         session.release()
     except Exception as err:
         print(f"Nebula Flush Error: {err}")
+        raise  # fait échouer le run Dagster : pas de perte de données silencieuse
     finally:
         pool.close()
 
