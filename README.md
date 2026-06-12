@@ -50,6 +50,17 @@ Assurez-vous d'avoir Docker et le plugin NVIDIA Container Toolkit installés (si
 docker compose up -d --build
 ```
 
+**Machine sans GPU ?** Créez un `docker-compose.override.yml` (gitignoré) pour retirer la
+réservation nvidia de Docling — l'extraction tourne alors en CPU, plus lentement :
+```yaml
+services:
+  docling-service:
+    deploy: !override
+      resources:
+        limits:
+          memory: 10G
+```
+
 ### 3. Accéder aux interfaces
 | Service | URL | Note |
 | :--- | :--- | :--- |
