@@ -50,6 +50,11 @@ TAG_MAP: dict[str, str] = {
 
 VISUAL_LABELS: set[str] = {"picture", "table", "figure", "graphic"}
 
+# Labels Docling correspondant à des en-têtes de section (cf. TAG_MAP).
+# Sert à construire la hiérarchie Document > SectionHeader > Éléments :
+# chaque élément est rattaché au dernier en-tête rencontré.
+SECTION_LABELS: set[str] = {lbl for lbl, tag in TAG_MAP.items() if tag == "SectionHeader"}
+
 # ---------------------------------------------------------------------------
 # Clients globaux (chargés UNE SEULE FOIS au démarrage du process)
 # ---------------------------------------------------------------------------
@@ -267,8 +272,11 @@ def _flush_to_nebula(elements: list[dict[str, Any]], filename: str, type_file: s
                 f'VALUES "{vid}":("{lbl}", {elem["page_no"]}, '
                 f'"{text_clean}", "{m_url}");'
             )
+            # Hiérarchie : un élément est rattaché à sa section parente si elle
+            # existe, sinon directement au Document (en-têtes et orphelins).
+            parent_vid = elem.get("parent_id") or doc_vid
             session.execute(
-                f'INSERT EDGE PARENT_OF(sequence) VALUES "{doc_vid}" -> "{vid}":({elem["order"]});'
+                f'INSERT EDGE PARENT_OF(sequence) VALUES "{parent_vid}" -> "{vid}":({elem["order"]});'
             )
 
             if tag == "Caption" and last_visual_id:
@@ -299,7 +307,17 @@ def _flush_to_chroma(elements: list[dict[str, Any]], filename: str) -> None:
                     ids=[elem["id"]],
                     embeddings=[vector],
                     documents=[text[:1000]],
-                    metadatas=[{"element_id": elem["id"], "filename": filename}],
+                    # Contrat d'interface avec rag-agent-chat : graph_node_id
+                    # fait le lien avec NebulaGraph, minio_url permet d'afficher
+                    # les images, page_no/label alimentent les citations.
+                    metadatas=[{
+                        "element_id": elem["id"],
+                        "graph_node_id": elem["id"],
+                        "filename": filename,
+                        "label": elem.get("label") or "",
+                        "page_no": int(elem.get("page_no") or 0),
+                        "minio_url": elem.get("minio_url") or "",
+                    }],
                 )
     except Exception as err:
         print(f"Chroma Flush Error: {err}")
@@ -352,8 +370,16 @@ def _extract_html(path_obj: Path) -> None:
 
     conv_res = converter.convert(str(path_obj))
     elements: list[dict[str, Any]] = []
+    current_section_id: str | None = None
     for global_order, (item, _) in enumerate(conv_res.document.iterate_items()):
         elem = _element_from_item(item, filename_stem, global_order)
+
+        # Hiérarchie : les en-têtes restent rattachés au Document, les autres
+        # éléments à la dernière section rencontrée.
+        if elem["label"] in SECTION_LABELS:
+            current_section_id = elem["id"]
+        else:
+            elem["parent_id"] = current_section_id
 
         # Les images des captures HTML ont deja ete exportees vers MinIO par le
         # pipeline (src reecrit) : on propage l'URL sur le noeud Picture.
@@ -377,6 +403,8 @@ def _extract_pdf(path_obj: Path) -> None:
     chunk_buffer: deque[list[dict[str, Any]]] = deque()
     start_page = 1
     global_order = 0
+    # Suivi de section global au document (persiste entre les batchs de pages)
+    current_section_id: str | None = None
 
     while start_page <= total_pages:
         end_page = min(start_page + BATCH_PAGE_SIZE - 1, total_pages)
@@ -388,6 +416,13 @@ def _extract_pdf(path_obj: Path) -> None:
 
             for item, _ in conv_res.document.iterate_items():
                 elem = _element_from_item(item, filename_stem, global_order)
+
+                # Hiérarchie : les en-têtes restent rattachés au Document,
+                # les autres éléments à la dernière section rencontrée.
+                if elem["label"] in SECTION_LABELS:
+                    current_section_id = elem["id"]
+                else:
+                    elem["parent_id"] = current_section_id
 
                 if elem["label"] in VISUAL_LABELS and elem["bbox"]:
                     elem["minio_url"] = crop_and_upload_image(
