@@ -9,7 +9,7 @@ Il se compose de plusieurs sous-services distincts :
 - **dagster-daemon** : Composant de fond chargé d'activer régulièrement les Sensors définis dans le code Python.
 
 ## 🔗 Accès au service
-- **Interface UI Webserver** : [http://localhost:3000](http://localhost:3000)
+- **Interface UI Webserver** : [http://localhost:3002](http://localhost:3002)
 - **Base de données interne** : `postgres-dagster:5432` (credentials : voir `.env`)
 
 ## 🗂️ Structure et définition des données
@@ -23,7 +23,7 @@ Côté développement, les éléments vitaux composant le graphe de données Dag
 
 ## 💻 Commandes Utiles
 Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :
-- Dans l'interface Web (`http://localhost:3000`), allez dans l'onglet **Overview > Sensors** pour activer/désactiver l'ingestion automatique logicielle.
+- Dans l'interface Web (`http://localhost:3002`), allez dans l'onglet **Overview > Sensors** pour activer/désactiver l'ingestion automatique logicielle.
 - **Vérifier l'état de l'Orchestrateur** (en cas de plantage d'un Job) :
   ```bash
   docker compose logs dagster-daemon --tail 50

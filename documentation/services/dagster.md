@@ -42,7 +42,7 @@ service Docling, construction du graphe de connaissances, vectorisation.
 ## Healthcheck
 
 ```bash
-curl -s http://localhost:3000/server_info | python3 -m json.tool
+curl -s http://localhost:3002/server_info | python3 -m json.tool
 ```
 
 ## Volumes

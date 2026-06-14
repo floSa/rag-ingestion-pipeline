@@ -107,7 +107,7 @@ services:
       dockerfile: Dockerfile.dagster
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3002:3000"
     env_file: .env
     environment:
       DAGSTER_POSTGRES_USER: ${DAGSTER_POSTGRES_USER}
