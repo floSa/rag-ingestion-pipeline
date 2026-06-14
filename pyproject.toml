@@ -3,6 +3,23 @@ name = "rag-assistant"
 version = "0.1.0"
 description = "Pipeline d'ingestion RAG : extraction, knowledge graph, vectorisation"
 requires-python = ">=3.10"
+# Dépendances de l'orchestration Dagster + nettoyage HTML — source de vérité pour
+# uv (`uv sync`). Les deps lourdes d'extraction (docling, torch, sentence-transformers,
+# PyMuPDF…) vivent dans Dockerfile.docling. requirements.txt conservé pour Docker.
+dependencies = [
+    "dagster==1.13.2",
+    "dagster-webserver==1.13.2",
+    "dagster-postgres==0.29.2",
+    "dagster-docker==0.29.2",
+    "beautifulsoup4==4.15.0",
+    "lxml==6.1.1",
+    "trafilatura==2.1.0",
+    "readability-lxml==0.8.4.1",
+    "PyYAML==6.0.3",
+    "requests==2.34.2",
+    "pydantic-settings==2.14.1",
+    "minio==7.2.20",
+]
 
 [tool.ruff]
 target-version = "py310"

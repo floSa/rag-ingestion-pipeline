@@ -64,7 +64,7 @@ services:
 ### 3. Accéder aux interfaces
 | Service | URL | Note |
 | :--- | :--- | :--- |
-| **Dagster (UI)** | [http://localhost:3000](http://localhost:3000) | Gestion, exécution des assets et activation des Sensors. |
+| **Dagster (UI)** | [http://localhost:3002](http://localhost:3002) | Gestion, exécution des assets et activation des Sensors. |
 | **Nebula Studio** | [http://localhost:7001](http://localhost:7001) | **Host:** `graphd` \| **Port:** `9669` \| Credentials : voir `.env` |
 | **MinIO Console** | [http://localhost:9101](http://localhost:9101) | Credentials : voir `.env` |
 | **Docling API** | `http://localhost:8000/extract` | API interne (accessible côté host via port 8000). |
