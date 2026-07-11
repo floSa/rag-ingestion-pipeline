@@ -165,3 +165,21 @@ RAG_Assistant/
 ├── Dockerfile.dagster          # Environnement Dagster
 └── Dockerfile.docling          # Environnement extraction GPU
 ```
+
+---
+
+## Licences & composants
+
+| Composant | Rôle | Licence |
+|---|---|---|
+| Dagster | Orchestration du pipeline | Apache-2.0 |
+| Docling | Extraction de documents | MIT |
+| BeautifulSoup4 / lxml | Parsing HTML | MIT / BSD-3-Clause |
+| trafilatura | Extraction de contenu web | Apache-2.0 |
+| readability-lxml | Extraction d'article | Apache-2.0 |
+| ChromaDB | Base vectorielle | Apache-2.0 |
+| Nebula Graph | Graphe de connaissances | Apache-2.0 |
+| PostgreSQL | Métadonnées Dagster | PostgreSQL License (open-source) |
+| MinIO | Stockage d'objets | AGPL-3.0 |
+| requests | Client HTTP | Apache-2.0 |
+| **Ce projet** | Code applicatif | MIT — Copyright (c) 2026 floSa `<à confirmer : aucun fichier LICENSE présent>` |
