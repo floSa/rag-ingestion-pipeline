@@ -1,10 +1,15 @@
-# RAG Assistant Pipeline 🚀
+# RAG Assistant Pipeline
 
-Ce projet est un pipeline d'ingestion de documents (HTML et PDF) conçu pour alimenter un assistant RAG (Retrieval-Augmented Generation). Il utilise **Docling** pour l'extraction structurée intelligente, **NebulaGraph** pour le Knowledge Graph, **ChromaDB** pour le stockage vectoriel, **MinIO** pour les médias, et **Dagster** pour l'orchestration.
+**Pipeline d'ingestion de documents PDF et HTML pour un assistant RAG : extraction structurée via Docling, graphe de connaissances NebulaGraph, base vectorielle ChromaDB, médias sur MinIO, orchestration Dagster.**
+
+![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
+![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9?logo=uv&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Dagster](https://img.shields.io/badge/Dagster-1.13.2-654FF0?logo=dagster&logoColor=white)
 
 ---
 
-## 🛠 Architecture & Technologies
+## Architecture & Technologies
 
 - **Docling-Service (FastAPI)** : Microservice dédié à l'extraction de documents via Docling (sur GPU). Les images et tableaux complexes en sont extraits et découpés *(crop)* avec PyMuPDF.
 - **Orchestration (Dagster)** : Les sources sont déclarées dans `src/pipeline/sources.yaml` ; une factory génère pour chacune ses partitions (une par fichier), son job et son sensor. Les sources HTML passent par un asset de nettoyage universel (trafilatura + readability) avant extraction.
@@ -31,9 +36,24 @@ flowchart TD
 
 Chaque source déclarée dans `sources.yaml` génère sa propre chaîne (sensor → partitions → assets → job), préfixée par son nom. Le service Docling est le seul à écrire dans les trois stores.
 
----
+> Détails : [documentation/architecture.md](documentation/architecture.md)
 
-## 🚀 Quickstart
+## Documentation
+
+| Document | Contenu |
+|---|---|
+| [architecture.md](documentation/architecture.md) | Services, flux de bout en bout, décisions d'architecture |
+| [SECURITY.md](documentation/SECURITY.md) | Secrets, isolation réseau, audit des dépendances |
+| [services/](documentation/services/) | Une fiche technique par service (ChromaDB, Dagster, Docling, MinIO, NebulaGraph, PostgreSQL) |
+| [extraction_donnees.md](documentation/extraction_donnees.md) | Algorithme d'extraction Docling, crop des médias, format JSON |
+| [orchestration.md](documentation/orchestration.md) | Détail de l'orchestrateur Dagster |
+| [graphe_connaissances.md](documentation/graphe_connaissances.md) | Modèle de graphe NebulaGraph et requêtes nGQL |
+| [base_vectorielle.md](documentation/base_vectorielle.md) | Stockage et recherche vectorielle ChromaDB |
+| [stockage_objets.md](documentation/stockage_objets.md) | Stockage des médias sur MinIO |
+| [llm_integration_plan.md](documentation/llm_integration_plan.md) | Contrat d'interface avec l'agent RAG (projet séparé) |
+| [rag_evaluation_strategy.md](documentation/rag_evaluation_strategy.md) | Stratégie d'évaluation du RAG |
+
+## Quickstart
 
 ### 1. Configurer l'environnement
 ```bash
@@ -77,7 +97,7 @@ services:
 
 ---
 
-## ➕ Ajouter une nouvelle source
+## Ajouter une nouvelle source
 
 Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gildas-lormeau/SingleFile)) ne demande **aucun code Python** :
 
@@ -104,49 +124,49 @@ La stratégie retenue, les tailles avant/après et le nombre d'images exportées
 
 ---
 
-## 🗺️ Exploration du Graphe (NebulaGraph)
+## Exploration du Graphe (NebulaGraph)
 
 Le pipeline génère un graphe sémantique où chaque document est un nœud central relié à ses composants (titres, paragraphes, images, etc.).
 
-### 🔍 Requêtes nGQL types (à taper dans l'onglet Console)
+### Requêtes nGQL types (à taper dans l'onglet Console)
 
-**IMPORTANT : Ne tapez pas `USE rag_space;` dans la console !** 
+**IMPORTANT : Ne tapez pas `USE rag_space;` dans la console !**
 Dans Nebula Studio, vous devez **d'abord** sélectionner l'espace `rag_space` depuis le menu déroulant en haut à droite. Ensuite, vous pourrez exécuter les requêtes suivantes :
 
 1. **Voir un document complet et sa structure** (ronds reliés) :
    ```ngql
-   MATCH p=(d:Document)-[r:PARENT_OF]->(e) 
-   WHERE d.filename == "statisticsfordatascience" 
+   MATCH p=(d:Document)-[r:PARENT_OF]->(e)
+   WHERE d.filename == "statisticsfordatascience"
    RETURN p;
    ```
 
 2. **Visualiser uniquement le squelette (titres et sections)** :
    ```ngql
-   MATCH p=(d:Document)-[:PARENT_OF]->(s:SectionHeader) 
+   MATCH p=(d:Document)-[:PARENT_OF]->(s:SectionHeader)
    RETURN p;
    ```
 
 3. **Trouver les images et leurs légendes** (relations sémantiques) :
    ```ngql
-   MATCH p=(c:Caption)-[:LINKED_TO]->(res) 
+   MATCH p=(c:Caption)-[:LINKED_TO]->(res)
    RETURN p;
    ```
 
-### 🎨 Guide de Visualisation (Studio v3.8.0)
+### Guide de Visualisation (Studio v3.8.0)
 
 Pour un rendu optimal, configurez les couleurs par **Tag** dans l'interface :
 1. Sélectionnez l'espace **`rag_space`** en haut à droite.
 2. Dans l'onglet **Console** ou **Visualisation** :
-   - **Document** : 🔴 Rouge (Nœud racine)
-   - **SectionHeader** : 🔵 Bleu (Structure)
-   - **Paragraph** : ⚪ Gris (Contenu)
-   - **Table / Picture** : 🟢 Vert (Ressources riches)
-   - **Caption** : 🟡 Jaune (Métadonnées liées)
+   - **Document** : Rouge (Nœud racine)
+   - **SectionHeader** : Bleu (Structure)
+   - **Paragraph** : Gris (Contenu)
+   - **Table / Picture** : Vert (Ressources riches)
+   - **Caption** : Jaune (Métadonnées liées)
 3. Utilisez le **Vertex Filter** pour isoler des types spécifiques (ex: ne montrer que `Code` et `Formula`).
 
 ---
 
-## 📁 Structure du Projet
+## Structure du Projet
 
 ```text
 RAG_Assistant/
@@ -164,6 +184,14 @@ RAG_Assistant/
 ├── docker-compose.yml          # Configuration de la stack
 ├── Dockerfile.dagster          # Environnement Dagster
 └── Dockerfile.docling          # Environnement extraction GPU
+```
+
+---
+
+## Tests
+
+```bash
+pytest tests/
 ```
 
 ---

@@ -1,6 +1,6 @@
 # Orchestrateur ETL (Dagster)
 
-## 📌 Présentation du Service
+## Présentation du service
 Dagster est le système nerveux central du projet RAG Assistant. C'est l'orchestrateur de données chargé de détecter les ajouts de documents dans les répertoires et d'automatiser (trigger) l'exécution des requêtes vers le service d'extraction, sans intervention humaine.
 
 Il se compose de plusieurs sous-services distincts :
@@ -8,11 +8,11 @@ Il se compose de plusieurs sous-services distincts :
 - **dagster-webserver** : Interface utilisateur pour gérer et visualiser les pipelines (Jobs, Assets, Sensors).
 - **dagster-daemon** : Composant de fond chargé d'activer régulièrement les Sensors définis dans le code Python.
 
-## 🔗 Accès au service
+## Accès au service
 - **Interface UI Webserver** : [http://localhost:3002](http://localhost:3002)
 - **Base de données interne** : `postgres-dagster:5432` (credentials : voir `.env`)
 
-## 🗂️ Structure et définition des données
+## Structure et définition des données
 Côté développement, les éléments vitaux composant le graphe de données Dagster sont :
 - **La déclaration des sources (`sources.yaml` + `sources.py`)** : Chaque source de documents (un dossier de PDFs, une capture de site en HTML...) est un bloc YAML : nom, motif glob relatif à `/opt/dagster/app/Datas`, type (`pdf` ou `html`) et options de nettoyage. Ajouter une source ne demande aucun code Python.
 - **La factory (`factory.py`)** : Pour chaque source déclarée, elle génère les partitions dynamiques (une par fichier), les assets, le job (`{name}_job`) et le sensor (`{name}_sensor`). PDF et HTML suivent le même mécanisme ; les sources HTML ont simplement un asset de nettoyage (`cleaned_html`) en amont de l'extraction.
@@ -21,7 +21,7 @@ Côté développement, les éléments vitaux composant le graphe de données Dag
 - **Les Partitions** : Définies dynamiquement, chaque fichier est une "Partition" (clé = chemin relatif) pour simplifier la réexécution d'un échec sur un livre précis (au lieu de réexécuter tout le pipeline global).
 - **L'extraction** : L'asset `extracted_document` appelle l'API FastAPI du service Docling (`/extract`), qui persiste lui-même les résultats dans NebulaGraph, ChromaDB et MinIO.
 
-## 💻 Commandes Utiles
+## Commandes utiles
 Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :
 - Dans l'interface Web (`http://localhost:3002`), allez dans l'onglet **Overview > Sensors** pour activer/désactiver l'ingestion automatique logicielle.
 - **Vérifier l'état de l'Orchestrateur** (en cas de plantage d'un Job) :
@@ -30,7 +30,7 @@ Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :
   docker compose logs dagster-webserver --tail 50
   ```
 
-## 🛠️ Problèmes rencontrés et Solutions
+## Problèmes rencontrés et solutions
 - **Rechargement Intempestif des Tâches lors du Reboot** : 
   - *Problème* : Au redémarrage (ex: fermeture WSL), tous les services Docker n'étaient pas gardés persistants sauf Docling. La base PostgreSQL de Dagster étant perdue lors d'un restart, l'orchestrateur relançait le processus de traitement de tous les livres à zéro car il avait oublié les curseurs.
   - *Solution* : Ajout de la contrainte `restart: unless-stopped` sur tous les conteneurs dans le `docker-compose.yml`, pour qu'ils soient tous persistants tout comme la base d'états Dagster, verrouillant ainsi et pour de bon les données extraites au premier passage.
