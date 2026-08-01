@@ -17,6 +17,10 @@ def _pdf_source(name: str = "test_pdf") -> SourceConfig:
     return SourceConfig(name=name, glob="pdfs/**/*.pdf", type="pdf")
 
 
+def _md_source(name: str = "test_md") -> SourceConfig:
+    return SourceConfig(name=name, glob="mds/**/*.md", type="md")
+
+
 class TestBuildSource:
     def test_html_source_has_clean_then_extract(self):
         built = build_source(_html_source())
@@ -30,6 +34,18 @@ class TestBuildSource:
         built = build_source(_pdf_source())
         keys = {a.key for a in built.assets}
         assert keys == {AssetKey(["test_pdf", "extracted_document"])}
+
+    def test_md_source_has_single_extract_asset(self):
+        # Le Markdown suit le chemin direct du PDF, sans etape de nettoyage.
+        built = build_source(_md_source())
+        keys = {a.key for a in built.assets}
+        assert keys == {AssetKey(["test_md", "extracted_document"])}
+
+    def test_md_source_job_and_sensor(self):
+        built = build_source(_md_source())
+        assert built.job.name == "test_md_job"
+        assert built.sensor.name == "test_md_sensor"
+        assert built.partitions.name == "test_md_files"
 
     def test_job_and_sensor_names(self):
         built = build_source(_html_source())

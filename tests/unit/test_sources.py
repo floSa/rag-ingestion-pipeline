@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from src.pipeline.sources import CleaningOptions, SourceConfig, load_sources
+from src.pipeline.sources import SOURCE_TYPES, CleaningOptions, SourceConfig, load_sources
 
 
 class TestDefaultSourcesFile:
@@ -14,10 +14,15 @@ class TestDefaultSourcesFile:
         names = [s.name for s in sources]
         assert "pdfs" in names
         assert "livres_html" in names
+        assert "markdown" in names
 
     def test_types_are_valid(self):
         for source in load_sources():
-            assert source.type in ("pdf", "html")
+            assert source.type in SOURCE_TYPES
+
+    def test_only_html_sources_are_cleaned(self):
+        for source in load_sources():
+            assert source.needs_cleaning == (source.type == "html")
 
 
 class TestLoadCustomFile:
@@ -84,6 +89,38 @@ sources:
         )
         with pytest.raises(ValidationError, match="doublon"):
             load_sources(yaml_file)
+
+
+class TestMarkdownSource:
+    def test_md_type_accepted(self):
+        source = SourceConfig(name="notes", glob="mds/**/*.md", type="md")
+        assert source.type == "md"
+
+    def test_md_source_is_not_cleaned(self):
+        # Le Markdown est deja propre : ni boilerplate a retirer, ni image
+        # inline a exporter, donc pas d'etape de nettoyage.
+        assert SourceConfig(name="notes", glob="mds/**/*.md", type="md").needs_cleaning is False
+
+    def test_html_source_is_cleaned(self):
+        assert SourceConfig(name="cap", glob="**/*.html", type="html").needs_cleaning is True
+
+    def test_pdf_source_is_not_cleaned(self):
+        assert SourceConfig(name="livres", glob="**/*.pdf", type="pdf").needs_cleaning is False
+
+    def test_md_source_from_yaml(self, tmp_path):
+        yaml_file = tmp_path / "sources.yaml"
+        yaml_file.write_text(
+            """
+sources:
+  - name: notes
+    glob: "mds/**/*.md"
+    type: md
+""",
+            encoding="utf-8",
+        )
+        source = load_sources(yaml_file)[0]
+        assert source.type == "md"
+        assert source.glob == "mds/**/*.md"
 
 
 class TestSourceConfigValidation:

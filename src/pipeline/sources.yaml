@@ -4,7 +4,11 @@
 # Champs :
 #   name : identifiant unique (minuscules, chiffres, underscores)
 #   glob : motif de recherche relatif au dossier Datas/
-#   type : pdf | html
+#   type : pdf | html | md
+#     pdf : converti page par page, images decoupees et exportees vers MinIO
+#     html : nettoye (boilerplate, bruit SingleFile, images inline) puis extrait
+#     md : extrait directement — le Markdown est deja propre, il n'y a ni
+#          boilerplate a retirer ni image inline a exporter
 #   cleaning (optionnel, html uniquement) :
 #     extra_remove_selectors : selecteurs CSS a supprimer en plus des heuristiques
 #     min_text_chars / min_text_ratio : seuils d'acceptation du nettoyage
@@ -34,3 +38,7 @@ sources:
   - name: livres_html
     glob: "htms/**/*.html"
     type: html
+
+  - name: markdown
+    glob: "mds/**/*.md"
+    type: md
