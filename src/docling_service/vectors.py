@@ -23,7 +23,7 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from src.docling_service.blocks import build_blocks
+from src.docling_service.blocks import build_blocks, has_content
 from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
@@ -108,6 +108,11 @@ def build_chunks(
         for index, (chunk_id, chunk) in enumerate(
             zip(chunk_ids(element_id, len(chunks)), chunks, strict=True)
         ):
+            # Le decoupage en fenetres peut faire tomber une fenetre entiere
+            # sur une suite de ponctuation ou un filet de tableau : le bloc
+            # avait du contenu, cette fenetre-la n'en a pas.
+            if not has_content(chunk):
+                continue
             ids.append(chunk_id)
             texts.append(chunk)
             metadatas.append(
