@@ -3,7 +3,7 @@
 A lancer depuis le reseau Docker, les stores etant adresses par leur nom de
 service :
 
-    docker compose exec docling-service python src/verify_data.py
+    docker compose exec docling-service python -m src.verify_data
 
 Les identifiants viennent de la configuration du service (donc de ``.env``) et
 ne sont plus ecrits en dur.

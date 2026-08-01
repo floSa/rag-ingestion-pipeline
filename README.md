@@ -174,13 +174,19 @@ docker compose logs -f docling-service
 **Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro sur tous les stores, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb` et `graphd` par leur nom de service) :
 
 ```bash
-docker compose exec docling-service python src/wipe_stores.py
+docker compose exec docling-service python -m src.wipe_stores
 ```
 
 Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma :
 
 ```bash
 docker compose restart docling-service
+```
+
+**Contrôle avant-vol.** Avant de lancer le gros corpus, vérifiez que les trois stores répondent :
+
+```bash
+docker compose exec docling-service python -m src.verify_data
 ```
 
 **Volumétrie.** Prévoyez de la place pour `Datas/database/` (Nebula, ChromaDB, MinIO) et pour les images croppées : un livre illustré de 400 pages en produit couramment plusieurs centaines.
