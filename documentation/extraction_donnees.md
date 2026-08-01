@@ -144,6 +144,31 @@ garde son identifiant nu ; un bloc decoupe produit `{element_id}#0`, `#1`, etc.
 element : un noeud reel du graphe, au format dix hexadecimaux attendu par
 `rag-agent-chat`. La metadonnee `block_size` indique combien d'elements ont ete fusionnes.
 
+#### Effet mesure
+
+Corpus de reference : un PDF de 280 pages, 36 chapitres HTML et un fichier
+Markdown, ingeres avant puis apres la mise en place du regroupement.
+
+| Mesure                                | Avant   | Apres  |
+|---------------------------------------|---------|--------|
+| chunks indexes                        | 22 937  | 5 246  |
+| sans aucun caractere alphanumerique   | 5,0 %   | 0,0 %  |
+| de moins de 15 caracteres             | 36,0 %  | 0,0 %  |
+| taille mediane d'un chunk             | —       | 277 car. |
+| chunks issus d'une fusion             | 0 %     | 51,5 % |
+| chunks portant un titre de section    | 0 %     | 100 %  |
+
+L'index perd 77 % de ses entrees sans perdre un seul caractere de contenu : ce
+qui disparait, ce sont les fragments de mise en page et les doublons de
+granularite. NebulaGraph, lui, conserve ses 24 709 noeuds — la structure du
+document reste complete.
+
+**Limite connue et mesuree** : 0,8 % des chunks depassent la fenetre de 256
+tokens du modele d'embedding et sont donc tronques par le modele lui-meme. Il
+s'agit de passages denses — code, tableaux, formules — dont le ratio
+caracteres/tokens est defavorable. Le texte stocke, lui, reste integral. La
+commande `python -m src.index_report` donne ce chiffre apres chaque ingestion.
+
 #### Contextualisation des vecteurs
 
 Un passage isole de son titre perd une part de son sens : « la moyenne est sensible aux

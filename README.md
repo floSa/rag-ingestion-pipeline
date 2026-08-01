@@ -195,7 +195,11 @@ docker compose exec docling-service python -m src.verify_data
 docker compose exec docling-service python -m src.index_report
 ```
 
-**Volumétrie.** Prévoyez de la place pour `Datas/database/` (Nebula, ChromaDB, MinIO) et pour les images croppées : un livre illustré de 400 pages en produit couramment plusieurs centaines.
+**Volumétrie.** Mesurée sur le corpus de référence (1 PDF de 280 pages + 36 chapitres HTML + 1 Markdown) : 536 Mo dans `Datas/database/` — 242 Mo pour NebulaGraph, 226 Mo pour ChromaDB, 68 Mo pour MinIO — soit 24 709 nœuds de graphe, 5 246 chunks vectorisés et 1 246 images. Comptez de l'ordre de **4 à 5 Go pour 50 livres de 300 pages**.
+
+**Débit.** Toujours sur ce corpus : 39 documents ingérés en 4 minutes, dont le PDF de 280 pages en ~3 minutes à lui seul. Comptez **3 à 4 heures pour 50 livres**, sans surveillance.
+
+**Mémoire.** Le service d'extraction se stabilise autour de 6 Go (limite fixée à 10 Go dans `docker-compose.yml`), l'essentiel étant les modèles chargés une fois pour toutes. Aucune dérive observée d'un document à l'autre.
 
 ---
 
