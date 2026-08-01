@@ -92,9 +92,11 @@ services:
 | :--- | :--- | :--- |
 | **Dagster (UI)** | [http://localhost:3002](http://localhost:3002) | Gestion, exécution des assets et activation des Sensors. |
 | **Nebula Studio** | [http://localhost:7001](http://localhost:7001) | **Host:** `graphd` \| **Port:** `9669` \| Credentials : voir `.env` |
-| **MinIO Console** | [http://localhost:9101](http://localhost:9101) | Credentials : voir `.env` |
-| **Docling API** | `http://localhost:8000/extract` | API interne (accessible côté host via port 8000). |
+| **MinIO Console** | [http://localhost:9001](http://localhost:9001) | Credentials : voir `.env` |
+| **Docling API** | `http://localhost:8000/health` | `POST /extract` rend un `job_id`, suivi sur `GET /jobs/{id}`. |
 | **ChromaDB** | `http://localhost:8080/api/v1` | Point d'entrée de la base vectorielle. |
+
+Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autres services ne le sont que via `docker-compose.override.yml` (gitignoré, cf. § *Machine sans GPU* ci-dessus) : si l'un de ces ports est déjà pris sur votre machine, c'est là qu'il faut le décaler.
 
 ### 4. Lancer l'ingestion
 1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML, `Datas/mds/` pour le Markdown).
@@ -133,6 +135,8 @@ Le Markdown ne passe pas par le nettoyage : il n'a ni boilerplate à retirer ni 
   glob: "mds/**/*.md"
   type: md
 ```
+
+Un point mérite d'être connu : **Docling convertit le Markdown ligne par ligne**. Un fichier dont les paragraphes sont coupés à 80 colonnes produirait donc un élément par ligne, et la recherche vectorielle porterait sur des fragments de 75 caractères. Les paragraphes sont pour cette raison recollés avant conversion — sans toucher au fichier source, et en laissant intacts blocs de code, tableaux, listes, titres et retours à la ligne explicites.
 
 ### Nettoyage HTML universel
 
@@ -243,6 +247,7 @@ RAG_Assistant/
 │   │   ├── ngql.py             # Échappement et construction des requêtes nGQL
 │   │   ├── vectors.py          # Embeddings par lots et upsert ChromaDB
 │   │   ├── chunking.py         # Découpage des textes longs
+│   │   ├── markdown.py         # Normalisation du Markdown avant conversion
 │   │   └── images.py           # Crop PyMuPDF et export MinIO
 │   └── pipeline/               # Orchestration Dagster
 │       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)

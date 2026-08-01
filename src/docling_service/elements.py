@@ -90,10 +90,33 @@ def item_label(item: Any) -> str:
     return str(getattr(item, "label", "text")).lower()
 
 
-def item_text(item: Any) -> str:
-    """Texte nettoye d'un item Docling (chaine vide s'il n'en porte pas)."""
-    text = getattr(item, "text", "")
-    return text.strip() if isinstance(text, str) else ""
+def item_text(item: Any, document: Any = None) -> str:
+    """Texte d'un item Docling, chaine vide s'il n'en porte pas.
+
+    Les tables font exception : leur ``text`` vaut ``None``, le contenu vivant
+    dans une structure dediee. Sans export explicite, elles ressortaient vides
+    de l'extraction — presentes dans le graphe, mais introuvables par la
+    recherche vectorielle.
+
+    Args:
+        item: Item issu de ``document.iterate_items()``.
+        document: Document Docling parent, requis pour exporter les tables.
+
+    Returns:
+        Le texte de l'element, ou une chaine vide.
+    """
+    text = getattr(item, "text", None)
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+
+    exporter = getattr(item, "export_to_markdown", None)
+    if exporter is None or document is None:
+        return ""
+    try:
+        return str(exporter(document)).strip()
+    except Exception:
+        # Export indisponible sur ce type d'item : pas de texte, pas d'echec.
+        return ""
 
 
 def item_provenance(item: Any) -> Any:
@@ -123,11 +146,13 @@ class DocumentAccumulator:
         """Nombre d'elements produits jusqu'ici."""
         return self._global_order
 
-    def add_item(self, item: Any) -> dict[str, Any]:
+    def add_item(self, item: Any, document: Any = None) -> dict[str, Any]:
         """Construit l'element correspondant a un item Docling.
 
         Args:
             item: Item issu de ``document.iterate_items()``.
+            document: Document Docling parent, necessaire pour exporter le
+                contenu des tables.
 
         Returns:
             Le dict element, positions et rattachement hierarchique renseignes.
@@ -135,7 +160,7 @@ class DocumentAccumulator:
         prov = item_provenance(item)
         page_no = int(prov.page_no) if prov else 1
         label = item_label(item)
-        text = item_text(item)
+        text = item_text(item, document)
 
         position_in_page = self._page_counters.get(page_no, 0)
         self._page_counters[page_no] = position_in_page + 1

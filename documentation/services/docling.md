@@ -83,6 +83,7 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `jobs.py`       | File de jobs et worker unique                                         |
 | `extraction.py` | Conversion Docling, pagination des PDF, orchestration d'un document   |
 | `elements.py`   | Taxonomie des labels, hierarchie et positions des elements            |
+| `markdown.py`   | Normalisation du Markdown avant conversion (paragraphes recolles)     |
 | `storage.py`    | Persistance d'un lot : graphe puis vecteurs                           |
 | `nebula.py`     | Pool partage, sessions, ecritures groupees, schema                    |
 | `ngql.py`       | Echappement et construction des requetes nGQL                         |
@@ -90,8 +91,8 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `chunking.py`   | Decoupage des textes longs                                            |
 | `images.py`     | Crop PyMuPDF et export MinIO                                          |
 
-`ngql.py`, `chunking.py`, `elements.py` et `jobs.py` ne dependent que de la
-bibliotheque standard : leur logique est testee sans Docling ni GPU.
+`ngql.py`, `chunking.py`, `elements.py`, `markdown.py` et `jobs.py` ne dependent que de
+la bibliotheque standard : leur logique est testee sans Docling ni GPU.
 
 ## Variables d'environnement
 

@@ -14,16 +14,21 @@ Deux regimes selon le format :
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+import shutil
+import tempfile
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
 from src.docling_service import images, storage
 from src.docling_service.elements import VISUAL_LABELS, DocumentAccumulator
+from src.docling_service.markdown import normalize_markdown
 from src.docling_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -63,8 +68,16 @@ def get_converter() -> DocumentConverter:
     demarrable) meme si le chargement des modeles est lent.
     """
     logger.info("Chargement des modeles Docling...")
+    # Docling active l'OCR et la reconstruction de structure des tables par
+    # defaut : sur un livre de plusieurs centaines de pages, cela multiplie le
+    # temps de conversion. Les tables sont de toute facon croppees en image.
+    # La cle est InputFormat.PDF et non "pdf" : les deux fonctionnent
+    # aujourd'hui, mais une cle non reconnue ferait retomber silencieusement
+    # sur les defauts, sans autre symptome qu'une lenteur inexpliquee.
     options = PdfPipelineOptions(do_ocr=False, do_table_structure=False)
-    return DocumentConverter(format_options={"pdf": PdfFormatOption(pipeline_options=options)})
+    return DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)}
+    )
 
 
 def extract(path: Path, report: Reporter = _noop) -> dict[str, Any]:
@@ -93,18 +106,52 @@ def extract(path: Path, report: Reporter = _noop) -> dict[str, Any]:
     return _extract_flat(path, type_file, report)
 
 
+@contextmanager
+def _prepared_source(path: Path, type_file: str) -> Iterator[Path]:
+    """Fournit le fichier a convertir, normalise si besoin.
+
+    Le Markdown est recolle au prealable : Docling le convertit ligne a ligne,
+    et un fichier dont les paragraphes sont coupes a 80 colonnes produirait un
+    element par ligne. Le fichier source n'est pas modifie ; la version
+    normalisee vit dans un fichier temporaire, supprime a la sortie.
+    """
+    if type_file != "md":
+        yield path
+        return
+
+    original = path.read_text(encoding="utf-8", errors="replace")
+    normalized = normalize_markdown(original)
+    if normalized == original:
+        yield path
+        return
+
+    # Repertoire temporaire plutot que fichier temporaire : le nom d'origine est
+    # conserve, ce qui garde des logs lisibles cote Docling.
+    directory = Path(tempfile.mkdtemp(prefix="md-normalise-"))
+    try:
+        target = directory / path.name
+        target.write_text(normalized, encoding="utf-8")
+        logger.info("[%s] Markdown normalise (paragraphes recolles)", path.stem)
+        yield target
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
+
+
 def _extract_flat(path: Path, type_file: str, report: Reporter) -> dict[str, Any]:
     """Convertit un document non pagine (HTML, Markdown) d'un seul tenant."""
     stem = path.stem
     logger.info("[%s] conversion %s...", stem, type_file)
     report(pages_total=1, pages_done=0, elements=0, chunks=0)
 
-    result = get_converter().convert(str(path))
+    with _prepared_source(path, type_file) as source_path:
+        result = get_converter().convert(str(source_path))
+
+    document = result.document
     accumulator = DocumentAccumulator(stem)
     elements: list[dict[str, Any]] = []
 
-    for item, _ in result.document.iterate_items():
-        element = accumulator.add_item(item)
+    for item, _ in document.iterate_items():
+        element = accumulator.add_item(item, document)
         # Les images des captures HTML sont deja sur MinIO (src reecrit par le
         # nettoyage) : on propage l'URL sur le noeud Picture.
         uri = getattr(getattr(item, "image", None), "uri", None)
@@ -196,7 +243,7 @@ def _convert_batch(
     elements: list[dict[str, Any]] = []
 
     for item, _ in result.document.iterate_items():
-        element = accumulator.add_item(item)
+        element = accumulator.add_item(item, result.document)
         if element["label"] in VISUAL_LABELS and element["bbox"]:
             element["minio_url"] = images.crop_and_upload(
                 document,

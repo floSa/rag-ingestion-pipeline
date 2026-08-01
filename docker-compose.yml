@@ -161,6 +161,10 @@ services:
     volumes:
       - ./Datas:/opt/dagster/app/Datas
       - ./src:/app/src
+      # Cache des modeles (Docling + embeddings). Sans volume, HOME=/tmp les
+      # place dans la couche ephemere du conteneur : chaque recreation
+      # re-telecharge plusieurs centaines de Mo avant le premier document.
+      - docling_models:/tmp/.cache
     env_file: .env
     environment:
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
@@ -197,6 +201,10 @@ services:
               capabilities: [gpu]
     networks:
       - rag_network
+
+volumes:
+  # Cache des modeles du service d'extraction, conserve entre les recreations.
+  docling_models:
 
 networks:
   rag_network:

@@ -34,6 +34,21 @@ Les lots de pages **ne se chevauchent pas**. Un chevauchement de deux pages exis
 pour dedupliquer, mais les identifiants sont deterministes depuis, et les ecritures
 sont des upserts : le recouvrement ne faisait plus que re-convertir les memes pages.
 
+#### Normalisation prealable du Markdown
+
+Docling convertit le Markdown **ligne a ligne**. Un fichier dont les paragraphes sont
+coupes a 80 colonnes — la forme la plus courante des exports et des notes ecrites a la
+main — produisait donc un element par ligne source : la recherche vectorielle portait
+sur des fragments de 75 caracteres au lieu de paragraphes.
+
+Les lignes d'un meme paragraphe sont desormais recollees avant la conversion
+(`markdown.normalize_markdown`). Le fichier source n'est pas touche : la version
+normalisee vit dans un fichier temporaire. Tout ce qui n'est pas de la prose est laisse
+intact — blocs de code clotures ou indentes, tableaux, titres, listes, citations, filets
+horizontaux, HTML inline — ainsi que les retours a la ligne explicites du Markdown (deux
+espaces finaux, antislash final). Un fichier dont les paragraphes tiennent deja sur une
+ligne est rendu inchange.
+
 ### 2. Identite des elements
 
 Chaque element recoit un identifiant court et deterministe :
@@ -65,7 +80,15 @@ Chaque element porte donc :
 | `ref_position`  | Rang de l'element sous son parent                      |
 | `order`         | Ordre de lecture global, porte par l'arete `PARENT_OF` |
 
-### 4. Liaison legende -> ressource
+### 4. Contenu des tables
+
+Une table Docling ne porte pas de texte : son `text` vaut `None` et le contenu vit dans
+une structure dediee. Faute d'export explicite, les tables ressortaient vides de
+l'extraction — presentes dans le graphe, mais introuvables par la recherche vectorielle.
+Leur contenu est desormais recupere via `export_to_markdown()`, ce qui les rend
+interrogeables en texte tout en conservant, pour les PDF, le crop image sur MinIO.
+
+### 5. Liaison legende -> ressource
 
 Une legende (`caption`) est reliee par une arete `LINKED_TO(describes)` au dernier
 element visuel rencontre avant elle (`table` ou `picture`), dans l'ordre de lecture.

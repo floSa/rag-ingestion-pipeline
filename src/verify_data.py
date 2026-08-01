@@ -1,43 +1,87 @@
+"""Controle avant-vol : etat des trois stores apres (ou avant) une ingestion.
+
+A lancer depuis le reseau Docker, les stores etant adresses par leur nom de
+service :
+
+    docker compose exec docling-service python src/verify_data.py
+
+Les identifiants viennent de la configuration du service (donc de ``.env``) et
+ne sont plus ecrits en dur.
+"""
+
+from __future__ import annotations
+
+import sys
+
 import chromadb
 from minio import Minio
 from nebula3.Config import Config
 from nebula3.gclient.net import ConnectionPool
 
-print("--- Checking ChromaDB ---")
-try:
-    chroma_client = chromadb.HttpClient(host="chromadb", port=8000)
-    collection = chroma_client.get_collection("rag_documents")
-    print("ChromaDB Document Count:", collection.count())
-except Exception as e:
-    print("ChromaDB Error:", e)
+from src.docling_service.settings import get_settings
 
-print("\n--- Checking MinIO ---")
-try:
-    minio_client = Minio("minio:9000", access_key="admin", secret_key="miniopassword", secure=False)
-    objects = list(minio_client.list_objects("documents", recursive=True))
-    print("MinIO Object Count in 'documents' bucket:", len(objects))
-except Exception as e:
-    print("MinIO Error:", e)
+settings = get_settings()
+failures: list[str] = []
 
-print("\n--- Checking NebulaGraph ---")
-try:
-    config = Config()
-    pool = ConnectionPool()
-    if pool.init([("graphd", 9669)], config):
-        session = pool.get_session("root", "nebula")
-        res = session.execute("USE rag_space; MATCH (v) RETURN count(v) as cnt;")
-        if res.is_succeeded():
-            print("NebulaGraph Nodes Count:", res.rows()[0].values[0].get_iVal())
-        else:
-            print("NebulaGraph Query Failed:", res.error_msg())
 
-        res_edges = session.execute("USE rag_space; MATCH ()-[e]->() RETURN count(e) as cnt;")
-        if res_edges.is_succeeded():
-            print("NebulaGraph Edges Count:", res_edges.rows()[0].values[0].get_iVal())
-        else:
-            print("NebulaGraph Edges Query Failed:", res_edges.error_msg())
-        pool.close()
+def report(label: str, message: str, ok: bool = True) -> None:
+    """Affiche une ligne de bilan et memorise les echecs."""
+    print(f"{'  OK ' if ok else 'ECHEC'}  {label} : {message}")
+    if not ok:
+        failures.append(label)
+
+
+print("--- ChromaDB ---")
+try:
+    client = chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
+    collection = client.get_collection("rag_documents")
+    report("chunks indexes", str(collection.count()))
+except Exception as exc:
+    report("connexion", str(exc), ok=False)
+
+print("\n--- MinIO ---")
+try:
+    minio_client = Minio(
+        settings.minio_endpoint,
+        access_key=settings.minio_root_user,
+        secret_key=settings.minio_root_password,
+        secure=False,
+    )
+    objects = list(minio_client.list_objects(settings.minio_bucket, recursive=True))
+    report(f"objets dans '{settings.minio_bucket}'", str(len(objects)))
+except Exception as exc:
+    report("connexion", str(exc), ok=False)
+
+print("\n--- NebulaGraph ---")
+pool = ConnectionPool()
+try:
+    if not pool.init([(settings.nebula_host, settings.nebula_port)], Config()):
+        report("connexion", "init a renvoye False", ok=False)
     else:
-        print("Failed to connect to NebulaGraph")
-except Exception as e:
-    print("NebulaGraph Error:", e)
+        session = pool.get_session("root", "nebula")
+        try:
+            for label, query in (
+                ("noeuds", "USE rag_space; MATCH (v) RETURN count(v) AS cnt;"),
+                ("aretes", "USE rag_space; MATCH ()-[e]->() RETURN count(e) AS cnt;"),
+                (
+                    "documents",
+                    "USE rag_space; MATCH (d:Document) RETURN count(d) AS cnt;",
+                ),
+            ):
+                result = session.execute(query)
+                if result.is_succeeded():
+                    report(label, str(result.rows()[0].values[0].get_iVal()))
+                else:
+                    report(label, result.error_msg(), ok=False)
+        finally:
+            session.release()
+except Exception as exc:
+    report("connexion", str(exc), ok=False)
+finally:
+    pool.close()
+
+print()
+if failures:
+    print(f"{len(failures)} controle(s) en echec : {', '.join(failures)}")
+    sys.exit(1)
+print("Les trois stores repondent.")

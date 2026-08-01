@@ -31,7 +31,13 @@ COPY src/docling_service /app/src/docling_service
 
 RUN groupadd --gid 1000 docling \
     && useradd --uid 1000 --gid docling --no-create-home docling \
-    && chown -R docling:docling /app
+    && chown -R docling:docling /app \
+    # HOME=/tmp : le cache des modeles atterrit dans /tmp/.cache, monte comme
+    # volume nomme. Un volume vide herite des droits du repertoire present dans
+    # l'image — sans ce mkdir, il est cree en root et le service ne peut pas y
+    # ecrire.
+    && mkdir -p /tmp/.cache \
+    && chown -R docling:docling /tmp/.cache
 
 USER docling
 

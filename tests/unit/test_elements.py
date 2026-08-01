@@ -115,6 +115,47 @@ class TestLabels:
         assert item_text(item) == ""
 
 
+class FakeTableItem:
+    """Item de type table : `text` vaut None, le contenu s'exporte."""
+
+    label = "table"
+    text = None
+    prov = []
+
+    def export_to_markdown(self, document):
+        assert document is not None
+        return "| a | b |\n|---|---|\n| 1 | 2 |"
+
+
+class TestTableText:
+    def test_table_exported_when_text_is_none(self):
+        # Sans cet export, les tables ressortaient vides de l'extraction :
+        # presentes dans le graphe, introuvables par la recherche.
+        assert item_text(FakeTableItem(), document=object()) == "| a | b |\n|---|---|\n| 1 | 2 |"
+
+    def test_table_without_document_yields_empty(self):
+        assert item_text(FakeTableItem()) == ""
+
+    def test_export_failure_is_not_fatal(self):
+        class Broken(FakeTableItem):
+            def export_to_markdown(self, document):
+                raise RuntimeError("indisponible")
+
+        assert item_text(Broken(), document=object()) == ""
+
+    def test_plain_text_wins_over_export(self):
+        class WithBoth(FakeTableItem):
+            text = "texte direct"
+
+        assert item_text(WithBoth(), document=object()) == "texte direct"
+
+    def test_table_element_carries_its_content(self):
+        acc = DocumentAccumulator("doc")
+        element = acc.add_item(FakeTableItem(), document=object())
+        assert element["label"] == "table"
+        assert "| a | b |" in element["text"]
+
+
 class TestDocumentAccumulator:
     def test_order_increments(self):
         acc = DocumentAccumulator("doc")
