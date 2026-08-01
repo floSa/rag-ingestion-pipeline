@@ -128,14 +128,23 @@ def _wait_until_ready(context: AssetExecutionContext, base_url: str) -> None:
 
 
 def _await_job(context: AssetExecutionContext, base_url: str, job_id: str) -> dict[str, Any]:
-    """Interroge un job jusqu'a son etat terminal, en journalisant l'avancement."""
+    """Interroge un job jusqu'a son etat terminal, en journalisant l'avancement.
+
+    Le premier sondage est immediat, puis l'intervalle croit jusqu'a
+    ``extraction_poll_seconds``. Un chapitre HTML s'extrait en une seconde :
+    attendre l'intervalle plein avant de regarder ajouterait, sur un corpus de
+    plusieurs dizaines de fichiers, plus d'attente que de travail.
+    """
     settings = get_settings()
     deadline = time.monotonic() + settings.extraction_timeout_seconds
     consecutive_failures = 0
     last_progress: str = ""
+    interval = 0.0
 
     while True:
-        time.sleep(settings.extraction_poll_seconds)
+        if interval:
+            time.sleep(interval)
+        interval = min(max(interval * 2, 1.0), settings.extraction_poll_seconds)
 
         try:
             response = requests.get(f"{base_url}/jobs/{job_id}", timeout=30)
