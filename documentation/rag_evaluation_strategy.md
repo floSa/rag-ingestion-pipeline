@@ -30,6 +30,17 @@ partir des documents deja ingeres :
 3. Annoter les chunks sources pertinents (IDs ChromaDB)
 4. Stocker dans `tests/fixtures/golden_qa.json`
 
+> **Attention aux identifiants.** Les ids de chunk derivent du texte extrait :
+> toute evolution de la chaine d'extraction les change. Un jeu golden annote
+> par ids devient caduc a la premiere modification du pipeline. Preferer
+> annoter par `filename` + extrait de texte attendu, et ne resoudre les ids
+> qu'au moment de l'evaluation.
+
+> **Point de comparaison.** `context_precision` est la metrique que le
+> nettoyage de l'index fait bouger le plus : avant regroupement, 36 % des
+> chunks recuperables etaient des fragments de mise en page (`x`, `and`, `-`).
+> Toute mesure anterieure a ce changement n'est pas comparable aux suivantes.
+
 ## Pipeline d'evaluation
 
 ```python
