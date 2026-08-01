@@ -1,7 +1,9 @@
 # Graphe de Connaissances (NebulaGraph)
 
 ## Présentation du service
-Le système **NebulaGraph** est le garant de la hiérarchisation intellectuelle du RAG Assistant. S’il fallait vulgariser, on dirait qu'il "remonte le livre d’origine". Contrairement aux bases de données relationnelles traditionnelles, cette base structure et sauvegarde l'ordre de lecture exact ainsi que les imbrications complexes trouvées dans vos documents PDF & HTML (Tableaux, Images, Légendes, Code...).
+Le système **NebulaGraph** est le garant de la hiérarchisation intellectuelle du RAG Assistant. S’il fallait vulgariser, on dirait qu'il "remonte le livre d’origine". Contrairement aux bases de données relationnelles traditionnelles, cette base structure et sauvegarde l'ordre de lecture exact ainsi que les imbrications complexes trouvées dans vos documents PDF, HTML & Markdown (Tableaux, Images, Légendes, Code...).
+
+À noter : **le graphe conserve tous les éléments extraits**, y compris ceux que l'index vectoriel écarte (fragments de mise en page, éléments trop courts pour être retrouvés utilement). C'est ici, et seulement ici, que la structure du document est complète.
 
 Le graphe sémantique permet lors d'une interrogation RAG agentique d'aller bien au-delà de la recherche mot par mot. Si une réponse trouvée dans ChromaDB est juste le fragment abstrait d'une page, l'agent pourra se tourner vers ce NebulaGraph via l'ID commun afin d'interroger la section qui précède ou la figure qui illustre l'idée, ajoutant ainsi une extrême puissance de contexte.
 
@@ -16,7 +18,7 @@ A chaque lecture d'un livre, et à chaque bloc d'ingestion envoyé par l'API Doc
 
 **Nœuds (Les Vertices) :**
 Ils stockent les informations inhérentes. L'ID standard du vertex provient lui encore du fameux Hash généré en Python.
-- **`Document`** : Noeud Root ou Racine (Contient: `filename` (string), `type_file` (string)).
+- **`Document`** : Noeud Root ou Racine (Contient: `filename` (string), `type_file` (string : `pdf`, `html` ou `md`), `total_pages` (int, 1 pour les formats non paginés)).
 - **`Paragraph`** / **`Formula`** / **`Code`** / **`ListItem`** : Noeuds riches contenant du texte.
 - **`Picture`** / **`Table`** : Noeuds Média contenant un `minio_url` qui pointe vers l'autre composant clé du projet MinIO.
 - **`SectionHeader`** : Noeuds Titre à part entière, pour la re-narration hiérarchique agentique.
