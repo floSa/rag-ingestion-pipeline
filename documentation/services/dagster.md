@@ -22,22 +22,43 @@ service Docling, construction du graphe de connaissances, vectorisation.
 
 ## Dependances
 
-- `postgres-dagster` (metadonnees)
-- `docling-service` (extraction via HTTP)
-- `chromadb` (vectorisation)
-- `graphd` (graphe de connaissances via nebula3-python)
+- `postgres-dagster` (metadonnees, curseurs des sensors)
+- `docling-service` (extraction et persistance via HTTP)
+- `minio` (export des images inline des captures HTML, pendant le nettoyage)
+
+Dagster n'ecrit ni dans ChromaDB ni dans NebulaGraph : c'est le service
+d'extraction qui persiste dans les trois stores.
 
 ## Assets
 
-- `pre_process_pdf` / `pre_process_html` : preparation du fichier
-- `extract_structured_json` : appel POST au service Docling
-- `build_knowledge_graph` : insertion dans NebulaGraph
-- `vectorize_content` : chunking + embeddings + upsert ChromaDB
+Une factory genere les assets par source declaree dans `sources.yaml`, prefixes
+par le nom de la source :
+
+- `{source}/cleaned_html` — sources `html` uniquement : nettoyage universel du
+  document et export des images inline vers MinIO ;
+- `{source}/extracted_document` — soumet le document au service Docling, suit
+  le job jusqu'a son terme, et publie le bilan (elements, chunks, pages, duree)
+  dans les metadonnees de l'asset.
+
+Les sources `pdf` et `md` n'ont que le second : elles n'ont rien a nettoyer.
 
 ## Sensors
 
-- `pdf_sensor` : surveille `Datas/` pour les .pdf (interval 30s)
-- `html_sensor` : surveille `Datas/` pour les .html (interval 30s)
+Un sensor par source, nomme `{source}_sensor`, actif par defaut, evalue toutes
+les 30 secondes. Chaque fichier trouve par le motif glob de la source devient
+une partition dynamique (cle = chemin relatif a `Datas/`), et un run est
+demande pour chaque fichier nouveau ou modifie. Le curseur, stocke en
+PostgreSQL, retient la `mtime` deja traitee : un fichier inchange est ignore.
+
+Avec les sources declarees par defaut : `pdfs_sensor`, `livres_html_sensor`,
+`markdown_sensor`.
+
+## File d'execution
+
+`QueuedRunCoordinator` avec `max_concurrent_runs: 2` (voir `dagster.yaml`).
+Cette limite est ce qui cadence l'ingestion d'un gros corpus : les runs en
+attente sont visibles dans **Runs -> Queued**. La relever n'accelere rien tant
+que le service d'extraction ne traite qu'un document a la fois.
 
 ## Healthcheck
 
