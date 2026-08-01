@@ -22,6 +22,13 @@ Deux garde-fous encadrent la fusion :
 Rien n'est perdu : tous les elements restent dans NebulaGraph, qui porte la
 structure du document. Seul l'index vectoriel est nettoye.
 
+Limite connue : sur un PDF, la persistance se fait par lot de pages, si bien
+que la fusion ne franchit pas une frontiere de lot. Un paragraphe a cheval sur
+deux lots produit donc deux blocs. Avec des lots de cinq pages et une fusion
+deja bornee par les sections, l'effet est marginal — le corriger demanderait de
+retenir un bloc en attente d'un lot a l'autre, pour un gain sans rapport avec
+la complexite ajoutee.
+
 Module sans dependance externe : testable sans Docling ni ChromaDB.
 """
 
