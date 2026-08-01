@@ -28,8 +28,11 @@ from dagster import (
     AssetKey,
     AssetsDefinition,
     AssetSelection,
+    Backoff,
     DefaultSensorStatus,
     DynamicPartitionsDefinition,
+    Failure,
+    RetryPolicy,
     RunRequest,
     SensorDefinition,
     SensorEvaluationContext,
@@ -48,6 +51,13 @@ from src.pipeline.cleaning import clean_html_file
 from src.pipeline.media import MinioImageExporter
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig
+
+# Reprise automatique des echecs transitoires : service d'extraction redemarre
+# (sa file vit en memoire), coupure reseau, store momentanement indisponible.
+# Sur une ingestion de plusieurs heures sans surveillance, c'est ce qui evite
+# de retrouver des partitions rouges pour une raison sans rapport avec les
+# documents. Les echecs propres au document, eux, ne sont pas retentes.
+EXTRACTION_RETRY_POLICY = RetryPolicy(max_retries=2, delay=120, backoff=Backoff.EXPONENTIAL)
 
 
 @dataclass
@@ -159,8 +169,10 @@ def _await_job(context: AssetExecutionContext, base_url: str, job_id: str) -> di
 
         if response.status_code == 404:
             # Le service a redemarre : la file est en memoire, le job est perdu.
+            # Erreur transitoire : la politique de reprise de l'asset la
+            # rattrape sans intervention.
             raise RuntimeError(
-                f"Job {job_id} inconnu du service Docling (redemarrage ?). Relancer la partition."
+                f"Job {job_id} inconnu du service Docling (redemarrage ?). Nouvelle tentative."
             )
         response.raise_for_status()
         consecutive_failures = 0
@@ -175,7 +187,13 @@ def _await_job(context: AssetExecutionContext, base_url: str, job_id: str) -> di
         if status == "success":
             return snapshot
         if status == "failed":
-            raise RuntimeError(f"Extraction en echec : {snapshot.get('error')}")
+            # Echec propre au document (page illisible, format inattendu) :
+            # inutile de reconvertir plusieurs centaines de pages pour obtenir
+            # la meme erreur. On coupe court aux reprises.
+            raise Failure(
+                description=f"Extraction en echec : {snapshot.get('error')}",
+                allow_retries=False,
+            )
 
         if time.monotonic() > deadline:
             raise TimeoutError(
@@ -233,6 +251,7 @@ def _build_html_assets(
         key_prefix=source.name,
         partitions_def=partitions,
         group_name=source.name,
+        retry_policy=EXTRACTION_RETRY_POLICY,
         ins={"cleaned_html": AssetIn(key=AssetKey([source.name, "cleaned_html"]))},
     )
     def extracted_document(context: AssetExecutionContext, cleaned_html: str) -> dict[str, Any]:
@@ -259,6 +278,7 @@ def _build_direct_assets(
         key_prefix=source.name,
         partitions_def=partitions,
         group_name=source.name,
+        retry_policy=EXTRACTION_RETRY_POLICY,
     )
     def extracted_document(context: AssetExecutionContext) -> dict[str, Any]:
         """Envoie le document source au service Docling."""

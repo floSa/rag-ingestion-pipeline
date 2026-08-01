@@ -164,3 +164,20 @@ class TestFileSensor:
             assert len(second.run_requests) == 0
         finally:
             get_settings.cache_clear()
+
+
+class TestPolitiqueDeReprise:
+    def test_asset_extraction_a_une_politique_de_reprise(self):
+        # Sur une ingestion de plusieurs heures sans surveillance, un
+        # redemarrage du service ne doit pas laisser des partitions rouges.
+        built = build_source(_pdf_source())
+        extraction = next(a for a in built.assets if a.key.path[-1] == "extracted_document")
+        policy = extraction.op.retry_policy
+        assert policy is not None
+        assert policy.max_retries == 2
+
+    def test_toutes_les_sources_couvertes(self):
+        for source in (_pdf_source(), _md_source(), _html_source()):
+            built = build_source(source)
+            extraction = next(a for a in built.assets if a.key.path[-1] == "extracted_document")
+            assert extraction.op.retry_policy is not None
