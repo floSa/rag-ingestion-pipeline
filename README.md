@@ -205,7 +205,9 @@ docker compose exec docling-service python -m src.index_report
 
 **Débit.** Toujours sur ce corpus : 39 documents ingérés en 4 minutes, dont le PDF de 280 pages en ~3 minutes à lui seul. Comptez **3 à 4 heures pour 50 livres**, sans surveillance.
 
-**Mémoire.** Le service d'extraction se stabilise autour de 6 Go (limite fixée à 10 Go dans `docker-compose.yml`), l'essentiel étant les modèles chargés une fois pour toutes. Aucune dérive observée d'un document à l'autre.
+**Mémoire.** Relevée toutes les 20 à 30 secondes pendant une demi-heure d'ingestion continue (111 mesures en régime) : **médiane 6,08 Gio, pic 6,43 Gio**, contre une limite de 10 Go fixée dans `docker-compose.yml` — soit 3,5 Gio de marge. L'essentiel est constitué des modèles, chargés une fois pour toutes ; la consommation ne monte pas avec le nombre de documents traités.
+
+Si vous relevez une consommation qui grimpe au fil des livres, c'est anormal : coupez et signalez-le, plutôt que d'attendre le plafond.
 
 ---
 
