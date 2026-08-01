@@ -11,23 +11,15 @@ COPY src/docling_service/requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip
 
+# torch depuis l'index CUDA 12.1 : les wheels +cu121 n'existent pas sur PyPI.
+# 2.5.1 est la derniere version publiee sur cet index.
 RUN pip install --no-cache-dir \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+    --index-url https://download.pytorch.org/whl/cu121
 
-RUN pip install --no-cache-dir \
-    docling \
-    fastapi \
-    uvicorn \
-    pydantic \
-    pydantic-settings \
-    requests \
-    python-multipart \
-    minio \
-    pymupdf \
-    nebula3-python \
-    chromadb==0.6.3 \
-    sentence-transformers \
-    antlr4-python3-runtime==4.9.3
+# requirements.txt est la source de verite des versions du service : elle est
+# epinglee, et c'est elle qu'analyse `make audit`.
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Le service partage ses schemas avec le pipeline Dagster (contrat commun avec
 # rag-agent-chat) : ces deux fichiers doivent vivre dans l'image, pas seulement

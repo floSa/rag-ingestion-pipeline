@@ -1,6 +1,34 @@
-fastapi
-uvicorn
-python-multipart
-docling
-PyMuPDF
-minio
+# Dependances du service d'extraction (image Dockerfile.docling).
+#
+# Versions epinglees : sans cela, chaque reconstruction tirait la derniere
+# version publiee — docling en publie plusieurs par mois — et l'image validee
+# n'etait pas celle qu'on reconstruisait. Les versions ci-dessous sont celles
+# effectivement installees et validees dans l'image courante.
+#
+# torch/torchvision/torchaudio sont installes a part, depuis l'index CUDA 12.1
+# (voir Dockerfile.docling) : ils n'ont pas de wheel +cu121 sur PyPI.
+#
+# chromadb reste en 0.6.3 : c'est la version alignee avec le client de
+# rag-agent-chat. La monter en 1.x demande de le faire des deux cotes.
+
+docling==2.117.0
+docling-core==2.89.0
+
+fastapi==0.141.1
+uvicorn==0.52.1
+python-multipart==0.0.32
+pydantic==2.13.4
+pydantic-settings==2.14.2
+requests==2.34.2
+
+minio==7.2.20
+nebula3-python==3.8.3
+chromadb==0.6.3
+
+pymupdf==1.28.0
+sentence-transformers==5.6.1
+transformers==5.14.1
+
+# Docling embarque des grammaires ANTLR generees avec la 4.9.3 : une version
+# plus recente du runtime les rend incompatibles.
+antlr4-python3-runtime==4.9.3
