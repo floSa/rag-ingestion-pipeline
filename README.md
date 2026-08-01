@@ -189,6 +189,12 @@ docker compose restart docling-service
 docker compose exec docling-service python -m src.verify_data
 ```
 
+**Contrôle après ingestion.** Un rapport sur la qualité de l'index vectoriel : volume, bruit résiduel, taille des chunks, et surtout part des chunks qui dépassent la fenêtre du modèle d'embedding — ceux-là sont tronqués par le modèle lui-même, en silence.
+
+```bash
+docker compose exec docling-service python -m src.index_report
+```
+
 **Volumétrie.** Prévoyez de la place pour `Datas/database/` (Nebula, ChromaDB, MinIO) et pour les images croppées : un livre illustré de 400 pages en produit couramment plusieurs centaines.
 
 ---
