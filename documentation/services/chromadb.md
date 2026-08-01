@@ -11,16 +11,26 @@ des documents. Utilisee pour la recherche semantique.
 
 ## API
 
-API REST standard ChromaDB. Consommee par le pipeline Dagster
-(`vectorize_content`) et le service Docling (`_flush_to_chroma`).
+API REST standard ChromaDB. Ecrite uniquement par le service Docling
+(`src/docling_service/vectors.py`) ; le pipeline Dagster n'y touche pas.
 
 ## Collection
 
 - `rag_documents` : collection principale
-  - **ids** : `element_id` (hash sha256[:10], stable entre batchs — un vecteur par element)
-  - **embeddings** : vecteurs 384 dimensions (all-MiniLM-L6-v2)
-  - **metadatas** : `element_id`, `graph_node_id`, `filename`, `label`, `page_no`, `minio_url`
-  - **documents** : texte de l'element (tronque a 1000 caracteres)
+  - **ids** : `element_id` (hash sha256[:10]), suffixe `#n` si le bloc a du
+    etre decoupe en plusieurs fenetres
+  - **embeddings** : vecteurs 384 dimensions (all-MiniLM-L6-v2, fenetre de
+    256 tokens), calcules sur le texte precede du titre de sa section
+  - **metadatas** : `element_id`, `graph_node_id`, `filename`, `label`,
+    `page_no`, `minio_url`, `reference_id`, `section_title`, `page_position`,
+    `ref_position`, `chunk_index`, `chunk_count`, `block_size`
+  - **documents** : texte du chunk, integral (aucune troncature)
+
+**Granularite** : un vecteur par **bloc**, pas par element. Les fragments de
+mise en page produits par l'analyse de layout sont fusionnes avec leurs voisins
+de meme section, et les residus sont ecartes de l'index — ils restent presents
+dans NebulaGraph. Voir
+[extraction_donnees.md](../extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
 
 ## Variables d'environnement
 
