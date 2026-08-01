@@ -64,6 +64,14 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
   Dagster en amont qui cadence le débit, et elle le fait visiblement dans l'UI
 - **Écriture par lots** : INSERT nGQL groupés, pool NebulaGraph partagé et embeddings
   encodés par batch. Un aller-retour par élément mettait les livres hors d'atteinte
+- **Le graphe garde tout, l'index vectoriel garde ce qui a du sens** : l'analyse de
+  layout produit quantité de fragments isolés (`x`, `and`, `Note`, `-`) — 36 % de
+  l'index sur le corpus de référence. Ils sont fusionnés avec leurs voisins de même
+  section, et les résidus sont écartés de la recherche sémantique tout en restant
+  dans NebulaGraph
+- **Contextualisation des vecteurs** : le titre de section est préposé au texte envoyé
+  au modèle d'embedding, pas au texte stocké. Le passage s'affiche tel quel côté agent,
+  mais son vecteur porte le contexte qui lui manquait
 - **Découpage plutôt que troncature** : les textes longs sont fenêtrés avant
   vectorisation. Tronquer à 1000 caractères amputait silencieusement les paragraphes
 - **Identifiants déterministes** : `sha256(filename|page|position_dans_la_page|texte)`,

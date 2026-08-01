@@ -116,10 +116,44 @@ Chaque lot d'elements est valide contre le schema partage
 L'ordre compte : si NebulaGraph refuse le lot, les vecteurs correspondants ne sont pas
 indexes et l'erreur remonte jusqu'au job.
 
-Les textes longs sont **decoupes** en fenetres recouvrantes (`CHUNK_SIZE` / `CHUNK_OVERLAP`)
-avant vectorisation, au lieu d'etre tronques. Un element tenant en un seul chunk garde son
-identifiant nu ; un element decoupe produit des identifiants `{element_id}#0`, `#1`, etc.,
-mais ses metadonnees `element_id` et `graph_node_id` restent le hash de l'element.
+#### Ce qui part dans l'index vectoriel
+
+Le graphe recoit **tous** les elements. L'index vectoriel, lui, recoit des blocs, apres
+trois traitements successifs.
+
+**1. Regroupement.** L'analyse de layout descend jusqu'au fragment isole : sur le corpus
+de reference, 36 % des entrees indexees etaient des morceaux comme `x`, `and`, `Note`,
+`n`, `-` ou `.`. Vectorises tels quels, ils polluent la recherche et diluent le travail du
+reranker. Les elements consecutifs sont donc fusionnes jusqu'a `CHUNK_SIZE`, avec deux
+garde-fous : jamais au-dela d'une frontiere de section, et jamais entre natures
+differentes — une table ou un bloc de code restent autonomes.
+
+C'est la reponse retenue par l'etat de l'art du decoupage pour RAG (plancher minimal +
+fusion), et precisement la limite connue du `HybridChunker` de Docling : il fusionne les
+pairs de meme metadonnee (`merge_peers`) mais n'a pas de `min_tokens`, si bien que les
+fragments isoles y survivent.
+
+**2. Plancher.** Un bloc qui reste sous `MIN_CHUNK_CHARS`, ou qui ne porte aucun
+caractere alphanumerique, est ecarte de l'index. Il demeure dans le graphe.
+
+**3. Decoupage.** Les blocs encore trop longs sont coupes en fenetres recouvrantes
+(`CHUNK_SIZE` / `CHUNK_OVERLAP`), au lieu d'etre tronques. Un bloc tenant en un seul chunk
+garde son identifiant nu ; un bloc decoupe produit `{element_id}#0`, `#1`, etc.
+
+`element_id` et `graph_node_id` designent **l'ancre du bloc**, c'est-a-dire son premier
+element : un noeud reel du graphe, au format dix hexadecimaux attendu par
+`rag-agent-chat`. La metadonnee `block_size` indique combien d'elements ont ete fusionnes.
+
+#### Contextualisation des vecteurs
+
+Un passage isole de son titre perd une part de son sens : « la moyenne est sensible aux
+valeurs extremes » ne dit pas de quoi elle est la moyenne. Le titre de la section courante
+est donc prepose au texte **envoye au modele d'embedding**, sans cout de calcul — technique
+`contextualize()` de Docling, principe du *contextual retrieval*.
+
+Le texte **stocke** reste le texte brut : cote agent, l'utilisateur voit le passage tel
+qu'il figure dans le document. Le titre part aussi en metadonnee `section_title`.
+Reglable par `EMBED_SECTION_CONTEXT`.
 
 ## Format d'un element
 

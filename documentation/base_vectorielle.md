@@ -16,6 +16,10 @@ La collection utilisée est **`rag_documents`**.
 - **Identifiant du chunk** : l'identifiant cryptographique (Hash ID) de l'élément. Un élément dont le texte dépasse `CHUNK_SIZE` est découpé en plusieurs fenêtres recouvrantes, et ses chunks reçoivent alors un suffixe : `023351d5f4#0`, `023351d5f4#1`… Un élément court garde son identifiant nu, de sorte que les documents déjà ingérés sont mis à jour et non dupliqués.
 - **Embeddings** : représentation mathématique du texte du chunk, produite par `all-MiniLM-L6-v2` (384 dimensions), encodée par lots.
 - **Documents** : le contenu en texte pur du chunk. Rien n'est tronqué : le découpage remplace l'ancienne coupe à 1000 caractères, qui amputait silencieusement les paragraphes longs.
+
+Un point important : **la collection ne contient pas un vecteur par élément du document, mais un vecteur par bloc**. L'analyse de layout produit quantité de fragments isolés (`x`, `and`, `Note`, `-`) qui n'ont aucun sens une fois vectorisés ; ils sont fusionnés avec leurs voisins de même section, et les résidus sont écartés. Tous les éléments restent en revanche dans NebulaGraph : la structure du document est intacte, et `/context/{element_id}` la reconstruit. Voir [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
+
+Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa section**, alors que le document stocké reste le texte brut. Le passage s'affiche donc tel quel côté agent, mais le vecteur porte son contexte.
 - **Métadonnées intégrées** — définies par `ChunkMetadata` dans `src/pipeline/schemas.py`, qui est le contrat de référence avec `rag-agent-chat` :
 
 | Clé | Rôle |
@@ -27,9 +31,11 @@ La collection utilisée est **`rag_documents`**.
 | `page_no` | Page source, pour citer la référence à l'utilisateur |
 | `minio_url` | URL de l'image associée, le cas échéant |
 | `reference_id` | Section parente (ou `DOC`) |
+| `section_title` | Titre de la section, exploitable pour l'affichage des citations |
 | `page_position` | Rang de l'élément dans sa page |
 | `ref_position` | Rang de l'élément sous son parent |
-| `chunk_index` / `chunk_count` | Position du chunk dans son élément |
+| `chunk_index` / `chunk_count` | Position du chunk dans son bloc |
+| `block_size` | Nombre d'éléments du document fusionnés dans ce chunk |
 
 ## Commandes utiles
 Lors de vos futurs développements du système RAG Agentique, vous nécessiterez régulièrement ces concepts :

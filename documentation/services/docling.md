@@ -88,7 +88,8 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `nebula.py`     | Pool partage, sessions, ecritures groupees, schema                    |
 | `ngql.py`       | Echappement et construction des requetes nGQL                         |
 | `vectors.py`    | Embeddings par lots et upsert ChromaDB                                |
-| `chunking.py`   | Decoupage des textes longs                                            |
+| `blocks.py`     | Regroupement des elements en blocs, filtrage du bruit de mise en page  |
+| `chunking.py`   | Decoupage des textes longs, contextualisation des embeddings          |
 | `images.py`     | Crop PyMuPDF et export MinIO                                          |
 
 `ngql.py`, `chunking.py`, `elements.py`, `markdown.py` et `jobs.py` ne dependent que de
@@ -110,6 +111,8 @@ la bibliotheque standard : leur logique est testee sans Docling ni GPU.
 | PDF_BATCH_PAGES      | Pages converties par passe             | 5                |
 | CHUNK_SIZE           | Taille d'un chunk vectorise (car.)     | 900              |
 | CHUNK_OVERLAP        | Recouvrement entre chunks (car.)       | 150              |
+| MIN_CHUNK_CHARS      | Plancher d'indexation d'un bloc (car.) | 24               |
+| EMBED_SECTION_CONTEXT| Titre de section prepose a l'embedding | true             |
 | EMBEDDING_BATCH_SIZE | Textes encodes par appel au modele     | 32               |
 | CHROMA_UPSERT_BATCH  | Chunks par upsert ChromaDB             | 500              |
 | GRAPH_TEXT_MAX_CHARS | Apercu du texte stocke dans le graphe  | 2000             |
