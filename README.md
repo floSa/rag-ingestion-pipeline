@@ -2,10 +2,10 @@
 
 **Pipeline d'ingestion de documents PDF, HTML et Markdown pour un assistant RAG : extraction structurée via Docling, graphe de connaissances NebulaGraph, base vectorielle ChromaDB, médias sur MinIO, orchestration Dagster.**
 
-![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9?logo=uv&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Dagster](https://img.shields.io/badge/Dagster-1.13.2-654FF0?logo=dagster&logoColor=white)
+![Dagster](https://img.shields.io/badge/Dagster-1.13.16-654FF0?logo=dagster&logoColor=white)
 
 ---
 
@@ -252,7 +252,8 @@ RAG_Assistant/
 │   │   ├── nebula.py           # Écritures NebulaGraph groupées, pool partagé
 │   │   ├── ngql.py             # Échappement et construction des requêtes nGQL
 │   │   ├── vectors.py          # Embeddings par lots et upsert ChromaDB
-│   │   ├── chunking.py         # Découpage des textes longs
+│   │   ├── blocks.py           # Regroupement en blocs, filtrage du bruit
+│   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
 │   │   └── images.py           # Crop PyMuPDF et export MinIO
 │   └── pipeline/               # Orchestration Dagster
