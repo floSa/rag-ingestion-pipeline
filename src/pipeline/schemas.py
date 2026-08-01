@@ -81,6 +81,10 @@ class ChunkMetadata(BaseModel):
     ref_position: int = 0
     chunk_index: int = 0
     chunk_count: int = 1
+    # Nombre d'elements du document fusionnes dans ce chunk. 1 signifie que le
+    # chunk correspond exactement a un element ; au-dela, l'ancre est le
+    # premier d'entre eux.
+    block_size: int = 1
 
 
 class ExtractRequest(BaseModel):

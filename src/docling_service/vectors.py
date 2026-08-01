@@ -23,6 +23,7 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+from src.docling_service.blocks import build_blocks
 from src.docling_service.chunking import chunk_ids, chunk_text
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
@@ -66,7 +67,12 @@ def get_collection() -> Any:
 def build_chunks(
     elements: Sequence[dict[str, Any]], filename: str
 ) -> tuple[list[str], list[str], list[dict[str, Any]]]:
-    """Decoupe les elements en chunks prets pour ChromaDB.
+    """Regroupe puis decoupe les elements en chunks prets pour ChromaDB.
+
+    Les elements sont d'abord fusionnes en blocs coherents (voir
+    :mod:`src.docling_service.blocks`) : l'analyse de layout produit quantite de
+    fragments isoles qui n'ont aucun sens une fois vectorises. Les blocs encore
+    trop longs sont ensuite decoupes en fenetres recouvrantes.
 
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
@@ -74,24 +80,31 @@ def build_chunks(
 
     Returns:
         Triplet (ids, textes, metadonnees), aligne index par index. Les
-        elements sans texte (images sans legende) sont ignores : ils vivent
-        dans le graphe, pas dans l'index vectoriel.
+        elements ecartes — sans texte, ou trop courts pour porter du sens —
+        restent presents dans le graphe.
     """
     settings = get_settings()
     ids: list[str] = []
     texts: list[str] = []
     metadatas: list[dict[str, Any]] = []
 
-    for element in elements:
+    blocks = build_blocks(
+        list(elements),
+        target_chars=settings.chunk_size,
+        min_chars=settings.min_chunk_chars,
+    )
+
+    for block in blocks:
         chunks = chunk_text(
-            str(element.get("text") or ""),
+            block.text,
             size=settings.chunk_size,
             overlap=settings.chunk_overlap,
         )
         if not chunks:
             continue
 
-        element_id = str(element["id"])
+        anchor = block.anchor
+        element_id = str(anchor["id"])
         for index, (chunk_id, chunk) in enumerate(
             zip(chunk_ids(element_id, len(chunks)), chunks, strict=True)
         ):
@@ -102,14 +115,15 @@ def build_chunks(
                     element_id=element_id,
                     graph_node_id=element_id,
                     filename=filename,
-                    label=str(element.get("label") or ""),
-                    page_no=int(element.get("page_no") or 0),
-                    minio_url=str(element.get("minio_url") or ""),
-                    reference_id=str(element.get("reference_id") or "DOC"),
-                    page_position=int(element.get("page_position") or 0),
-                    ref_position=int(element.get("ref_position") or 0),
+                    label=str(anchor.get("label") or ""),
+                    page_no=int(anchor.get("page_no") or 0),
+                    minio_url=str(anchor.get("minio_url") or ""),
+                    reference_id=str(anchor.get("reference_id") or "DOC"),
+                    page_position=int(anchor.get("page_position") or 0),
+                    ref_position=int(anchor.get("ref_position") or 0),
                     chunk_index=index,
                     chunk_count=len(chunks),
+                    block_size=block.size,
                 ).model_dump()
             )
 

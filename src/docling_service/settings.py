@@ -46,6 +46,10 @@ class DoclingSettings(BaseSettings):
     chunk_overlap: int = 150
     embedding_batch_size: int = 32
     chroma_upsert_batch: int = 500
+    # Plancher en caracteres sous lequel un bloc est ecarte de l'index
+    # vectoriel. Il reste present dans le graphe : seule la recherche
+    # semantique est debarrassee des fragments de mise en page.
+    min_chunk_chars: int = 24
 
     # ── Graphe ───────────────────────────────────────────────────────────────
     # Le graphe porte la structure, pas le corpus : on y stocke un apercu du
