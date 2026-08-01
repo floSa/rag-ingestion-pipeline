@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from src.pipeline.schemas import (
     BoundingBox,
+    ChunkMetadata,
     DocumentElement,
     DocumentMetadata,
     ExtractedDocument,
@@ -151,10 +152,63 @@ class TestExtractRequest:
 
 
 class TestExtractResponse:
-    def test_default(self):
-        resp = ExtractResponse()
-        assert resp.status == "success"
+    def test_returns_job_id(self):
+        # L'extraction est asynchrone : la reponse porte l'identifiant du job
+        # a interroger, pas le resultat.
+        resp = ExtractResponse(job_id="a1b2c3")
+        assert resp.job_id == "a1b2c3"
+        assert resp.status == "pending"
 
     def test_custom_status(self):
-        resp = ExtractResponse(status="error")
-        assert resp.status == "error"
+        assert ExtractResponse(job_id="a1b2c3", status="running").status == "running"
+
+    def test_job_id_required(self):
+        with pytest.raises(ValidationError):
+            ExtractResponse()  # type: ignore[call-arg]
+
+
+class TestChunkMetadata:
+    def test_required_fields(self):
+        meta = ChunkMetadata(element_id="abc1234567", graph_node_id="abc1234567", filename="livre")
+        assert meta.chunk_index == 0
+        assert meta.chunk_count == 1
+        assert meta.reference_id == "DOC"
+
+    def test_positions_are_carried(self):
+        # Regression : page_position et ref_position n'etaient jamais ecrites,
+        # et rag-agent-chat les lisait donc toujours a 0.
+        meta = ChunkMetadata(
+            element_id="abc1234567",
+            graph_node_id="abc1234567",
+            filename="livre",
+            page_position=8,
+            ref_position=2,
+            reference_id="023351d5f4",
+        )
+        assert meta.page_position == 8
+        assert meta.ref_position == 2
+        assert meta.reference_id == "023351d5f4"
+
+    def test_dump_keys_match_consumer_contract(self):
+        # Les cles lues par rag-agent-chat/src/agent/retriever.py.
+        expected = {
+            "element_id",
+            "graph_node_id",
+            "filename",
+            "label",
+            "page_no",
+            "minio_url",
+            "page_position",
+            "ref_position",
+        }
+        dumped = ChunkMetadata(
+            element_id="abc1234567", graph_node_id="abc1234567", filename="livre"
+        ).model_dump()
+        assert expected <= set(dumped)
+
+    def test_values_are_chroma_compatible(self):
+        # ChromaDB n'accepte que str, int, float et bool en metadonnees.
+        dumped = ChunkMetadata(
+            element_id="abc1234567", graph_node_id="abc1234567", filename="livre"
+        ).model_dump()
+        assert all(isinstance(value, str | int | float | bool) for value in dumped.values())

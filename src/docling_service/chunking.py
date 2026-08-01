@@ -1,0 +1,96 @@
+"""Decoupage des textes longs destines a la base vectorielle.
+
+L'ingestion tronquait les textes a 1000 caracteres, dans l'embedding comme dans
+le document stocke : un paragraphe long etait ampute en silence et sa fin
+devenait inatteignable par la recherche. On decoupe desormais en fenetres
+recouvrantes, sans rien perdre.
+
+Le module ne depend que de la bibliotheque standard : il reste testable sans
+sentence-transformers ni ChromaDB.
+"""
+
+from __future__ import annotations
+
+# ~900 caracteres : all-MiniLM-L6-v2 encode 256 tokens, au-dela le modele
+# tronque de lui-meme. Le recouvrement evite de couper une idee en deux.
+DEFAULT_CHUNK_SIZE = 900
+DEFAULT_CHUNK_OVERLAP = 150
+
+
+def chunk_text(
+    text: str,
+    size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+) -> list[str]:
+    """Decoupe un texte en fenetres recouvrantes alignees sur les mots.
+
+    Args:
+        text: Texte a decouper.
+        size: Taille maximale d'une fenetre, en caracteres.
+        overlap: Recouvrement entre deux fenetres consecutives, en caracteres.
+
+    Returns:
+        Liste des fenetres, vide si le texte est vide. Un texte plus court que
+        ``size`` est retourne tel quel, en un seul element.
+
+    Raises:
+        ValueError: Si ``size`` est nul ou negatif, ou si ``overlap`` n'est pas
+            strictement inferieur a ``size`` (la progression ne serait pas garantie).
+    """
+    if size <= 0:
+        raise ValueError("size doit etre strictement positif")
+    if not 0 <= overlap < size:
+        raise ValueError("overlap doit etre compris entre 0 et size (exclu)")
+
+    stripped = text.strip()
+    if not stripped:
+        return []
+    if len(stripped) <= size:
+        return [stripped]
+
+    chunks: list[str] = []
+    start = 0
+    while start < len(stripped):
+        end = min(start + size, len(stripped))
+        if end < len(stripped):
+            # Reculer jusqu'a la derniere frontiere de mot, sans jamais rogner
+            # plus que le recouvrement (sinon un texte sans espace boucle).
+            boundary = stripped.rfind(" ", start + size - overlap, end)
+            if boundary > start:
+                end = boundary
+
+        chunk = stripped[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+
+        if end >= len(stripped):
+            break
+        # max(..., start + 1) : garantit la progression meme si end - overlap
+        # retombe avant start (fenetre courte apres recul sur un espace).
+        start = max(end - overlap, start + 1)
+
+    return chunks
+
+
+def chunk_ids(element_id: str, count: int) -> list[str]:
+    """Derive les ids ChromaDB des chunks d'un element.
+
+    Un element tenant en un seul chunk conserve son id nu : les documents deja
+    ingeres gardent leur identifiant et l'upsert les met a jour au lieu de les
+    dupliquer. Les elements multi-chunks recoivent un suffixe ``#n``.
+
+    Le contrat avec ``rag-agent-chat`` est preserve : le consommateur lit
+    ``chunk_id`` (l'id ChromaDB) et ``element_id`` (le hash 10 hexa) dans deux
+    champs distincts, et ne valide le format ``^[a-f0-9]{10}$`` que sur le
+    second.
+
+    Args:
+        element_id: Identifiant de l'element dans NebulaGraph.
+        count: Nombre de chunks produits pour cet element.
+
+    Returns:
+        Liste de ``count`` identifiants.
+    """
+    if count == 1:
+        return [element_id]
+    return [f"{element_id}#{index}" for index in range(count)]

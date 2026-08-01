@@ -172,6 +172,19 @@ services:
       - CHROMA_HOST=${CHROMA_HOST}
       - CHROMA_PORT=${CHROMA_PORT}
       - HOME=/tmp
+    # Le service n'est « healthy » qu'une fois les modeles charges, le schema
+    # NebulaGraph initialise et le bucket MinIO pret. start_period genereux :
+    # le premier demarrage telecharge les modeles Docling et l'embedding.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=10)
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 600s
     shm_size: 2gb
     deploy:
       resources:

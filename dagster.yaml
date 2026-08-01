@@ -43,8 +43,17 @@ schedule_storage:
         env: DAGSTER_POSTGRES_DB
       port: 5432
 
+# La file Dagster cadence le debit d'ingestion. Sans limite explicite, le
+# coordinateur lance jusqu'a 10 runs simultanes : autant de processus dans le
+# conteneur daemon, tous en attente du meme service d'extraction, qui ne
+# convertit de toute facon qu'un document a la fois. Deux runs suffisent — un
+# en conversion, un qui enchaine — et les autres patientent visiblement dans
+# la file, ce qui est exactement le comportement attendu sur un corpus de
+# plusieurs dizaines de livres.
 run_coordinator:
   module: dagster.core.run_coordinator
   class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 2
 
 # We use the DefaultRunLauncher so runs execute directly inside the dagster-daemon container

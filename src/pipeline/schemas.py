@@ -25,7 +25,15 @@ class DocumentMetadata(BaseModel):
 
 
 class DocumentElement(BaseModel):
-    """Élément structurel extrait d'un document (paragraphe, image, table, etc.)."""
+    """Élément structurel extrait d'un document (paragraphe, image, table, etc.).
+
+    Les trois champs de position décrivent la place de l'élément dans le
+    document, telle que la consomme ``rag-agent-chat`` :
+
+    - ``reference_id`` : parent hiérarchique (id de la section, ou ``DOC``) ;
+    - ``page_position`` : rang de l'élément dans sa page ;
+    - ``ref_position`` : rang de l'élément sous son parent.
+    """
 
     id: str
     label: str
@@ -48,6 +56,33 @@ class ExtractedDocument(BaseModel):
     elements: list[DocumentElement] = Field(default_factory=list)
 
 
+class ChunkMetadata(BaseModel):
+    """Métadonnées d'un chunk dans ChromaDB — contrat avec ``rag-agent-chat``.
+
+    Ce modèle est la définition de référence du contrat : le consommateur lit
+    exactement ces clés dans ``retriever.py``. Construire les métadonnées à
+    travers lui garantit qu'aucune n'est oubliée (``page_position`` et
+    ``ref_position`` l'étaient, et arrivaient toujours à 0 côté agent).
+
+    ``element_id`` et ``graph_node_id`` restent le hash 10 hexadécimaux de
+    l'élément, y compris pour un élément découpé en plusieurs chunks :
+    ``rag-agent-chat`` valide ``/context/{element_id}`` sur ``^[a-f0-9]{10}$``
+    et lit l'identifiant du chunk dans un champ distinct.
+    """
+
+    element_id: str
+    graph_node_id: str
+    filename: str
+    label: str = ""
+    page_no: int = 0
+    minio_url: str = ""
+    reference_id: str = "DOC"
+    page_position: int = 0
+    ref_position: int = 0
+    chunk_index: int = 0
+    chunk_count: int = 1
+
+
 class ExtractRequest(BaseModel):
     """Requête d'extraction envoyée au service Docling."""
 
@@ -55,6 +90,7 @@ class ExtractRequest(BaseModel):
 
 
 class ExtractResponse(BaseModel):
-    """Réponse du service Docling."""
+    """Réponse du service Docling : identifiant du job à interroger."""
 
-    status: str = "success"
+    job_id: str
+    status: str = "pending"

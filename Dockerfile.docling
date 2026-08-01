@@ -29,6 +29,12 @@ RUN pip install --no-cache-dir \
     sentence-transformers \
     antlr4-python3-runtime==4.9.3
 
+# Le service partage ses schemas avec le pipeline Dagster (contrat commun avec
+# rag-agent-chat) : ces deux fichiers doivent vivre dans l'image, pas seulement
+# dans le montage docker-compose.
+COPY src/__init__.py /app/src/__init__.py
+COPY src/pipeline/__init__.py src/pipeline/schemas.py /app/src/pipeline/
+
 COPY src/docling_service /app/src/docling_service
 
 RUN groupadd --gid 1000 docling \

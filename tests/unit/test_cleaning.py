@@ -26,6 +26,7 @@ class FakeExporter:
             return None
         return f"http://minio:9000/documents/images/html/test/img_{index:04d}.png"
 
+
 FAKE_DATA_URI = "data:image/png;base64," + "A" * 10_000
 
 ARTICLE_PARAGRAPHS = " ".join(

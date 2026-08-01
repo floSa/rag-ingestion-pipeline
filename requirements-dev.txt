@@ -10,3 +10,4 @@ httpx
 pip-audit
 pydantic-settings
 types-requests
+types-PyYAML

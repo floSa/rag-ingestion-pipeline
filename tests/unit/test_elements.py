@@ -1,0 +1,196 @@
+"""Tests unitaires pour la construction des elements de document.
+
+Ces tests importent les fonctions reelles du service. La version precedente en
+recopiait une replique dans le fichier de test — le code de production n'etait
+donc pas couvert, et une divergence serait passee inapercue.
+"""
+
+from __future__ import annotations
+
+import hashlib
+
+from src.docling_service.elements import (
+    ROOT_REFERENCE,
+    SECTION_LABELS,
+    TAG_MAP,
+    DocumentAccumulator,
+    compute_id,
+    extract_bbox,
+    item_label,
+    item_text,
+    tag_for_label,
+)
+from src.pipeline.schemas import DocumentElement
+
+
+class FakeBbox:
+    def __init__(self, left=10.0, top=200.0, right=100.0, bottom=150.0):
+        self.l = left
+        self.t = top
+        self.r = right
+        self.b = bottom
+
+
+class FakeProv:
+    def __init__(self, page_no=1, bbox=None):
+        self.page_no = page_no
+        self.bbox = bbox
+
+
+class FakeItem:
+    """Reproduit la surface d'un item Docling utilisee par le service."""
+
+    def __init__(self, label="text", text="", page_no=1, bbox=None):
+        self.label = label
+        self.text = text
+        self.prov = [FakeProv(page_no, bbox)] if page_no else []
+
+
+class TestComputeId:
+    def test_deterministic(self):
+        assert compute_id("doc", 1, 0, "hello") == compute_id("doc", 1, 0, "hello")
+
+    def test_length_10(self):
+        assert len(compute_id("test", 1, 0, "some text")) == 10
+
+    def test_hex_chars_only(self):
+        # rag-agent-chat valide /context/{element_id} sur ^[a-f0-9]{10}$.
+        assert all(c in "0123456789abcdef" for c in compute_id("test", 1, 0, "text"))
+
+    def test_different_documents_differ(self):
+        assert compute_id("doc1", 1, 0, "t") != compute_id("doc2", 1, 0, "t")
+
+    def test_different_pages_differ(self):
+        assert compute_id("doc", 1, 0, "t") != compute_id("doc", 2, 0, "t")
+
+    def test_different_positions_differ(self):
+        assert compute_id("doc", 1, 0, "t") != compute_id("doc", 1, 1, "t")
+
+    def test_long_text_truncated_to_50_chars(self):
+        long_text = "x" * 200
+        expected = hashlib.sha256(f"doc|1|0|{long_text[:50]}".encode()).hexdigest()[:10]
+        assert compute_id("doc", 1, 0, long_text) == expected
+
+    def test_empty_text(self):
+        assert len(compute_id("doc", 1, 0, "")) == 10
+
+
+class TestExtractBbox:
+    def test_none_returns_none(self):
+        assert extract_bbox(None) is None
+
+    def test_falsy_returns_none(self):
+        assert extract_bbox(0) is None
+
+    def test_valid_bbox_rounded(self):
+        assert extract_bbox(FakeBbox(10.123, 20.456, 30.789, 40.012)) == {
+            "l": 10.12,
+            "t": 20.46,
+            "r": 30.79,
+            "b": 40.01,
+        }
+
+
+class TestLabels:
+    def test_known_label_mapped(self):
+        assert tag_for_label("formula") == "Formula"
+
+    def test_unknown_label_defaults_to_paragraph(self):
+        assert tag_for_label("inconnu") == "Paragraph"
+
+    def test_section_labels_derived_from_tag_map(self):
+        expected = {lbl for lbl, tag in TAG_MAP.items() if tag == "SectionHeader"}
+        assert expected == SECTION_LABELS
+        assert "title" in SECTION_LABELS
+
+    def test_item_label_lowercased(self):
+        assert item_label(FakeItem(label="Section_Header")) == "section_header"
+
+    def test_item_text_stripped(self):
+        assert item_text(FakeItem(text="  bonjour  ")) == "bonjour"
+
+    def test_item_without_text(self):
+        item = FakeItem()
+        del item.text
+        assert item_text(item) == ""
+
+
+class TestDocumentAccumulator:
+    def test_order_increments(self):
+        acc = DocumentAccumulator("doc")
+        orders = [acc.add_item(FakeItem(text=f"t{i}"))["order"] for i in range(3)]
+        assert orders == [0, 1, 2]
+
+    def test_count_tracks_elements(self):
+        acc = DocumentAccumulator("doc")
+        for i in range(4):
+            acc.add_item(FakeItem(text=f"t{i}"))
+        assert acc.count == 4
+
+    def test_page_position_resets_per_page(self):
+        acc = DocumentAccumulator("doc")
+        first = acc.add_item(FakeItem(text="a", page_no=1))
+        second = acc.add_item(FakeItem(text="b", page_no=1))
+        third = acc.add_item(FakeItem(text="c", page_no=2))
+        assert (first["page_position"], second["page_position"]) == (0, 1)
+        assert third["page_position"] == 0
+
+    def test_header_attaches_to_document(self):
+        acc = DocumentAccumulator("doc")
+        header = acc.add_item(FakeItem(label="section_header", text="Chapitre 1"))
+        assert header["reference_id"] == ROOT_REFERENCE
+
+    def test_element_attaches_to_last_header(self):
+        acc = DocumentAccumulator("doc")
+        header = acc.add_item(FakeItem(label="section_header", text="Chapitre 1"))
+        body = acc.add_item(FakeItem(label="text", text="corps"))
+        assert body["reference_id"] == header["id"]
+
+    def test_orphan_before_any_header_attaches_to_document(self):
+        acc = DocumentAccumulator("doc")
+        assert acc.add_item(FakeItem(text="avant tout titre"))["reference_id"] == ROOT_REFERENCE
+
+    def test_ref_position_counts_within_parent(self):
+        acc = DocumentAccumulator("doc")
+        acc.add_item(FakeItem(label="section_header", text="Chapitre 1"))
+        first = acc.add_item(FakeItem(text="a"))
+        second = acc.add_item(FakeItem(text="b"))
+        acc.add_item(FakeItem(label="section_header", text="Chapitre 2"))
+        third = acc.add_item(FakeItem(text="c"))
+        assert (first["ref_position"], second["ref_position"]) == (0, 1)
+        assert third["ref_position"] == 0
+
+    def test_section_context_survives_page_change(self):
+        # Les batchs de pages ne doivent pas casser la hierarchie du document.
+        acc = DocumentAccumulator("doc")
+        header = acc.add_item(FakeItem(label="section_header", text="Chapitre", page_no=1))
+        body = acc.add_item(FakeItem(text="suite", page_no=2))
+        assert body["reference_id"] == header["id"]
+
+    def test_ids_stable_across_reingestion(self):
+        # Meme document reconverti : memes ids, donc upsert et non doublons.
+        def build() -> list[str]:
+            acc = DocumentAccumulator("doc")
+            items = [
+                FakeItem(label="section_header", text="Titre", page_no=1),
+                FakeItem(text="paragraphe", page_no=1),
+                FakeItem(text="autre", page_no=2),
+            ]
+            return [acc.add_item(item)["id"] for item in items]
+
+        assert build() == build()
+
+    def test_element_matches_shared_schema(self):
+        # Garde-fou de contrat : le dict produit doit valider contre le modele
+        # partage avec rag-agent-chat.
+        acc = DocumentAccumulator("doc")
+        element = acc.add_item(FakeItem(label="picture", text="", bbox=FakeBbox()))
+        validated = DocumentElement.model_validate(element)
+        assert validated.id == element["id"]
+        assert validated.bbox is not None
+        assert validated.bbox.left == 10.0
+
+    def test_element_without_bbox_validates(self):
+        acc = DocumentAccumulator("doc")
+        element = acc.add_item(FakeItem(text="sans bbox"))
+        assert DocumentElement.model_validate(element).bbox is None

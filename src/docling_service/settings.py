@@ -12,6 +12,7 @@ class DoclingSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # ── Stores ───────────────────────────────────────────────────────────────
     minio_endpoint: str = "minio:9000"
     minio_root_user: str = ""
     minio_root_password: str = ""
@@ -24,6 +25,35 @@ class DoclingSettings(BaseSettings):
     chroma_port: int = 8000
 
     embedding_model_name: str = "all-MiniLM-L6-v2"
+
+    # ── Connexion NebulaGraph ────────────────────────────────────────────────
+    nebula_max_attempts: int = 15
+    nebula_retry_seconds: float = 10.0
+    # Nombre de tentatives de CREATE SPACE : le storaged doit avoir termine son
+    # heartbeat d'enregistrement, ce qui peut prendre une minute au demarrage.
+    nebula_space_attempts: int = 12
+
+    # ── Extraction ───────────────────────────────────────────────────────────
+    # Pages converties par passe. Les batchs bornent la memoire sur les gros
+    # PDF ; ils ne se chevauchent plus (les ids sont deterministes, un
+    # chevauchement ne servait qu'a re-convertir les memes pages pour rien).
+    pdf_batch_pages: int = 5
+    # Facteur d'agrandissement des crops d'images extraites des PDF.
+    image_crop_zoom: float = 2.0
+
+    # ── Vectorisation ────────────────────────────────────────────────────────
+    chunk_size: int = 900
+    chunk_overlap: int = 150
+    embedding_batch_size: int = 32
+    chroma_upsert_batch: int = 500
+
+    # ── Graphe ───────────────────────────────────────────────────────────────
+    # Le graphe porte la structure, pas le corpus : on y stocke un apercu du
+    # texte. Le texte integral vit dans ChromaDB, decoupe et sans troncature.
+    graph_text_max_chars: int = 2000
+
+    # ── File de jobs ─────────────────────────────────────────────────────────
+    job_history_size: int = 500
 
 
 @lru_cache(maxsize=1)

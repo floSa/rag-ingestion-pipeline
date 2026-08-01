@@ -16,6 +16,11 @@ DEFAULT_SOURCES_FILE = Path(__file__).resolve().parent / "sources.yaml"
 
 SourceType = str  # voir SourceConfig.type pour les valeurs admises
 
+# Types de sources reconnus. ``html`` passe par une etape de nettoyage
+# prealable ; ``pdf`` et ``md`` partent directement a l'extraction.
+SOURCE_TYPES: tuple[str, ...] = ("pdf", "html", "md")
+CLEANED_SOURCE_TYPES: frozenset[str] = frozenset({"html"})
+
 
 class ExtractionProfile(BaseModel):
     """Profil d'extraction dedie a un site precis (prioritaire sur le generique).
@@ -43,8 +48,7 @@ class CleaningOptions(BaseModel):
     )
     export_images: bool = Field(
         default=True,
-        description="Exporter les images base64 volumineuses vers MinIO "
-        "au lieu de les supprimer.",
+        description="Exporter les images base64 volumineuses vers MinIO au lieu de les supprimer.",
     )
     min_text_chars: int = Field(
         default=250,
@@ -66,8 +70,13 @@ class SourceConfig(BaseModel):
 
     name: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     glob: str
-    type: str = Field(pattern=r"^(pdf|html)$")
+    type: str = Field(pattern=r"^(pdf|html|md)$")
     cleaning: CleaningOptions = Field(default_factory=CleaningOptions)
+
+    @property
+    def needs_cleaning(self) -> bool:
+        """Indique si la source passe par une etape de nettoyage prealable."""
+        return self.type in CLEANED_SOURCE_TYPES
 
 
 class SourcesFile(BaseModel):

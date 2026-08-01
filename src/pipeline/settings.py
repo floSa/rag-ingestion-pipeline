@@ -27,6 +27,21 @@ class PipelineSettings(BaseSettings):
     minio_root_password: str = ""
     minio_bucket: str = "documents"
 
+    # Suivi des jobs d'extraction. L'extraction est asynchrone : Dagster
+    # soumet le document puis interroge le service jusqu'a son terme, plutot
+    # que de maintenir une requete HTTP ouverte pendant des heures.
+    extraction_submit_timeout: int = 60
+    extraction_poll_seconds: float = 15.0
+    # Attente maximale du demarrage du service (chargement des modeles et
+    # initialisation du schema NebulaGraph) avant de soumettre un document.
+    extraction_readiness_timeout: int = 900
+    # Plafond de securite par document (24 h) : un livre de plusieurs centaines
+    # de pages prend le temps qu'il faut, mais un job fige doit finir par sortir.
+    extraction_timeout_seconds: int = 86_400
+    # Nombre d'echecs de sondage consecutifs toleres avant d'abandonner
+    # (redemarrage du service, coupure reseau passagere).
+    extraction_max_poll_failures: int = 20
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> PipelineSettings:
