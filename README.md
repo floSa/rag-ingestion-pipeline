@@ -158,6 +158,10 @@ Un corpus de plusieurs dizaines de livres de 300 à 400 pages se déroule sans i
 
 **Comment le débit est cadencé.** Le sensor crée une partition et un run par fichier. La file Dagster n'en exécute que deux à la fois (`max_concurrent_runs` dans `dagster.yaml`), et le service Docling ne convertit qu'un document à la fois : les autres runs attendent visiblement dans **Runs → Queued**. Rien ne sature, rien ne se perd, et l'ordre est celui de la découverte.
 
+Validé en conditions réelles : 120 fichiers déposés d'un coup produisent **120 partitions et 120 runs dans un seul passage de sensor**, drainés en 6 minutes. Un test unitaire garde cette propriété jusqu'à 250 fichiers.
+
+**Si le service redémarre en cours de route.** Sa file de jobs vit en mémoire : les documents en cours sont perdus. Les assets portent pour cette raison une politique de reprise (deux tentatives, délai croissant) qui rattrape le cas sans intervention. Les échecs propres à un document, eux, ne sont pas retentés — inutile de reconvertir 400 pages pour retomber sur la même page illisible.
+
 **Suivre un document.** Chaque run journalise l'avancement de son job toutes les 15 secondes : pages traitées, éléments extraits, chunks écrits. À la fin, les métadonnées de l'asset `extracted_document` récapitulent le total et la durée. Côté service :
 
 ```bash
