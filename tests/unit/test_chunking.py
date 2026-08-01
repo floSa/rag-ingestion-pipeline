@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.docling_service.chunking import chunk_ids, chunk_text
+from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
 
 
 class TestChunkText:
@@ -64,6 +64,36 @@ class TestChunkText:
     def test_negative_overlap_rejected(self):
         with pytest.raises(ValueError):
             chunk_text("abc", size=100, overlap=-1)
+
+
+class TestContextualize:
+    def test_titre_prepose(self):
+        assert contextualize("Le texte.", "Mesures de dispersion") == (
+            "Mesures de dispersion\n\nLe texte."
+        )
+
+    def test_titre_vide_laisse_le_texte_intact(self):
+        assert contextualize("Le texte.", "") == "Le texte."
+
+    def test_titre_en_espaces_laisse_le_texte_intact(self):
+        assert contextualize("Le texte.", "   ") == "Le texte."
+
+    def test_pas_de_repetition_si_le_texte_est_le_titre(self):
+        # Le chunk qui *est* le titre ne doit pas se voir prefixer par lui-meme.
+        assert contextualize("Mesures de dispersion", "Mesures de dispersion") == (
+            "Mesures de dispersion"
+        )
+
+    def test_comparaison_insensible_a_la_casse(self):
+        assert contextualize("MESURES de dispersion et suite", "Mesures de dispersion") == (
+            "MESURES de dispersion et suite"
+        )
+
+    def test_texte_vide(self):
+        assert contextualize("", "Titre") == "Titre\n\n"
+
+    def test_titre_avec_espaces_est_nettoye(self):
+        assert contextualize("Le texte.", "  Titre  ") == "Titre\n\nLe texte."
 
 
 class TestChunkIds:

@@ -138,6 +138,7 @@ class DocumentAccumulator:
         self.filename_stem = filename_stem
         self._global_order = 0
         self._current_section_id: str | None = None
+        self._current_section_title = ""
         self._page_counters: dict[int, int] = {}
         self._reference_counters: dict[str, int] = {}
 
@@ -171,6 +172,9 @@ class DocumentAccumulator:
         # les autres elements se rattachent au dernier en-tete rencontre.
         if label in SECTION_LABELS:
             self._current_section_id = element_id
+            # Le titre est retenu au-dela du lot de pages courant : il sert a
+            # contextualiser les embeddings des elements de la section.
+            self._current_section_title = text
             reference_id = ROOT_REFERENCE
         else:
             reference_id = self._current_section_id or ROOT_REFERENCE
@@ -186,6 +190,7 @@ class DocumentAccumulator:
             "text": text,
             "order": self._global_order,
             "reference_id": reference_id,
+            "section_title": self._current_section_title,
             "page_position": position_in_page,
             "ref_position": ref_position,
         }

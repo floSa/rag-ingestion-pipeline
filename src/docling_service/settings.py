@@ -50,6 +50,10 @@ class DoclingSettings(BaseSettings):
     # vectoriel. Il reste present dans le graphe : seule la recherche
     # semantique est debarrassee des fragments de mise en page.
     min_chunk_chars: int = 24
+    # Prepose le titre de la section au texte envoye au modele d'embedding.
+    # Le document stocke, lui, reste le texte brut : l'utilisateur voit le
+    # passage sans prefixe, mais le vecteur porte son contexte.
+    embed_section_context: bool = True
 
     # ── Graphe ───────────────────────────────────────────────────────────────
     # Le graphe porte la structure, pas le corpus : on y stocke un apercu du

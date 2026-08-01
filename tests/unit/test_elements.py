@@ -201,6 +201,30 @@ class TestDocumentAccumulator:
         assert (first["ref_position"], second["ref_position"]) == (0, 1)
         assert third["ref_position"] == 0
 
+    def test_titre_de_section_porte_par_les_elements(self):
+        acc = DocumentAccumulator("doc")
+        acc.add_item(FakeItem(label="section_header", text="Mesures de dispersion"))
+        body = acc.add_item(FakeItem(text="corps de la section"))
+        assert body["section_title"] == "Mesures de dispersion"
+
+    def test_titre_de_section_survit_au_changement_de_page(self):
+        # Les lots de pages d'un PDF ne doivent pas perdre le titre courant.
+        acc = DocumentAccumulator("doc")
+        acc.add_item(FakeItem(label="section_header", text="Chapitre 3", page_no=10))
+        body = acc.add_item(FakeItem(text="suite", page_no=11))
+        assert body["section_title"] == "Chapitre 3"
+
+    def test_titre_remplace_par_la_section_suivante(self):
+        acc = DocumentAccumulator("doc")
+        acc.add_item(FakeItem(label="section_header", text="Premiere"))
+        acc.add_item(FakeItem(label="section_header", text="Seconde"))
+        body = acc.add_item(FakeItem(text="corps"))
+        assert body["section_title"] == "Seconde"
+
+    def test_sans_titre_avant_le_premier_en_tete(self):
+        acc = DocumentAccumulator("doc")
+        assert acc.add_item(FakeItem(text="avant tout titre"))["section_title"] == ""
+
     def test_section_context_survives_page_change(self):
         # Les batchs de pages ne doivent pas casser la hierarchie du document.
         acc = DocumentAccumulator("doc")

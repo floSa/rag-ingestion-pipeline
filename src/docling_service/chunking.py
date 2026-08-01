@@ -72,6 +72,34 @@ def chunk_text(
     return chunks
 
 
+def contextualize(text: str, section_title: str) -> str:
+    """Prepose le titre de sa section au texte destine au modele d'embedding.
+
+    Un passage isole de son titre perd une part de son sens : « la moyenne est
+    sensible aux valeurs extremes » ne dit pas de quoi elle est la moyenne. Le
+    titre de section restitue ce contexte au vecteur, sans cout de calcul.
+    C'est la technique ``contextualize()`` de Docling, et le principe du
+    *contextual retrieval*.
+
+    Le texte **stocke** reste le texte brut : l'utilisateur voit le passage tel
+    qu'il figure dans le document, seul le vecteur porte le prefixe.
+
+    Args:
+        text: Texte du chunk.
+        section_title: Titre de la section a laquelle il appartient.
+
+    Returns:
+        Le texte prefixe, ou le texte inchange si le titre est vide ou deja
+        present en tete (cas du chunk qui *est* le titre).
+    """
+    title = section_title.strip()
+    if not title:
+        return text
+    if text.lstrip().lower().startswith(title.lower()):
+        return text
+    return f"{title}\n\n{text}"
+
+
 def chunk_ids(element_id: str, count: int) -> list[str]:
     """Derive les ids ChromaDB des chunks d'un element.
 

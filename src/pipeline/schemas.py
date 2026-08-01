@@ -44,6 +44,7 @@ class DocumentElement(BaseModel):
     minio_url: str | None = None
     content: str | None = None
     reference_id: str = "DOC"
+    section_title: str = ""
     page_position: int = 0
     ref_position: int = 0
     type: str = "text"
@@ -77,6 +78,7 @@ class ChunkMetadata(BaseModel):
     page_no: int = 0
     minio_url: str = ""
     reference_id: str = "DOC"
+    section_title: str = ""
     page_position: int = 0
     ref_position: int = 0
     chunk_index: int = 0

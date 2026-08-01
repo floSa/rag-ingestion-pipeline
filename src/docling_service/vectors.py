@@ -24,7 +24,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 from src.docling_service.blocks import build_blocks
-from src.docling_service.chunking import chunk_ids, chunk_text
+from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
 
@@ -119,6 +119,7 @@ def build_chunks(
                     page_no=int(anchor.get("page_no") or 0),
                     minio_url=str(anchor.get("minio_url") or ""),
                     reference_id=str(anchor.get("reference_id") or "DOC"),
+                    section_title=str(anchor.get("section_title") or ""),
                     page_position=int(anchor.get("page_position") or 0),
                     ref_position=int(anchor.get("ref_position") or 0),
                     chunk_index=index,
@@ -149,8 +150,18 @@ def write_elements(elements: Sequence[dict[str, Any]], filename: str) -> int:
         return 0
 
     settings = get_settings()
+    # Le vecteur est calcule sur le texte contextualise, le document stocke
+    # reste le texte brut : le passage s'affiche tel quel cote agent.
+    if settings.embed_section_context:
+        embed_texts = [
+            contextualize(text, str(meta.get("section_title") or ""))
+            for text, meta in zip(texts, metadatas, strict=True)
+        ]
+    else:
+        embed_texts = texts
+
     vectors = get_embedding_model().encode(
-        texts,
+        embed_texts,
         batch_size=settings.embedding_batch_size,
         show_progress_bar=False,
     )
