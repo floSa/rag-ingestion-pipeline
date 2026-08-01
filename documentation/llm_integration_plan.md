@@ -29,7 +29,7 @@ Utilisateur
     |
     | 2. Embedding de la question
     v
-[ChromaDB] -----> top-K chunks + metadatas (graph_node_id, document, score)
+[ChromaDB] -----> top-K chunks + metadatas (graph_node_id, section_title, document, score)
     |
     | 3. Reranking (cross-encoder)
     v
@@ -228,23 +228,50 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 
 | Champ          | Type          | Description                                |
 |----------------|---------------|--------------------------------------------|
-| id             | string        | `element_id` (hash sha256[:10], un vecteur par element) |
+| id             | string        | `element_id`, ou `element_id#n` si le bloc a du etre decoupe |
 | embedding      | float[384]    | Vecteur all-MiniLM-L6-v2                   |
-| document       | string        | Texte de l'element (tronque a 1000 chars)  |
-| metadata.element_id    | string | Hash ID de l'element source         |
+| document       | string        | Texte du chunk, integral (aucune troncature) |
+| metadata.element_id    | string | Hash ID de l'**ancre** du bloc, toujours au format `^[a-f0-9]{10}$` |
 | metadata.graph_node_id | string | = element_id, cle pour NebulaGraph  |
 | metadata.filename      | string | Nom du document source (sans extension) |
-| metadata.label         | string | Label Docling (paragraph, table, ...) |
-| metadata.page_no       | int    | Numero de page                      |
+| metadata.label         | string | Label Docling de l'ancre (text, table, code, ...) |
+| metadata.page_no       | int    | Numero de page (1 pour les formats non pagines) |
 | metadata.minio_url     | string | URL MinIO si image/table ("" sinon) |
+| metadata.reference_id  | string | Section parente, ou `DOC`            |
+| metadata.section_title | string | Titre de la section, pour l'affichage des citations |
+| metadata.page_position | int    | Rang de l'element dans sa page       |
+| metadata.ref_position  | int    | Rang de l'element sous son parent    |
+| metadata.chunk_index / chunk_count | int | Position du chunk dans son bloc |
+| metadata.block_size    | int    | Nombre d'elements fusionnes dans ce chunk |
 
-**Modele d'embedding** : `all-MiniLM-L6-v2` (384 dimensions).
-L'agent doit utiliser le MEME modele pour encoder les questions.
+**Modele d'embedding** : `all-MiniLM-L6-v2` (384 dimensions, fenetre de 256
+tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
 
-**Granularite** : un embedding par element structurel, pas de decoupage en
-sous-chunks ; texte tronque a 1000 caracteres. L'id est stable entre les
-batchs PDF qui se chevauchent (base sur la position dans la page, pas sur
-l'ordre global de lecture).
+**Granularite** : un vecteur par **bloc**, et non par element. L'analyse de
+layout produit quantite de fragments isoles (`x`, `and`, `Note`, `-`) qui n'ont
+aucun sens vectorises ; les elements consecutifs d'une meme section et de meme
+nature sont donc fusionnes, et les residus sous le plancher sont ecartes de
+l'index. Les blocs encore trop longs sont coupes en fenetres recouvrantes —
+plus aucune troncature.
+
+**Consequences pour l'agent** :
+
+- `id` (le `chunk_id`) peut porter un suffixe `#n` ; **`element_id` n'en porte
+  jamais** et reste exploitable tel quel par `/context/{element_id}` ;
+- `element_id` designe le **premier** element du bloc. C'est un noeud reel du
+  graphe : la reconstruction de contexte fonctionne a l'identique ;
+- tous les elements ecartes de l'index vectoriel **restent dans NebulaGraph**.
+  Le graphe est la source de verite de la structure, l'index vectoriel celle de
+  la recherche ;
+- le vecteur est calcule sur le texte **precede du titre de sa section**, alors
+  que `document` contient le texte brut. L'agent affiche donc le passage tel
+  quel, sans prefixe parasite.
+
+L'id est stable d'une ingestion a l'autre : il derive de la position dans la
+page, pas de l'ordre global de lecture. Attention toutefois — il derive aussi
+du texte : **si la chaine d'extraction change, les ids changent** et les
+anciennes entrees deviennent orphelines. Purger les stores avant une
+re-ingestion suivant une evolution du pipeline.
 
 ### 4.2 NebulaGraph — Space `rag_space`
 
