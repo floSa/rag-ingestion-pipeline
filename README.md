@@ -292,7 +292,19 @@ RAG_Assistant/
 uv sync && uv pip install -r requirements-dev.txt && uv run pytest
 ```
 
-La logique sensible du service d'extraction (échappement nGQL, découpage des textes, hiérarchie et positions des éléments, file de jobs) vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph.
+La logique sensible du service d'extraction vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph, et couverte à 100 %.
+
+| Module | Rôle | Couverture |
+|---|---|---|
+| `ngql.py` | Échappement et construction des requêtes du graphe | 100 % |
+| `blocks.py` | Regroupement des éléments, filtrage du bruit | 100 % |
+| `chunking.py` | Découpage et contextualisation | 100 % |
+| `elements.py` | Hiérarchie, positions, identifiants | 100 % |
+| `markdown.py` | Normalisation avant conversion | 100 % |
+| `jobs.py` | File de jobs et worker | 99 % |
+| `cleaning.py` | Nettoyage HTML universel | 94 % |
+
+Les modules restants (`nebula.py`, `vectors.py`, `extraction.py`, `main.py`) sont des adaptateurs vers Docling, NebulaGraph et ChromaDB : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle.
 
 ---
 
