@@ -94,6 +94,57 @@ class TestFileSensor:
         finally:
             get_settings.cache_clear()
 
+    def test_rafale_de_fichiers_en_un_seul_passage(self, tmp_path, monkeypatch):
+        # Un corpus de plusieurs dizaines de livres, chacun decoupe en
+        # chapitres, produit des centaines de fichiers deposes d'un coup. Le
+        # sensor doit tous les voir dans le meme passage, sans en perdre.
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            captures = tmp_path / "captures"
+            captures.mkdir()
+            attendus = 250
+            for numero in range(attendus):
+                (captures / f"page_{numero:04d}.html").write_text("<html></html>", encoding="utf-8")
+
+            built = build_source(_html_source(name="rafale"))
+            with DagsterInstance.ephemeral() as instance:
+                context = build_sensor_context(instance=instance)
+                result = built.sensor(context)
+
+            assert len(result.run_requests) == attendus
+            cles = {request.partition_key for request in result.run_requests}
+            assert len(cles) == attendus
+            ajoutees = {
+                cle
+                for demande in result.dynamic_partitions_requests
+                for cle in demande.partition_keys
+            }
+            assert len(ajoutees) == attendus
+        finally:
+            get_settings.cache_clear()
+
+    def test_run_key_unique_par_fichier(self, tmp_path, monkeypatch):
+        # Deux fichiers ne doivent jamais partager une run_key, sans quoi
+        # Dagster considererait le second comme un doublon et l'ignorerait.
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            captures = tmp_path / "captures"
+            captures.mkdir()
+            for numero in range(30):
+                (captures / f"page_{numero:02d}.html").write_text("<html></html>", encoding="utf-8")
+
+            built = build_source(_html_source(name="cles"))
+            with DagsterInstance.ephemeral() as instance:
+                context = build_sensor_context(instance=instance)
+                result = built.sensor(context)
+
+            run_keys = [request.run_key for request in result.run_requests]
+            assert len(set(run_keys)) == len(run_keys)
+        finally:
+            get_settings.cache_clear()
+
     def test_unchanged_file_not_rerun(self, tmp_path, monkeypatch):
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
