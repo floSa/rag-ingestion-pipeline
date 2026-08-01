@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Pipeline d'ingestion documentaire qui transforme des PDF et HTML en données structurées,
+Pipeline d'ingestion documentaire qui transforme des PDF, HTML et Markdown en données structurées,
 stockées dans une base vectorielle (ChromaDB) et un graphe de connaissances (NebulaGraph).
 La couche LLM/agent vit dans un projet séparé, [rag-agent-chat](https://github.com/floSa/rag-agent-chat),
 qui consomme ces stores en lecture via le réseau Docker `rag_network` (nom stable,
@@ -28,18 +28,23 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 
 ## Workflow de bout en bout
 
-1. **Dépôt** d'un fichier (PDF/HTML) dans `Datas/pdfs/` ou `Datas/htms/`
-2. **Dagster Sensor** (`pdf_sensor` / `html_sensor`) détecte le nouveau fichier
-3. **Pre-process** (HTML uniquement) : nettoyage DOM via BeautifulSoup — suppression des
-   balises `nav`, `header`, `footer` et classes éditeurs (`.packt-header`, `.sbo-site-nav`)
-4. **Docling Service** reçoit le chemin en POST, extrait la structure via Docling v9.1,
-   crop les images/tableaux via PyMuPDF, les pousse sur MinIO, retourne un JSON structuré
-5. **Flush NebulaGraph** : crée les nœuds et la hiérarchie `Document → SectionHeader →
-   Éléments` (chaque élément est rattaché au dernier en-tête de section rencontré) ;
-   les échecs nGQL sont loggés et font échouer le run — pas de perte silencieuse
-6. **Flush ChromaDB** : un vecteur par élément (texte tronqué à 1000 caractères),
-   embeddings `all-MiniLM-L6-v2` (384 dim), upsert avec les métadonnées du contrat
-   d'interface : `element_id`, `graph_node_id`, `filename`, `label`, `page_no`, `minio_url`
+1. **Dépôt** d'un fichier dans `Datas/pdfs/`, `Datas/htms/` ou `Datas/mds/`
+2. **Dagster Sensor** (un par source déclarée) détecte le nouveau fichier et crée une
+   partition + un run ; la file Dagster en exécute deux à la fois
+3. **Pre-process** (HTML uniquement) : nettoyage universel — pré-passe d'hygiène puis
+   comparaison de candidats (conteneurs sémantiques, trafilatura, readability-lxml) ;
+   les images base64 volumineuses partent sur MinIO et leur `src` est réécrit
+4. **Soumission** : l'asset poste le chemin au service Docling, qui met le document en
+   file et rend un `job_id` ; l'asset suit l'avancement jusqu'au terme
+5. **Extraction** : Docling analyse le layout — les PDF par lots de pages, HTML et
+   Markdown d'un seul tenant — et PyMuPDF crop les images et tableaux vers MinIO
+6. **Flush NebulaGraph** : nœuds et hiérarchie `Document → SectionHeader → Éléments`
+   (chaque élément rattaché au dernier en-tête rencontré), écrits par INSERT groupés ;
+   tout échec nGQL fait échouer le job — pas de perte silencieuse
+7. **Flush ChromaDB** : les textes longs sont découpés en fenêtres recouvrantes (aucune
+   troncature), encodés par lots avec `all-MiniLM-L6-v2` (384 dim), et upsertés avec les
+   métadonnées du contrat d'interface : `element_id`, `graph_node_id`, `filename`,
+   `label`, `page_no`, `minio_url`, `reference_id`, `page_position`, `ref_position`
 
 ## Décisions d'architecture
 
@@ -51,8 +56,18 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 - **Docling sur GPU** : seul service avec accès CUDA, isole la charge lourde
 - **Embeddings locaux** : `all-MiniLM-L6-v2` via SentenceTransformers, pas d'appel API
   externe (pas d'OpenAI)
-- **Sensors séparés** PDF/HTML : découplage des pipelines, chacun avec son job Dagster
-- **Flush buffer = 1** : envoi quasi temps réel des résultats, pas d'accumulation
+- **Un sensor par source** : découplage des pipelines, chacun avec son job Dagster
+- **Extraction asynchrone** : une conversion de livre dure des heures, ce qui ne tient
+  pas dans une requête HTTP. Le service met en file et rend un `job_id` ; Dagster suit
+  l'avancement. L'event loop reste libre, et une coupure réseau ne condamne plus un run
+- **Un seul worker d'extraction** : la conversion sature déjà le GPU. C'est la file
+  Dagster en amont qui cadence le débit, et elle le fait visiblement dans l'UI
+- **Écriture par lots** : INSERT nGQL groupés, pool NebulaGraph partagé et embeddings
+  encodés par batch. Un aller-retour par élément mettait les livres hors d'atteinte
+- **Découpage plutôt que troncature** : les textes longs sont fenêtrés avant
+  vectorisation. Tronquer à 1000 caractères amputait silencieusement les paragraphes
+- **Identifiants déterministes** : `sha256(filename|page|position_dans_la_page|texte)`,
+  ce qui rend la ré-ingestion idempotente (upsert, pas de doublon)
 
 ## Dossiers de données
 
@@ -60,6 +75,8 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 |----------------------------|--------------------------------------|
 | `Datas/pdfs/`              | Documents PDF sources                |
 | `Datas/htms/`              | Documents HTML sources               |
+| `Datas/mds/`               | Documents Markdown sources           |
+| `Datas/.cleaned/`          | HTML nettoyés (générés par le pipeline) |
 | `Datas/database/chromadb/` | Persistence ChromaDB                 |
 | `Datas/database/nebula/`   | Persistence NebulaGraph              |
 | `Datas/database/minio/`    | Persistence MinIO                    |

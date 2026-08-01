@@ -14,12 +14,23 @@ Il se compose de plusieurs sous-services distincts :
 
 ## Structure et définition des données
 Côté développement, les éléments vitaux composant le graphe de données Dagster sont :
-- **La déclaration des sources (`sources.yaml` + `sources.py`)** : Chaque source de documents (un dossier de PDFs, une capture de site en HTML...) est un bloc YAML : nom, motif glob relatif à `/opt/dagster/app/Datas`, type (`pdf` ou `html`) et options de nettoyage. Ajouter une source ne demande aucun code Python.
-- **La factory (`factory.py`)** : Pour chaque source déclarée, elle génère les partitions dynamiques (une par fichier), les assets, le job (`{name}_job`) et le sensor (`{name}_sensor`). PDF et HTML suivent le même mécanisme ; les sources HTML ont simplement un asset de nettoyage (`cleaned_html`) en amont de l'extraction.
+- **La déclaration des sources (`sources.yaml` + `sources.py`)** : Chaque source de documents (un dossier de PDFs, une capture de site en HTML, un dossier de notes Markdown...) est un bloc YAML : nom, motif glob relatif à `/opt/dagster/app/Datas`, type (`pdf`, `html` ou `md`) et options de nettoyage. Ajouter une source ne demande aucun code Python.
+- **La factory (`factory.py`)** : Pour chaque source déclarée, elle génère les partitions dynamiques (une par fichier), les assets, le job (`{name}_job`) et le sensor (`{name}_sensor`). Les trois types suivent le même mécanisme ; les sources HTML ont simplement un asset de nettoyage (`cleaned_html`) en amont de l'extraction, dont PDF et Markdown n'ont pas besoin.
 - **Le nettoyage HTML (`cleaning.py`)** : Pré-passe déterministe (scripts, styles, nav, images `data:` SingleFile) puis extraction du contenu principal via trafilatura, avec readability-lxml en secours et conservation du HTML pré-nettoyé en dernier recours.
 - **La persistance des tâches (Le Curseur)** : Pour éviter qu'un livre ne soit ingéré à chaque redémarrage, chaque sensor sauvegarde la date de modification (`mtime`) de chaque fichier dans son curseur PostgreSQL. Si le fichier n'a pas été modifié depuis son traitement, Dagster l'ignore de manière silencieuse et robuste.
 - **Les Partitions** : Définies dynamiquement, chaque fichier est une "Partition" (clé = chemin relatif) pour simplifier la réexécution d'un échec sur un livre précis (au lieu de réexécuter tout le pipeline global).
-- **L'extraction** : L'asset `extracted_document` appelle l'API FastAPI du service Docling (`/extract`), qui persiste lui-même les résultats dans NebulaGraph, ChromaDB et MinIO.
+- **L'extraction** : L'asset `extracted_document` soumet le document au service Docling (`POST /extract`), qui rend un identifiant de job, puis suit son avancement (`GET /jobs/{id}`) jusqu'à la fin. Le service persiste lui-même les résultats dans NebulaGraph, ChromaDB et MinIO. Le bilan (éléments, chunks, pages, durée) est publié dans les métadonnées de l'asset.
+
+## Cadencer le débit
+
+Un corpus de plusieurs dizaines de livres crée autant de partitions et de runs. Deux limites empilées évitent de saturer la machine :
+
+1. **La file Dagster** — `QueuedRunCoordinator` avec `max_concurrent_runs: 2` dans `dagster.yaml`. Sans limite explicite, le coordinateur en lance jusqu'à dix, soit autant de processus dans le conteneur daemon.
+2. **Le worker du service d'extraction** — un seul document converti à la fois, la conversion saturant déjà le GPU.
+
+Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurrent_runs` n'accélère rien tant que le service reste mono-worker : c'est un levier à ne toucher que si l'extraction est parallélisée.
+
+Avant de soumettre, l'asset attend que le service se déclare prêt (`GET /health`) : au démarrage de la stack, le chargement des modèles et l'initialisation du schéma NebulaGraph prennent plusieurs minutes, et le premier run échouerait pour une raison sans rapport avec le document.
 
 ## Commandes utiles
 Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :

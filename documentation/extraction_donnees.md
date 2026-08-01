@@ -1,127 +1,153 @@
-# Microservice d'Extraction de Donnees (Docling)
+# Extraction des donnees (Docling)
 
 ## Presentation
 
 Le service `docling-service` est le moteur d'ingestion du projet. Developpe avec FastAPI,
-il traite les documents (PDF, HTML) de maniere structuree via **Docling** (bibliotheque IBM
-d'analyse de layout assistee par IA).
+il traite les documents (PDF, HTML, Markdown) de maniere structuree via **Docling**
+(bibliotheque IBM d'analyse de layout assistee par IA).
 
 - **URL interne** : `http://docling-service:8000`
-- **Endpoint** : `POST /extract` avec body JSON `{"filepath": "/opt/dagster/app/Datas/pdfs/mon_livre.pdf"}`
+- **Soumission** : `POST /extract` avec `{"filepath": "/opt/dagster/app/Datas/pdfs/mon_livre.pdf"}`,
+  qui rend un `job_id` a suivre sur `GET /jobs/{job_id}`
 - **GPU** : CUDA 12.1, `shm_size: 2gb`, limite memoire 10 Go
 
-## Algorithme d'extraction (Docling v9.1)
+Le detail de l'API et du modele d'execution vit dans
+[services/docling.md](services/docling.md) ; cette page decrit ce que le service
+fait des documents.
 
-L'extraction structuree suit un pipeline en 3 passes :
+## Chaine d'extraction
 
-### Passe 1 -- Extraction brute et hierarchie
+### 1. Conversion
 
-Docling itere sur chaque element du document via `doc.iterate_items()`. Chaque element
-recoit un ID cryptographique `sha256(filename|page_no|order|text[:50])[:10]` et est classe
-par label (`section_header`, `text`, `picture`, `table`, `code`, etc.).
+Docling itere sur les elements du document via `document.iterate_items()`. Chaque item
+porte un label (`section_header`, `text`, `picture`, `table`, `code`, `formula`...), un
+numero de page et une bounding box.
 
-Les `section_header` sont empiles pour maintenir la hierarchie parent-enfant via
-`reference_id`. La numerotation est parsee (decimale, alphabetique, romaine) pour
-determiner le niveau de profondeur.
+Le regime depend du format :
 
-### Passe 1.5 -- Liaison Caption -> Ressource
+| Format             | Regime                                                                    |
+|--------------------|---------------------------------------------------------------------------|
+| PDF                | Converti par lots de `PDF_BATCH_PAGES` pages (5 par defaut), pour borner la memoire |
+| HTML, Markdown     | Converti d'un seul tenant : ces formats ne sont pas pagines               |
 
-Les captions sont rattachees a la ressource visuelle la plus proche sur la meme page,
-par distance geometrique (Manhattan) sur les bounding boxes. Seuil : 300 unites.
+Les lots de pages **ne se chevauchent pas**. Un chevauchement de deux pages existait
+pour dedupliquer, mais les identifiants sont deterministes depuis, et les ecritures
+sont des upserts : le recouvrement ne faisait plus que re-convertir les memes pages.
 
-### Passe 2 -- Positions et mapping final
+### 2. Identite des elements
 
-Chaque element recoit :
-- `page_position` : ordre sequentiel dans la page
-- `ref_position` : ordre sous son parent (`reference_id`)
-- `type` : `text` ou `resource`
+Chaque element recoit un identifiant court et deterministe :
 
-Les ressources (`picture`, `table`) recuperent le texte de leur caption dans `text`,
-et le contenu brut (code, formule) va dans `content`.
+```
+sha256(filename | page_no | position_in_page | text[:50])[:10]
+```
 
-## Crop et upload des medias
+La position retenue est celle **dans la page**, pas l'ordre global de lecture. C'est ce
+qui rend l'identifiant stable d'une ingestion a l'autre : reconvertir un document produit
+les memes identifiants, et les ecritures ecrasent au lieu de dupliquer.
 
-Pour les elements visuels (`picture`, `table`), le service :
+Le format — dix caracteres hexadecimaux — est celui qu'attend `rag-agent-chat`, qui
+valide `/context/{element_id}` sur `^[a-f0-9]{10}$`.
 
-1. Ouvre le PDF avec **PyMuPDF** (fitz) sur le volume partage
-2. Crop aux coordonnees exactes de la bounding box avec matrice de zoom (haute resolution)
-3. Pousse le pixmap en bytes sur le bucket MinIO `documents`
-4. Stocke l'URL dans `minio_url` du noeud JSON
+### 3. Hierarchie et positions
 
-**Attention** : Docling utilise un axe Y Bottom-Left, PyMuPDF un axe Y Top-Left.
-La conversion des coordonnees est necessaire pour un crop correct.
+Le parcours maintient la section courante : un `section_header` (ou un `title`) ouvre une
+nouvelle section et reste rattache au document ; tout autre element se rattache au dernier
+en-tete rencontre. La section courante **survit aux lots de pages**, de sorte que la
+hierarchie d'un livre ne se brise pas toutes les cinq pages.
 
-## Format de sortie JSON
+Chaque element porte donc :
+
+| Champ           | Signification                                          |
+|-----------------|--------------------------------------------------------|
+| `reference_id`  | Parent : identifiant de la section, ou `DOC`           |
+| `page_position` | Rang de l'element dans sa page                         |
+| `ref_position`  | Rang de l'element sous son parent                      |
+| `order`         | Ordre de lecture global, porte par l'arete `PARENT_OF` |
+
+### 4. Liaison legende -> ressource
+
+Une legende (`caption`) est reliee par une arete `LINKED_TO(describes)` au dernier
+element visuel rencontre avant elle (`table` ou `picture`), dans l'ordre de lecture.
+
+### 5. Crop et upload des medias
+
+Pour les elements visuels d'un PDF (`picture`, `table`, `figure`, `graphic`), le service :
+
+1. Utilise le document **PyMuPDF** deja ouvert pour le fichier — une seule ouverture par
+   document, et non une par image ;
+2. Crop aux coordonnees de la bounding box, avec un facteur de zoom (`IMAGE_CROP_ZOOM`) ;
+3. Pousse le PNG sur le bucket MinIO `documents` ;
+4. Stocke l'URL resultante dans `minio_url`.
+
+**Attention** : Docling raisonne en axe Y Bottom-Left, PyMuPDF en Top-Left. La conversion
+de coordonnees est faite dans `images.crop_and_upload`.
+
+Les images des captures HTML, elles, ont deja ete exportees vers MinIO par l'asset de
+nettoyage en amont : le service se contente de propager leur URL.
+
+### 6. Persistance
+
+Chaque lot d'elements est valide contre le schema partage
+(`src/pipeline/schemas.py`), puis ecrit dans le graphe **puis** dans l'index vectoriel.
+L'ordre compte : si NebulaGraph refuse le lot, les vecteurs correspondants ne sont pas
+indexes et l'erreur remonte jusqu'au job.
+
+Les textes longs sont **decoupes** en fenetres recouvrantes (`CHUNK_SIZE` / `CHUNK_OVERLAP`)
+avant vectorisation, au lieu d'etre tronques. Un element tenant en un seul chunk garde son
+identifiant nu ; un element decoupe produit des identifiants `{element_id}#0`, `#1`, etc.,
+mais ses metadonnees `element_id` et `graph_node_id` restent le hash de l'element.
+
+## Format d'un element
 
 ```json
 {
-  "metadata": {
-    "filename": "2408.09869",
-    "type_file": "pdf",
-    "total_pages": 9
-  },
-  "elements": [
-    {
-      "id": "a950b65a3b",
-      "label": "picture",
-      "page_no": 1,
-      "bbox": {"l": 256.38, "t": 719.3, "r": 355.54, "b": 622.85},
-      "reference_id": "DOC",
-      "reference_ressources": null,
-      "content": null,
-      "page_position": 1,
-      "ref_position": 1,
-      "type": "resource",
-      "text": "",
-      "minio_url": "http://minio:9000/documents/..."
-    },
-    {
-      "id": "023351d5f4",
-      "label": "section_header",
-      "page_no": 1,
-      "bbox": {"l": 108.0, "t": 267.8, "r": 190.81, "b": 257.05},
-      "reference_id": "DOC",
-      "page_position": 8,
-      "ref_position": 8,
-      "type": "text",
-      "text": "1 Introduction"
-    },
-    {
-      "id": "93c9713358",
-      "label": "text",
-      "page_no": 1,
-      "bbox": {"l": 108.0, "t": 239.37, "r": 504.0, "b": 143.55},
-      "reference_id": "023351d5f4",
-      "page_position": 9,
-      "ref_position": 1,
-      "type": "text",
-      "text": "Converting PDF..."
-    }
-  ]
+  "id": "023351d5f4",
+  "label": "section_header",
+  "page_no": 1,
+  "bbox": {"l": 108.0, "t": 267.8, "r": 190.81, "b": 257.05},
+  "text": "1 Introduction",
+  "order": 7,
+  "reference_id": "DOC",
+  "page_position": 7,
+  "ref_position": 0
 }
 ```
+
+Les elements visuels portent en plus `minio_url`. `bbox` vaut `null` pour les formats
+non pagines (HTML, Markdown), qui n'ont pas de coordonnees.
 
 ## Configuration Docling
 
 ```python
-pipeline_options = PdfPipelineOptions(
-    do_ocr=False,
-    do_table_structure=True,
-    table_structure_options=TableStructureOptions(mode=TableFormerMode.FAST),
-    do_code_enrichment=False,
-    do_formula_enrichment=False,
+pipeline_options = PdfPipelineOptions(do_ocr=False, do_table_structure=False)
+converter = DocumentConverter(
+    format_options={"pdf": PdfFormatOption(pipeline_options=pipeline_options)}
 )
 ```
 
+L'OCR et la reconstruction de structure de tables sont desactives : ils multiplient le
+temps de conversion, et les tables sont de toute facon croppees en image et poussees sur
+MinIO. A reactiver seulement si le corpus contient des scans.
+
 ## Problemes connus et solutions
 
-- **OOM (Out Of Memory)** : 14 Go de RAM sur une machine WSL 16 Go crashait les autres
-  services. Solution : limite a 10 Go, `do_table_structure=False` si necessaire,
-  `BATCH_PAGE_SIZE=5`, `FLUSH_BUFFER_SIZE=1`.
+- **OOM (Out Of Memory)** : 14 Go de RAM sur une machine WSL de 16 Go faisait tomber les
+  autres services. Solution : limite a 10 Go, `do_table_structure=False`,
+  `PDF_BATCH_PAGES=5`, et le backend Docling est dechargé entre deux lots.
 
-- **Crop muet** : Les images n'etaient pas envoyees a MinIO sans erreur.
-  Cause : coordonnees Y inversees (Bottom-Left Docling vs Top-Left PyMuPDF).
-  Solution : conversion d'axe dans `crop_and_upload_image`.
+- **Crop muet** : les images n'arrivaient pas sur MinIO, sans erreur. Cause : axe Y
+  inverse entre Docling (Bottom-Left) et PyMuPDF (Top-Left).
+
+- **Formules LaTeX perdues** : l'echappement nGQL traitait le guillemet mais pas
+  l'antislash, si bien qu'un texte contenant `\frac` ou `\alpha` produisait une requete
+  invalide. Les noeuds `Formula` d'un livre de mathematiques etaient rejetes en silence.
+  L'antislash est desormais echappe en premier (`ngql.escape_ngql`, couvert par des tests).
+
+- **Lots perdus en silence** : une erreur de conversion etait journalisee puis oubliee, et
+  le run se terminait au vert sur un document incomplet. Les lots en echec sont desormais
+  collectes — les autres pages sont bien ingerees — et le job echoue a la fin en listant
+  les pages manquantes.
 
 ## Commandes utiles
 
@@ -133,4 +159,7 @@ docker compose logs docling-service --tail 100 -f
 curl -X POST "http://localhost:8000/extract" \
   -H "Content-Type: application/json" \
   -d '{"filepath": "/opt/dagster/app/Datas/pdfs/mon_livre.pdf"}'
+
+# Suivi du job retourne
+curl -s "http://localhost:8000/jobs/a1b2c3d4e5f6"
 ```

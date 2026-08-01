@@ -1,6 +1,6 @@
 # RAG Assistant Pipeline
 
-**Pipeline d'ingestion de documents PDF et HTML pour un assistant RAG : extraction structurée via Docling, graphe de connaissances NebulaGraph, base vectorielle ChromaDB, médias sur MinIO, orchestration Dagster.**
+**Pipeline d'ingestion de documents PDF, HTML et Markdown pour un assistant RAG : extraction structurée via Docling, graphe de connaissances NebulaGraph, base vectorielle ChromaDB, médias sur MinIO, orchestration Dagster.**
 
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9?logo=uv&logoColor=white)
@@ -11,8 +11,8 @@
 
 ## Architecture & Technologies
 
-- **Docling-Service (FastAPI)** : Microservice dédié à l'extraction de documents via Docling (sur GPU). Les images et tableaux complexes en sont extraits et découpés *(crop)* avec PyMuPDF.
-- **Orchestration (Dagster)** : Les sources sont déclarées dans `src/pipeline/sources.yaml` ; une factory génère pour chacune ses partitions (une par fichier), son job et son sensor. Les sources HTML passent par un asset de nettoyage universel (trafilatura + readability) avant extraction.
+- **Docling-Service (FastAPI)** : Microservice dédié à l'extraction de documents via Docling (sur GPU). Les images et tableaux complexes en sont extraits et découpés *(crop)* avec PyMuPDF. L'extraction est **asynchrone** : `POST /extract` met en file et rend un identifiant de job, qu'un worker unique déroule pendant que Dagster suit l'avancement.
+- **Orchestration (Dagster)** : Les sources sont déclarées dans `src/pipeline/sources.yaml` ; une factory génère pour chacune ses partitions (une par fichier), son job et son sensor. Les sources HTML passent par un asset de nettoyage universel (trafilatura + readability) avant extraction ; les PDF et les Markdown partent directement à l'extraction.
 - **Base Graphe** : [NebulaGraph](https://nebula-graph.io/) couplé au Studio pour créer la cartographie relationnelle (Document > Section > Text > Image/Table).
 - **Base Vectorielle** : [ChromaDB](https://www.trychroma.com/) couplé à des modèles d'embeddings locaux (`SentenceTransformers`).
 - **Stockage Objet** : [MinIO](https://min.io/) pour héberger les images extraites et récupérables via la clé `minio_url`.
@@ -22,19 +22,25 @@
 
 ```mermaid
 flowchart TD
-    A["Datas/ — tes fichiers PDF & HTML"] --> S1["pdfs_sensor (scan 30 s)"]
+    A["Datas/ — tes fichiers PDF, HTML & Markdown"] --> S1["pdfs_sensor (scan 30 s)"]
     A --> S2["livres_html_sensor (scan 30 s)"]
+    A --> S3["markdown_sensor (scan 30 s)"]
     S1 -- "1 partition + 1 run par fichier" --> E1["asset pdfs/extracted_document"]
+    S3 -- "1 partition + 1 run par fichier" --> E3["asset markdown/extracted_document"]
     S2 -- "1 partition + 1 run par fichier" --> C["asset livres_html/cleaned_html<br/>nettoyage universel"]
     C -- "chemin du HTML nettoyé" --> E2["asset livres_html/extracted_document"]
-    E1 -- "POST /extract (chemin du PDF)" --> D["Service Docling (GPU)<br/>PDF : lots de 5 pages, ordre + n° de page<br/>HTML : conversion directe"]
-    E2 -- "POST /extract (chemin nettoyé)" --> D
+    E1 -- "POST /extract → job_id" --> D["Service Docling (GPU)<br/>file de jobs, 1 document à la fois<br/>PDF : lots de 5 pages<br/>HTML & Markdown : conversion directe"]
+    E2 -- "POST /extract → job_id" --> D
+    E3 -- "POST /extract → job_id" --> D
+    D -. "GET /jobs/{id} — avancement" .-> E1
     D --> N["NebulaGraph<br/>graphe du document"]
-    D --> V["ChromaDB<br/>vecteurs du texte"]
+    D --> V["ChromaDB<br/>vecteurs du texte, découpés"]
     D --> M["MinIO<br/>images croppées"]
 ```
 
 Chaque source déclarée dans `sources.yaml` génère sa propre chaîne (sensor → partitions → assets → job), préfixée par son nom. Le service Docling est le seul à écrire dans les trois stores.
+
+Le débit est cadencé à deux niveaux : la file Dagster (`max_concurrent_runs: 2` dans `dagster.yaml`) limite le nombre de runs simultanés, et le service Docling ne convertit qu'un document à la fois. Un corpus de plusieurs dizaines de livres se déroule donc sans saturer la machine — il prend le temps qu'il prend, et l'avancement de chaque document est visible dans les logs de son run.
 
 > Détails : [documentation/architecture.md](documentation/architecture.md)
 
@@ -91,7 +97,7 @@ services:
 | **ChromaDB** | `http://localhost:8080/api/v1` | Point d'entrée de la base vectorielle. |
 
 ### 4. Lancer l'ingestion
-1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML).
+1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML, `Datas/mds/` pour le Markdown).
 2. Ouvrez l'interface **Dagster** : chaque source déclarée dans `src/pipeline/sources.yaml` a son propre sensor (`pdfs_sensor`, `livres_html_sensor`, ...), actif par défaut dans **Overview -> Sensors**.
 3. Le système détecte automatiquement un nouveau fichier (une partition par fichier) et lance le pipeline complet pour l'ingérer dans Nebula, ChromaDB, et MinIO !
 
@@ -112,6 +118,22 @@ Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gi
    ```
 3. Rechargez le code location dans l'UI Dagster (bouton **Reload definitions**). Un sensor `capture_monsite_sensor` apparaît et ingère les fichiers.
 
+### Les trois types de sources
+
+| `type` | Chaîne d'assets | Quand l'utiliser |
+|---|---|---|
+| `pdf` | extraction directe, par lots de pages, images croppées vers MinIO | Livres et documents paginés |
+| `html` | nettoyage universel puis extraction | Captures de sites, livres découpés en chapitres HTML |
+| `md` | extraction directe | Markdown déjà propre : notes, exports, documentation |
+
+Le Markdown ne passe pas par le nettoyage : il n'a ni boilerplate à retirer ni image inline à exporter.
+
+```yaml
+- name: markdown
+  glob: "mds/**/*.md"
+  type: md
+```
+
 ### Nettoyage HTML universel
 
 Les sources HTML passent par un nettoyage en étages, sans configuration par site :
@@ -121,6 +143,43 @@ Les sources HTML passent par un nettoyage en étages, sans configuration par sit
 4. **Garde-fou** : si trop peu de texte est extrait, le HTML pré-nettoyé est conservé tel quel (rien n'est perdu) et un warning apparaît dans les logs Dagster.
 
 La stratégie retenue, les tailles avant/après et le nombre d'images exportées sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition. Si un site ressort mal, déclarez-lui un profil `detect`/`content`/`strip` dans `sources.yaml` (voir l'exemple en tête du fichier).
+
+---
+
+## Ingestion à grande échelle
+
+Un corpus de plusieurs dizaines de livres de 300 à 400 pages se déroule sans intervention, mais demande de savoir quoi regarder.
+
+**Comment le débit est cadencé.** Le sensor crée une partition et un run par fichier. La file Dagster n'en exécute que deux à la fois (`max_concurrent_runs` dans `dagster.yaml`), et le service Docling ne convertit qu'un document à la fois : les autres runs attendent visiblement dans **Runs → Queued**. Rien ne sature, rien ne se perd, et l'ordre est celui de la découverte.
+
+**Suivre un document.** Chaque run journalise l'avancement de son job toutes les 15 secondes : pages traitées, éléments extraits, chunks écrits. À la fin, les métadonnées de l'asset `extracted_document` récapitulent le total et la durée. Côté service :
+
+```bash
+docker compose logs -f docling-service
+```
+
+**Ce qui fait échouer un run — et ce que ça veut dire.**
+
+| Message | Cause | Quoi faire |
+|---|---|---|
+| `Job ... inconnu du service Docling (redémarrage ?)` | Le service a redémarré, la file est en mémoire | Relancer la partition depuis l'UI Dagster |
+| `N batch(s) non convertis` | Des pages n'ont pas pu être lues par Docling | Les autres pages sont bien ingérées ; le message liste les pages manquantes |
+| `Service Docling toujours pas prêt` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
+| `nGQL rejeté ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
+
+**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro sur tous les stores, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb` et `graphd` par leur nom de service) :
+
+```bash
+docker compose exec docling-service python src/wipe_stores.py
+```
+
+Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma :
+
+```bash
+docker compose restart docling-service
+```
+
+**Volumétrie.** Prévoyez de la place pour `Datas/database/` (Nebula, ChromaDB, MinIO) et pour les images croppées : un livre illustré de 400 pages en produit couramment plusieurs centaines.
 
 ---
 
@@ -174,12 +233,23 @@ RAG_Assistant/
 │   └── .cleaned/               # HTML nettoyés (générés par le pipeline)
 ├── documentation/              # Documentation technique détaillée de l'architecture
 ├── src/
-│   ├── docling_service/        # API FastAPI pour l'extraction et PyMuPDF
+│   ├── docling_service/        # Microservice d'extraction (GPU)
+│   │   ├── main.py             # Application FastAPI : /extract, /jobs, /health
+│   │   ├── jobs.py             # File de jobs et worker unique
+│   │   ├── extraction.py       # Conversion Docling (PDF paginé, HTML/MD direct)
+│   │   ├── elements.py         # Taxonomie des labels, hiérarchie et positions
+│   │   ├── storage.py          # Persistance d'un lot : graphe puis vecteurs
+│   │   ├── nebula.py           # Écritures NebulaGraph groupées, pool partagé
+│   │   ├── ngql.py             # Échappement et construction des requêtes nGQL
+│   │   ├── vectors.py          # Embeddings par lots et upsert ChromaDB
+│   │   ├── chunking.py         # Découpage des textes longs
+│   │   └── images.py           # Crop PyMuPDF et export MinIO
 │   └── pipeline/               # Orchestration Dagster
 │       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
 │       ├── sources.py          # Modèles de configuration des sources
 │       ├── factory.py          # Génération assets/jobs/sensors par source
 │       ├── cleaning.py         # Nettoyage HTML universel (trafilatura/readability)
+│       ├── schemas.py          # Contrat de données partagé avec rag-agent-chat
 │       └── definitions.py      # Point d'entrée Dagster
 ├── docker-compose.yml          # Configuration de la stack
 ├── Dockerfile.dagster          # Environnement Dagster
@@ -191,8 +261,10 @@ RAG_Assistant/
 ## Tests
 
 ```bash
-pytest tests/
+uv sync && uv pip install -r requirements-dev.txt && uv run pytest
 ```
+
+La logique sensible du service d'extraction (échappement nGQL, découpage des textes, hiérarchie et positions des éléments, file de jobs) vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph.
 
 ---
 
