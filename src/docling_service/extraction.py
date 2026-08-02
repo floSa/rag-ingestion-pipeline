@@ -72,29 +72,34 @@ class BatchExtractionError(RuntimeError):
     """Au moins un batch de pages n'a pas pu etre converti."""
 
 
-class NoTextLayerError(RuntimeError):
-    """Le PDF n'a pas de couche texte : c'est un scan, il faudrait l'OCR."""
-
-
 def _noop(**_: Any) -> None:
     """Rapporteur par defaut, sans effet."""
 
 
-@lru_cache(maxsize=1)
-def get_converter() -> DocumentConverter:
+@lru_cache(maxsize=2)
+def get_converter(ocr: bool = False) -> DocumentConverter:
     """Retourne le convertisseur Docling, construit au premier appel.
 
     Construit paresseusement pour que le module reste importable (et le service
     demarrable) meme si le chargement des modeles est lent.
+
+    Args:
+        ocr: Activer la reconnaissance de caracteres. Reserve aux documents
+            scannes : elle multiplie le temps de conversion, et un PDF normal
+            n'en a aucun besoin puisque son texte est deja lisible.
+
+    Returns:
+        Le convertisseur correspondant. Les deux variantes sont conservees,
+        pour ne pas recharger les modeles a chaque bascule.
     """
-    logger.info("Chargement des modeles Docling...")
+    logger.info("Chargement des modeles Docling (ocr=%s)...", ocr)
     # Docling active l'OCR et la reconstruction de structure des tables par
     # defaut : sur un livre de plusieurs centaines de pages, cela multiplie le
     # temps de conversion. Les tables sont de toute facon croppees en image.
     # La cle est InputFormat.PDF et non "pdf" : les deux fonctionnent
     # aujourd'hui, mais une cle non reconnue ferait retomber silencieusement
     # sur les defauts, sans autre symptome qu'une lenteur inexpliquee.
-    options = PdfPipelineOptions(do_ocr=False, do_table_structure=False)
+    options = PdfPipelineOptions(do_ocr=ocr, do_table_structure=False)
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)}
     )
@@ -398,7 +403,14 @@ def _extract_pdf(
         total_pages = len(document)
         skipped = _front_back_matter_pages(document, total_pages, stem)
         ranges = matter.kept_ranges(total_pages, skipped)
-        _assert_has_text_layer(document, ranges, stem)
+        besoin_ocr = not _has_text_layer(document, ranges)
+
+    if besoin_ocr:
+        # Un scan n'a pas de texte selectionnable. Plutot que de le refuser, on
+        # le repasse avec la reconnaissance de caracteres : c'est lent, mais
+        # c'est le seul moyen de lire l'ouvrage. Les PDF normaux, eux, gardent
+        # leur vitesse puisqu'ils n'empruntent jamais cette branche.
+        logger.warning("[%s] aucune couche texte : conversion avec OCR", stem)
 
     logger.info(
         "[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped)
@@ -424,7 +436,7 @@ def _extract_pdf(
     )
 
     accumulator = DocumentAccumulator(identity)
-    converter = get_converter()
+    converter = get_converter(ocr=besoin_ocr)
     total_chunks = 0
     failed_batches: list[str] = []
     # Detectee sur le premier lot converti, puis conservee : la langue d'un
@@ -493,6 +505,7 @@ def _extract_pdf(
         "chunks": total_chunks,
         "pages": total_pages,
         "pages_skipped": len(skipped),
+        "ocr": besoin_ocr,
         "language": langue,
         "type_file": "pdf",
     }
@@ -542,37 +555,29 @@ def _front_back_matter_pages(document: Any, total_pages: int, stem: str) -> set[
     return skipped
 
 
-def _assert_has_text_layer(document: Any, ranges: list[tuple[int, int]], stem: str) -> None:
-    """Refuse un PDF scanne, avant d'y passer un quart d'heure de conversion.
+def _has_text_layer(document: Any, ranges: list[tuple[int, int]]) -> bool:
+    """Indique si le PDF porte du texte selectionnable.
 
-    Un livre scanne sans OCR n'a pas de texte selectionnable. Docling le
-    convertirait sans broncher et produirait un document quasi vide : le run
-    passerait au vert sur un trou, ce qui est le pire resultat possible sur une
-    bibliotheque de deux cents ouvrages. Le controle porte sur des pages
-    reparties dans tout le document et coute quelques millisecondes.
+    Un livre scanne n'en a pas : Docling le convertirait sans broncher et
+    produirait un document quasi vide, le run passerait au vert sur un trou.
+    C'est le pire resultat possible sur une bibliotheque de deux cents
+    ouvrages, d'ou ce controle — qui aiguille vers l'OCR plutot que de laisser
+    passer.
+
+    Le sondage porte sur des pages reparties dans tout le document et coute
+    quelques millisecondes.
 
     Args:
         document: Document PyMuPDF ouvert.
         ranges: Plages de pages a convertir.
-        stem: Nom du document, pour le message d'erreur.
 
-    Raises:
-        NoTextLayerError: Si les pages sondees ne portent pas de texte.
+    Returns:
+        ``True`` si le document est lisible sans reconnaissance de caracteres.
     """
     pages = matter.sample_pages(ranges)
     if not pages:
-        return
-
-    textes = [document[page - 1].get_text() for page in pages]
-    if matter.has_text_layer(textes):
-        return
-
-    moyenne = sum(len(t.strip()) for t in textes) / len(textes)
-    raise NoTextLayerError(
-        f"{stem} : pas de couche texte ({moyenne:.0f} caracteres par page sur "
-        f"{len(pages)} pages sondees). Le document est vraisemblablement un scan ; "
-        f"il faut l'OCR avant de l'ingerer."
-    )
+        return True
+    return matter.has_text_layer([document[page - 1].get_text() for page in pages])
 
 
 def _pdf_font_profile(
