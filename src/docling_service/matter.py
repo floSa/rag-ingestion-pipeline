@@ -252,6 +252,53 @@ def detect_index_pages(page_texts: dict[int, str], total_pages: int) -> set[int]
     return trouvees
 
 
+# En dessous, un PDF n'a pas de couche texte exploitable : c'est un scan, et
+# le convertir produirait un document vide sans que rien ne le signale. Une
+# page de livre normale porte 1 500 a 3 000 caracteres, une page scannee sans
+# OCR en rend zero. Le seuil est volontairement tres bas : mieux vaut ingerer
+# un atlas presque muet que rejeter un ouvrage legitime.
+MIN_CHARS_PER_PAGE = 50
+
+# Nombre de pages sondees pour juger de la couche texte.
+TEXT_LAYER_SAMPLE = 20
+
+
+def sample_pages(ranges: list[tuple[int, int]], sample_size: int = TEXT_LAYER_SAMPLE) -> list[int]:
+    """Choisit des pages reparties sur tout le document.
+
+    Repartir plutot que prendre les premieres : un livre commence souvent par
+    des pages de garde presque vides, qui feraient conclure a tort au scan.
+
+    Args:
+        ranges: Plages de pages conservees.
+        sample_size: Nombre de pages souhaitees.
+
+    Returns:
+        Les numeros de page a sonder, dans l'ordre.
+    """
+    pages = [page for debut, fin in ranges for page in range(debut, fin + 1)]
+    if len(pages) <= sample_size:
+        return pages
+    pas = len(pages) / sample_size
+    return [pages[int(rang * pas)] for rang in range(sample_size)]
+
+
+def has_text_layer(texts: list[str], min_chars_per_page: int = MIN_CHARS_PER_PAGE) -> bool:
+    """Indique si les pages sondees portent du texte selectionnable.
+
+    Args:
+        texts: Textes bruts des pages sondees.
+        min_chars_per_page: Moyenne minimale de caracteres par page.
+
+    Returns:
+        ``False`` si le document est vraisemblablement un scan sans OCR.
+    """
+    if not texts:
+        return True
+    total = sum(len(texte.strip()) for texte in texts)
+    return total / len(texts) >= min_chars_per_page
+
+
 def kept_ranges(total_pages: int, skipped: set[int]) -> list[tuple[int, int]]:
     """Regroupe les pages conservees en plages contigues.
 

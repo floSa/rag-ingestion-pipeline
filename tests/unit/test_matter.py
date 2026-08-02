@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from src.docling_service.matter import (
     detect_index_pages,
+    has_text_layer,
     is_front_back_matter,
     kept_ranges,
     looks_like_index_page,
     normalize_title,
     pages_to_skip,
+    sample_pages,
 )
 
 
@@ -181,3 +183,41 @@ class TestKeptRanges:
         """Les numeros restent ceux du fichier : aucune renumerotation."""
         plages = kept_ranges(280, set(range(1, 12)) | set(range(274, 281)))
         assert plages == [(12, 273)]
+
+
+class TestSamplePages:
+    def test_returns_everything_when_short(self):
+        assert sample_pages([(1, 5)], sample_size=20) == [1, 2, 3, 4, 5]
+
+    def test_spreads_over_the_whole_document(self):
+        pages = sample_pages([(1, 300)], sample_size=10)
+        assert len(pages) == 10
+        assert pages[0] == 1
+        assert pages[-1] > 250  # la fin du livre est bien sondee
+
+    def test_never_samples_a_skipped_page(self):
+        pages = sample_pages([(1, 10), (21, 30)], sample_size=8)
+        assert all(page <= 10 or page >= 21 for page in pages)
+
+    def test_no_range_at_all(self):
+        assert sample_pages([], sample_size=5) == []
+
+
+class TestHasTextLayer:
+    def test_normal_book(self):
+        assert has_text_layer(["x" * 2000] * 10)
+
+    def test_scan_without_ocr(self):
+        """Un scan ne rend que quelques artefacts par page, voire rien."""
+        assert not has_text_layer(["", "  ", "3", ""] * 5)
+
+    def test_illustrated_book_still_passes(self):
+        """Un ouvrage tres illustre garde ses legendes : il ne doit pas etre rejete."""
+        legende = "Figure 4.2 — Repartition des residus par quantile, echantillon complet."
+        assert has_text_layer([legende] * 10)
+
+    def test_a_few_empty_pages_do_not_condemn_the_book(self):
+        assert has_text_layer(["x" * 2000] * 8 + ["", ""])
+
+    def test_no_sample(self):
+        assert has_text_layer([])

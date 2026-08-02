@@ -66,6 +66,10 @@ class BatchExtractionError(RuntimeError):
     """Au moins un batch de pages n'a pas pu etre converti."""
 
 
+class NoTextLayerError(RuntimeError):
+    """Le PDF n'a pas de couche texte : c'est un scan, il faudrait l'OCR."""
+
+
 def _noop(**_: Any) -> None:
     """Rapporteur par defaut, sans effet."""
 
@@ -283,8 +287,9 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
     with fitz.open(pdf_path) as document:
         total_pages = len(document)
         skipped = _front_back_matter_pages(document, total_pages, stem)
+        ranges = matter.kept_ranges(total_pages, skipped)
+        _assert_has_text_layer(document, ranges, stem)
 
-    ranges = matter.kept_ranges(total_pages, skipped)
     logger.info(
         "[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped)
     )
@@ -390,6 +395,39 @@ def _front_back_matter_pages(document: Any, total_pages: int, stem: str) -> set[
         skipped |= par_la_forme
 
     return skipped
+
+
+def _assert_has_text_layer(document: Any, ranges: list[tuple[int, int]], stem: str) -> None:
+    """Refuse un PDF scanne, avant d'y passer un quart d'heure de conversion.
+
+    Un livre scanne sans OCR n'a pas de texte selectionnable. Docling le
+    convertirait sans broncher et produirait un document quasi vide : le run
+    passerait au vert sur un trou, ce qui est le pire resultat possible sur une
+    bibliotheque de deux cents ouvrages. Le controle porte sur des pages
+    reparties dans tout le document et coute quelques millisecondes.
+
+    Args:
+        document: Document PyMuPDF ouvert.
+        ranges: Plages de pages a convertir.
+        stem: Nom du document, pour le message d'erreur.
+
+    Raises:
+        NoTextLayerError: Si les pages sondees ne portent pas de texte.
+    """
+    pages = matter.sample_pages(ranges)
+    if not pages:
+        return
+
+    textes = [document[page - 1].get_text() for page in pages]
+    if matter.has_text_layer(textes):
+        return
+
+    moyenne = sum(len(t.strip()) for t in textes) / len(textes)
+    raise NoTextLayerError(
+        f"{stem} : pas de couche texte ({moyenne:.0f} caracteres par page sur "
+        f"{len(pages)} pages sondees). Le document est vraisemblablement un scan ; "
+        f"il faut l'OCR avant de l'ingerer."
+    )
 
 
 def _convert_batch(
