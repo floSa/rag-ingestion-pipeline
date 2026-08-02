@@ -83,7 +83,7 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `jobs.py`       | File de jobs et worker unique                                         |
 | `extraction.py` | Conversion Docling, pagination des PDF, orchestration d'un document   |
 | `elements.py`   | Taxonomie des labels, hierarchie et positions des elements            |
-| `markdown.py`   | Normalisation du Markdown avant conversion (paragraphes recolles)     |
+| `markdown.py`   | Markdown : extraction des images, normalisation des paragraphes        |
 | `storage.py`    | Persistance d'un lot : graphe puis vecteurs                           |
 | `nebula.py`     | Pool partage, sessions, ecritures groupees, schema                    |
 | `ngql.py`       | Echappement et construction des requetes nGQL                         |

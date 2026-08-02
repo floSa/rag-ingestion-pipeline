@@ -34,6 +34,33 @@ Les lots de pages **ne se chevauchent pas**. Un chevauchement de deux pages exis
 pour dedupliquer, mais les identifiants sont deterministes depuis, et les ecritures
 sont des upserts : le recouvrement ne faisait plus que re-convertir les memes pages.
 
+#### Images des documents Markdown
+
+Un Markdown ne contient jamais ses images : il les **designe**. Deux syntaxes
+coexistent, et Docling n'en reconnait aucune — il les rend en texte brut.
+
+| Syntaxe | Origine | Ce qu'elle designe |
+|---------|---------|--------------------|
+| `![[fichier.jpg\|1000]]` | Obsidian | un nom de fichier, resolu par le coffre |
+| `![legende](chemin)` | Markdown standard | un chemin relatif a la note |
+
+Les liens sont donc extraits **avant** la conversion et remplaces par une
+balise placee exactement ou etait l'image. Apres conversion, la balise redevient
+un element de type `picture` portant l'URL du fichier envoye sur MinIO.
+
+La position compte autant que l'image : l'element occupe le meme rang dans
+l'ordre de lecture, si bien que la legende qui suit la figure lui reste
+adjacente et que la section qui la contient reste la sienne. C'est precisement
+ce que le graphe est cense preserver.
+
+La resolution des chemins reproduit le comportement d'Obsidian, qui ne met que
+le nom du fichier dans le lien : chemin relatif d'abord, puis recherche par nom
+parmi les fichiers voisins de la note (typiquement un dossier
+`Pièces jointes/`). Les liens situes dans un bloc de code sont laisses intacts.
+
+**Consequence pratique** : copier une note sans son dossier de pieces jointes
+fait perdre ses images. Copiez le dossier entier.
+
 #### Normalisation prealable du Markdown
 
 Docling convertit le Markdown **ligne a ligne**. Un fichier dont les paragraphes sont

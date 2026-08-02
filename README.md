@@ -138,7 +138,11 @@ Le Markdown ne passe pas par le nettoyage : il n'a ni boilerplate à retirer ni 
   type: md
 ```
 
-Un point mérite d'être connu : **Docling convertit le Markdown ligne par ligne**. Un fichier dont les paragraphes sont coupés à 80 colonnes produirait donc un élément par ligne, et la recherche vectorielle porterait sur des fragments de 75 caractères. Les paragraphes sont pour cette raison recollés avant conversion — sans toucher au fichier source, et en laissant intacts blocs de code, tableaux, listes, titres et retours à la ligne explicites.
+Deux points méritent d'être connus.
+
+**Docling convertit le Markdown ligne par ligne.** Un fichier dont les paragraphes sont coupés à 80 colonnes produirait donc un élément par ligne, et la recherche porterait sur des fragments de 75 caractères. Les paragraphes sont pour cette raison recollés avant conversion — sans toucher au fichier source, et en laissant intacts blocs de code, tableaux, listes, titres et retours à la ligne explicites.
+
+**Un Markdown ne contient jamais ses images, il les désigne.** Les deux syntaxes sont reconnues — `![[fichier.jpg|1000]]` d'Obsidian et `![légende](chemin)` du standard — et les images sont envoyées sur MinIO puis rattachées à leur place exacte dans le document. Corollaire : **copiez le dossier entier**, notes *et* pièces jointes. Une note copiée seule perd ses figures.
 
 ### Nettoyage HTML universel
 
