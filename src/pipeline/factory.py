@@ -330,7 +330,15 @@ def _build_sensor(
     def file_sensor(context: SensorEvaluationContext) -> SensorResult:
         source_dir = get_settings().source_dir
         pattern = str(Path(source_dir) / source.glob)
-        files = sorted(globlib.glob(pattern, recursive=True))
+        discovered = sorted(globlib.glob(pattern, recursive=True))
+
+        # Index, sommaire, page de copyright : aucune phrase a indexer, mais
+        # tout le vocabulaire de l'ouvrage. Ecartes avant meme la partition,
+        # ils ne coutent ni run, ni place, ni bruit dans les reponses.
+        files = [f for f in discovered if not source.is_ignored(f)]
+        if len(files) < len(discovered):
+            ecartes = [os.path.relpath(f, source_dir) for f in discovered if f not in set(files)]
+            context.log.info(f"Ignored (front/back matter): {', '.join(sorted(ecartes))}")
 
         try:
             cursor_data: dict[str, str] = json.loads(context.cursor) if context.cursor else {}

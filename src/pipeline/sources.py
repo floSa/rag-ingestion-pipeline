@@ -12,6 +12,12 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
+from src.docling_service.matter import (
+    FRONT_BACK_MATTER_TITLES,
+    is_front_back_matter,
+    normalize_title,
+)
+
 DEFAULT_SOURCES_FILE = Path(__file__).resolve().parent / "sources.yaml"
 
 SourceType = str  # voir SourceConfig.type pour les valeurs admises
@@ -72,11 +78,41 @@ class SourceConfig(BaseModel):
     glob: str
     type: str = Field(pattern=r"^(pdf|html|md)$")
     cleaning: CleaningOptions = Field(default_factory=CleaningOptions)
+    skip_front_back_matter: bool = Field(
+        default=True,
+        description="Ecarter les fichiers dont le nom designe une partie sans contenu "
+        "(Index, Table of Contents, Cover, Copyright...). Voir "
+        "FRONT_BACK_MATTER_TITLES pour la liste complete.",
+    )
+    extra_skip_titles: list[str] = Field(
+        default_factory=list,
+        description="Titres a ecarter en plus de la liste par defaut (ex: 'about this book').",
+    )
 
     @property
     def needs_cleaning(self) -> bool:
         """Indique si la source passe par une etape de nettoyage prealable."""
         return self.type in CLEANED_SOURCE_TYPES
+
+    @property
+    def skip_titles(self) -> frozenset[str] | None:
+        """Titres a ecarter pour cette source, ``None`` si le filtre est desactive."""
+        if not self.skip_front_back_matter:
+            return None
+        supplements = {normalize_title(titre) for titre in self.extra_skip_titles}
+        return FRONT_BACK_MATTER_TITLES | supplements
+
+    def is_ignored(self, path: str) -> bool:
+        """Indique si un fichier decouvert designe une partie sans contenu.
+
+        Args:
+            path: Chemin du fichier, absolu ou relatif.
+
+        Returns:
+            ``True`` si le fichier ne doit pas etre ingere.
+        """
+        titles = self.skip_titles
+        return titles is not None and is_front_back_matter(Path(path).stem, titles)
 
 
 class SourcesFile(BaseModel):

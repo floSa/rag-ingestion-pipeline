@@ -26,7 +26,7 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
-from src.docling_service import images, storage
+from src.docling_service import images, matter, storage
 from src.docling_service.elements import (
     VISUAL_LABELS,
     DocumentAccumulator,
@@ -281,10 +281,20 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
     stem = identity.filename
 
     with fitz.open(pdf_path) as document:
-        total_pages: int = len(document)
+        total_pages = len(document)
+        skipped = _front_back_matter_pages(document, total_pages, stem)
 
-    logger.info("[%s] PDF de %d pages", stem, total_pages)
-    report(pages_total=total_pages, pages_done=0, elements=0, chunks=0)
+    ranges = matter.kept_ranges(total_pages, skipped)
+    logger.info(
+        "[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped)
+    )
+    report(
+        pages_total=total_pages,
+        pages_done=0,
+        elements=0,
+        chunks=0,
+        skipped_pages=len(skipped),
+    )
 
     accumulator = DocumentAccumulator(identity)
     converter = get_converter()
@@ -293,33 +303,34 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
 
     # Le PDF est ouvert UNE fois pour tous les crops du document.
     with fitz.open(pdf_path) as document:
-        start_page = 1
-        while start_page <= total_pages:
-            end_page = min(start_page + settings.pdf_batch_pages - 1, total_pages)
-            logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
+        for range_start, range_end in ranges:
+            start_page = range_start
+            while start_page <= range_end:
+                end_page = min(start_page + settings.pdf_batch_pages - 1, range_end)
+                logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
 
-            try:
-                batch_elements = _convert_batch(
-                    converter, pdf_path, stem, document, accumulator, start_page, end_page
+                try:
+                    batch_elements = _convert_batch(
+                        converter, pdf_path, stem, document, accumulator, start_page, end_page
+                    )
+                except Exception as exc:
+                    # Une page illisible ne doit pas condamner les 399 autres : on
+                    # note l'echec, on continue, et le job echouera a la fin avec
+                    # la liste des pages manquantes. Jamais un run vert sur un trou.
+                    logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
+                    failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
+                else:
+                    # L'ecriture, elle, est bloquante : si un store refuse le lot,
+                    # continuer n'aurait aucun sens.
+                    total_chunks += storage.persist(batch_elements, identity, "pdf", total_pages)
+
+                report(
+                    pages_done=end_page,
+                    elements=accumulator.count,
+                    chunks=total_chunks,
+                    failed_batches=list(failed_batches),
                 )
-            except Exception as exc:
-                # Une page illisible ne doit pas condamner les 399 autres : on
-                # note l'echec, on continue, et le job echouera a la fin avec
-                # la liste des pages manquantes. Jamais un run vert sur un trou.
-                logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
-                failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
-            else:
-                # L'ecriture, elle, est bloquante : si un store refuse le lot,
-                # continuer n'aurait aucun sens.
-                total_chunks += storage.persist(batch_elements, identity, "pdf", total_pages)
-
-            report(
-                pages_done=end_page,
-                elements=accumulator.count,
-                chunks=total_chunks,
-                failed_batches=list(failed_batches),
-            )
-            start_page = end_page + 1
+                start_page = end_page + 1
 
     if failed_batches:
         raise BatchExtractionError(
@@ -332,8 +343,53 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
         "elements": accumulator.count,
         "chunks": total_chunks,
         "pages": total_pages,
+        "pages_skipped": len(skipped),
         "type_file": "pdf",
     }
+
+
+def _front_back_matter_pages(document: Any, total_pages: int, stem: str) -> set[int]:
+    """Pages a ne pas convertir : couverture, copyright, sommaire, index.
+
+    Deux sources, dans cet ordre :
+
+    1. **Les signets du PDF**, qui donnent le titre de chaque partie et sa page
+       physique. Ces pages sont resolues par le format lui-meme, elles ne
+       souffrent pas du decalage entre numerotation imprimee et rang reel.
+    2. **La forme des dernieres pages**, quand aucun signet ne designe l'index.
+       Beaucoup de PDF ont des signets partiels, ou pas de signets du tout.
+
+    Args:
+        document: Document PyMuPDF ouvert.
+        total_pages: Nombre de pages.
+        stem: Nom du document, pour les logs.
+
+    Returns:
+        Les numeros de page (1-indexes) a sauter.
+    """
+    try:
+        toc: list[tuple[int, str, int]] = [
+            (int(level), str(title), int(page)) for level, title, page in document.get_toc()
+        ]
+    except Exception:
+        logger.warning("[%s] signets illisibles, detection par la forme seule", stem)
+        toc = []
+
+    skipped = matter.pages_to_skip(toc, total_pages)
+    if skipped:
+        logger.info("[%s] signets : %d pages hors contenu ecartees", stem, len(skipped))
+
+    # L'index est la partie la plus nuisible : s'il n'a pas ete trouve par les
+    # signets, on le cherche a sa forme dans la queue du document.
+    if not any(page > total_pages * 0.6 for page in skipped):
+        debut = total_pages - max(1, int(total_pages * matter.INDEX_SEARCH_TAIL_RATIO))
+        textes = {page: document[page - 1].get_text() for page in range(debut + 1, total_pages + 1)}
+        par_la_forme = matter.detect_index_pages(textes, total_pages)
+        if par_la_forme:
+            logger.info("[%s] index reconnu a sa forme : %d pages", stem, len(par_la_forme))
+        skipped |= par_la_forme
+
+    return skipped
 
 
 def _convert_batch(

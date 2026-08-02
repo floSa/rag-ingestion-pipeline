@@ -136,3 +136,34 @@ class TestSourceConfigValidation:
         source = SourceConfig(name="ok", glob="**/*.html", type="html")
         assert source.cleaning.extra_remove_selectors == []
         assert source.cleaning.min_text_chars == 250
+
+
+class TestFrontBackMatterFilter:
+    def _source(self, **kwargs) -> SourceConfig:
+        return SourceConfig(name="livres", glob="htms/**/*.html", type="html", **kwargs)
+
+    def test_ignores_index_and_contents(self):
+        source = self._source()
+        assert source.is_ignored("htms/Practical MLOps/Index.html")
+        assert source.is_ignored("htms/Practical MLOps/Table of Contents.html")
+        assert source.is_ignored("/opt/dagster/app/Datas/htms/Livre/Copyright.html")
+
+    def test_keeps_the_body_of_the_book(self):
+        source = self._source()
+        for nom in (
+            "htms/Practical MLOps/1. Introduction to MLOps.html",
+            "htms/Practical MLOps/Preface.html",
+            "htms/Practical MLOps/A. Key Terms.html",
+            "htms/Workshop/13 Appendix.html",
+        ):
+            assert not source.is_ignored(nom), nom
+
+    def test_extra_titles_are_honoured(self):
+        source = self._source(extra_skip_titles=["About This Book"])
+        assert source.is_ignored("htms/Livre/About this book.html")
+        assert not source.is_ignored("htms/Livre/Chapitre 1.html")
+
+    def test_filter_can_be_disabled(self):
+        source = self._source(skip_front_back_matter=False)
+        assert source.skip_titles is None
+        assert not source.is_ignored("htms/Livre/Index.html")
