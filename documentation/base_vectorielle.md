@@ -33,6 +33,7 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `page_no` | Page source, pour citer la référence à l'utilisateur |
 | `minio_url` | URL de l'image associée, le cas échéant |
 | `reference_id` | Section parente (ou `DOC`) |
+| `language` | Langue du document (`en`, `fr`…), vide si indéterminée. Voir plus bas |
 | `section_title` | Titre de la section, exploitable pour l'affichage des citations |
 | `page_position` | Rang de l'élément dans sa page |
 | `ref_position` | Rang de l'élément sous son parent |
@@ -55,6 +56,31 @@ Autrement dit, en français, un passage sans rapport mais dans la bonne langue p
 **Remplacement possible sans changer le schéma.** `paraphrase-multilingual-MiniLM-L12-v2` produit des vecteurs de **384 dimensions**, exactement comme le modèle actuel : la collection ChromaDB n'a pas à changer de forme. Sur la même question française, le passage pertinent repasse **1er avec 0,746**, loin devant le reste.
 
 Le modèle se change par `EMBEDDING_MODEL_NAME` dans `.env`, mais **ce n'est pas une décision locale** : `rag-agent-chat` doit encoder ses questions avec le même modèle, sans quoi les vecteurs ne sont plus comparables. Le changement implique donc les deux projets et une ré-ingestion complète.
+
+### Les quatre façons de traiter le multilingue
+
+Quand la question et le corpus ne sont pas dans la même langue, quatre approches existent. Elles ne se valent pas.
+
+| Approche | Ce que ça coûte | Ce que ça vaut |
+|---|---|---|
+| **1. Modèle d'embedding multilingue** | Une ré-ingestion, et le même modèle des deux côtés | **La plus simple et la plus sûre.** Un seul index, aucune latence ajoutée, rien à traduire. Le texte original reste la source citée. |
+| **2. Traduire la question au moment de la recherche** | Un appel de modèle par question (~1 s), et le risque de traduire de travers un terme technique | Honorable si le corpus est **d'une seule langue**. Ingérable quand il en mélange plusieurs : traduire vers quoi ? |
+| **3. Traduire les documents à l'ingestion** | Très cher (des heures de calcul), et lourd de conséquences | **À éviter.** Une traduction automatique déforme le vocabulaire technique, et on cite alors un texte que l'auteur n'a jamais écrit. |
+| **4. Double index, original et traduit** | Deux fois la place, deux fois l'ingestion | Se défend pour un corpus critique. Disproportionné ici. |
+
+**Ce qui est retenu :** l'approche 1 est la recommandation, et la métadonnée `language` est là pour la rendre exploitable. Tant que le modèle anglais est en place, l'agent peut au minimum :
+
+- dire à l'utilisateur dans quelle langue sont les sources trouvées ;
+- filtrer sur `language` quand la question porte explicitement sur un corpus ;
+- reformuler la question en anglais avant de chercher, si l'index est à 95 % anglais — c'est l'approche 2, applicable **sans rien ré-ingérer**, et donc le dépannage immédiat.
+
+### D'où vient la métadonnée `language`
+
+Détectée par comptage de mots-outils sur les 20 000 premiers caractères du document ([`language.py`](src/docling_service/language.py)). À l'échelle d'un ouvrage, c'est très discriminant — ce qui serait fragile sur une seule phrase.
+
+Sept langues reconnues : `en`, `fr`, `es`, `de`, `it`, `pt`, `nl`. La valeur est **vide** dès que le doute est permis : mieux vaut pas de réponse qu'une mauvaise. Les mots partagés entre plusieurs langues (`la`, `de`, `on`…) sont retirés des listes au chargement, sinon ils feraient pencher un score au hasard.
+
+Vérifié sur le corpus : 6 notes françaises et les chapitres anglais correctement identifiés, aucune erreur.
 
 ## Commandes utiles
 Lors de vos futurs développements du système RAG Agentique, vous nécessiterez régulièrement ces concepts :

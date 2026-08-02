@@ -166,6 +166,25 @@ Les sources HTML passent par un nettoyage en étages, sans configuration par sit
 
 La stratégie retenue, les tailles avant/après et le nombre d'images exportées sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition. Si un site ressort mal, déclarez-lui un profil `detect`/`content`/`strip` dans `sources.yaml` (voir l'exemple en tête du fichier).
 
+### Ce qui n'est ingéré qu'une fois : détection des doublons
+
+Sur une bibliothèque constituée au fil des années, le même ouvrage revient sous deux noms — une copie de sauvegarde, un téléchargement refait. Deux cas, deux traitements :
+
+| Cas | Traitement |
+|---|---|
+| **Le même fichier, même chemin, ré-ingéré** | Les identifiants d'éléments sont déterministes et les écritures sont des *upserts* : la nouvelle version écrase l'ancienne. Aucun doublon possible, c'est acquis depuis le début. |
+| **Le même fichier, sous un autre nom ou un autre dossier** | L'empreinte SHA-256 du fichier est portée par le nœud `Document`. Avant toute conversion, le service cherche si un autre document porte la même empreinte : si oui, le fichier est **ignoré**, le run réussit et signale `duplicate_of` avec le chemin de l'original. |
+
+Le contrôle a lieu **avant la conversion** : reconnaître un doublon coûte une lecture de fichier, le convertir pour rien coûte plusieurs minutes de GPU.
+
+**Ce que ça ne détecte pas, volontairement** : deux éditions différentes du même livre, ou le même ouvrage en PDF et en HTML. Les fichiers diffèrent, donc les empreintes aussi. Les rapprocher demanderait une comparaison approximative, qui écarterait à tort des ouvrages légitimes — un risque plus grave que le doublon lui-même.
+
+### La langue de chaque document
+
+Chaque document est identifié dans l'une de sept langues (`en`, `fr`, `es`, `de`, `it`, `pt`, `nl`), et cette langue est portée par le nœud `Document` **et par chaque chunk** — l'agent peut donc filtrer sans repasser par le graphe. La valeur reste vide quand le doute est permis.
+
+C'est important : le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais. Une question française sur un livre anglais fait remonter les passages français, même hors sujet. Le détail, la mesure et les quatre façons de traiter le problème sont dans [base_vectorielle.md](documentation/base_vectorielle.md#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais).
+
 ### Ce qui n'est pas ingéré : index, sommaire, pages liminaires
 
 Un livre ne contient pas que du livre. **L'index est le pire cas pour un RAG** : une liste de mots suivis de numéros de page, sans une seule phrase à indexer, mais qui contient tout le vocabulaire de l'ouvrage — il ressort donc sur presque toutes les questions sans jamais rien apporter. Sommaire, couverture et page de copyright ont le même profil.
@@ -323,6 +342,7 @@ RAG_Assistant/
 │   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
 │   │   ├── matter.py           # Index, sommaire, pages liminaires : hors contenu
+│   │   ├── language.py         # Détection de la langue par mots-outils
 │   │   └── images.py           # Crop PyMuPDF et export MinIO
 │   └── pipeline/               # Orchestration Dagster
 │       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
@@ -354,6 +374,7 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `elements.py` | Hiérarchie, positions, identifiants | 100 % |
 | `markdown.py` | Normalisation avant conversion | 100 % |
 | `matter.py` | Repérage des parties hors contenu (index, sommaire) | 100 % |
+| `language.py` | Détection de la langue d'un document | 100 % |
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
