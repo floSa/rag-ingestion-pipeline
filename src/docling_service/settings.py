@@ -42,8 +42,12 @@ class DoclingSettings(BaseSettings):
     image_crop_zoom: float = 2.0
 
     # ── Vectorisation ────────────────────────────────────────────────────────
-    chunk_size: int = 900
-    chunk_overlap: int = 150
+    # 450 caracteres : le modele multilingue encode 128 tokens, soit environ
+    # 500 caracteres de prose. A 900, un tiers des chunks etait tronque — le
+    # vecteur ne representait que le debut du texte, sans que rien ne le
+    # signale. Mesure sur le corpus : 31 % de troncature a 900, 1,3 % a 450.
+    chunk_size: int = 450
+    chunk_overlap: int = 75
     embedding_batch_size: int = 32
     chroma_upsert_batch: int = 500
     # Plancher en caracteres sous lequel un bloc est ecarte de l'index

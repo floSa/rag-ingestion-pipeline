@@ -11,10 +11,12 @@ sentence-transformers ni ChromaDB.
 
 from __future__ import annotations
 
-# ~900 caracteres : le modele d'embedding encode 256 tokens, au-dela le modele
-# tronque de lui-meme. Le recouvrement evite de couper une idee en deux.
-DEFAULT_CHUNK_SIZE = 900
-DEFAULT_CHUNK_OVERLAP = 150
+# ~450 caracteres : le modele multilingue encode 128 tokens, soit environ 500
+# caracteres de prose francaise ou anglaise. Au-dela il tronque de lui-meme, et
+# le vecteur ne represente plus que le debut du texte sans que rien ne le
+# signale. Le recouvrement evite de couper une idee en deux.
+DEFAULT_CHUNK_SIZE = 450
+DEFAULT_CHUNK_OVERLAP = 75
 
 
 def chunk_text(
