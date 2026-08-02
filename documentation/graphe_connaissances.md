@@ -18,7 +18,7 @@ A chaque lecture d'un livre, et à chaque bloc d'ingestion envoyé par l'API Doc
 
 **Nœuds (Les Vertices) :**
 Ils stockent les informations inhérentes. L'ID standard du vertex provient lui encore du fameux Hash généré en Python.
-- **`Document`** : Noeud Root ou Racine (Contient: `filename` (string), `type_file` (string : `pdf`, `html` ou `md`), `total_pages` (int, 1 pour les formats non paginés)).
+- **`Document`** : Noeud Root ou Racine. Contient `filename` (le chapitre), `collection` (l'ouvrage dont il vient), `source_path` (chemin relatif à `Datas/`), `type_file` (`pdf`, `html` ou `md`) et `total_pages` (1 pour les formats non paginés). L'identifiant du nœud dérive du **chemin** et non du seul nom : deux chapitres homonymes de deux ouvrages différents restent distincts.
 - **`Paragraph`** / **`Formula`** / **`Code`** / **`ListItem`** : Noeuds riches contenant du texte.
 - **`Picture`** / **`Table`** : Noeuds Média contenant un `minio_url` qui pointe vers l'autre composant clé du projet MinIO.
 - **`SectionHeader`** : Noeuds Titre à part entière, pour la re-narration hiérarchique agentique.

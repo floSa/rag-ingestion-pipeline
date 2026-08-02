@@ -76,7 +76,27 @@ horizontaux, HTML inline — ainsi que les retours a la ligne explicites du Mark
 espaces finaux, antislash final). Un fichier dont les paragraphes tiennent deja sur une
 ligne est rendu inchange.
 
-### 2. Identite des elements
+### 2. Identite du document
+
+Le nom du fichier ne suffit pas a identifier un document. Un livre decoupe en
+chapitres donne des noms qui se repetent d'un ouvrage a l'autre — « Preface »,
+« Index », « Appendix ». Deux chapitres homonymes produiraient les memes
+identifiants d'elements et se recouvriraient en silence.
+
+C'est donc le **chemin relatif a `Datas/`** — la cle de partition Dagster — qui
+porte l'identite. Le pipeline le transmet au service dans `source_path`, et
+trois informations en sont derivees :
+
+| Champ | Valeur pour `htms/Practical MLOps/1. Introduction.html` |
+|-------|--------------------------------------------------------|
+| `filename` | `1. Introduction` — le chapitre |
+| `collection` | `Practical MLOps` — l'ouvrage |
+| cle des identifiants | `htms/Practical MLOps/1. Introduction` |
+
+Sans `collection`, une reponse du RAG pourrait citer le chapitre sans pouvoir
+dire de quel livre il vient.
+
+### 3. Identite des elements
 
 Chaque element recoit un identifiant court et deterministe :
 
@@ -91,7 +111,7 @@ les memes identifiants, et les ecritures ecrasent au lieu de dupliquer.
 Le format — dix caracteres hexadecimaux — est celui qu'attend `rag-agent-chat`, qui
 valide `/context/{element_id}` sur `^[a-f0-9]{10}$`.
 
-### 3. Hierarchie et positions
+### 4. Hierarchie et positions
 
 Le parcours maintient la section courante : un `section_header` (ou un `title`) ouvre une
 nouvelle section et reste rattache au document ; tout autre element se rattache au dernier
@@ -107,7 +127,7 @@ Chaque element porte donc :
 | `ref_position`  | Rang de l'element sous son parent                      |
 | `order`         | Ordre de lecture global, porte par l'arete `PARENT_OF` |
 
-### 4. Contenu des tables
+### 5. Contenu des tables
 
 Une table Docling ne porte pas de texte : son `text` vaut `None` et le contenu vit dans
 une structure dediee. Faute d'export explicite, les tables ressortaient vides de
@@ -115,12 +135,12 @@ l'extraction — presentes dans le graphe, mais introuvables par la recherche ve
 Leur contenu est desormais recupere via `export_to_markdown()`, ce qui les rend
 interrogeables en texte tout en conservant, pour les PDF, le crop image sur MinIO.
 
-### 5. Liaison legende -> ressource
+### 6. Liaison legende -> ressource
 
 Une legende (`caption`) est reliee par une arete `LINKED_TO(describes)` au dernier
 element visuel rencontre avant elle (`table` ou `picture`), dans l'ordre de lecture.
 
-### 5. Crop et upload des medias
+### 7. Crop et upload des medias
 
 Pour les elements visuels d'un PDF (`picture`, `table`, `figure`, `graphic`), le service :
 
@@ -136,7 +156,7 @@ de coordonnees est faite dans `images.crop_and_upload`.
 Les images des captures HTML, elles, ont deja ete exportees vers MinIO par l'asset de
 nettoyage en amont : le service se contente de propager leur URL.
 
-### 6. Persistance
+### 8. Persistance
 
 Chaque lot d'elements est valide contre le schema partage
 (`src/pipeline/schemas.py`), puis ecrit dans le graphe **puis** dans l'index vectoriel.

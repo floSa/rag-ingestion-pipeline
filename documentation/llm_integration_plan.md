@@ -233,7 +233,9 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | document       | string        | Texte du chunk, integral (aucune troncature) |
 | metadata.element_id    | string | Hash ID de l'**ancre** du bloc, toujours au format `^[a-f0-9]{10}$` |
 | metadata.graph_node_id | string | = element_id, cle pour NebulaGraph  |
-| metadata.filename      | string | Nom du document source (sans extension) |
+| metadata.filename      | string | Nom du fichier source, sans extension — le **chapitre** |
+| metadata.collection    | string | Dossier parent — l'**ouvrage** dont vient le chapitre ("" si le fichier est à plat) |
+| metadata.source_path   | string | Chemin complet relatif à `Datas/`, identité unique du document |
 | metadata.label         | string | Label Docling de l'ancre (text, table, code, ...) |
 | metadata.page_no       | int    | Numero de page (1 pour les formats non pagines) |
 | metadata.minio_url     | string | URL MinIO si image/table ("" sinon) |
@@ -267,11 +269,25 @@ plus aucune troncature.
   que `document` contient le texte brut. L'agent affiche donc le passage tel
   quel, sans prefixe parasite.
 
+**Citer une source complete.** `filename` seul ne suffit pas : un livre decoupe
+en chapitres donne des noms qui se repetent d'un ouvrage a l'autre — « Preface »,
+« Index », « Appendix ». Une citation lisible se construit avec les trois :
+
+```
+{collection} > {filename} > {section_title}
+Practical MLOps > 1. Introduction to MLOps > Qu'est-ce que le MLOps
+```
+
+`source_path` sert quand il faut remonter au fichier lui-meme, ou distinguer
+deux documents sans ambiguite.
+
 L'id est stable d'une ingestion a l'autre : il derive de la position dans la
-page, pas de l'ordre global de lecture. Attention toutefois — il derive aussi
-du texte : **si la chaine d'extraction change, les ids changent** et les
-anciennes entrees deviennent orphelines. Purger les stores avant une
-re-ingestion suivant une evolution du pipeline.
+page, pas de l'ordre global de lecture, et du **chemin** du document et non de
+son seul nom — deux chapitres homonymes de deux ouvrages differents ne se
+recouvrent donc pas. Attention toutefois : l'id derive aussi du texte, si bien
+que **toute evolution de la chaine d'extraction change les ids** et laisse les
+anciennes entrees orphelines. Purger les stores avant une re-ingestion suivant
+une evolution du pipeline.
 
 ### 4.2 NebulaGraph — Space `rag_space`
 

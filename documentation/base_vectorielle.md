@@ -26,7 +26,9 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 |---|---|
 | `element_id` | Hash 10 hexadécimaux de l'élément. **Toujours l'élément, jamais le chunk** : `rag-agent-chat` valide `/context/{element_id}` sur `^[a-f0-9]{10}$` |
 | `graph_node_id` | Clé de pivot vers NebulaGraph (même valeur) |
-| `filename` | Fichier source, pour restreindre une recherche à un document |
+| `filename` | Nom du fichier source — le **chapitre** |
+| `collection` | Dossier parent — l'**ouvrage** dont vient le chapitre |
+| `source_path` | Chemin complet relatif à `Datas/`, identité unique du document |
 | `label` | Tag Docling, pour filtrer par type (`table`, `formula`, `text`…) |
 | `page_no` | Page source, pour citer la référence à l'utilisateur |
 | `minio_url` | URL de l'image associée, le cas échéant |
