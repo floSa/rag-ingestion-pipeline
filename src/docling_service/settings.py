@@ -24,7 +24,7 @@ class DoclingSettings(BaseSettings):
     chroma_host: str = "chromadb"
     chroma_port: int = 8000
 
-    embedding_model_name: str = "all-MiniLM-L6-v2"
+    embedding_model_name: str = "paraphrase-multilingual-MiniLM-L12-v2"
 
     # ── Connexion NebulaGraph ────────────────────────────────────────────────
     nebula_max_attempts: int = 15

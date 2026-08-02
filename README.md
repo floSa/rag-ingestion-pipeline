@@ -48,6 +48,7 @@ Le débit est cadencé à deux niveaux : la file Dagster (`max_concurrent_runs: 
 
 | Document | Contenu |
 |---|---|
+| **[CHANGEMENTS.md](documentation/CHANGEMENTS.md)** | **Ce qui a changé et ce que ça implique côté `rag-agent-chat` — à lire en premier** |
 | [architecture.md](documentation/architecture.md) | Services, flux de bout en bout, décisions d'architecture |
 | [SECURITY.md](documentation/SECURITY.md) | Secrets, isolation réseau, audit des dépendances |
 | [services/](documentation/services/) | Une fiche technique par service (ChromaDB, Dagster, Docling, MinIO, NebulaGraph, PostgreSQL) |

@@ -3,7 +3,7 @@
 ## Présentation du service
 La base vectorielle **ChromaDB** est le composant indispensable à l'algorithme "Retrieval" de tout système RAG. Pendant que NebulaGraph gère la logique de la structure et les relations d'ordres, ChromaDB va chercher précisément le fond, l'idée et la signification textuelle à la demande d'un Agent IA.
 
-Grâce aux *embeddings* générés par le composant IA (`all-MiniLM-L6-v2`), ChromaDB place chaque paragraphe extrait dans un espace mathématique multi-dimensionnel permettant de trouver instantanément un texte ayant un sens et un contexte similaire à la requête utilisateur.
+Grâce aux *embeddings* générés par le composant IA (`paraphrase-multilingual-MiniLM-L12-v2`), ChromaDB place chaque paragraphe extrait dans un espace mathématique multi-dimensionnel permettant de trouver instantanément un texte ayant un sens et un contexte similaire à la requête utilisateur.
 
 ## Accès au service
 - **Type** : API Serveur Vectoriel HTTP
@@ -14,7 +14,7 @@ Grâce aux *embeddings* générés par le composant IA (`all-MiniLM-L6-v2`), Chr
 La collection utilisée est **`rag_documents`**.
 
 - **Identifiant du chunk** : l'identifiant cryptographique (Hash ID) de l'élément. Un élément dont le texte dépasse `CHUNK_SIZE` est découpé en plusieurs fenêtres recouvrantes, et ses chunks reçoivent alors un suffixe : `023351d5f4#0`, `023351d5f4#1`… Un élément court garde son identifiant nu, de sorte que les documents déjà ingérés sont mis à jour et non dupliqués.
-- **Embeddings** : représentation mathématique du texte du chunk, produite par `all-MiniLM-L6-v2` (384 dimensions), encodée par lots.
+- **Embeddings** : représentation mathématique du texte du chunk, produite par `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions), encodée par lots. Le modèle est **multilingue** : une question française retrouve les passages anglais pertinents, et réciproquement.
 - **Documents** : le contenu en texte pur du chunk. Rien n'est tronqué : le découpage remplace l'ancienne coupe à 1000 caractères, qui amputait silencieusement les paragraphes longs.
 
 Un point important : **la collection ne contient pas un vecteur par élément du document, mais un vecteur par bloc**. L'analyse de layout produit quantité de fragments isolés (`x`, `and`, `Note`, `-`) qui n'ont aucun sens une fois vectorisés ; ils sont fusionnés avec leurs voisins de même section, et les résidus sont écartés. Tous les éléments restent en revanche dans NebulaGraph : la structure du document est intacte, et `/context/{element_id}` la reconstruit. Voir [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
@@ -41,22 +41,39 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `chunk_index` / `chunk_count` | Position du chunk dans son bloc |
 | `block_size` | Nombre d'éléments du document fusionnés dans ce chunk |
 
-## Limite mesurée : le modèle d'embedding ne parle qu'anglais
+## Pourquoi un modèle d'embedding multilingue
 
-`all-MiniLM-L6-v2` est entraîné sur de l'anglais. Tant que la question et le passage sont dans la même langue, il se comporte bien. **Le problème apparaît quand on interroge en français une bibliothèque anglaise** — le cas le plus courant ici.
+Le corpus mélange le français et l'anglais, et les questions arrivent dans l'une ou l'autre langue. L'ancien modèle, `all-MiniLM-L6-v2`, n'était entraîné que sur de l'anglais : il **classait par langue avant de classer par sens**.
 
-Mesure, sur la même question posée dans les deux langues, face à quatre passages dont un seul répond :
+Mesure sur une question française, face à six passages :
 
-| Question | Rang du passage pertinent | Score | Devancé par |
-|---|---|---|---|
-| En anglais | **1er** | 0,707 | — |
-| En français | **2e** | 0,366 | un passage français hors sujet (0,397) |
+| Rang | `all-MiniLM-L6-v2` | `paraphrase-multilingual-MiniLM-L12-v2` |
+|---|---|---|
+| 1 | FR pertinent (0,453) | **EN pertinent (0,746)** |
+| 2 | FR proche (0,433) | **FR pertinent (0,741)** |
+| 3 | **FR hors sujet (0,397)** | FR proche (0,492) |
+| 4 | **EN pertinent (0,366)** | EN proche (0,441) |
+| 5 | EN proche (0,267) | FR hors sujet (0,338) |
+| 6 | EN hors sujet (0,105) | EN hors sujet (0,313) |
 
-Autrement dit, en français, un passage sans rapport mais dans la bonne langue passe devant la bonne réponse.
+Avec l'ancien modèle, un **hors-sujet français** devançait la **bonne réponse anglaise** : poser sa question en français revenait à se couper de toute la bibliothèque anglaise. Avec le nouveau, les deux bonnes réponses arrivent en tête à 0,005 d'écart, quelle que soit leur langue.
 
-**Remplacement possible sans changer le schéma.** `paraphrase-multilingual-MiniLM-L12-v2` produit des vecteurs de **384 dimensions**, exactement comme le modèle actuel : la collection ChromaDB n'a pas à changer de forme. Sur la même question française, le passage pertinent repasse **1er avec 0,746**, loin devant le reste.
+### Comment lire ces scores
 
-Le modèle se change par `EMBEDDING_MODEL_NAME` dans `.env`, mais **ce n'est pas une décision locale** : `rag-agent-chat` doit encoder ses questions avec le même modèle, sans quoi les vecteurs ne sont plus comparables. Le changement implique donc les deux projets et une ré-ingestion complète.
+Ce sont des **similarités cosinus**, pas des pourcentages :
+
+| Valeur | Signification |
+|---|---|
+| 1,0 | même sens exactement |
+| 0,7 – 0,8 | dit la même chose autrement |
+| 0,4 – 0,5 | même domaine, sujet différent |
+| 0,0 | aucun rapport |
+
+Ce qui compte n'est pas la valeur absolue mais **l'écart entre les candidats**.
+
+### Ce que ça impose à `rag-agent-chat`
+
+Le modèle se change par `EMBEDDING_MODEL_NAME` dans `.env`, mais **ce n'est pas une décision locale** : l'agent doit encoder ses questions avec le même modèle, sans quoi les vecteurs ne sont plus comparables et les réponses deviennent aberrantes **sans qu'aucune erreur n'apparaisse**. La dimension étant identique (384), c'est le seul changement à faire de son côté.
 
 ### Les quatre façons de traiter le multilingue
 
@@ -69,11 +86,9 @@ Quand la question et le corpus ne sont pas dans la même langue, quatre approche
 | **3. Traduire les documents à l'ingestion** | Très cher (des heures de calcul), et lourd de conséquences | **À éviter.** Une traduction automatique déforme le vocabulaire technique, et on cite alors un texte que l'auteur n'a jamais écrit. |
 | **4. Double index, original et traduit** | Deux fois la place, deux fois l'ingestion | Se défend pour un corpus critique. Disproportionné ici. |
 
-**Ce qui est retenu :** l'approche 1 est la recommandation, et la métadonnée `language` est là pour la rendre exploitable. Tant que le modèle anglais est en place, l'agent peut au minimum :
+**C'est l'approche 1 qui est en place.** Elle répond exactement au besoin : quelle que soit la langue de la question, on interroge l'intégralité des ressources. Le modèle place « livraison continue » et « continuous delivery » au même endroit de l'espace vectoriel — il n'y a rien à traduire, et le texte cité reste celui de l'auteur.
 
-- dire à l'utilisateur dans quelle langue sont les sources trouvées ;
-- filtrer sur `language` quand la question porte explicitement sur un corpus ;
-- reformuler la question en anglais avant de chercher, si l'index est à 95 % anglais — c'est l'approche 2, applicable **sans rien ré-ingérer**, et donc le dépannage immédiat.
+La métadonnée `language` reste utile pour dire à l'utilisateur dans quelle langue sont les sources trouvées, ou pour filtrer quand la question porte explicitement sur un corpus donné.
 
 ### D'où vient la métadonnée `language`
 

@@ -11,7 +11,7 @@ sentence-transformers ni ChromaDB.
 
 from __future__ import annotations
 
-# ~900 caracteres : all-MiniLM-L6-v2 encode 256 tokens, au-dela le modele
+# ~900 caracteres : le modele d'embedding encode 256 tokens, au-dela le modele
 # tronque de lui-meme. Le recouvrement evite de couper une idee en deux.
 DEFAULT_CHUNK_SIZE = 900
 DEFAULT_CHUNK_OVERLAP = 150

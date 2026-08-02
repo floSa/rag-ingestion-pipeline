@@ -42,7 +42,7 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
    (chaque élément rattaché au dernier en-tête rencontré), écrits par INSERT groupés ;
    tout échec nGQL fait échouer le job — pas de perte silencieuse
 7. **Flush ChromaDB** : les textes longs sont découpés en fenêtres recouvrantes (aucune
-   troncature), encodés par lots avec `all-MiniLM-L6-v2` (384 dim), et upsertés avec les
+   troncature), encodés par lots avec `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), et upsertés avec les
    métadonnées du contrat d'interface : `element_id`, `graph_node_id`, `filename`,
    `label`, `page_no`, `minio_url`, `reference_id`, `page_position`, `ref_position`
 
@@ -54,7 +54,7 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 - **Volume partagé** `/Datas` monté dans Dagster et Docling : évite le transfert réseau
   de gros fichiers PDF
 - **Docling sur GPU** : seul service avec accès CUDA, isole la charge lourde
-- **Embeddings locaux** : `all-MiniLM-L6-v2` via SentenceTransformers, pas d'appel API
+- **Embeddings locaux et multilingues** : `paraphrase-multilingual-MiniLM-L12-v2` via SentenceTransformers, pas d'appel API. Une question française retrouve les passages anglais, et réciproquement
   externe (pas d'OpenAI)
 - **Un sensor par source** : découplage des pipelines, chacun avec son job Dagster
 - **Extraction asynchrone** : une conversion de livre dure des heures, ce qui ne tient

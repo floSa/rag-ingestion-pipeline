@@ -90,7 +90,7 @@ Chaque resultat contient dans ses metadatas :
 Apres le retrieval brut, un **cross-encoder** re-score les chunks par rapport
 a la question pour ameliorer la precision. On garde les top-10.
 
-Pourquoi : les embeddings bi-encoder (all-MiniLM-L6-v2) sont rapides mais
+Pourquoi : les embeddings bi-encoder (paraphrase-multilingual-MiniLM-L12-v2) sont rapides mais
 imprecis. Le cross-encoder est lent mais beaucoup plus precis sur le ranking.
 
 ### 3.3 Source Preview et selection utilisateur
@@ -229,7 +229,7 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | Champ          | Type          | Description                                |
 |----------------|---------------|--------------------------------------------|
 | id             | string        | `element_id`, ou `element_id#n` si le bloc a du etre decoupe |
-| embedding      | float[384]    | Vecteur all-MiniLM-L6-v2                   |
+| embedding      | float[384]    | Vecteur paraphrase-multilingual-MiniLM-L12-v2                   |
 | document       | string        | Texte du chunk, integral (aucune troncature) |
 | metadata.element_id    | string | Hash ID de l'**ancre** du bloc, toujours au format `^[a-f0-9]{10}$` |
 | metadata.graph_node_id | string | = element_id, cle pour NebulaGraph  |
@@ -246,7 +246,7 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | metadata.chunk_index / chunk_count | int | Position du chunk dans son bloc |
 | metadata.block_size    | int    | Nombre d'elements fusionnes dans ce chunk |
 
-**Modele d'embedding** : `all-MiniLM-L6-v2` (384 dimensions, fenetre de 256
+**Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de 256
 tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
 
 **Granularite** : un vecteur par **bloc**, et non par element. L'analyse de
@@ -397,7 +397,7 @@ L'agent peut copier ces schemas ou les importer comme dependance.
 | Framework agent  | **LangGraph**           | Machine a etats, tools natifs, debug avec LangSmith |
 | LLM principal    | **Claude Sonnet/Opus**  | Long context (200K), multimodal natif, tool-use |
 | LLM fallback     | **GPT-4o**              | Alternative si besoin                           |
-| Embedding query  | **all-MiniLM-L6-v2**   | Obligatoire : meme modele que l'ingestion       |
+| Embedding query  | **paraphrase-multilingual-MiniLM-L12-v2**   | Obligatoire : meme modele que l'ingestion       |
 | Reranking        | **cross-encoder/ms-marco-MiniLM-L6-v2** | Local, pas de cout API, bon compromis |
 | Frontend         | **Streamlit** ou **Gradio** | Prototypage rapide, selection interactive    |
 | API backend      | **FastAPI**             | Meme stack que le service Docling               |
@@ -539,7 +539,7 @@ LLM_TEMPERATURE=0.1
 LLM_MAX_TOKENS=4096
 
 # --- Retrieval ---
-EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2   # DOIT etre le meme que l'ingestion
+EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2   # DOIT etre le meme que l'ingestion
 RERANK_MODEL=cross-encoder/ms-marco-MiniLM-L6-v2
 RETRIEVAL_TOP_K=20
 RERANK_TOP_K=10
@@ -607,5 +607,5 @@ LANGFUSE_SECRET_KEY=
 | Boucle infinie de recherche               | Cout   | Max 3 iterations, budget tokens global   |
 | Latence NebulaGraph sur graphes larges    | UX     | Cache des reconstructions recentes       |
 | Images trop lourdes en base64             | Tokens | Redimensionner avant injection (max 1MB) |
-| Modele d'embedding different query/index  | Qualite| Forcer all-MiniLM-L6-v2 dans les settings|
+| Modele d'embedding different query/index  | Qualite| Forcer paraphrase-multilingual-MiniLM-L12-v2 dans les settings|
 | Utilisateur deselectionne toutes sources  | UX     | Minimum 1 source requise pour generer    |

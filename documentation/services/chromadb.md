@@ -19,7 +19,7 @@ API REST standard ChromaDB. Ecrite uniquement par le service Docling
 - `rag_documents` : collection principale
   - **ids** : `element_id` (hash sha256[:10]), suffixe `#n` si le bloc a du
     etre decoupe en plusieurs fenetres
-  - **embeddings** : vecteurs 384 dimensions (all-MiniLM-L6-v2, fenetre de
+  - **embeddings** : vecteurs 384 dimensions (paraphrase-multilingual-MiniLM-L12-v2, fenetre de
     256 tokens), calcules sur le texte precede du titre de sa section
   - **metadatas** : `element_id`, `graph_node_id`, `filename`, `label`,
     `page_no`, `minio_url`, `reference_id`, `section_title`, `page_position`,
