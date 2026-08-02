@@ -253,7 +253,7 @@ tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
 layout produit quantite de fragments isoles (`x`, `and`, `Note`, `-`) qui n'ont
 aucun sens vectorises ; les elements consecutifs d'une meme section et de meme
 nature sont donc fusionnes, et les residus sous le plancher sont ecartes de
-l'index. Les blocs encore trop longs sont coupes en fenetres recouvrantes —
+l'index. Le decoupage est confie a HybridChunker de Docling —
 plus aucune troncature.
 
 **Consequences pour l'agent** :

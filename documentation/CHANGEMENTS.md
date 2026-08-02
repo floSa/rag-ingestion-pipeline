@@ -98,7 +98,29 @@ Désormais un titre est rattaché **au titre qui le domine** :
 
 ---
 
-## 3. Nouvelles métadonnées de chunk
+## 3. Le découpage est confié à Docling
+
+Le découpage maison coupait à la longueur en caractères. C'est désormais
+`HybridChunker`, le découpeur de Docling, qui s'en charge : il respecte la structure
+du document et reçoit **le tokenizer du modèle d'embedding lui-même**.
+
+| Mesure, sur le chapitre 1 de Practical MLOps | Découpage maison | `HybridChunker` |
+|---|---|---|
+| Chunks | 146 | **100** |
+| Tokens, médiane | 67 | **91** |
+| Caractères, médiane | 269 | **353** |
+
+À contenu égal, quarante-six chunks de moins, chacun portant davantage de contexte.
+
+**Rien ne change pour l'agent.** Les identifiants restent les nôtres : chaque chunk
+est rattaché à l'élément d'où part sa lecture, et un élément réparti sur plusieurs
+chunks leur donne les suffixes `#0`, `#1` que le contrat prévoit déjà.
+
+> [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel)
+
+---
+
+## 4. Nouvelles métadonnées de chunk
 
 Trois clés se sont ajoutées à `ChunkMetadata`
 ([`src/pipeline/schemas.py`](../src/pipeline/schemas.py), qui reste le contrat de
@@ -116,7 +138,7 @@ Toutes sont optionnelles : un agent qui les ignore fonctionne comme avant.
 
 ---
 
-## 4. Ce qui n'est plus ingéré
+## 5. Ce qui n'est plus ingéré
 
 | Écarté | Pourquoi |
 |---|---|
@@ -131,7 +153,7 @@ prose, et un glossaire répond bien aux questions de définition.
 
 ---
 
-## 5. Où trouver quoi
+## 6. Où trouver quoi
 
 | Question | Document |
 |---|---|
@@ -144,7 +166,7 @@ prose, et un glossaire répond bien aux questions de définition.
 
 ---
 
-## 6. Après un changement de modèle ou de règle d'extraction
+## 7. Après un changement de modèle ou de règle d'extraction
 
 Les vecteurs et le graphe doivent être reconstruits.
 

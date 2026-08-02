@@ -41,7 +41,7 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 6. **Flush NebulaGraph** : nœuds et hiérarchie `Document → SectionHeader → Éléments`
    (chaque élément rattaché au dernier en-tête rencontré), écrits par INSERT groupés ;
    tout échec nGQL fait échouer le job — pas de perte silencieuse
-7. **Flush ChromaDB** : les textes longs sont découpés en fenêtres recouvrantes (aucune
+7. **Flush ChromaDB** : le découpage est confié à `HybridChunker` de Docling, qui respecte la structure du document et la fenêtre du modèle d'embedding (aucune
    troncature), encodés par lots avec `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), et upsertés avec les
    métadonnées du contrat d'interface : `element_id`, `graph_node_id`, `filename`,
    `label`, `page_no`, `minio_url`, `reference_id`, `page_position`, `ref_position`

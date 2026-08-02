@@ -254,31 +254,46 @@ indexes et l'erreur remonte jusqu'au job.
 
 #### Ce qui part dans l'index vectoriel
 
-Le graphe recoit **tous** les elements. L'index vectoriel, lui, recoit des blocs, apres
-trois traitements successifs.
+Le graphe recoit **tous** les elements. L'index vectoriel, lui, recoit des chunks
+decoupes par **`HybridChunker`**, le decoupeur de Docling.
 
-**1. Regroupement.** L'analyse de layout descend jusqu'au fragment isole : sur le corpus
-de reference, 36 % des entrees indexees etaient des morceaux comme `x`, `and`, `Note`,
-`n`, `-` ou `.`. Vectorises tels quels, ils polluent la recherche et diluent le travail du
-reranker. Les elements consecutifs sont donc fusionnes jusqu'a `CHUNK_SIZE`, avec deux
-garde-fous : jamais au-dela d'une frontiere de section, et jamais entre natures
-differentes — une table ou un bloc de code restent autonomes.
+**Pourquoi le sien plutot que le notre.** Le decoupage maison coupait a la longueur en
+caracteres, sans savoir ou il coupait. `HybridChunker` respecte la structure du document
+et recoit **le tokenizer du modele d'embedding lui-meme** : il remplit la fenetre sans
+jamais la depasser, la ou une approximation en caracteres laisse toujours une marge
+d'erreur.
 
-C'est la reponse retenue par l'etat de l'art du decoupage pour RAG (plancher minimal +
-fusion), et precisement la limite connue du `HybridChunker` de Docling : il fusionne les
-pairs de meme metadonnee (`merge_peers`) mais n'a pas de `min_tokens`, si bien que les
-fragments isoles y survivent.
+Comparaison sur le chapitre 1 de `Practical MLOps`, a troncature nulle des deux cotes :
 
-**2. Plancher.** Un bloc qui reste sous `MIN_CHUNK_CHARS`, ou qui ne porte aucun
-caractere alphanumerique, est ecarte de l'index. Il demeure dans le graphe.
+| Mesure                  | Decoupage maison (450 car.) | `HybridChunker` |
+|-------------------------|-----------------------------|-----------------|
+| chunks produits         | 146                         | **100**         |
+| tokens, mediane         | 67                          | **91**          |
+| caracteres, mediane     | 269                         | **353**         |
 
-**3. Decoupage.** Les blocs encore trop longs sont coupes en fenetres recouvrantes
-(`CHUNK_SIZE` / `CHUNK_OVERLAP`), au lieu d'etre tronques. Un bloc tenant en un seul chunk
-garde son identifiant nu ; un bloc decoupe produit `{element_id}#0`, `#1`, etc.
+A contenu egal, quarante-six chunks de moins, chacun portant davantage de contexte.
 
-`element_id` et `graph_node_id` designent **l'ancre du bloc**, c'est-a-dire son premier
-element : un noeud reel du graphe, au format dix hexadecimaux attendu par
-`rag-agent-chat`. La metadonnee `block_size` indique combien d'elements ont ete fusionnes.
+**Le plancher reste.** Un chunk sans caractere alphanumerique, ou plus court que
+`MIN_CHUNK_CHARS`, est ecarte de l'index — il demeure dans le graphe. Sur le corpus de
+reference, cela ne concerne plus que 16 chunks sur 6 124, et **plus aucun fragment isole**
+du type `x`, `and`, `-` : le regroupement structurel de Docling les absorbe dans leur
+paragraphe d'origine.
+
+**Nos identifiants restent les notres.** `HybridChunker` rend ses chunks avec ses
+references internes (`#/texts/18`), alors que le contrat impose nos hash de dix
+hexadecimaux. Le module [`anchoring.py`](../src/docling_service/anchoring.py) fait le
+pont, et couvre les deux cas qui se presentent :
+
+- **un chunk couvre plusieurs elements** — c'est le but du regroupement. L'ancre est le
+  **premier** element, celui d'ou part la lecture ;
+- **plusieurs chunks partagent une ancre** — un element trop long pour la fenetre est
+  reparti. Ils recoivent les suffixes `#0`, `#1`, comme le prevoit deja le contrat.
+
+Un chunk dont aucune reference n'est connue est **ecarte** plutot que rattache au hasard.
+
+`element_id` et `graph_node_id` designent donc toujours un noeud reel du graphe, au format
+attendu par `rag-agent-chat`. La metadonnee `block_size` indique combien d'elements le
+chunk couvre.
 
 #### Effet mesure
 
