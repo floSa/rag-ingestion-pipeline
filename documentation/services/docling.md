@@ -73,7 +73,7 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 |----------------------|-------------------------------------------------------------------------|
 | `.pdf`               | Conversion par lots de pages, crop des images et tables vers MinIO       |
 | `.html`, `.htm`      | Conversion d'un seul tenant ; les images ont deja ete exportees en amont |
-| `.md`, `.markdown`   | Conversion d'un seul tenant                                             |
+| `.md`, `.markdown`   | Images extraites vers MinIO, paragraphes recolles, puis conversion       |
 
 ## Modules
 
@@ -90,7 +90,7 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `vectors.py`    | Embeddings par lots et upsert ChromaDB                                |
 | `blocks.py`     | Regroupement des elements en blocs, filtrage du bruit de mise en page  |
 | `chunking.py`   | Decoupage des textes longs, contextualisation des embeddings          |
-| `images.py`     | Crop PyMuPDF et export MinIO                                          |
+| `images.py`     | Crop PyMuPDF, envoi de fichiers, export MinIO                         |
 
 `ngql.py`, `chunking.py`, `elements.py`, `markdown.py` et `jobs.py` ne dependent que de
 la bibliotheque standard : leur logique est testee sans Docling ni GPU.
