@@ -333,3 +333,54 @@ class TestDocumentFacts:
         facts = DocumentFacts(type_file="html", language="fr")
         with pytest.raises(FrozenInstanceError):
             facts.language = "en"  # type: ignore[misc]
+
+
+class TestAccumulatorHierarchy:
+    """La hierarchie des titres, telle qu'elle sort de l'accumulateur."""
+
+    def _accumulateur(self):
+        return DocumentAccumulator(document_identity("htms/Livre/Chapitre.html"))
+
+    def test_a_subtitle_is_attached_to_its_title(self):
+        acc = self._accumulateur()
+        titre = acc.add_item(FakeItem("title", "Chapitre 1"), heading_rank=0)
+        sous = acc.add_item(FakeItem("section_header", "Une section"), heading_rank=1)
+        assert sous["reference_id"] == titre["id"]
+        assert titre["depth"] == 0
+        assert sous["depth"] == 1
+
+    def test_two_titles_of_same_rank_stay_siblings(self):
+        acc = self._accumulateur()
+        acc.add_item(FakeItem("title", "Chapitre 1"), heading_rank=0)
+        second = acc.add_item(FakeItem("title", "Chapitre 2"), heading_rank=0)
+        assert second["reference_id"] == ROOT_REFERENCE
+
+    def test_a_paragraph_is_attached_to_the_deepest_open_title(self):
+        acc = self._accumulateur()
+        acc.add_item(FakeItem("title", "Chapitre 1"), heading_rank=0)
+        sous = acc.add_item(FakeItem("section_header", "Une section"), heading_rank=1)
+        para = acc.add_item(FakeItem("text", "Du texte."))
+        assert para["reference_id"] == sous["id"]
+        assert para["depth"] == 2
+
+    def test_a_higher_rank_closes_the_previous_branch(self):
+        acc = self._accumulateur()
+        acc.add_item(FakeItem("title", "Chapitre 1"), heading_rank=0)
+        acc.add_item(FakeItem("section_header", "Une section"), heading_rank=1)
+        suivant = acc.add_item(FakeItem("title", "Chapitre 2"), heading_rank=0)
+        assert suivant["reference_id"] == ROOT_REFERENCE
+        assert suivant["depth"] == 0
+
+    def test_without_rank_everything_stays_flat(self):
+        """Comportement anterieur preserve quand la source ne donne aucun niveau."""
+        acc = self._accumulateur()
+        premier = acc.add_item(FakeItem("section_header", "A"))
+        second = acc.add_item(FakeItem("section_header", "B"))
+        assert premier["reference_id"] == ROOT_REFERENCE
+        assert second["reference_id"] == ROOT_REFERENCE
+
+    def test_an_element_before_any_title_is_attached_to_the_document(self):
+        acc = self._accumulateur()
+        para = acc.add_item(FakeItem("text", "Avant tout titre."))
+        assert para["reference_id"] == ROOT_REFERENCE
+        assert para["depth"] == 0

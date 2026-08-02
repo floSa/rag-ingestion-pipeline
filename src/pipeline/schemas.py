@@ -44,6 +44,9 @@ class DocumentElement(BaseModel):
     minio_url: str | None = None
     content: str | None = None
     reference_id: str = "DOC"
+    # Profondeur dans la hierarchie des titres : 0 pour un titre de premier
+    # niveau, 1 pour ses sous-titres, etc. Plafonnee a 3.
+    depth: int = 0
     section_title: str = ""
     page_position: int = 0
     ref_position: int = 0
@@ -88,6 +91,8 @@ class ChunkMetadata(BaseModel):
     page_no: int = 0
     minio_url: str = ""
     reference_id: str = "DOC"
+    # Profondeur dans la hierarchie des titres, 0 etant le premier niveau.
+    depth: int = 0
     section_title: str = ""
     page_position: int = 0
     ref_position: int = 0

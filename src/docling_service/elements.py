@@ -14,6 +14,8 @@ import hashlib
 from dataclasses import dataclass
 from typing import Any
 
+from src.docling_service.hierarchy import HeadingStack
+
 # Mapping labels Docling -> tags NebulaGraph.
 TAG_MAP: dict[str, str] = {
     "text": "Paragraph",
@@ -221,23 +223,32 @@ class DocumentAccumulator:
     def __init__(self, identity: DocumentIdentity) -> None:
         self.identity = identity
         self._global_order = 0
-        self._current_section_id: str | None = None
         self._current_section_title = ""
         self._page_counters: dict[int, int] = {}
         self._reference_counters: dict[str, int] = {}
+        # Suit les titres ouverts pour rattacher chaque nouveau titre au bon
+        # parent. Sans rang fourni, tous les titres partagent le rang 0 et se
+        # retrouvent freres sous le document — comportement anterieur.
+        self._headings = HeadingStack()
+        self._depths: dict[str, int] = {}
 
     @property
     def count(self) -> int:
         """Nombre d'elements produits jusqu'ici."""
         return self._global_order
 
-    def add_item(self, item: Any, document: Any = None) -> dict[str, Any]:
+    def add_item(
+        self, item: Any, document: Any = None, heading_rank: int | None = None
+    ) -> dict[str, Any]:
         """Construit l'element correspondant a un item Docling.
 
         Args:
             item: Item issu de ``document.iterate_items()``.
             document: Document Docling parent, necessaire pour exporter le
                 contenu des tables.
+            heading_rank: Rang du titre, 0 designant le niveau le plus haut.
+                Ignore pour les elements qui ne sont pas des titres. Absent,
+                tous les titres sont freres sous le document.
 
         Returns:
             Le dict element, positions et rattachement hierarchique renseignes.
@@ -255,16 +266,20 @@ class DocumentAccumulator:
         # distincts, sinon ils se recouvrent en silence.
         element_id = compute_id(self.identity.key, page_no, position_in_page, text)
 
-        # Un en-tete ouvre une nouvelle section et reste rattache au document ;
-        # les autres elements se rattachent au dernier en-tete rencontre.
+        # Un titre se rattache au titre precedent de rang superieur ; les
+        # autres elements se rattachent au dernier titre rencontre.
         if label in SECTION_LABELS:
-            self._current_section_id = element_id
+            placement = self._headings.place(element_id, heading_rank or 0)
+            self._depths[element_id] = placement.depth
             # Le titre est retenu au-dela du lot de pages courant : il sert a
             # contextualiser les embeddings des elements de la section.
             self._current_section_title = text
-            reference_id = ROOT_REFERENCE
+            reference_id = placement.parent_id or ROOT_REFERENCE
+            depth = placement.depth
         else:
-            reference_id = self._current_section_id or ROOT_REFERENCE
+            current = self._headings.current_id
+            reference_id = current or ROOT_REFERENCE
+            depth = self._depths.get(current, -1) + 1 if current else 0
 
         ref_position = self._reference_counters.get(reference_id, 0)
         self._reference_counters[reference_id] = ref_position + 1
@@ -277,6 +292,7 @@ class DocumentAccumulator:
             "text": text,
             "order": self._global_order,
             "reference_id": reference_id,
+            "depth": depth,
             "section_title": self._current_section_title,
             "page_position": position_in_page,
             "ref_position": ref_position,

@@ -134,6 +134,7 @@ def build_chunks(
                     page_no=int(anchor.get("page_no") or 0),
                     minio_url=str(anchor.get("minio_url") or ""),
                     reference_id=str(anchor.get("reference_id") or "DOC"),
+                    depth=int(anchor.get("depth") or 0),
                     section_title=str(anchor.get("section_title") or ""),
                     page_position=int(anchor.get("page_position") or 0),
                     ref_position=int(anchor.get("ref_position") or 0),
