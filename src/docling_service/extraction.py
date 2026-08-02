@@ -27,13 +27,15 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
-from src.docling_service import images, language, matter, storage
+from src.docling_service import images, language, matter, ranking, storage
 from src.docling_service.elements import (
     VISUAL_LABELS,
     DocumentAccumulator,
     DocumentFacts,
     DocumentIdentity,
     document_identity,
+    extract_bbox,
+    item_provenance,
 )
 from src.docling_service.markdown import (
     IMAGE_MARKER,
@@ -310,7 +312,7 @@ def _extract_flat(
     elements: list[dict[str, Any]] = []
 
     for item, _ in document.iterate_items():
-        element = accumulator.add_item(item, document)
+        element = accumulator.add_item(item, document, heading_rank=_flat_rank(item, document))
 
         # Balise laissee par la preparation du Markdown : cet element est une
         # image. On lui rend sa nature et son URL, en place — donc rattache a
@@ -344,6 +346,26 @@ def _extract_flat(
         "language": langue,
         "type_file": type_file,
     }
+
+
+def _flat_rank(item: Any, document: Any) -> int | None:
+    """Rang d'un titre pour un document non pagine (HTML, Markdown).
+
+    Le parent declare par Docling prime : sur les captures HTML, il rattache
+    chaque titre a celui qui le domine. A defaut, l'attribut ``level``, que
+    Docling renseigne fidelement sur le Markdown d'apres les dieses.
+
+    Args:
+        item: Item Docling.
+        document: Document Docling, pour resoudre les references.
+
+    Returns:
+        Le rang, ou ``None`` si aucun signal ne repond.
+    """
+    if str(getattr(item, "label", "")) not in ranking.HEADING_LABELS:
+        return None
+    rang = ranking.docling_parent_rank(item, document)
+    return rang if rang is not None else ranking.docling_level_rank(item)
 
 
 def _detect_document_language(elements: list[dict[str, Any]], stem: str) -> str:
@@ -389,6 +411,18 @@ def _extract_pdf(
         skipped_pages=len(skipped),
     )
 
+    # Profil typographique du document, releve une fois : taille dominante du
+    # corps du texte, et classement des tailles de titre. Rien n'est ecrit en
+    # dur — un ouvrage en 24/22/20 points se classe comme un ouvrage en 20/18/16.
+    with fitz.open(pdf_path) as document:
+        body_size, size_ranks = _pdf_font_profile(document, ranges)
+    logger.info(
+        "[%s] corps du texte a %.0f pt, %d tailles de titre distinctes",
+        stem,
+        body_size,
+        len(size_ranks),
+    )
+
     accumulator = DocumentAccumulator(identity)
     converter = get_converter()
     total_chunks = 0
@@ -409,7 +443,15 @@ def _extract_pdf(
 
                 try:
                     batch_elements = _convert_batch(
-                        converter, pdf_path, stem, document, accumulator, start_page, end_page
+                        converter,
+                        pdf_path,
+                        stem,
+                        document,
+                        accumulator,
+                        start_page,
+                        end_page,
+                        body_size,
+                        size_ranks,
                     )
                 except Exception as exc:
                     # Une page illisible ne doit pas condamner les 399 autres : on
@@ -533,6 +575,136 @@ def _assert_has_text_layer(document: Any, ranges: list[tuple[int, int]], stem: s
     )
 
 
+def _pdf_font_profile(
+    document: Any, ranges: list[tuple[int, int]]
+) -> tuple[float, dict[float, int]]:
+    """Releve la taille du corps du texte et classe les tailles de titre.
+
+    Le releve est fait une fois pour tout le document, avec PyMuPDF : c'est
+    une lecture, sans modele, de l'ordre de la seconde sur un ouvrage entier.
+
+    La taille dominante — celle qui porte le plus de caracteres — est le corps
+    du texte. Les tailles superieures sont celles des titres, et leur rang
+    donne le niveau. Un document compose d'une seule taille rend un classement
+    vide, et tous ses titres resteront freres.
+
+    Args:
+        document: Document PyMuPDF ouvert.
+        ranges: Plages de pages conservees.
+
+    Returns:
+        La taille du corps du texte, et le rang de chaque taille de titre.
+    """
+    caracteres: dict[float, int] = {}
+    for debut, fin in ranges:
+        for numero in range(debut, fin + 1):
+            for bloc in document[numero - 1].get_text("dict")["blocks"]:
+                for ligne in bloc.get("lines", []):
+                    for span in ligne["spans"]:
+                        taille = round(float(span["size"]), 1)
+                        caracteres[taille] = caracteres.get(taille, 0) + len(span["text"])
+
+    if not caracteres:
+        return 0.0, {}
+
+    body_size = max(caracteres.items(), key=lambda paire: paire[1])[0]
+    titres = [taille for taille in caracteres if taille > body_size]
+    return body_size, ranking.font_size_ranks(titres)
+
+
+def _heading_size(page: Any, bbox: dict[str, float], page_height: float) -> float:
+    """Plus grande taille de police rencontree dans la boite d'un titre.
+
+    Docling exprime les coordonnees avec l'origine en bas de page, PyMuPDF avec
+    l'origine en haut : la boite est retournee avant comparaison.
+
+    Args:
+        page: Page PyMuPDF.
+        bbox: Boite de l'element, au format Docling.
+        page_height: Hauteur de la page.
+
+    Returns:
+        La taille en points, ou 0 si rien n'est trouve.
+    """
+    import fitz
+
+    zone = fitz.Rect(bbox["l"], page_height - bbox["t"], bbox["r"], page_height - bbox["b"])
+    plus_grande = 0.0
+    for bloc in page.get_text("dict")["blocks"]:
+        for ligne in bloc.get("lines", []):
+            for span in ligne["spans"]:
+                if fitz.Rect(span["bbox"]).intersects(zone):
+                    plus_grande = max(plus_grande, float(span["size"]))
+    return plus_grande
+
+
+def _figure_boxes(
+    elements: list[dict[str, Any]], page_no: int
+) -> list[tuple[float, float, float, float]]:
+    """Boites des images et tableaux deja rencontres sur une page."""
+    boites: list[tuple[float, float, float, float]] = []
+    for element in elements:
+        bbox = element["bbox"]
+        if element["label"] in VISUAL_LABELS and bbox and element["page_no"] == page_no:
+            boites.append((bbox["l"], bbox["b"], bbox["r"], bbox["t"]))
+    return boites
+
+
+def _pdf_heading_rank(
+    item: Any,
+    document: Any,
+    elements: list[dict[str, Any]],
+    body_size: float,
+    size_ranks: dict[float, int],
+) -> int | None:
+    """Rang d'un titre dans un PDF, deduit de sa taille de police.
+
+    Docling ne declare aucun parent sur les PDF et met tous les titres au meme
+    niveau. La taille, elle, est ecrite en clair dans le fichier.
+
+    Deux titres sont ecartes du classement : celui dont la boite est contenue
+    dans une image ou un tableau — le texte d'une figure peut etre grand sans
+    etre un titre — et celui qui n'est pas plus grand que le corps du texte,
+    qui est presque toujours un faux positif de detection.
+
+    Args:
+        item: Item Docling.
+        document: Document PyMuPDF ouvert.
+        elements: Elements deja produits pour ce lot, pour situer les figures.
+        body_size: Taille dominante du corps du texte.
+        size_ranks: Rang de chaque taille de titre du document.
+
+    Returns:
+        Le rang du titre. ``None`` uniquement quand l'element n'est pas un
+        titre, ou quand le document n'offre aucun classement — auquel cas tous
+        ses titres restent freres sous le document.
+    """
+    if str(getattr(item, "label", "")) not in ranking.HEADING_LABELS:
+        return None
+    if not size_ranks:
+        return None
+
+    # Un titre que l'on ne sait pas classer se range sous le titre courant.
+    # Lui donner le rang 0 en ferait un chapitre et remettrait l'arbre a zero :
+    # c'est ce que faisait « Then: », faux titre detecte en pleine page.
+    inclassable = max(size_ranks.values()) + 1
+
+    prov = item_provenance(item)
+    bbox = extract_bbox(prov.bbox if prov else None)
+    if not prov or not bbox:
+        return inclassable
+
+    page = document[int(prov.page_no) - 1]
+    boite = (bbox["l"], bbox["b"], bbox["r"], bbox["t"])
+    if not ranking.is_heading_candidate(boite, _figure_boxes(elements, int(prov.page_no))):
+        return inclassable
+
+    taille = round(_heading_size(page, bbox, page.rect.height), 1)
+    if not ranking.exceeds_body_size(taille, body_size):
+        return inclassable
+    return size_ranks.get(taille, inclassable)
+
+
 def _convert_batch(
     converter: DocumentConverter,
     pdf_path: str,
@@ -541,13 +713,17 @@ def _convert_batch(
     accumulator: DocumentAccumulator,
     start_page: int,
     end_page: int,
+    body_size: float = 0.0,
+    size_ranks: dict[float, int] | None = None,
 ) -> list[dict[str, Any]]:
     """Convertit une plage de pages et construit ses elements."""
     result = converter.convert(pdf_path, page_range=(start_page, end_page))
     elements: list[dict[str, Any]] = []
+    rangs = size_ranks or {}
 
     for item, _ in result.document.iterate_items():
-        element = accumulator.add_item(item, result.document)
+        rang = _pdf_heading_rank(item, document, elements, body_size, rangs)
+        element = accumulator.add_item(item, result.document, heading_rank=rang)
         if element["label"] in VISUAL_LABELS and element["bbox"]:
             element["minio_url"] = images.crop_and_upload(
                 document,
