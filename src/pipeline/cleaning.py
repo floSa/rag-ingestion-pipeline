@@ -52,9 +52,14 @@ NOISE_TAGS: list[str] = [
     "button",
 ]
 
-# Chrome de page toujours supprime. header/footer sont traites a part :
-# a l'interieur d'un <article>/<main> ils portent souvent le titre.
-CHROME_TAGS: list[str] = ["nav", "aside"]
+# Chrome de page toujours supprime, ou qu'il se trouve.
+CHROME_TAGS: list[str] = ["nav"]
+
+# Chrome de page supprime uniquement hors d'un <article>/<main>. A l'interieur,
+# ces balises portent du contenu d'ouvrage : <header> le titre de chapitre,
+# <aside> les encadres (interviews, notes, avertissements) que les editeurs
+# techniques balisent ainsi. Les supprimer sans condition amputait le livre.
+CONTEXTUAL_CHROME_TAGS: list[str] = ["header", "footer", "aside"]
 
 # Classes marquees par SingleFile lui-meme.
 NOISE_CLASSES: list[str] = ["sf-hidden"]
@@ -357,10 +362,11 @@ def preclean_html(
     _decompose_all(soup.find_all(NOISE_TAGS))
     _decompose_all(soup.find_all(CHROME_TAGS))
 
-    # header/footer : supprimes sauf a l'interieur d'un article/main.
+    # header/footer/aside : supprimes sauf a l'interieur d'un article/main, ou
+    # ils portent du contenu d'ouvrage (titre de chapitre, encadres, interviews).
     _decompose_all(
         tag
-        for tag in soup.find_all(["header", "footer"])
+        for tag in soup.find_all(CONTEXTUAL_CHROME_TAGS)
         if not tag.decomposed and not tag.find_parent(["article", "main"])
     )
 

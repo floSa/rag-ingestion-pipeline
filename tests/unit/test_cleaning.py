@@ -149,6 +149,19 @@ class TestPrecleanHtml:
         assert "Titre de l'article" in result
         assert "chrome du site" not in result
 
+    def test_keeps_aside_inside_article(self):
+        """Les editeurs techniques balisent les encadres en <aside> : c'est du livre."""
+        html = (
+            "<html><body>"
+            "<aside>articles lies du site</aside>"
+            "<article><p>contenu</p>"
+            '<aside><div class="sidebar"><p>Interview d\'un ingenieur MLOps</p></div></aside>'
+            "</article></body></html>"
+        )
+        result = preclean_html(html, CleaningOptions())
+        assert "Interview d'un ingenieur MLOps" in result
+        assert "articles lies du site" not in result
+
     def test_removes_aria_navigation_roles(self):
         html = (
             "<html><body><p>contenu</p>"
