@@ -129,19 +129,92 @@ valide `/context/{element_id}` sur `^[a-f0-9]{10}$`.
 
 ### 4. Hierarchie et positions
 
-Le parcours maintient la section courante : un `section_header` (ou un `title`) ouvre une
-nouvelle section et reste rattache au document ; tout autre element se rattache au dernier
-en-tete rencontre. La section courante **survit aux lots de pages**, de sorte que la
-hierarchie d'un livre ne se brise pas toutes les cinq pages.
+**Une seule regle, quelle que soit la source :**
+
+> Le parent d'un titre est le titre precedent de **rang superieur**. Tout autre element se
+> rattache au titre le plus profond encore ouvert.
+
+Le rang est un petit entier ou 0 designe le niveau le plus haut. Ce qui change d'un format
+a l'autre n'est pas la regle, c'est seulement d'ou vient ce nombre :
+
+| Source       | Signal utilise                          | Ce que ca donne                    |
+|--------------|-----------------------------------------|------------------------------------|
+| HTML         | le parent que Docling declare           | hierarchie fidele, jusqu'a 4 niveaux |
+| Markdown     | l'attribut `level` (1 pour `##`, 2 pour `###`) | fidele aux dieses           |
+| PDF          | la **taille de police**                 | reconstruite, voir plus bas        |
+
+Le code n'a aucune branche par format : il essaie les signaux dans l'ordre, du plus fiable
+au plus indirect, et prend le premier qui repond. Quand aucun ne repond, tous les titres
+recoivent le rang 0 et restent freres sous le document — c'est le comportement d'avant, et
+c'est le pire cas possible. **La hierarchie n'est jamais inventee.**
+
+La section courante **survit aux lots de pages**, de sorte que la hierarchie d'un livre ne
+se brise pas toutes les cinq pages.
+
+#### Pourquoi la taille de police pour les PDF
+
+Docling ne declare aucun parent sur un PDF et attribue le meme niveau a tous les titres —
+mesure sur `statisticsfordatascience` : 333 en-tetes, tous au niveau 1, tous rattaches au
+corps du document. La taille de police, elle, est **ecrite en clair dans le fichier** :
+chaque bloc de texte porte l'instruction qui la fixe. On la lit, on ne l'estime pas.
+
+Le releve se fait une fois par document, avec PyMuPDF, sans modele :
+
+1. la taille qui porte le plus de caracteres est celle du **corps du texte** ;
+2. les tailles superieures sont celles des titres, classees de la plus grande a la plus
+   petite ;
+3. le rang dans ce classement donne le niveau.
+
+**Aucune valeur n'est ecrite en dur.** Le classement est recalcule pour chaque fichier :
+un ouvrage compose en 24/22/20 points se segmente exactement comme un ouvrage en 20/18/16.
+
+Deux garde-fous, parce que ce signal est le seul indirect :
+
+- un titre dont la boite est **contenue dans une image ou un tableau** est ecarte du
+  classement : le texte d'une figure peut etre grand sans etre un titre de section ;
+- un titre **pas plus grand que le corps du texte** ne cree pas de niveau. Sans cela, un
+  faux positif de detection ouvrirait une branche parasite.
+
+Un titre ecarte par l'un de ces garde-fous recoit le rang le plus profond, **jamais le rang
+zero** : le promouvoir chapitre remettrait tout l'arbre a zero.
+
+#### Profondeur plafonnee a 3
+
+L'objectif est de reconstruire un bloc avec ses titres parents pour l'agent, pas de
+reproduire une arborescence complete. La profondeur est en outre toujours celle du parent
+plus un, jamais le rang brut : un faux titre minuscule se range juste sous son
+predecesseur au lieu de tomber au niveau 9 et de trouer l'arbre.
+
+#### Resultat verifie
+
+Chapitre 3 de `statisticsfordatascience`, reconstruit par le pipeline et compare **ligne a
+ligne** au sommaire imprime de l'ouvrage :
+
+```
+[0] 3
+[0] A Developer's Approach to Data Cleaning
+    [1] Understanding basic data cleaning
+        [2] Common data issues
+        [2] Contextual data issues
+        [2] Cleaning techniques
+    [1] R and common data issues
+        [2] Outliers
+            [3] Step 1 - Profiling the data
+            [3] Step 2 - Addressing the outliers
+        [2] Domain expertise
+        [2] Validity checking
+    [1] Summary
+```
 
 Chaque element porte donc :
 
-| Champ           | Signification                                          |
-|-----------------|--------------------------------------------------------|
-| `reference_id`  | Parent : identifiant de la section, ou `DOC`           |
-| `page_position` | Rang de l'element dans sa page                         |
-| `ref_position`  | Rang de l'element sous son parent                      |
-| `order`         | Ordre de lecture global, porte par l'arete `PARENT_OF` |
+| Champ           | Signification                                            |
+|-----------------|----------------------------------------------------------|
+| `reference_id`  | Parent : identifiant du titre dominant, ou `DOC`         |
+| `depth`         | Profondeur dans la hierarchie, 0 pour un titre de tete   |
+| `page_position` | Rang de l'element dans sa page                           |
+| `ref_position`  | Rang de l'element sous son parent                        |
+| `order`         | Ordre de lecture global, porte par l'arete `PARENT_OF`   |
 
 ### 5. Contenu des tables
 

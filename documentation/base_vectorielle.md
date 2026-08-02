@@ -34,6 +34,7 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `minio_url` | URL de l'image associée, le cas échéant |
 | `reference_id` | Section parente (ou `DOC`) |
 | `language` | Langue du document (`en`, `fr`…), vide si indéterminée. Voir plus bas |
+| `depth` | Profondeur du chunk dans la hiérarchie des titres (0 = titre de tête) |
 | `section_title` | Titre de la section, exploitable pour l'affichage des citations |
 | `page_position` | Rang de l'élément dans sa page |
 | `ref_position` | Rang de l'élément sous son parent |

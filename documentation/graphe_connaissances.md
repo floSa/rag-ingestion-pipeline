@@ -25,7 +25,7 @@ Ils stockent les informations inhérentes. L'identifiant d'un élément est un h
 
 **Arêtes (Les Edges) :**
 Elles définissent l'orientation et comment interagir.
-- **`PARENT_OF`** : Orientée d'un conteneur parent (comme `Document`) vers un élément. Celle-ci intègre la propriété vitale `sequence` (integer) permettant la reconstruction temporelle/littérale du fichier lors d'une requête "Lis moi le livre".
+- **`PARENT_OF`** : Orientée d'un conteneur parent vers un élément. Le parent d'un titre est désormais **le titre qui le domine**, et non plus systématiquement le `Document` : un sous-titre est rattaché à sa section, elle-même rattachée à son chapitre. La profondeur est plafonnée à 3. Voir [extraction_donnees.md](extraction_donnees.md#4-hierarchie-et-positions) pour la règle et les signaux utilisés selon la source. Celle-ci intègre la propriété vitale `sequence` (integer) permettant la reconstruction temporelle/littérale du fichier lors d'une requête "Lis moi le livre".
 - **`LINKED_TO`** : Arête relationnelle entre une légende (`Caption`) découverte par l'IA d'extraction Docling et le conteneur visuel le plus proche à qui elle appartient (`Picture`, `Table`). Contient la propriété `relation` (string).
 
 ## Commandes utiles (Recherche / Agentique RAG)

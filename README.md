@@ -179,6 +179,48 @@ Le contrôle a lieu **avant la conversion** : reconnaître un doublon coûte une
 
 **Ce que ça ne détecte pas, volontairement** : deux éditions différentes du même livre, ou le même ouvrage en PDF et en HTML. Les fichiers diffèrent, donc les empreintes aussi. Les rapprocher demanderait une comparaison approximative, qui écarterait à tort des ouvrages légitimes — un risque plus grave que le doublon lui-même.
 
+### La hiérarchie des titres
+
+Un chapitre contient des sections, qui contiennent des sous-sections. Cette imbrication est reconstruite à l'ingestion, **avec une règle unique pour les trois formats** :
+
+> Le parent d'un titre est le titre précédent de **rang supérieur**. Les autres éléments se rattachent au titre le plus profond encore ouvert.
+
+Ce qui change d'un format à l'autre n'est pas la règle, mais d'où vient le rang :
+
+| Format | Signal | Résultat |
+|---|---|---|
+| **HTML** | le parent que Docling déclare | hiérarchie fidèle, jusqu'à 4 niveaux |
+| **Markdown** | l'attribut `level` (1 pour `##`, 2 pour `###`) | fidèle aux dièses du fichier |
+| **PDF** | la **taille de police**, lue dans le fichier | reconstruite, voir ci-dessous |
+
+Le code n'a aucune branche par format : il essaie les signaux dans l'ordre et prend le premier qui répond. **Si aucun ne répond, tous les titres restent frères sous le document** — le comportement d'avant. La hiérarchie n'est jamais inventée.
+
+**Le cas des PDF.** Docling ne déclare aucun parent sur un PDF et met tous les titres au même niveau — mesuré : 333 en-têtes, tous au niveau 1. Mais la taille de police est **écrite en clair dans le fichier** ; on la lit, on ne l'estime pas. Le relevé se fait une fois par document : la taille qui porte le plus de caractères est celle du corps du texte, les tailles supérieures sont celles des titres, et leur rang donne le niveau.
+
+**Aucune valeur n'est écrite en dur** — un ouvrage composé en 24/22/20 points se segmente exactement comme un ouvrage en 20/18/16.
+
+Deux garde-fous : un titre dont la boîte est **contenue dans une image ou un tableau** est écarté (le texte d'une figure peut être grand), et un titre **pas plus grand que le corps du texte** n'ouvre pas de niveau. Un titre écarté prend le rang le plus profond, jamais le rang zéro — le promouvoir chapitre remettrait tout l'arbre à zéro.
+
+La profondeur est plafonnée à 3 : l'objectif est de reconstruire un bloc avec ses titres parents pour l'agent, pas de reproduire une arborescence complète.
+
+**Vérifié contre le sommaire imprimé de l'ouvrage, ligne à ligne :**
+
+```
+[0] 3
+[0] A Developer's Approach to Data Cleaning
+    [1] Understanding basic data cleaning
+        [2] Common data issues
+        [2] Contextual data issues
+    [1] R and common data issues
+        [2] Outliers
+            [3] Step 1 – Profiling the data
+            [3] Step 2 – Addressing the outliers
+        [2] Domain expertise
+    [1] Summary
+```
+
+Chaque chunk porte sa profondeur sous la clé `depth`. Le rapport d'index (`src/index_report.py`) compte les documents par profondeur atteinte, ce qui montre d'un coup d'œil lesquels sont restés plats.
+
 ### La langue de chaque document
 
 Chaque document est identifié dans l'une de sept langues (`en`, `fr`, `es`, `de`, `it`, `pt`, `nl`), et cette langue est portée par le nœud `Document` **et par chaque chunk** — l'agent peut donc filtrer sans repasser par le graphe. La valeur reste vide quand le doute est permis.
@@ -342,6 +384,8 @@ RAG_Assistant/
 │   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
 │   │   ├── matter.py           # Index, sommaire, pages liminaires : hors contenu
+│   │   ├── hierarchy.py        # Arbre des titres : pile et profondeur
+│   │   ├── ranking.py          # Rang d'un titre (parent Docling, level, police)
 │   │   ├── language.py         # Détection de la langue par mots-outils
 │   │   └── images.py           # Crop PyMuPDF et export MinIO
 │   └── pipeline/               # Orchestration Dagster
@@ -374,6 +418,8 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `elements.py` | Hiérarchie, positions, identifiants | 100 % |
 | `markdown.py` | Normalisation avant conversion | 100 % |
 | `matter.py` | Repérage des parties hors contenu (index, sommaire) | 100 % |
+| `hierarchy.py` | Assemblage de l'arbre des titres | 100 % |
+| `ranking.py` | Rang d'un titre selon la source | 100 % |
 | `language.py` | Détection de la langue d'un document | 100 % |
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
