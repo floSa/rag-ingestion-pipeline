@@ -80,6 +80,28 @@ class DocumentIdentity:
     collection: str
 
 
+@dataclass(frozen=True)
+class DocumentFacts:
+    """Ce qu'on sait du document au-dela de son chemin.
+
+    Regroupe en un objet ce qui accompagnait deja l'identite jusqu'aux deux
+    stores, et ce qui s'y ajoute : la langue, pour que l'agent sache dans
+    quelle langue il interroge, et l'empreinte du fichier, qui permet de
+    reconnaitre un ouvrage deja ingere sous un autre nom.
+
+    Attributes:
+        type_file: ``pdf``, ``html`` ou ``md``.
+        total_pages: Nombre de pages (1 pour les formats non pagines).
+        language: Code ISO 639-1, ou chaine vide si indeterminee.
+        content_hash: SHA-256 du fichier source, en hexadecimal.
+    """
+
+    type_file: str
+    total_pages: int = 0
+    language: str = ""
+    content_hash: str = ""
+
+
 def document_identity(source_path: str) -> DocumentIdentity:
     """Construit l'identite d'un document a partir de son chemin relatif.
 

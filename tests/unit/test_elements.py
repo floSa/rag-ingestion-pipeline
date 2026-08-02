@@ -8,12 +8,16 @@ donc pas couvert, et une divergence serait passee inapercue.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import FrozenInstanceError
+
+import pytest
 
 from src.docling_service.elements import (
     ROOT_REFERENCE,
     SECTION_LABELS,
     TAG_MAP,
     DocumentAccumulator,
+    DocumentFacts,
     compute_id,
     document_identity,
     extract_bbox,
@@ -315,3 +319,17 @@ class TestIdentiteDuDocument:
         d = document_identity("mds/note")
         assert d.filename == "note"
         assert d.key == "mds/note"
+
+
+class TestDocumentFacts:
+    def test_defaults_are_neutral(self):
+        """Un appel manuel a l'API ne connait ni langue ni empreinte."""
+        facts = DocumentFacts(type_file="pdf")
+        assert facts.total_pages == 0
+        assert facts.language == ""
+        assert facts.content_hash == ""
+
+    def test_is_immutable(self):
+        facts = DocumentFacts(type_file="html", language="fr")
+        with pytest.raises(FrozenInstanceError):
+            facts.language = "en"  # type: ignore[misc]

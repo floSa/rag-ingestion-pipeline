@@ -27,6 +27,7 @@ from nebula3.gclient.net import ConnectionPool
 from src.docling_service.elements import (
     ROOT_REFERENCE,
     TAG_MAP,
+    DocumentFacts,
     DocumentIdentity,
     tag_for_label,
 )
@@ -46,7 +47,15 @@ logger = logging.getLogger(__name__)
 SPACE = "rag_space"
 
 VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")
-DOCUMENT_PROPERTIES = ("filename", "type_file", "total_pages", "collection", "source_path")
+DOCUMENT_PROPERTIES = (
+    "filename",
+    "type_file",
+    "total_pages",
+    "collection",
+    "source_path",
+    "language",
+    "content_hash",
+)
 
 
 class NebulaError(RuntimeError):
@@ -127,16 +136,14 @@ class NebulaWriter:
         self,
         elements: Sequence[dict[str, Any]],
         identity: DocumentIdentity,
-        type_file: str,
-        total_pages: int = 0,
+        facts: DocumentFacts,
     ) -> None:
         """Ecrit un lot d'elements et leurs relations dans le graphe.
 
         Args:
             elements: Elements produits par ``DocumentAccumulator``.
             identity: Identite du document (chemin, ouvrage, nom).
-            type_file: ``pdf``, ``html`` ou ``md``.
-            total_pages: Nombre de pages du document (0 si non pagine).
+            facts: Format, pagination, langue et empreinte du document.
 
         Raises:
             NebulaError: Si une requete est rejetee par le graphd.
@@ -187,10 +194,12 @@ class NebulaWriter:
                         doc_vid,
                         (
                             identity.filename,
-                            type_file,
-                            total_pages,
+                            facts.type_file,
+                            facts.total_pages,
                             identity.collection,
                             identity.source_path,
+                            facts.language,
+                            facts.content_hash,
                         ),
                     )
                 ],
@@ -214,6 +223,41 @@ class NebulaWriter:
             identity.key,
             len(vertices_by_tag),
         )
+
+    def find_duplicate(self, content_hash: str, doc_vid_exclu: str) -> str:
+        """Cherche un document deja ingere ayant exactement le meme fichier.
+
+        Sur une bibliotheque constituee au fil des annees, le meme ouvrage
+        revient sous deux noms — une copie de sauvegarde, un telechargement
+        refait. Sans ce controle, il occupe deux fois la place et remonte
+        deux fois dans les reponses.
+
+        Le test porte sur l'empreinte du fichier : c'est exact, jamais
+        approximatif. Deux editions differentes du meme livre ne sont pas
+        des doublons et restent toutes les deux.
+
+        Args:
+            content_hash: Empreinte SHA-256 du fichier a ingerer.
+            doc_vid_exclu: Identifiant du document courant, ignore dans la
+                recherche — reingerer le meme chemin n'est pas un doublon.
+
+        Returns:
+            Le chemin du document deja present, ou une chaine vide.
+        """
+        if not content_hash:
+            return ""
+
+        with self.session() as session:
+            resultat = session.execute(
+                "MATCH (d:Document) "
+                f"WHERE d.Document.content_hash == {quote(content_hash)} "
+                f"AND id(d) != {quote(doc_vid_exclu)} "
+                "RETURN d.Document.source_path AS chemin LIMIT 1;"
+            )
+            if not resultat.is_succeeded() or resultat.is_empty():
+                return ""
+            valeur = resultat.rows()[0].values[0].get_sVal()
+        return valeur.decode() if isinstance(valeur, bytes) else str(valeur or "")
 
     def delete_document(self, document_key: str) -> None:
         """Supprime les vertices d'un document (re-ingestion propre)."""
@@ -276,11 +320,18 @@ class NebulaWriter:
             execute(
                 session,
                 "CREATE TAG IF NOT EXISTS Document(filename string, type_file string, "
-                "total_pages int, collection string, source_path string);",
+                "total_pages int, collection string, source_path string, "
+                "language string, content_hash string);",
             )
             # Deploiements anterieurs : le tag existe sans total_pages, et
             # CREATE TAG IF NOT EXISTS ne l'ajoute pas. Tolere si deja present.
-            for ajout in ("total_pages int", "collection string", "source_path string"):
+            for ajout in (
+                "total_pages int",
+                "collection string",
+                "source_path string",
+                "language string",
+                "content_hash string",
+            ):
                 execute(session, f"ALTER TAG Document ADD ({ajout});", required=False)
 
             for tag in sorted(set(TAG_MAP.values())):

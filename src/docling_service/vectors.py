@@ -25,7 +25,7 @@ from sentence_transformers import SentenceTransformer
 
 from src.docling_service.blocks import build_blocks, has_content
 from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
-from src.docling_service.elements import DocumentIdentity
+from src.docling_service.elements import DocumentFacts, DocumentIdentity
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
 
@@ -66,7 +66,9 @@ def get_collection() -> Any:
 
 
 def build_chunks(
-    elements: Sequence[dict[str, Any]], identity: DocumentIdentity
+    elements: Sequence[dict[str, Any]],
+    identity: DocumentIdentity,
+    facts: DocumentFacts | None = None,
 ) -> tuple[list[str], list[str], list[dict[str, Any]]]:
     """Regroupe puis decoupe les elements en chunks prets pour ChromaDB.
 
@@ -78,6 +80,9 @@ def build_chunks(
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
         identity: Identite du document.
+        facts: Format, langue et empreinte du document. La langue est reportee
+            sur chaque chunk pour que l'agent puisse filtrer sans repasser par
+            le graphe.
 
     Returns:
         Triplet (ids, textes, metadonnees), aligne index par index. Les
@@ -85,6 +90,7 @@ def build_chunks(
         restent presents dans le graphe.
     """
     settings = get_settings()
+    language = facts.language if facts else ""
     ids: list[str] = []
     texts: list[str] = []
     metadatas: list[dict[str, Any]] = []
@@ -123,6 +129,7 @@ def build_chunks(
                     filename=identity.filename,
                     collection=identity.collection,
                     source_path=identity.source_path,
+                    language=language,
                     label=str(anchor.get("label") or ""),
                     page_no=int(anchor.get("page_no") or 0),
                     minio_url=str(anchor.get("minio_url") or ""),
@@ -139,12 +146,17 @@ def build_chunks(
     return ids, texts, metadatas
 
 
-def write_elements(elements: Sequence[dict[str, Any]], identity: DocumentIdentity) -> int:
+def write_elements(
+    elements: Sequence[dict[str, Any]],
+    identity: DocumentIdentity,
+    facts: DocumentFacts | None = None,
+) -> int:
     """Encode et enregistre les elements dans ChromaDB.
 
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
         identity: Identite du document.
+        facts: Format, langue et empreinte du document.
 
     Returns:
         Nombre de chunks ecrits.
@@ -153,7 +165,7 @@ def write_elements(elements: Sequence[dict[str, Any]], identity: DocumentIdentit
         Exception: Toute erreur d'encodage ou d'ecriture est propagee, pour
             faire echouer le job plutot que de laisser l'index incomplet.
     """
-    ids, texts, metadatas = build_chunks(elements, identity)
+    ids, texts, metadatas = build_chunks(elements, identity, facts)
     if not ids:
         return 0
 

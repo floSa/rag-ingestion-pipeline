@@ -80,6 +80,10 @@ class ChunkMetadata(BaseModel):
     collection: str = ""
     # Chemin complet relatif a Datas/, identite unique du document.
     source_path: str = ""
+    # Code ISO 639-1 de la langue du document (``en``, ``fr``...), vide si
+    # indeterminee. Le modele d'embedding actuel n'etant entraine que sur de
+    # l'anglais, l'agent a besoin de cette cle pour filtrer ou ponderer.
+    language: str = ""
     label: str = ""
     page_no: int = 0
     minio_url: str = ""

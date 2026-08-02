@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from src.docling_service import vectors
-from src.docling_service.elements import DocumentIdentity
+from src.docling_service.elements import DocumentFacts, DocumentIdentity
 from src.docling_service.nebula import get_writer
 from src.pipeline.schemas import DocumentElement
 
@@ -40,16 +40,14 @@ def validate_elements(elements: Sequence[dict[str, Any]]) -> None:
 def persist(
     elements: Sequence[dict[str, Any]],
     identity: DocumentIdentity,
-    type_file: str,
-    total_pages: int = 0,
+    facts: DocumentFacts,
 ) -> int:
     """Ecrit un lot d'elements dans NebulaGraph puis ChromaDB.
 
     Args:
         elements: Elements a persister.
         identity: Identite du document (chemin, ouvrage, nom).
-        type_file: ``pdf``, ``html`` ou ``md``.
-        total_pages: Nombre de pages du document (0 si non pagine).
+        facts: Format, pagination, langue et empreinte du document.
 
     Returns:
         Nombre de chunks ecrits dans ChromaDB.
@@ -62,5 +60,5 @@ def persist(
         return 0
 
     validate_elements(elements)
-    get_writer().write_elements(elements, identity, type_file, total_pages)
-    return vectors.write_elements(elements, identity)
+    get_writer().write_elements(elements, identity, facts)
+    return vectors.write_elements(elements, identity, facts)

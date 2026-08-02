@@ -84,6 +84,12 @@ def main() -> None:
     )
     print(f"tokens : mediane {int(statistics.median(tokens))}, maximum {max(tokens)}")
 
+    print("\n=== Repartition par langue ===")
+    for langue, count in Counter(
+        str(m.get("language") or "indeterminee") for m in metadatas
+    ).most_common():
+        print(f"{count:>7}  {langue}")
+
     print("\n=== Repartition par label ===")
     for label, count in Counter(str(m.get("label") or "?") for m in metadatas).most_common(10):
         print(f"{count:>7}  {label}")

@@ -13,6 +13,7 @@ Deux regimes selon le format :
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import shutil
 import tempfile
@@ -26,10 +27,11 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
-from src.docling_service import images, matter, storage
+from src.docling_service import images, language, matter, storage
 from src.docling_service.elements import (
     VISUAL_LABELS,
     DocumentAccumulator,
+    DocumentFacts,
     DocumentIdentity,
     document_identity,
 )
@@ -39,6 +41,8 @@ from src.docling_service.markdown import (
     extract_image_references,
     normalize_markdown,
 )
+from src.docling_service.nebula import get_writer
+from src.docling_service.ngql import document_vid
 from src.docling_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -112,15 +116,67 @@ def extract(path: Path, source_path: str = "", report: Reporter = _noop) -> dict
     """
     identity = document_identity(source_path or _deduce_source_path(path))
     suffix = path.suffix.lower()
+
+    # Le controle de doublon precede la conversion : reconnaitre un ouvrage
+    # deja ingere coute une lecture de fichier, le convertir pour rien coute
+    # plusieurs minutes de GPU.
+    content_hash = file_digest(path)
+    deja_ingere = _already_ingested(content_hash, identity)
+    if deja_ingere:
+        logger.info("[%s] doublon exact de %s : ignore", identity.filename, deja_ingere)
+        report(duplicate_of=deja_ingere)
+        return {
+            "elements": 0,
+            "chunks": 0,
+            "pages": 0,
+            "duplicate_of": deja_ingere,
+            "type_file": suffix.lstrip("."),
+        }
+
     if suffix in PDF_SUFFIXES:
-        return _extract_pdf(path, identity, report)
+        return _extract_pdf(path, identity, content_hash, report)
     type_file = FLAT_SUFFIXES.get(suffix)
     if type_file is None:
         raise UnsupportedFormatError(
             f"Format non pris en charge : {suffix or path.name} "
             f"(attendus : {', '.join(sorted(SUPPORTED_SUFFIXES))})"
         )
-    return _extract_flat(path, identity, type_file, report)
+    return _extract_flat(path, identity, type_file, content_hash, report)
+
+
+def file_digest(path: Path) -> str:
+    """Empreinte SHA-256 du fichier, lue par blocs.
+
+    Args:
+        path: Fichier a empreindre.
+
+    Returns:
+        L'empreinte en hexadecimal, ou une chaine vide si la lecture echoue —
+        auquel cas le controle de doublon est simplement inoperant, il ne doit
+        jamais empecher une ingestion.
+    """
+    empreinte = hashlib.sha256()
+    try:
+        with open(path, "rb") as fichier:
+            for bloc in iter(lambda: fichier.read(1 << 20), b""):
+                empreinte.update(bloc)
+    except OSError as exc:
+        logger.warning("Empreinte illisible pour %s : %s", path, exc)
+        return ""
+    return empreinte.hexdigest()
+
+
+def _already_ingested(content_hash: str, identity: DocumentIdentity) -> str:
+    """Chemin d'un document deja ingere portant le meme fichier, sinon vide.
+
+    Ne leve jamais : un graphe indisponible doit faire echouer l'ecriture, pas
+    la detection de doublon, qui n'est qu'un confort.
+    """
+    try:
+        return get_writer().find_duplicate(content_hash, document_vid(identity.key))
+    except Exception as exc:
+        logger.warning("Controle de doublon impossible : %s", exc)
+        return ""
 
 
 def _deduce_source_path(path: Path) -> str:
@@ -235,7 +291,11 @@ def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[in
 
 
 def _extract_flat(
-    path: Path, identity: DocumentIdentity, type_file: str, report: Reporter
+    path: Path,
+    identity: DocumentIdentity,
+    type_file: str,
+    content_hash: str,
+    report: Reporter,
 ) -> dict[str, Any]:
     """Convertit un document non pagine (HTML, Markdown) d'un seul tenant."""
     stem = identity.filename
@@ -270,13 +330,41 @@ def _extract_flat(
             element["minio_url"] = str(uri)
         elements.append(element)
 
-    chunks = storage.persist(elements, identity, type_file, total_pages=1)
-    report(pages_done=1, elements=len(elements), chunks=chunks)
+    langue = _detect_document_language(elements, stem)
+    facts = DocumentFacts(
+        type_file=type_file, total_pages=1, language=langue, content_hash=content_hash
+    )
+    chunks = storage.persist(elements, identity, facts)
+    report(pages_done=1, elements=len(elements), chunks=chunks, language=langue)
     logger.info("[%s] termine : %d elements, %d chunks", stem, len(elements), chunks)
-    return {"elements": len(elements), "chunks": chunks, "pages": 1, "type_file": type_file}
+    return {
+        "elements": len(elements),
+        "chunks": chunks,
+        "pages": 1,
+        "language": langue,
+        "type_file": type_file,
+    }
 
 
-def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> dict[str, Any]:
+def _detect_document_language(elements: list[dict[str, Any]], stem: str) -> str:
+    """Determine la langue du document a partir du texte de ses elements.
+
+    Args:
+        elements: Elements extraits, dans l'ordre du document.
+        stem: Nom du document, pour le log.
+
+    Returns:
+        Le code ISO 639-1, ou une chaine vide si indeterminee.
+    """
+    echantillon = language.sample_text([str(e.get("text") or "") for e in elements])
+    langue = language.detect_language(echantillon)
+    logger.info("[%s] langue : %s", stem, langue or "indeterminee")
+    return langue
+
+
+def _extract_pdf(
+    path: Path, identity: DocumentIdentity, content_hash: str, report: Reporter
+) -> dict[str, Any]:
     """Convertit un PDF par batchs de pages, avec crop des elements visuels."""
     import fitz  # import local : PyMuPDF n'est present que dans l'image d'extraction
 
@@ -305,6 +393,11 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
     converter = get_converter()
     total_chunks = 0
     failed_batches: list[str] = []
+    # Detectee sur le premier lot converti, puis conservee : la langue d'un
+    # ouvrage ne change pas en cours de route, et les lots suivants ecrivent
+    # le meme noeud Document.
+    langue = ""
+
 
     # Le PDF est ouvert UNE fois pour tous les crops du document.
     with fitz.open(pdf_path) as document:
@@ -325,14 +418,23 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
                     logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
                     failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
                 else:
+                    if not langue:
+                        langue = _detect_document_language(batch_elements, stem)
+                    facts = DocumentFacts(
+                        type_file="pdf",
+                        total_pages=total_pages,
+                        language=langue,
+                        content_hash=content_hash,
+                    )
                     # L'ecriture, elle, est bloquante : si un store refuse le lot,
                     # continuer n'aurait aucun sens.
-                    total_chunks += storage.persist(batch_elements, identity, "pdf", total_pages)
+                    total_chunks += storage.persist(batch_elements, identity, facts)
 
                 report(
                     pages_done=end_page,
                     elements=accumulator.count,
                     chunks=total_chunks,
+                    language=langue,
                     failed_batches=list(failed_batches),
                 )
                 start_page = end_page + 1
@@ -349,6 +451,7 @@ def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> di
         "chunks": total_chunks,
         "pages": total_pages,
         "pages_skipped": len(skipped),
+        "language": langue,
         "type_file": "pdf",
     }
 
