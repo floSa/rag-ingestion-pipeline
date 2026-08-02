@@ -34,6 +34,22 @@ Les lots de pages **ne se chevauchent pas**. Un chevauchement de deux pages exis
 pour dedupliquer, mais les identifiants sont deterministes depuis, et les ecritures
 sont des upserts : le recouvrement ne faisait plus que re-convertir les memes pages.
 
+#### Pages ecartees d'un PDF
+
+Avant de decouper en lots, `matter.py` etablit la liste des pages a ne pas convertir :
+couverture, page de copyright, sommaire, index. Elle vient des **signets** du PDF, qui
+donnent le titre de chaque partie et sa page **physique** — la destination est resolue
+par le format, elle n'est pas le numero imprime dans l'ouvrage, et le decalage habituel
+d'une a deux pages entre les deux ne s'applique donc pas.
+
+Quand les signets manquent ou ne mentionnent pas l'index, celui-ci est reconnu a sa
+forme : des lignes courtes terminees par des numeros de page, cherchees dans le dernier
+quart du document seulement.
+
+Les lots sont ensuite construits **a l'interieur des plages conservees**, jamais a
+cheval sur une page ecartee. Les numeros de page restent ceux du fichier : rien n'est
+renumerote, et `total_pages` reste le nombre reel de pages de l'ouvrage.
+
 #### Images des documents Markdown
 
 Un Markdown ne contient jamais ses images : il les **designe**. Deux syntaxes

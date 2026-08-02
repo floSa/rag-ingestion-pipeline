@@ -166,6 +166,39 @@ Les sources HTML passent par un nettoyage en étages, sans configuration par sit
 
 La stratégie retenue, les tailles avant/après et le nombre d'images exportées sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition. Si un site ressort mal, déclarez-lui un profil `detect`/`content`/`strip` dans `sources.yaml` (voir l'exemple en tête du fichier).
 
+### Ce qui n'est pas ingéré : index, sommaire, pages liminaires
+
+Un livre ne contient pas que du livre. **L'index est le pire cas pour un RAG** : une liste de mots suivis de numéros de page, sans une seule phrase à indexer, mais qui contient tout le vocabulaire de l'ouvrage — il ressort donc sur presque toutes les questions sans jamais rien apporter. Sommaire, couverture et page de copyright ont le même profil.
+
+Sont écartés par défaut : `Index`, `Table of Contents`, `Contents`, `Cover`, `Copyright`, `Credits`, `Colophon`, `Title page`, `Dedication`, `About the author`, `About the reviewer`, et leurs équivalents français. La liste complète est `FRONT_BACK_MATTER_TITLES` dans [`matter.py`](src/docling_service/matter.py).
+
+**Ne sont pas écartés, volontairement** : préface, glossaire (`Key Terms`) et annexes. C'est de la prose, et un glossaire répond même très bien aux questions « c'est quoi X ? ».
+
+Le repérage dépend du format :
+
+| Format | Comment la partie est reconnue |
+|---|---|
+| Livre découpé en fichiers (HTML, MD) | **Par le nom du fichier**. `Index.html` n'est même pas transformé en partition : ni run, ni place, ni bruit. |
+| PDF | **Par les signets du document** — l'arborescence cliquable du volet gauche d'un lecteur PDF. Elle donne le titre de chaque partie et sa page de début. |
+
+**Le décalage des pages ne se pose pas.** C'est le piège attendu : dans un livre, le sommaire imprimé annonce des numéros qui ne correspondent pas au rang réel de la page dans le fichier, avec un écart d'une à deux pages. Les signets, eux, ne portent pas un numéro imprimé mais une **destination interne** que le format résout en page physique. Vérifié sur `statisticsfordatascience.pdf` : le sommaire imprimé annonce la préface page 1, alors qu'elle commence physiquement page 19 — et le signet donne bien 19.
+
+**Filet de sortie.** Beaucoup de PDF n'ont pas de signets, ou en ont d'incomplets. Dans ce cas l'index est reconnu **à sa forme** : des lignes courtes terminées par un ou plusieurs numéros de page, cherchées uniquement dans le dernier quart du document pour ne pas confondre un index avec un tableau de résultats en plein chapitre.
+
+Un garde-fou refuse d'écarter plus de 35 % d'un document : au-delà, c'est forcément un signet parent mal interprété, pas un index.
+
+Pour ajuster, par source dans `sources.yaml` :
+
+```yaml
+  - name: livres_html
+    glob: "htms/**/*.html"
+    type: html
+    skip_front_back_matter: true          # défaut
+    extra_skip_titles: ["About this book"] # ajouts à la liste par défaut
+```
+
+Le nombre de pages écartées apparaît dans les métadonnées du job (`skipped_pages`) et dans les logs du service.
+
 ---
 
 ## Ingestion à grande échelle
@@ -289,6 +322,7 @@ RAG_Assistant/
 │   │   ├── blocks.py           # Regroupement en blocs, filtrage du bruit
 │   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
+│   │   ├── matter.py           # Index, sommaire, pages liminaires : hors contenu
 │   │   └── images.py           # Crop PyMuPDF et export MinIO
 │   └── pipeline/               # Orchestration Dagster
 │       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
@@ -319,6 +353,7 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `chunking.py` | Découpage et contextualisation | 100 % |
 | `elements.py` | Hiérarchie, positions, identifiants | 100 % |
 | `markdown.py` | Normalisation avant conversion | 100 % |
+| `matter.py` | Repérage des parties hors contenu (index, sommaire) | 100 % |
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
