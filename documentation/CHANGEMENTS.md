@@ -146,9 +146,22 @@ prose, et un glossaire répond bien aux questions de définition.
 
 ## 6. Après un changement de modèle ou de règle d'extraction
 
-Les vecteurs et le graphe doivent être reconstruits :
+Les vecteurs et le graphe doivent être reconstruits.
+
+> **Piège à connaître.** `docker compose restart` **ne relit pas le fichier `.env`** : il
+> relance le conteneur avec l'environnement qu'il avait déjà. Après avoir changé une
+> variable, il faut **recréer** le conteneur, sinon l'ingestion tourne silencieusement avec
+> l'ancienne valeur — rien dans les logs ne le signale sauf la ligne
+> `Chargement du modele d'embedding ...`.
 
 ```bash
+# 1. Recréer le conteneur pour qu'il prenne le nouveau .env
+docker compose up -d --force-recreate docling-service
+
+# 2. Vérifier que la variable est bien celle attendue
+docker compose exec docling-service printenv EMBEDDING_MODEL_NAME
+
+# 3. Purger, puis relancer l'ingestion depuis Dagster
 docker compose exec -w /app -e PYTHONPATH=/app docling-service python src/wipe_stores.py
 docker compose restart docling-service
 ```

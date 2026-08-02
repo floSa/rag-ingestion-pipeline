@@ -77,6 +77,8 @@ Assurez-vous d'avoir Docker et le plugin NVIDIA Container Toolkit installés (si
 docker compose up -d --build
 ```
 
+> **Après avoir modifié `.env`**, `docker compose restart` ne suffit pas : il relance le conteneur avec son ancien environnement. Utilisez `docker compose up -d --force-recreate <service>`, puis vérifiez avec `docker compose exec <service> printenv <VARIABLE>`.
+
 > Construisez bien **toute** la stack. `dagster-webserver` et `dagster-daemon` partagent le même `Dockerfile.dagster` mais donnent deux images distinctes : n'en reconstruire qu'une laisse l'autre sur l'ancienne base, et les runs s'exécutent dans le *daemon*.
 
 **Machine sans GPU ?** Créez un `docker-compose.override.yml` (gitignoré) pour retirer la
