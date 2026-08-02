@@ -39,6 +39,23 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `chunk_index` / `chunk_count` | Position du chunk dans son bloc |
 | `block_size` | Nombre d'éléments du document fusionnés dans ce chunk |
 
+## Limite mesurée : le modèle d'embedding ne parle qu'anglais
+
+`all-MiniLM-L6-v2` est entraîné sur de l'anglais. Tant que la question et le passage sont dans la même langue, il se comporte bien. **Le problème apparaît quand on interroge en français une bibliothèque anglaise** — le cas le plus courant ici.
+
+Mesure, sur la même question posée dans les deux langues, face à quatre passages dont un seul répond :
+
+| Question | Rang du passage pertinent | Score | Devancé par |
+|---|---|---|---|
+| En anglais | **1er** | 0,707 | — |
+| En français | **2e** | 0,366 | un passage français hors sujet (0,397) |
+
+Autrement dit, en français, un passage sans rapport mais dans la bonne langue passe devant la bonne réponse.
+
+**Remplacement possible sans changer le schéma.** `paraphrase-multilingual-MiniLM-L12-v2` produit des vecteurs de **384 dimensions**, exactement comme le modèle actuel : la collection ChromaDB n'a pas à changer de forme. Sur la même question française, le passage pertinent repasse **1er avec 0,746**, loin devant le reste.
+
+Le modèle se change par `EMBEDDING_MODEL_NAME` dans `.env`, mais **ce n'est pas une décision locale** : `rag-agent-chat` doit encoder ses questions avec le même modèle, sans quoi les vecteurs ne sont plus comparables. Le changement implique donc les deux projets et une ré-ingestion complète.
+
 ## Commandes utiles
 Lors de vos futurs développements du système RAG Agentique, vous nécessiterez régulièrement ces concepts :
 - **Intérroger la collection en Python :** 
