@@ -250,9 +250,9 @@ docker compose exec docling-service python -m src.verify_data
 docker compose exec docling-service python -m src.index_report
 ```
 
-**Volumétrie.** Mesurée sur le corpus de référence (1 PDF de 280 pages + 36 chapitres HTML + 1 Markdown) : 559 Mo dans `Datas/database/` — 255 Mo pour ChromaDB, 242 Mo pour NebulaGraph, 64 Mo pour MinIO — soit 24 709 nœuds de graphe, 5 246 chunks vectorisés et 1 246 images. Comptez de l'ordre de **4 à 5 Go pour 50 livres de 300 pages**.
+**Volumétrie.** Mesurée sur le corpus de référence — 1 PDF de 280 pages, 35 chapitres HTML de deux ouvrages, 6 notes Markdown, soit 42 documents : 750 Mo dans `Datas/database/` — 401 Mo pour ChromaDB, 264 Mo pour NebulaGraph, 86 Mo pour MinIO — soit 23 741 nœuds de graphe et 5 592 chunks vectorisés. Une bonne part de ces 750 Mo est de l'amorce fixe : les 280 pages de PDF pèsent à elles seules 31 Mo d'images sur MinIO. Comptez de l'ordre de **15 à 25 Go pour 300 livres**, dominés par les images.
 
-**Débit.** Toujours sur ce corpus : 39 documents ingérés en 4 minutes, dont le PDF de 280 pages en ~3 minutes à lui seul. Comptez **3 à 4 heures pour 50 livres**, sans surveillance.
+**Débit.** Voir le tableau détaillé dans [orchestration.md](documentation/orchestration.md#combien-de-temps-prend-une-ingestion) : un chapitre HTML en 6 s, un PDF de 300 pages en 1 à 2 min, **1 h 30 à 2 h pour 50 livres**, sans surveillance.
 
 **Mémoire.** Relevée toutes les 20 à 30 secondes pendant une demi-heure d'ingestion continue (111 mesures en régime) : **médiane 6,08 Gio, pic 6,43 Gio**, contre une limite de 10 Go fixée dans `docker-compose.yml` — soit 3,5 Gio de marge. L'essentiel est constitué des modèles, chargés une fois pour toutes ; la consommation ne monte pas avec le nombre de documents traités.
 
