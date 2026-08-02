@@ -11,6 +11,7 @@ afin de rester testable sans l'image d'extraction.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from typing import Any
 
 # Mapping labels Docling -> tags NebulaGraph.
@@ -42,10 +43,71 @@ SECTION_LABELS: set[str] = {lbl for lbl, tag in TAG_MAP.items() if tag == "Secti
 # Parent par defaut d'un element sans section : le document lui-meme.
 ROOT_REFERENCE = "DOC"
 
+# Dossier ou le pipeline depose les HTML nettoyes ; il double l'arborescence
+# d'origine et ne fait pas partie de l'identite du document.
+CLEANED_SUBDIR = ".cleaned"
+
 
 def tag_for_label(label: str) -> str:
     """Retourne le tag NebulaGraph d'un label Docling (Paragraph par defaut)."""
     return TAG_MAP.get(label, "Paragraph")
+
+
+@dataclass(frozen=True)
+class DocumentIdentity:
+    """Identite d'un document ingere.
+
+    Le nom de fichier seul ne suffit pas. Un livre decoupe en chapitres donne
+    des noms qui se repetent d'un ouvrage a l'autre — « Preface », « Index »,
+    « Appendix ». Deux chapitres homonymes produiraient les memes identifiants
+    d'elements et fusionneraient silencieusement en un seul document.
+
+    C'est donc le **chemin** qui porte l'identite, et le dossier parent qui
+    porte l'ouvrage — sans quoi une citation ne peut pas dire de quel livre
+    elle vient.
+
+    Attributes:
+        source_path: Chemin relatif a ``Datas/``, avec son extension.
+        key: Le meme, sans extension. Base des identifiants d'elements.
+        filename: Nom du fichier seul — le chapitre.
+        collection: Dossier de premier niveau sous la racine de la source,
+            c'est-a-dire l'ouvrage. Vide pour un fichier depose a plat.
+    """
+
+    source_path: str
+    key: str
+    filename: str
+    collection: str
+
+
+def document_identity(source_path: str) -> DocumentIdentity:
+    """Construit l'identite d'un document a partir de son chemin relatif.
+
+    Args:
+        source_path: Chemin relatif a ``Datas/``, par exemple
+            ``htms/Practical MLOps/1. Introduction to MLOps.html``.
+
+    Returns:
+        L'identite correspondante.
+    """
+    normalise = source_path.replace("\\", "/").strip("/")
+    # Les HTML sont convertis depuis leur copie nettoyee, qui reproduit
+    # l'arborescence sous un dossier dedie : on revient au chemin d'origine.
+    segments = [s for s in normalise.split("/") if s and s != CLEANED_SUBDIR]
+
+    key = "/".join(segments)
+    if "." in segments[-1]:
+        segments[-1] = segments[-1].rsplit(".", 1)[0]
+        key = "/".join(segments)
+
+    return DocumentIdentity(
+        source_path=normalise,
+        key=key,
+        filename=segments[-1],
+        # segments[0] est le dossier de la source (pdfs, htms, mds) ; l'ouvrage
+        # est le niveau suivant, quand il existe.
+        collection=segments[1] if len(segments) >= 3 else "",
+    )
 
 
 def compute_id(filename: str, page_no: int, position_in_page: int, text: str) -> str:
@@ -134,8 +196,8 @@ class DocumentAccumulator:
     (``page_position``, ``ref_position``, ``reference_id``).
     """
 
-    def __init__(self, filename_stem: str) -> None:
-        self.filename_stem = filename_stem
+    def __init__(self, identity: DocumentIdentity) -> None:
+        self.identity = identity
         self._global_order = 0
         self._current_section_id: str | None = None
         self._current_section_title = ""
@@ -166,7 +228,10 @@ class DocumentAccumulator:
         position_in_page = self._page_counters.get(page_no, 0)
         self._page_counters[page_no] = position_in_page + 1
 
-        element_id = compute_id(self.filename_stem, page_no, position_in_page, text)
+        # La cle du document, et non son seul nom de fichier : deux chapitres
+        # homonymes dans deux ouvrages differents doivent donner des ids
+        # distincts, sinon ils se recouvrent en silence.
+        element_id = compute_id(self.identity.key, page_no, position_in_page, text)
 
         # Un en-tete ouvre une nouvelle section et reste rattache au document ;
         # les autres elements se rattachent au dernier en-tete rencontre.

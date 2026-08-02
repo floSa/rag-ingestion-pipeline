@@ -46,7 +46,9 @@ _readiness: dict[str, bool] = {
 
 def _run_extraction(filepath: str, job: Job) -> None:
     """Traitement d'un job : extraction complete d'un document."""
-    result = extraction.extract(Path(filepath), job.report)
+    result = extraction.extract(
+        Path(filepath), source_path=job.progress.get("source_path", ""), report=job.report
+    )
     job.report(**result)
 
 
@@ -106,7 +108,10 @@ def extract_document(request: ExtractRequest) -> ExtractResponse:
             ),
         )
 
-    job = queue.submit(str(path))
+    # L'identite du document voyage avec le job : le pipeline la connait (c'est
+    # sa cle de partition), le service ne saurait que la deviner. Elle est
+    # inscrite des la soumission, le worker pouvant demarrer aussitot.
+    job = queue.submit(str(path), source_path=request.source_path)
     return ExtractResponse(job_id=job.id, status=job.status)
 
 

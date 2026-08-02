@@ -25,6 +25,7 @@ from sentence_transformers import SentenceTransformer
 
 from src.docling_service.blocks import build_blocks, has_content
 from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
+from src.docling_service.elements import DocumentIdentity
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
 
@@ -65,7 +66,7 @@ def get_collection() -> Any:
 
 
 def build_chunks(
-    elements: Sequence[dict[str, Any]], filename: str
+    elements: Sequence[dict[str, Any]], identity: DocumentIdentity
 ) -> tuple[list[str], list[str], list[dict[str, Any]]]:
     """Regroupe puis decoupe les elements en chunks prets pour ChromaDB.
 
@@ -76,7 +77,7 @@ def build_chunks(
 
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
-        filename: Nom du document sans extension.
+        identity: Identite du document.
 
     Returns:
         Triplet (ids, textes, metadonnees), aligne index par index. Les
@@ -119,7 +120,9 @@ def build_chunks(
                 ChunkMetadata(
                     element_id=element_id,
                     graph_node_id=element_id,
-                    filename=filename,
+                    filename=identity.filename,
+                    collection=identity.collection,
+                    source_path=identity.source_path,
                     label=str(anchor.get("label") or ""),
                     page_no=int(anchor.get("page_no") or 0),
                     minio_url=str(anchor.get("minio_url") or ""),
@@ -136,12 +139,12 @@ def build_chunks(
     return ids, texts, metadatas
 
 
-def write_elements(elements: Sequence[dict[str, Any]], filename: str) -> int:
+def write_elements(elements: Sequence[dict[str, Any]], identity: DocumentIdentity) -> int:
     """Encode et enregistre les elements dans ChromaDB.
 
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
-        filename: Nom du document sans extension.
+        identity: Identite du document.
 
     Returns:
         Nombre de chunks ecrits.
@@ -150,7 +153,7 @@ def write_elements(elements: Sequence[dict[str, Any]], filename: str) -> int:
         Exception: Toute erreur d'encodage ou d'ecriture est propagee, pour
             faire echouer le job plutot que de laisser l'index incomplet.
     """
-    ids, texts, metadatas = build_chunks(elements, filename)
+    ids, texts, metadatas = build_chunks(elements, identity)
     if not ids:
         return 0
 
@@ -183,5 +186,5 @@ def write_elements(elements: Sequence[dict[str, Any]], filename: str) -> int:
             metadatas=metadatas[start:stop],
         )
 
-    logger.info("ChromaDB: %d chunks ecrits pour %s", len(ids), filename)
+    logger.info("ChromaDB: %d chunks ecrits pour %s", len(ids), identity.key)
     return len(ids)

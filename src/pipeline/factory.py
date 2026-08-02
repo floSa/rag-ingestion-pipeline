@@ -70,7 +70,9 @@ class SourceDefinitions:
     sensor: SensorDefinition
 
 
-def _request_extraction(context: AssetExecutionContext, file_path: str) -> dict[str, Any]:
+def _request_extraction(
+    context: AssetExecutionContext, file_path: str, source_path: str
+) -> dict[str, Any]:
     """Soumet un fichier au service Docling et suit le job jusqu'a son terme.
 
     L'extraction ne tient pas dans une requete HTTP : un livre de plusieurs
@@ -81,6 +83,9 @@ def _request_extraction(context: AssetExecutionContext, file_path: str) -> dict[
     Args:
         context: Contexte d'execution de l'asset (journalisation).
         file_path: Chemin du document, vu par le service.
+        source_path: Chemin relatif a ``Datas/`` — la cle de partition. Il
+            porte l'identite du document : c'est lui qui distingue deux
+            chapitres homonymes appartenant a deux ouvrages differents.
 
     Returns:
         Bilan du job : elements, chunks, pages.
@@ -96,7 +101,7 @@ def _request_extraction(context: AssetExecutionContext, file_path: str) -> dict[
     context.log.info(f"Soumission a l'extraction : {file_path}")
     response = requests.post(
         f"{base_url}/extract",
-        json={"filepath": file_path},
+        json={"filepath": file_path, "source_path": source_path},
         timeout=settings.extraction_submit_timeout,
     )
     response.raise_for_status()
@@ -256,7 +261,7 @@ def _build_html_assets(
     )
     def extracted_document(context: AssetExecutionContext, cleaned_html: str) -> dict[str, Any]:
         """Envoie le HTML nettoye au service Docling."""
-        result = _request_extraction(context, cleaned_html)
+        result = _request_extraction(context, cleaned_html, context.partition_key)
         _record_metadata(context, result)
         return result
 
@@ -288,7 +293,7 @@ def _build_direct_assets(
             # Le fichier a disparu entre la detection du sensor et le run :
             # echouer plutot que de marquer la partition comme materialisee.
             raise FileNotFoundError(f"Source file not found: {file_path}")
-        result = _request_extraction(context, str(file_path))
+        result = _request_extraction(context, str(file_path), context.partition_key)
         _record_metadata(context, result)
         return result
 

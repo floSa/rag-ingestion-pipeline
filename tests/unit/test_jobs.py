@@ -160,3 +160,20 @@ class TestJobQueue:
         # Un job qu'un client attend encore doit rester interrogeable.
         assert queue.get(first.id) is not None
         release.set()
+
+
+class TestContexteDeSoumission:
+    def test_contexte_disponible_des_le_demarrage(self):
+        # Le worker peut demarrer des la mise en file : le contexte doit y
+        # etre deja inscrit, sinon le handler lit une valeur vide.
+        vus: list[str] = []
+        queue = JobQueue(lambda path, job: vus.append(job.progress.get("source_path", "")))
+        queue.start()
+        job = queue.submit("/a.pdf", source_path="htms/Mon Livre/Chapitre 1.html")
+        assert _wait_for(lambda: job.status == SUCCESS)
+        assert vus == ["htms/Mon Livre/Chapitre 1.html"]
+
+    def test_sans_contexte_le_job_reste_valide(self):
+        queue = JobQueue(lambda path, job: None)
+        job = queue.submit("/a.pdf")
+        assert job.snapshot()["progress"] == {}

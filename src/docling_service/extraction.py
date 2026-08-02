@@ -27,7 +27,12 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
 from src.docling_service import images, storage
-from src.docling_service.elements import VISUAL_LABELS, DocumentAccumulator
+from src.docling_service.elements import (
+    VISUAL_LABELS,
+    DocumentAccumulator,
+    DocumentIdentity,
+    document_identity,
+)
 from src.docling_service.markdown import (
     IMAGE_MARKER,
     ImageReference,
@@ -85,11 +90,13 @@ def get_converter() -> DocumentConverter:
     )
 
 
-def extract(path: Path, report: Reporter = _noop) -> dict[str, Any]:
+def extract(path: Path, source_path: str = "", report: Reporter = _noop) -> dict[str, Any]:
     """Extrait un document et le persiste dans les stores.
 
     Args:
         path: Chemin du fichier a extraire.
+        source_path: Chemin relatif a ``Datas/``, porteur de l'identite du
+            document. Deduit du chemin du fichier s'il n'est pas fourni.
         report: Rapporteur d'avancement, appele avec des mots-cles.
 
     Returns:
@@ -99,16 +106,29 @@ def extract(path: Path, report: Reporter = _noop) -> dict[str, Any]:
         UnsupportedFormatError: Si l'extension n'est pas prise en charge.
         BatchExtractionError: Si au moins un batch de pages a echoue.
     """
+    identity = document_identity(source_path or _deduce_source_path(path))
     suffix = path.suffix.lower()
     if suffix in PDF_SUFFIXES:
-        return _extract_pdf(path, report)
+        return _extract_pdf(path, identity, report)
     type_file = FLAT_SUFFIXES.get(suffix)
     if type_file is None:
         raise UnsupportedFormatError(
             f"Format non pris en charge : {suffix or path.name} "
             f"(attendus : {', '.join(sorted(SUPPORTED_SUFFIXES))})"
         )
-    return _extract_flat(path, type_file, report)
+    return _extract_flat(path, identity, type_file, report)
+
+
+def _deduce_source_path(path: Path) -> str:
+    """Deduit le chemin relatif a ``Datas/`` quand le pipeline ne l'a pas fourni.
+
+    Cas d'un appel manuel a l'API. On coupe au dossier ``Datas`` ; a defaut, on
+    retombe sur le nom du fichier seul — l'ouvrage sera alors inconnu.
+    """
+    parts = path.parts
+    if "Datas" in parts:
+        return "/".join(parts[parts.index("Datas") + 1 :])
+    return path.name
 
 
 def _index_attachments(directory: Path) -> dict[str, Path]:
@@ -210,9 +230,11 @@ def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[in
         shutil.rmtree(directory, ignore_errors=True)
 
 
-def _extract_flat(path: Path, type_file: str, report: Reporter) -> dict[str, Any]:
+def _extract_flat(
+    path: Path, identity: DocumentIdentity, type_file: str, report: Reporter
+) -> dict[str, Any]:
     """Convertit un document non pagine (HTML, Markdown) d'un seul tenant."""
-    stem = path.stem
+    stem = identity.filename
     logger.info("[%s] conversion %s...", stem, type_file)
     report(pages_total=1, pages_done=0, elements=0, chunks=0)
 
@@ -220,7 +242,7 @@ def _extract_flat(path: Path, type_file: str, report: Reporter) -> dict[str, Any
         result = get_converter().convert(str(source_path))
 
     document = result.document
-    accumulator = DocumentAccumulator(stem)
+    accumulator = DocumentAccumulator(identity)
     elements: list[dict[str, Any]] = []
 
     for item, _ in document.iterate_items():
@@ -244,19 +266,19 @@ def _extract_flat(path: Path, type_file: str, report: Reporter) -> dict[str, Any
             element["minio_url"] = str(uri)
         elements.append(element)
 
-    chunks = storage.persist(elements, stem, type_file, total_pages=1)
+    chunks = storage.persist(elements, identity, type_file, total_pages=1)
     report(pages_done=1, elements=len(elements), chunks=chunks)
     logger.info("[%s] termine : %d elements, %d chunks", stem, len(elements), chunks)
     return {"elements": len(elements), "chunks": chunks, "pages": 1, "type_file": type_file}
 
 
-def _extract_pdf(path: Path, report: Reporter) -> dict[str, Any]:
+def _extract_pdf(path: Path, identity: DocumentIdentity, report: Reporter) -> dict[str, Any]:
     """Convertit un PDF par batchs de pages, avec crop des elements visuels."""
     import fitz  # import local : PyMuPDF n'est present que dans l'image d'extraction
 
     settings = get_settings()
     pdf_path = str(path)
-    stem = path.stem
+    stem = identity.filename
 
     with fitz.open(pdf_path) as document:
         total_pages: int = len(document)
@@ -264,7 +286,7 @@ def _extract_pdf(path: Path, report: Reporter) -> dict[str, Any]:
     logger.info("[%s] PDF de %d pages", stem, total_pages)
     report(pages_total=total_pages, pages_done=0, elements=0, chunks=0)
 
-    accumulator = DocumentAccumulator(stem)
+    accumulator = DocumentAccumulator(identity)
     converter = get_converter()
     total_chunks = 0
     failed_batches: list[str] = []
@@ -289,7 +311,7 @@ def _extract_pdf(path: Path, report: Reporter) -> dict[str, Any]:
             else:
                 # L'ecriture, elle, est bloquante : si un store refuse le lot,
                 # continuer n'aurait aucun sens.
-                total_chunks += storage.persist(batch_elements, stem, "pdf", total_pages)
+                total_chunks += storage.persist(batch_elements, identity, "pdf", total_pages)
 
             report(
                 pages_done=end_page,

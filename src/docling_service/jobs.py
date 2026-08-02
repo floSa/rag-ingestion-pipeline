@@ -103,7 +103,7 @@ class JobQueue:
             self._worker = threading.Thread(target=self._run, name="extraction-worker", daemon=True)
             self._worker.start()
 
-    def submit(self, filepath: str) -> Job:
+    def submit(self, filepath: str, **contexte: Any) -> Job:
         """Met un fichier en file d'extraction.
 
         Si le meme fichier est deja en attente ou en cours, le job existant est
@@ -112,6 +112,9 @@ class JobQueue:
 
         Args:
             filepath: Chemin du document a extraire.
+            contexte: Donnees inscrites sur le job **avant** sa mise en file.
+                Le worker peut demarrer des la mise en file : les renseigner
+                apres coup exposerait a une course.
 
         Returns:
             Le job cree, ou celui deja actif pour ce fichier.
@@ -125,6 +128,8 @@ class JobQueue:
                     return existing
 
             job = Job(id=uuid.uuid4().hex[:12], filepath=filepath)
+            if contexte:
+                job.report(**contexte)
             self._jobs[job.id] = job
             self._order.append(job.id)
             self._active_by_path[filepath] = job.id

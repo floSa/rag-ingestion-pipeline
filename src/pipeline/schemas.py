@@ -73,7 +73,13 @@ class ChunkMetadata(BaseModel):
 
     element_id: str
     graph_node_id: str
+    # Nom du fichier seul — le chapitre, pour un livre decoupe.
     filename: str
+    # Dossier parent : l'ouvrage auquel appartient le chapitre. Sans lui, une
+    # citation ne peut pas dire de quel livre elle vient.
+    collection: str = ""
+    # Chemin complet relatif a Datas/, identite unique du document.
+    source_path: str = ""
     label: str = ""
     page_no: int = 0
     minio_url: str = ""
@@ -93,6 +99,14 @@ class ExtractRequest(BaseModel):
     """Requête d'extraction envoyée au service Docling."""
 
     filepath: str
+    # Chemin relatif à ``Datas/``, tel que le connaît le pipeline — c'est la
+    # clé de partition Dagster. Il porte l'identité du document : deux
+    # chapitres homonymes dans deux ouvrages différents sont distingués par
+    # lui, alors que leur nom de fichier seul les confondrait.
+    #
+    # Renseigné par le pipeline. Laissé vide (appel manuel), le service le
+    # déduit du chemin du fichier.
+    source_path: str = ""
 
 
 class ExtractResponse(BaseModel):

@@ -24,7 +24,12 @@ from typing import Any
 from nebula3.Config import Config
 from nebula3.gclient.net import ConnectionPool
 
-from src.docling_service.elements import ROOT_REFERENCE, TAG_MAP, tag_for_label
+from src.docling_service.elements import (
+    ROOT_REFERENCE,
+    TAG_MAP,
+    DocumentIdentity,
+    tag_for_label,
+)
 from src.docling_service.ngql import (
     VID_MAX_BYTES,
     document_vid,
@@ -41,7 +46,7 @@ logger = logging.getLogger(__name__)
 SPACE = "rag_space"
 
 VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")
-DOCUMENT_PROPERTIES = ("filename", "type_file", "total_pages")
+DOCUMENT_PROPERTIES = ("filename", "type_file", "total_pages", "collection", "source_path")
 
 
 class NebulaError(RuntimeError):
@@ -121,7 +126,7 @@ class NebulaWriter:
     def write_elements(
         self,
         elements: Sequence[dict[str, Any]],
-        filename: str,
+        identity: DocumentIdentity,
         type_file: str,
         total_pages: int = 0,
     ) -> None:
@@ -129,7 +134,7 @@ class NebulaWriter:
 
         Args:
             elements: Elements produits par ``DocumentAccumulator``.
-            filename: Nom du document sans extension.
+            identity: Identite du document (chemin, ouvrage, nom).
             type_file: ``pdf``, ``html`` ou ``md``.
             total_pages: Nombre de pages du document (0 si non pagine).
 
@@ -140,7 +145,7 @@ class NebulaWriter:
             return
 
         max_chars = get_settings().graph_text_max_chars
-        doc_vid = document_vid(filename)
+        doc_vid = document_vid(identity.key)
 
         vertices_by_tag: dict[str, list[str]] = {}
         parent_edges: list[str] = []
@@ -177,7 +182,18 @@ class NebulaWriter:
             for statement in insert_vertex_statements(
                 "Document",
                 DOCUMENT_PROPERTIES,
-                [vertex_value(doc_vid, (filename, type_file, total_pages))],
+                [
+                    vertex_value(
+                        doc_vid,
+                        (
+                            identity.filename,
+                            type_file,
+                            total_pages,
+                            identity.collection,
+                            identity.source_path,
+                        ),
+                    )
+                ],
             ):
                 execute(session, statement)
 
@@ -195,14 +211,14 @@ class NebulaWriter:
         logger.info(
             "Nebula: %d elements ecrits pour %s (%d tags)",
             len(elements),
-            filename,
+            identity.key,
             len(vertices_by_tag),
         )
 
-    def delete_document(self, filename: str) -> None:
+    def delete_document(self, document_key: str) -> None:
         """Supprime les vertices d'un document (re-ingestion propre)."""
         with self.session() as session:
-            execute(session, f"DELETE VERTEX {quote(document_vid(filename))} WITH EDGE;")
+            execute(session, f"DELETE VERTEX {quote(document_vid(document_key))} WITH EDGE;")
 
     # ── Initialisation du schema ─────────────────────────────────────────────
 
@@ -259,12 +275,13 @@ class NebulaWriter:
         with self.session() as session:
             execute(
                 session,
-                "CREATE TAG IF NOT EXISTS Document"
-                "(filename string, type_file string, total_pages int);",
+                "CREATE TAG IF NOT EXISTS Document(filename string, type_file string, "
+                "total_pages int, collection string, source_path string);",
             )
             # Deploiements anterieurs : le tag existe sans total_pages, et
             # CREATE TAG IF NOT EXISTS ne l'ajoute pas. Tolere si deja present.
-            execute(session, "ALTER TAG Document ADD (total_pages int);", required=False)
+            for ajout in ("total_pages int", "collection string", "source_path string"):
+                execute(session, f"ALTER TAG Document ADD ({ajout});", required=False)
 
             for tag in sorted(set(TAG_MAP.values())):
                 execute(
