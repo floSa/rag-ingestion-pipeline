@@ -17,7 +17,7 @@ Ce graphe repose fortement sur deux aspects logiques clés : **L'espace isolé**
 A chaque lecture d'un livre, et à chaque bloc d'ingestion envoyé par l'API Docling, les données suivantes grandissent en base :
 
 **Nœuds (Les Vertices) :**
-Ils stockent les informations inhérentes. L'ID standard du vertex provient lui encore du fameux Hash généré en Python.
+Ils stockent les informations inhérentes. L'identifiant d'un élément est un hash de dix caractères ; celui d'un document dérive de son **chemin** (`doc_htms/Practical MLOps/Preface`), ce qui le rend lisible dans le Studio et distingue deux chapitres homonymes.
 - **`Document`** : Noeud Root ou Racine. Contient `filename` (le chapitre), `collection` (l'ouvrage dont il vient), `source_path` (chemin relatif à `Datas/`), `type_file` (`pdf`, `html` ou `md`) et `total_pages` (1 pour les formats non paginés). L'identifiant du nœud dérive du **chemin** et non du seul nom : deux chapitres homonymes de deux ouvrages différents restent distincts.
 - **`Paragraph`** / **`Formula`** / **`Code`** / **`ListItem`** : Noeuds riches contenant du texte.
 - **`Picture`** / **`Table`** : Noeuds Média contenant un `minio_url` qui pointe vers l'autre composant clé du projet MinIO.
@@ -35,18 +35,29 @@ Une fois accompli, voici le catalogue de recherches possibles (idéal lors du d�
 
 1.  **Récupérer la liste des tous les documents (cataloging) :**
     ```ngql
-    MATCH (d:Document) RETURN id(d), d.Document.filename, d.Document.type_file LIMIT 50;
+    MATCH (d:Document)
+    RETURN d.Document.collection AS ouvrage,
+           d.Document.filename AS chapitre,
+           d.Document.type_file AS format
+    LIMIT 50;
+    ```
+
+1bis. **Lister les chapitres d'un ouvrage donné :**
+    ```ngql
+    MATCH (d:Document)
+    WHERE d.Document.collection == "Practical MLOps"
+    RETURN d.Document.filename AS chapitre, id(d) AS identifiant;
     ```
 2.  **Récupérer tous les éléments liés directement au document (ex. Les enfants de la Racine) :**
     ```ngql
     MATCH (d:Document)-[r:PARENT_OF]->(e) 
-    WHERE id(d) == "doc_statisticsfordatascience" 
+    WHERE id(d) == "doc_pdfs/statisticsfordatascience" 
     RETURN e;
     ```
 3.  **Récupérer l'intégralité d'un document complet (Squelette et corps) :**
     ```ngql
     MATCH p=(d:Document)-[:PARENT_OF*..]->(e) 
-    WHERE id(d) == "doc_statisticsfordatascience" 
+    WHERE id(d) == "doc_pdfs/statisticsfordatascience" 
     RETURN p;
     ```
 4.  **Lister tous les éléments rattachés à un "Section Header" donné (Titre/Chapitre) :**
