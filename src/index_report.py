@@ -84,6 +84,15 @@ def main() -> None:
     )
     print(f"tokens : mediane {int(statistics.median(tokens))}, maximum {max(tokens)}")
 
+    print("\n=== Profondeur de hierarchie ===")
+    par_doc: dict[str, int] = {}
+    for meta in metadatas:
+        chemin = str(meta.get("source_path") or "?")
+        par_doc[chemin] = max(par_doc.get(chemin, 0), int(meta.get("depth") or 0))
+    for profondeur, count in sorted(Counter(par_doc.values()).items(), reverse=True):
+        suffixe = "  <- restes plats" if profondeur <= 1 else ""
+        print(f"   niveau {profondeur} : {count:>4} documents{suffixe}")
+
     print("\n=== Repartition par langue ===")
     for langue, count in Counter(
         str(m.get("language") or "indeterminee") for m in metadatas
