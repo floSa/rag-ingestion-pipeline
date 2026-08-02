@@ -341,7 +341,7 @@ def _extract_flat(
     facts = DocumentFacts(
         type_file=type_file, total_pages=1, language=langue, content_hash=content_hash
     )
-    chunks = storage.persist(elements, identity, facts)
+    chunks = storage.persist(elements, identity, facts, document)
     report(pages_done=1, elements=len(elements), chunks=chunks, language=langue)
     logger.info("[%s] termine : %d elements, %d chunks", stem, len(elements), chunks)
     return {
@@ -454,7 +454,7 @@ def _extract_pdf(
                 logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
 
                 try:
-                    batch_elements = _convert_batch(
+                    batch_elements, batch_document = _convert_batch(
                         converter,
                         pdf_path,
                         stem,
@@ -482,7 +482,9 @@ def _extract_pdf(
                     )
                     # L'ecriture, elle, est bloquante : si un store refuse le lot,
                     # continuer n'aurait aucun sens.
-                    total_chunks += storage.persist(batch_elements, identity, facts)
+                    total_chunks += storage.persist(
+                        batch_elements, identity, facts, batch_document
+                    )
 
                 report(
                     pages_done=end_page,
@@ -720,8 +722,13 @@ def _convert_batch(
     end_page: int,
     body_size: float = 0.0,
     size_ranks: dict[float, int] | None = None,
-) -> list[dict[str, Any]]:
-    """Convertit une plage de pages et construit ses elements."""
+) -> tuple[list[dict[str, Any]], Any]:
+    """Convertit une plage de pages et construit ses elements.
+
+    Returns:
+        Les elements du lot, et le document Docling converti — ce dernier est
+        necessaire au decoupeur, qui travaille sur la structure.
+    """
     result = converter.convert(pdf_path, page_range=(start_page, end_page))
     elements: list[dict[str, Any]] = []
     rangs = size_ranks or {}
@@ -745,4 +752,4 @@ def _convert_batch(
     if backend is not None:
         backend.unload()
 
-    return elements
+    return elements, result.document

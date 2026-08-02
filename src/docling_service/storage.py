@@ -41,6 +41,7 @@ def persist(
     elements: Sequence[dict[str, Any]],
     identity: DocumentIdentity,
     facts: DocumentFacts,
+    document: Any = None,
 ) -> int:
     """Ecrit un lot d'elements dans NebulaGraph puis ChromaDB.
 
@@ -48,6 +49,8 @@ def persist(
         elements: Elements a persister.
         identity: Identite du document (chemin, ouvrage, nom).
         facts: Format, pagination, langue et empreinte du document.
+        document: Document Docling converti, dont le decoupeur a besoin pour
+            respecter la structure.
 
     Returns:
         Nombre de chunks ecrits dans ChromaDB.
@@ -61,4 +64,4 @@ def persist(
 
     validate_elements(elements)
     get_writer().write_elements(elements, identity, facts)
-    return vectors.write_elements(elements, identity, facts)
+    return vectors.write_elements(elements, identity, facts, document)

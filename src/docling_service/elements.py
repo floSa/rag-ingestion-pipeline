@@ -286,6 +286,10 @@ class DocumentAccumulator:
 
         element: dict[str, Any] = {
             "id": element_id,
+            # Reference interne Docling (« #/texts/18 »). Sert a rattacher les
+            # chunks produits par HybridChunker a nos propres elements ; elle
+            # ne part dans aucun store.
+            "self_ref": str(getattr(item, "self_ref", "")),
             "label": label,
             "page_no": page_no,
             "bbox": extract_bbox(prov.bbox if prov else None),

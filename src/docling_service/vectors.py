@@ -18,13 +18,15 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from src.docling_service.blocks import build_blocks, has_content
-from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
+from src.docling_service.anchoring import block_size, resolve_anchors
+from src.docling_service.blocks import has_content
+from src.docling_service.chunking import contextualize
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
@@ -65,17 +67,39 @@ def get_collection() -> Any:
         return _collection
 
 
+@lru_cache(maxsize=1)
+def get_chunker() -> Any:
+    """Retourne le decoupeur Docling, construit au premier appel.
+
+    ``HybridChunker`` decoupe en respectant la structure du document *et* la
+    fenetre du modele d'embedding. Il recoit le tokenizer du modele lui-meme,
+    pas une approximation : c'est ce qui garantit qu'aucun chunk ne sera
+    tronque a l'encodage.
+    """
+    from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
+    from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
+
+    modele = get_embedding_model()
+    limite = int(modele.max_seq_length)
+    logger.info("Decoupeur Docling : fenetre de %d tokens", limite)
+    return HybridChunker(
+        tokenizer=HuggingFaceTokenizer(tokenizer=modele.tokenizer, max_tokens=limite)
+    )
+
+
 def build_chunks(
     elements: Sequence[dict[str, Any]],
     identity: DocumentIdentity,
     facts: DocumentFacts | None = None,
+    document: Any = None,
 ) -> tuple[list[str], list[str], list[dict[str, Any]]]:
-    """Regroupe puis decoupe les elements en chunks prets pour ChromaDB.
+    """Decoupe le document en chunks prets pour ChromaDB.
 
-    Les elements sont d'abord fusionnes en blocs coherents (voir
-    :mod:`src.docling_service.blocks`) : l'analyse de layout produit quantite de
-    fragments isoles qui n'ont aucun sens une fois vectorises. Les blocs encore
-    trop longs sont ensuite decoupes en fenetres recouvrantes.
+    Le decoupage est confie a ``HybridChunker`` : il regroupe ce qui va
+    ensemble, respecte la structure du document, et remplit la fenetre du
+    modele sans jamais la depasser. Nos identifiants restent les notres —
+    chaque chunk est rattache a l'element d'ou part sa lecture, via la
+    reference interne Docling.
 
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
@@ -83,66 +107,64 @@ def build_chunks(
         facts: Format, langue et empreinte du document. La langue est reportee
             sur chaque chunk pour que l'agent puisse filtrer sans repasser par
             le graphe.
+        document: Document Docling converti. Sans lui, rien n'est indexe : le
+            decoupage a besoin de la structure, pas seulement du texte.
 
     Returns:
         Triplet (ids, textes, metadonnees), aligne index par index. Les
         elements ecartes — sans texte, ou trop courts pour porter du sens —
         restent presents dans le graphe.
     """
+    if document is None:
+        logger.warning("[%s] aucun document Docling fourni : rien a indexer", identity.key)
+        return [], [], []
+
     settings = get_settings()
     language = facts.language if facts else ""
+    liste = list(elements)
+
+    morceaux = list(get_chunker().chunk(document))
+    refs = [[str(item.self_ref) for item in c.meta.doc_items] for c in morceaux]
+    ancres = resolve_anchors(refs, liste)
+
     ids: list[str] = []
     texts: list[str] = []
     metadatas: list[dict[str, Any]] = []
 
-    blocks = build_blocks(
-        list(elements),
-        target_chars=settings.chunk_size,
-        min_chars=settings.min_chunk_chars,
-    )
-
-    for block in blocks:
-        chunks = chunk_text(
-            block.text,
-            size=settings.chunk_size,
-            overlap=settings.chunk_overlap,
-        )
-        if not chunks:
+    for morceau, ancre, refs_du_chunk in zip(morceaux, ancres, refs, strict=True):
+        texte = morceau.text.strip()
+        # Un chunk sans ancre connue serait rattache au hasard ; un chunk sans
+        # caractere alphanumerique n'a rien a apporter a une recherche.
+        if ancre is None or not has_content(texte) or len(texte) < settings.min_chunk_chars:
             continue
 
-        anchor = block.anchor
-        element_id = str(anchor["id"])
-        for index, (chunk_id, chunk) in enumerate(
-            zip(chunk_ids(element_id, len(chunks)), chunks, strict=True)
-        ):
-            # Le decoupage en fenetres peut faire tomber une fenetre entiere
-            # sur une suite de ponctuation ou un filet de tableau : le bloc
-            # avait du contenu, cette fenetre-la n'en a pas.
-            if not has_content(chunk):
-                continue
-            ids.append(chunk_id)
-            texts.append(chunk)
-            metadatas.append(
-                ChunkMetadata(
-                    element_id=element_id,
-                    graph_node_id=element_id,
-                    filename=identity.filename,
-                    collection=identity.collection,
-                    source_path=identity.source_path,
-                    language=language,
-                    label=str(anchor.get("label") or ""),
-                    page_no=int(anchor.get("page_no") or 0),
-                    minio_url=str(anchor.get("minio_url") or ""),
-                    reference_id=str(anchor.get("reference_id") or "DOC"),
-                    depth=int(anchor.get("depth") or 0),
-                    section_title=str(anchor.get("section_title") or ""),
-                    page_position=int(anchor.get("page_position") or 0),
-                    ref_position=int(anchor.get("ref_position") or 0),
-                    chunk_index=index,
-                    chunk_count=len(chunks),
-                    block_size=block.size,
-                ).model_dump()
-            )
+        element = ancre.element
+        element_id = str(element["id"])
+        chunk_id = element_id if ancre.count == 1 else f"{element_id}#{ancre.index}"
+
+        ids.append(chunk_id)
+        texts.append(texte)
+        metadatas.append(
+            ChunkMetadata(
+                element_id=element_id,
+                graph_node_id=element_id,
+                filename=identity.filename,
+                collection=identity.collection,
+                source_path=identity.source_path,
+                language=language,
+                label=str(element.get("label") or ""),
+                page_no=int(element.get("page_no") or 0),
+                minio_url=str(element.get("minio_url") or ""),
+                reference_id=str(element.get("reference_id") or "DOC"),
+                depth=int(element.get("depth") or 0),
+                section_title=str(element.get("section_title") or ""),
+                page_position=int(element.get("page_position") or 0),
+                ref_position=int(element.get("ref_position") or 0),
+                chunk_index=ancre.index,
+                chunk_count=ancre.count,
+                block_size=block_size(refs_du_chunk, liste),
+            ).model_dump()
+        )
 
     return ids, texts, metadatas
 
@@ -151,6 +173,7 @@ def write_elements(
     elements: Sequence[dict[str, Any]],
     identity: DocumentIdentity,
     facts: DocumentFacts | None = None,
+    document: Any = None,
 ) -> int:
     """Encode et enregistre les elements dans ChromaDB.
 
@@ -166,7 +189,7 @@ def write_elements(
         Exception: Toute erreur d'encodage ou d'ecriture est propagee, pour
             faire echouer le job plutot que de laisser l'index incomplet.
     """
-    ids, texts, metadatas = build_chunks(elements, identity, facts)
+    ids, texts, metadatas = build_chunks(elements, identity, facts, document)
     if not ids:
         return 0
 
