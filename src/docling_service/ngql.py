@@ -12,6 +12,7 @@ livre de 400 pages).
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Iterator, Sequence
 
 # Bornes d'un INSERT groupe. On limite a la fois le nombre de valeurs et le
@@ -114,3 +115,41 @@ def insert_edge_statements(
     columns = ", ".join(properties)
     for batch in batch_values(values):
         yield f"INSERT EDGE {edge}({columns}) VALUES {', '.join(batch)};"
+
+
+# Longueur des identifiants de noeud declaree a la creation du space, en
+# OCTETS et non en caracteres. Un titre francais un peu long depassait les 64
+# octets d'origine : « Kimi K3 — l'architecture d'un modele pense pour
+# l'efficacite » en fait 70, les accents comptant double et le tiret cadratin
+# triple. Le graphd rejetait alors l'insertion du document entier.
+#
+# Nebula ne sait pas modifier ce type apres coup : passer a 256 suppose de
+# recreer le space (purge des stores).
+VID_MAX_BYTES = 256
+
+VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")
+DOCUMENT_PROPERTIES = ("filename", "type_file", "total_pages")
+
+
+def document_vid(filename: str) -> str:
+    """Construit l'identifiant du noeud Document, borne a la longueur admise.
+
+    L'identifiant reste lisible — ``doc_mon_livre`` — ce qui rend les requetes
+    manuelles dans Nebula Studio praticables. Au-dela de la limite, il est
+    tronque sur une frontiere de caractere et suffixe d'une empreinte, pour que
+    deux titres partageant leur debut ne se confondent pas.
+
+    Args:
+        filename: Nom du document, sans extension.
+
+    Returns:
+        Un identifiant tenant dans ``VID_MAX_BYTES`` octets.
+    """
+    lisible = f"doc_{filename}"
+    encode = lisible.encode()
+    if len(encode) <= VID_MAX_BYTES:
+        return lisible
+
+    empreinte = hashlib.sha256(filename.encode()).hexdigest()[:10]
+    garde = VID_MAX_BYTES - len(empreinte) - 1
+    return f"{encode[:garde].decode(errors='ignore')}_{empreinte}"

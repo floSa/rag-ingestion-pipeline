@@ -11,7 +11,9 @@ import pytest
 
 from src.docling_service.ngql import (
     MAX_VALUES_PER_STATEMENT,
+    VID_MAX_BYTES,
     batch_values,
+    document_vid,
     edge_value,
     escape_ngql,
     insert_edge_statements,
@@ -165,3 +167,32 @@ def test_escaped_literal_is_balanced(text: str):
             continue
         assert body[index] != '"', f"guillemet non echappe dans {literal!r}"
         index += 1
+
+
+class TestDocumentVid:
+    def test_nom_court_reste_lisible(self):
+        assert document_vid("mon_livre") == "doc_mon_livre"
+
+    def test_titre_francais_long_tient_dans_la_limite(self):
+        # Regression : « Kimi K3 — l'architecture d'un modele pense pour
+        # l'efficacite » depassait les 64 octets de l'ancien space, les accents
+        # comptant double et le tiret cadratin triple. Le graphd rejetait alors
+        # l'insertion du document entier.
+        titre = "Kimi K3 — l'architecture d'un modèle pensé pour l'efficacité"
+        vid = document_vid(titre)
+        assert len(vid.encode()) <= VID_MAX_BYTES
+        assert vid == f"doc_{titre}"
+
+    def test_titre_demesure_est_tronque(self):
+        vid = document_vid("é" * 400)
+        assert len(vid.encode()) <= VID_MAX_BYTES
+
+    def test_troncature_sans_caractere_casse(self):
+        # Le decoupage tombe au milieu d'un caractere multi-octets : il ne doit
+        # pas produire de sequence invalide.
+        vid = document_vid("é" * 300)
+        assert vid.encode().decode() == vid
+
+    def test_deux_titres_de_meme_debut_ne_se_confondent_pas(self):
+        base = "a" * 300
+        assert document_vid(base + "premier") != document_vid(base + "second")

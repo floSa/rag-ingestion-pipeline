@@ -26,6 +26,8 @@ from nebula3.gclient.net import ConnectionPool
 
 from src.docling_service.elements import ROOT_REFERENCE, TAG_MAP, tag_for_label
 from src.docling_service.ngql import (
+    VID_MAX_BYTES,
+    document_vid,
     edge_value,
     insert_edge_statements,
     insert_vertex_statements,
@@ -138,7 +140,7 @@ class NebulaWriter:
             return
 
         max_chars = get_settings().graph_text_max_chars
-        doc_vid = f"doc_{filename}"
+        doc_vid = document_vid(filename)
 
         vertices_by_tag: dict[str, list[str]] = {}
         parent_edges: list[str] = []
@@ -200,7 +202,7 @@ class NebulaWriter:
     def delete_document(self, filename: str) -> None:
         """Supprime les vertices d'un document (re-ingestion propre)."""
         with self.session() as session:
-            execute(session, f"DELETE VERTEX {quote(f'doc_{filename}')} WITH EDGE;")
+            execute(session, f"DELETE VERTEX {quote(document_vid(filename))} WITH EDGE;")
 
     # ── Initialisation du schema ─────────────────────────────────────────────
 
@@ -237,8 +239,8 @@ class NebulaWriter:
             for attempt in range(1, settings.nebula_space_attempts + 1):
                 execute(
                     session,
-                    f"CREATE SPACE IF NOT EXISTS {SPACE}"
-                    "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));",
+                    f"CREATE SPACE IF NOT EXISTS {SPACE}(partition_num=10, "
+                    f"replica_factor=1, vid_type=FIXED_STRING({VID_MAX_BYTES}));",
                     required=False,
                 )
                 time.sleep(5)
