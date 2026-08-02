@@ -187,7 +187,7 @@ docker compose logs -f docling-service
 docker compose exec docling-service python -m src.wipe_stores
 ```
 
-Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma :
+Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
 ```bash
 docker compose restart docling-service
