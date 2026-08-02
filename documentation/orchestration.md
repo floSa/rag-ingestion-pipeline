@@ -32,6 +32,37 @@ Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurr
 
 Avant de soumettre, l'asset attend que le service se déclare prêt (`GET /health`) : au démarrage de la stack, le chargement des modèles et l'initialisation du schéma NebulaGraph prennent plusieurs minutes, et le premier run échouerait pour une raison sans rapport avec le document.
 
+## Combien de temps prend une ingestion
+
+Chiffres mesurés sur 439 runs enregistrés dans la base Dagster, machine WSL2, extraction mono-worker, deux runs Dagster en parallèle. Ils servent à dimensionner une campagne, pas à qualifier le matériel : sur une autre machine, seuls les ordres de grandeur tiennent.
+
+| Unité ingérée | Le plus rapide | Habituel (médiane) | Le plus lent |
+|---|---|---|---|
+| Une note Markdown | 2,5 s | **2,6 s** | 35 s |
+| Un chapitre HTML (≈ 40 000 caractères) | 4,5 s | **6 s** | 68 s |
+| Un PDF de 280 pages | 62 s | **1 min 50** | 4 min 11 |
+
+Mesures de bout en bout sur des ensembles complets :
+
+| Ensemble | Volume | Temps constaté |
+|---|---|---|
+| Practical MLOps | 22 chapitres HTML | 1 min 54 |
+| The Statistics and Calculus with Python Workshop | 14 chapitres HTML | 1 min 08 |
+| Notes Obsidian | 6 fichiers Markdown | 19 s |
+| **Corpus complet** | **43 documents** | **4 min 32** |
+
+Ramené à l'unité, pour estimer une campagne :
+
+| Coût unitaire | Valeur |
+|---|---|
+| Un chapitre HTML | ≈ 6 s |
+| Un livre en chapitres HTML | ≈ 5 s × nombre de chapitres |
+| 100 pages de PDF | ≈ 22 s au mieux, **40 s** en régime courant |
+| Un livre PDF de 300 pages | **1 à 2 min** |
+| 50 livres de 300 pages | **1 h 30 à 2 h** |
+
+Les écarts entre le meilleur et le pire temps ne viennent pas des documents mais de la concurrence : un chapitre HTML monte à 68 s lorsqu'un PDF de 280 pages occupe le worker au même moment. Le débit global reste stable, c'est la latence individuelle qui varie.
+
 ## Commandes utiles
 Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :
 - Dans l'interface Web (`http://localhost:3002`), allez dans l'onglet **Overview > Sensors** pour activer/désactiver l'ingestion automatique logicielle.
