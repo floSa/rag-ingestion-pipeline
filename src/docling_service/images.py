@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 from minio import Minio
@@ -66,6 +68,61 @@ def object_url(object_name: str) -> str:
     """URL de lecture d'un objet du bucket."""
     settings = get_settings()
     return f"http://{settings.minio_endpoint}/{settings.minio_bucket}/{object_name}"
+
+
+_CONTENT_TYPES: dict[str, str] = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".avif": "image/avif",
+    ".bmp": "image/bmp",
+}
+
+
+def sanitize_key(value: str) -> str:
+    """Rend un chemin utilisable comme prefixe d'objet MinIO."""
+    return re.sub(r"[^A-Za-z0-9/_.-]+", "_", value).strip("/_")
+
+
+def upload_file(source: Path, doc_key: str, index: int) -> str | None:
+    """Envoie un fichier image du disque vers MinIO.
+
+    Sert aux images des documents Markdown, qui vivent a cote de la note au
+    lieu d'etre embarquees. Les images des PDF passent par ``crop_and_upload``,
+    celles des captures HTML par le nettoyage en amont.
+
+    Args:
+        source: Chemin du fichier image sur le disque.
+        doc_key: Prefixe identifiant le document dans le bucket.
+        index: Rang de l'image dans le document.
+
+    Returns:
+        L'URL de l'image, ou None si la lecture ou l'envoi echoue.
+    """
+    try:
+        payload = source.read_bytes()
+    except OSError as exc:
+        logger.warning("Image illisible (%s) : %s", source, exc)
+        return None
+
+    extension = source.suffix.lower()
+    object_name = f"images/md/{sanitize_key(doc_key)}/{index:04d}_{sanitize_key(source.name)}"
+    try:
+        get_client().put_object(
+            get_settings().minio_bucket,
+            object_name,
+            io.BytesIO(payload),
+            length=len(payload),
+            content_type=_CONTENT_TYPES.get(extension, "application/octet-stream"),
+        )
+    except Exception as exc:
+        logger.warning("Upload MinIO echoue (%s) : %s", object_name, exc)
+        return None
+
+    return object_url(object_name)
 
 
 def crop_and_upload(

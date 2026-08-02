@@ -21,6 +21,9 @@ Module sans dependance externe : testable sans Docling.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+from dataclasses import dataclass
+from urllib.parse import unquote
 
 # Ouverture ou fermeture d'un bloc de code cloture (``` ou ~~~).
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
@@ -38,6 +41,18 @@ _SETEXT_UNDERLINE = re.compile(r"^\s{0,3}(=+|-+)\s*$")
 # Retour a la ligne explicite : deux espaces finaux, ou antislash final.
 _HARD_BREAK = re.compile(r"(\s{2,}|\\)$")
 
+# Liens image. Obsidian utilise sa propre syntaxe ``![[fichier.jpg|1000]]`` ;
+# le Markdown standard ``![legende](chemin)``. Docling ne reconnait ni l'une ni
+# l'autre : il les rend en texte brut, et les images sont perdues.
+_WIKILINK_IMAGE = re.compile(r"!\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]")
+_STANDARD_IMAGE = re.compile(r"!\[([^\]]*)\]\(\s*<?([^)>\s]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+
+# Balise substituee a un lien image avant la conversion. Elle traverse Docling
+# comme un element de texte ordinaire, ce qui garantit que l'image conserve sa
+# **place exacte** dans l'ordre de lecture : la legende qui la suit reste
+# adjacente, et la section qui la contient reste la sienne.
+IMAGE_MARKER = re.compile(r"^⟦IMG:(\d{4})⟧\s*(.*)$")
+
 _BLOCK_STARTERS = (
     _HEADING,
     _LIST,
@@ -46,7 +61,50 @@ _BLOCK_STARTERS = (
     _HORIZONTAL_RULE,
     _INDENTED_CODE,
     _HTML_BLOCK,
+    IMAGE_MARKER,
 )
+
+
+@dataclass(frozen=True)
+class ImageReference:
+    """Un lien image trouve dans un document Markdown.
+
+    Attributes:
+        index: Rang de l'image dans le document, base de sa balise.
+        target: Cible du lien — nom de fichier (Obsidian) ou chemin relatif.
+        caption: Legende eventuelle. Vide pour un wikilink Obsidian.
+    """
+
+    index: int
+    target: str
+    caption: str
+
+    @property
+    def marker(self) -> str:
+        """Balise substituee a ce lien dans le document."""
+        return f"⟦IMG:{self.index:04d}⟧"
+
+
+def _walk_lines(text: str) -> Iterator[tuple[str, bool]]:
+    """Parcourt les lignes en signalant celles qui sont dans un bloc de code.
+
+    Yields:
+        Couples (ligne, dans_un_bloc_de_code). Les delimiteurs de bloc sont
+        signales comme etant dans le bloc : on n'y touche pas non plus.
+    """
+    in_fence = False
+    fence_marker = ""
+    for line in text.splitlines():
+        fence = _FENCE.match(line)
+        if fence:
+            marker = fence.group(1)[0]
+            if not in_fence:
+                in_fence, fence_marker = True, marker
+            elif marker == fence_marker:
+                in_fence, fence_marker = False, ""
+            yield line, True
+            continue
+        yield line, in_fence
 
 
 def _starts_block(line: str) -> bool:
@@ -57,6 +115,86 @@ def _starts_block(line: str) -> bool:
 def _is_prose(line: str) -> bool:
     """Indique si la ligne est de la prose ordinaire, recollable."""
     return bool(line.strip()) and not _starts_block(line)
+
+
+def _image_label(target: str, caption: str) -> str:
+    """Texte porte par l'element image : la legende, sinon le nom du fichier."""
+    if caption:
+        return caption
+    filename = target.replace("\\", "/").rsplit("/", 1)[-1]
+    return filename.rsplit(".", 1)[0] or filename
+
+
+def _extract_from_line(line: str, start_index: int) -> tuple[str, list[ImageReference]]:
+    """Retire les liens image d'une ligne et retourne la ligne nettoyee."""
+    references: list[ImageReference] = []
+    cleaned = line
+
+    for pattern, is_wikilink in ((_WIKILINK_IMAGE, True), (_STANDARD_IMAGE, False)):
+        pieces: list[str] = []
+        position = 0
+        for match in pattern.finditer(cleaned):
+            pieces.append(cleaned[position : match.start()])
+            position = match.end()
+            raw_target = match.group(1) if is_wikilink else match.group(2)
+            caption = "" if is_wikilink else match.group(1).strip()
+            references.append(
+                ImageReference(
+                    index=start_index + len(references),
+                    target=unquote(raw_target.strip()),
+                    caption=caption,
+                )
+            )
+        pieces.append(cleaned[position:])
+        cleaned = "".join(pieces)
+
+    return cleaned, references
+
+
+def extract_image_references(text: str) -> tuple[str, list[ImageReference]]:
+    """Remplace les liens image par des balises et recense les images.
+
+    Chaque lien devient une ligne autonome ``⟦IMG:0001⟧ legende``, placee **la
+    ou etait l'image**. C'est ce qui preserve l'ancrage : apres conversion,
+    l'element image occupe la meme position dans l'ordre de lecture, donc la
+    legende qui la suit lui reste adjacente et la section qui la contient reste
+    la sienne.
+
+    Les liens situes dans un bloc de code sont laisses intacts : ils
+    documentent une syntaxe, ils ne designent pas une image a ingerer.
+
+    Args:
+        text: Contenu Markdown brut.
+
+    Returns:
+        Le contenu avec balises, et la liste des images referencees dans
+        l'ordre de lecture.
+    """
+    references: list[ImageReference] = []
+    output: list[str] = []
+
+    for line, in_fence in _walk_lines(text):
+        if in_fence:
+            output.append(line)
+            continue
+
+        cleaned, found = _extract_from_line(line, len(references))
+        if not found:
+            output.append(line)
+            continue
+
+        references.extend(found)
+        if cleaned.strip():
+            output.append(cleaned)
+        output.extend(
+            f"{reference.marker} {_image_label(reference.target, reference.caption)}"
+            for reference in found
+        )
+
+    rendu = "\n".join(output)
+    if text.endswith("\n") and not rendu.endswith("\n"):
+        rendu += "\n"
+    return rendu, references
 
 
 def normalize_markdown(text: str) -> str:

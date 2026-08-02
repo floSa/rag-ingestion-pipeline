@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from src.docling_service.markdown import normalize_markdown
+from src.docling_service.markdown import (
+    IMAGE_MARKER,
+    extract_image_references,
+    normalize_markdown,
+)
 
 
 class TestParagraphes:
@@ -128,3 +132,81 @@ class TestCasReel:
         assert "s'eloigne." in lines[2]
         # ...et le tableau est intact.
         assert lines[4:] == ["| Mesure | Formule |", "|---|---|", "| Etendue | max - min |"]
+
+
+class TestExtractionDesImages:
+    def test_wikilink_obsidian(self):
+        rendu, refs = extract_image_references("![[schema.jpg|1000]]")
+        assert len(refs) == 1
+        assert refs[0].target == "schema.jpg"
+        assert refs[0].caption == ""
+        assert rendu == "⟦IMG:0000⟧ schema"
+
+    def test_syntaxe_standard(self):
+        rendu, refs = extract_image_references("![Le schema](images/fig1.png)")
+        assert refs[0].target == "images/fig1.png"
+        assert refs[0].caption == "Le schema"
+        assert rendu == "⟦IMG:0000⟧ Le schema"
+
+    def test_chemin_encode_est_decode(self):
+        _, refs = extract_image_references("![](Pi%C3%A8ces%20jointes/f.png)")
+        assert refs[0].target == "Pièces jointes/f.png"
+
+    def test_position_preservee(self):
+        # L'ancrage est tout l'enjeu : l'image doit rester entre les deux
+        # paragraphes, pour que sa legende lui reste adjacente.
+        source = "Avant.\n\n![[f.jpg]]\n\nLegende de la figure."
+        rendu, _ = extract_image_references(source)
+        lignes = [l for l in rendu.splitlines() if l.strip()]
+        assert lignes[0] == "Avant."
+        assert lignes[1].startswith("⟦IMG:0000⟧")
+        assert lignes[2] == "Legende de la figure."
+
+    def test_plusieurs_images_numerotees_dans_l_ordre(self):
+        _, refs = extract_image_references("![[a.jpg]]\n\n![[b.jpg]]\n\n![[c.jpg]]")
+        assert [r.index for r in refs] == [0, 1, 2]
+        assert [r.target for r in refs] == ["a.jpg", "b.jpg", "c.jpg"]
+        assert [r.marker for r in refs] == ["⟦IMG:0000⟧", "⟦IMG:0001⟧", "⟦IMG:0002⟧"]
+
+    def test_image_en_ligne_sortie_du_paragraphe(self):
+        rendu, refs = extract_image_references("Voir ![[f.jpg]] ci-dessus.")
+        assert len(refs) == 1
+        lignes = rendu.splitlines()
+        assert "Voir" in lignes[0] and "ci-dessus." in lignes[0]
+        assert lignes[1].startswith("⟦IMG:0000⟧")
+
+    def test_bloc_de_code_intact(self):
+        source = "```markdown\n![[doc.png]]\n```"
+        rendu, refs = extract_image_references(source)
+        assert refs == []
+        assert rendu == source
+
+    def test_document_sans_image_inchange(self):
+        source = "# Titre\n\nUn paragraphe.\n"
+        rendu, refs = extract_image_references(source)
+        assert refs == []
+        assert rendu == source
+
+    def test_lien_non_image_ignore(self):
+        # [[Note]] est un lien interne Obsidian, pas une image.
+        rendu, refs = extract_image_references("Voir [[Une autre note]] pour la suite.")
+        assert refs == []
+        assert rendu == "Voir [[Une autre note]] pour la suite."
+
+    def test_balise_reconnue_apres_coup(self):
+        rendu, refs = extract_image_references("![[schema.jpg]]")
+        m = IMAGE_MARKER.match(rendu)
+        assert m is not None
+        assert int(m.group(1)) == refs[0].index
+        assert m.group(2) == "schema"
+
+    def test_balise_non_recollee_par_la_normalisation(self):
+        # Sans ce garde-fou, la balise serait absorbee dans le paragraphe
+        # voisin et l'image perdrait son element propre.
+        source = "Un texte\ncoupe en deux.\n\n![[f.jpg]]\n\nSuite du propos."
+        rendu = normalize_markdown(extract_image_references(source)[0])
+        assert "⟦IMG:0000⟧ f" in rendu.splitlines()
+
+    def test_legende_repliee_sur_le_nom_de_fichier(self):
+        rendu, _ = extract_image_references("![[kimik3_slide_00m01s.jpg|1000]]")
+        assert rendu == "⟦IMG:0000⟧ kimik3_slide_00m01s"

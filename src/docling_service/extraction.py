@@ -28,7 +28,12 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 
 from src.docling_service import images, storage
 from src.docling_service.elements import VISUAL_LABELS, DocumentAccumulator
-from src.docling_service.markdown import normalize_markdown
+from src.docling_service.markdown import (
+    IMAGE_MARKER,
+    ImageReference,
+    extract_image_references,
+    normalize_markdown,
+)
 from src.docling_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -106,33 +111,101 @@ def extract(path: Path, report: Reporter = _noop) -> dict[str, Any]:
     return _extract_flat(path, type_file, report)
 
 
-@contextmanager
-def _prepared_source(path: Path, type_file: str) -> Iterator[Path]:
-    """Fournit le fichier a convertir, normalise si besoin.
+def _index_attachments(directory: Path) -> dict[str, Path]:
+    """Recense les fichiers presents autour d'une note, par nom.
 
-    Le Markdown est recolle au prealable : Docling le convertit ligne a ligne,
-    et un fichier dont les paragraphes sont coupes a 80 colonnes produirait un
-    element par ligne. Le fichier source n'est pas modifie ; la version
-    normalisee vit dans un fichier temporaire, supprime a la sortie.
+    Obsidian ne met que le nom du fichier dans ``![[image.jpg]]`` et resout le
+    reste lui-meme. On reconstitue cette resolution en indexant une fois pour
+    toutes ce qui vit a cote de la note.
+    """
+    index: dict[str, Path] = {}
+    for candidate in directory.rglob("*"):
+        if candidate.is_file():
+            index.setdefault(candidate.name, candidate)
+    return index
+
+
+def _resolve_image(target: str, note_dir: Path, attachments: dict[str, Path]) -> Path | None:
+    """Retrouve le fichier image designe par un lien Markdown."""
+    direct = note_dir / target
+    if direct.is_file():
+        return direct
+    return attachments.get(Path(target).name)
+
+
+def _upload_markdown_images(
+    references: list[ImageReference], note_dir: Path, doc_key: str
+) -> dict[int, str]:
+    """Envoie sur MinIO les images referencees par une note.
+
+    Returns:
+        Les URL obtenues, indexees par rang de l'image. Une image introuvable
+        ou refusee est simplement absente : l'element restera dans le graphe,
+        sans URL.
+    """
+    if not references:
+        return {}
+
+    attachments = _index_attachments(note_dir)
+    urls: dict[int, str] = {}
+    introuvables = 0
+
+    for reference in references:
+        source = _resolve_image(reference.target, note_dir, attachments)
+        if source is None:
+            introuvables += 1
+            continue
+        url = images.upload_file(source, doc_key, reference.index)
+        if url:
+            urls[reference.index] = url
+
+    logger.info(
+        "[%s] images : %d referencees, %d envoyees, %d introuvables",
+        doc_key,
+        len(references),
+        len(urls),
+        introuvables,
+    )
+    return urls
+
+
+@contextmanager
+def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[int, str]]]:
+    """Fournit le fichier a convertir, prepare si besoin, et ses images.
+
+    Deux traitements pour le Markdown, dans cet ordre :
+
+    1. **Les images sont sorties du texte** et remplacees par une balise a leur
+       position exacte, puis envoyees sur MinIO. Docling ne reconnait ni la
+       syntaxe Obsidian ``![[fichier.jpg]]`` ni ``![](chemin)`` : sans cela,
+       les images seraient rendues en texte brut et perdues.
+    2. **Les paragraphes sont recolles**, Docling convertissant le Markdown
+       ligne a ligne.
+
+    Le fichier source n'est jamais modifie ; la version preparee vit dans un
+    repertoire temporaire, supprime a la sortie.
     """
     if type_file != "md":
-        yield path
+        yield path, {}
         return
 
     original = path.read_text(encoding="utf-8", errors="replace")
-    normalized = normalize_markdown(original)
-    if normalized == original:
-        yield path
+    balise, references = extract_image_references(original)
+    prepared = normalize_markdown(balise)
+    urls = _upload_markdown_images(references, path.parent, path.stem)
+
+    if prepared == original:
+        yield path, urls
         return
 
     # Repertoire temporaire plutot que fichier temporaire : le nom d'origine est
     # conserve, ce qui garde des logs lisibles cote Docling.
-    directory = Path(tempfile.mkdtemp(prefix="md-normalise-"))
+    directory = Path(tempfile.mkdtemp(prefix="md-prepare-"))
     try:
         target = directory / path.name
-        target.write_text(normalized, encoding="utf-8")
-        logger.info("[%s] Markdown normalise (paragraphes recolles)", path.stem)
-        yield target
+        target.write_text(prepared, encoding="utf-8")
+        logger.info("[%s] Markdown prepare (images extraites, paragraphes recolles)", path.stem)
+        yield target, urls
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
@@ -143,7 +216,7 @@ def _extract_flat(path: Path, type_file: str, report: Reporter) -> dict[str, Any
     logger.info("[%s] conversion %s...", stem, type_file)
     report(pages_total=1, pages_done=0, elements=0, chunks=0)
 
-    with _prepared_source(path, type_file) as source_path:
+    with _prepared_source(path, type_file) as (source_path, image_urls):
         result = get_converter().convert(str(source_path))
 
     document = result.document
@@ -152,6 +225,18 @@ def _extract_flat(path: Path, type_file: str, report: Reporter) -> dict[str, Any
 
     for item, _ in document.iterate_items():
         element = accumulator.add_item(item, document)
+
+        # Balise laissee par la preparation du Markdown : cet element est une
+        # image. On lui rend sa nature et son URL, en place — donc rattache a
+        # la meme section, avec sa legende toujours adjacente.
+        marker = IMAGE_MARKER.match(element["text"])
+        if marker is not None:
+            element["label"] = "picture"
+            element["text"] = marker.group(2).strip()
+            url = image_urls.get(int(marker.group(1)))
+            if url:
+                element["minio_url"] = url
+
         # Les images des captures HTML sont deja sur MinIO (src reecrit par le
         # nettoyage) : on propage l'URL sur le noeud Picture.
         uri = getattr(getattr(item, "image", None), "uri", None)
