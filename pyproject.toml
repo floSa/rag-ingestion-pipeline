@@ -13,11 +13,11 @@ dependencies = [
     "dagster-docker==0.29.16",
     "beautifulsoup4==4.15.0",
     "lxml==6.1.1",
-    "trafilatura==2.1.0",
+    "trafilatura==2.2.0",
     "readability-lxml==0.8.4.1",
     "PyYAML==6.0.3",
     "requests==2.34.2",
-    "pydantic-settings==2.14.1",
+    "pydantic-settings==2.14.2",
     "minio==7.2.20",
 ]
 

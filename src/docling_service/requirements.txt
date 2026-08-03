@@ -8,8 +8,11 @@
 # torch/torchvision/torchaudio sont installes a part, depuis l'index CUDA 12.1
 # (voir Dockerfile.docling) : ils n'ont pas de wheel +cu121 sur PyPI.
 #
-# chromadb reste en 0.6.3 : c'est la version alignee avec le client de
-# rag-agent-chat. La monter en 1.x demande de le faire des deux cotes.
+# chromadb reste en 0.6.3, comme l'image serveur epinglee dans
+# docker-compose.yml. L'alignement avec rag-agent-chat n'est plus vrai : ce
+# depot-la est passe en 1.5.9. Monter le 0.x -> 1.x ici, c'est changer l'API
+# cliente et l'image serveur ensemble, puis verifier que les collections deja
+# ecrites restent lisibles. C'est un chantier, pas une ligne a bouger.
 
 docling==2.117.0
 docling-core==2.89.0
