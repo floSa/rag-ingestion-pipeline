@@ -26,7 +26,7 @@ Mettre a jour regulierement et re-auditer.
 
 ## Containers
 
-- Images de base pinnees (`python:3.10.17-slim`)
+- Images de base pinnees (`python:3.12-slim`)
 - Utilisateur non-root dans les Dockerfiles custom (`dagster`, `docling`)
 - `--no-install-recommends` pour minimiser la surface d'attaque
 

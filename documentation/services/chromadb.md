@@ -9,6 +9,12 @@ des documents. Utilisee pour la recherche semantique.
 
 - `chromadb` : image `chromadb/chroma:0.6.3`, port interne 8000
 
+Le client Python (`chromadb==0.6.3`, dans `src/docling_service/requirements.txt`)
+est tenu sur la meme version majeure que l'image serveur, alors que la branche
+1.x existe. Ce pin ne suit plus `rag-agent-chat`, passe de son cote en 1.5.9 :
+monter le 0.x vers le 1.x ici suppose de bouger le client et l'image ensemble,
+puis de verifier que les collections deja ecrites restent lisibles.
+
 ## API
 
 API REST standard ChromaDB. Ecrite uniquement par le service Docling
