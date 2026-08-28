@@ -136,9 +136,10 @@ ne sera plus vérifiable que dans un sens.
 
 ---
 
-## 2. État mesuré du dépôt au 28 août 2026
+## 2. État mesuré du dépôt — 28 puis 29 août 2026
 
-Toutes les valeurs de cette section sont `mesuré`, dans ce dépôt, ce jour.
+Toutes les valeurs de cette section sont `mesuré`, dans ce dépôt, à la date
+qui les accompagne.
 
 | Objet | Tests | `ruff check src/` | `mypy src/` |
 |---|---|---|---|
@@ -163,6 +164,16 @@ compte canonique de tests vit désormais dans `README.md`, section Tests :
 des 8 commits** (la graine 0 désactive la randomisation du hachage, c'est un
 cas distinct et elle est comptée à part).
 
+**Apres la reparation du lot 0 et sa fusion** (fusion `--no-ff` `b59bf38`,
+14 commits : les 8 du lot plus les 6 de la reparation) : `make all` passe sur
+**chacun des 6 commits de reparation pris individuellement** — 508 / 508 / 511 /
+521 / 532 / **535** tests verts, `ruff` propre et `mypy --strict` sans erreur
+partout. Stabilite : graine 0 plus 25 graines aleatoires sur chacun des 6
+commits → **156/156 vertes**. Sur le resultat de la fusion lui-meme, verifie par
+le pilote avant de pousser : **535 verts**, `ruff` propre, `mypy` « no issues
+found in 36 source files » (`mesure`, 29 aout 2026). Le compte canonique reste
+dans `README.md`, section Tests.
+
 **508 est un volume, pas une garantie.** Le fichier
 `tests/unit/test_hierarchie_bout_en_bout.py` fabrique l'arbre imbriqué qu'il
 prétend vérifier et reste vert des deux côtés de son défaut (§3.3) ; il compte
@@ -170,8 +181,18 @@ pourtant dans les 508. Le développeur du lot 0 l'a signalé de lui-même plutô
 que de laisser le chiffre parler seul. Toute lecture de ce compte doit porter
 cette réserve.
 
-Corpus en place : 24 fichiers HTML (2 ouvrages × 12) + 1 PDF de 73 pages
-(`mesuré`). Parmi les 12 fichiers de chaque ouvrage, `Index.html` est écarté par
+**L'etat non versionne differe d'un poste a l'autre, et ce n'est pas un
+detail.** Le corpus et les stores ne voyagent pas avec un clone. Ce qui suit
+decrit le poste de reference. Sur le poste `/home/florian/mes_projets/`
+(`mesure`, 29 aout 2026) : les stores ne sont **pas** vides — ChromaDB porte la
+collection `rag_documents` avec **137 854** vecteurs, MinIO un bucket
+`documents` non vide — et le corpus present n'est pas celui decrit ci-dessous :
+36 fichiers HTML de deux autres ouvrages, un autre PDF, plus 170 fichiers dans
+`Datas/mds/`, l'ancien corpus mixte francais/anglais que le §1 declare mort.
+**Avant tout lot qui ingere, verifier le poste plutot que ce paragraphe.**
+
+Corpus en place sur le poste de reference : 24 fichiers HTML (2 ouvrages × 12)
++ 1 PDF de 73 pages (`mesuré`). Parmi les 12 fichiers de chaque ouvrage, `Index.html` est écarté par
 le capteur (`matter.py:40`) ; **`Preface.html` ne l'est pas** — « preface » n'est
 pas dans `FRONT_BACK_MATTER_TITLES`. Il sera donc ingéré depuis les deux
 ouvrages, ce qui est le cas d'école de l'exigence 3.
@@ -213,6 +234,22 @@ prouve que *si* Docling imbrique, *alors* le rang remonte — il ne peut pas
 prouver que Docling imbrique. Pire, `test_un_titre_racine_a_le_rang_zero`
 (l.81) exerce exactement le cas de production (parent `#/body`) et asserte
 `== 0`, lisant le symptôme comme un succès.
+
+**Nuance apportée par l'audit indépendant du lot 0, et retenue par le pilote.**
+Le constat ci-dessus est exact sur les faits, mais il ne doit pas se lire
+« ce fichier n'apporte rien ». L'auditeur a mesuré sa valeur **marginale** —
+suite complète contre suite privée de ce fichier — et trouvé **3 mutations sur
+7 que lui seul voit** : `flat_rank` qui ne retombe plus sur `level`, un
+paragraphe qui reçoit un rang, un faux titre PDF qui reprend le rang 0. La
+couverture est réelle ; c'est la **prétention** du docstring (« des items tels
+que Docling les rend ») qui est fausse, pas le fichier entier.
+
+**Avertissement pour le lot 2.** Appliquer la correction §3.2 (`#/body` rend
+`None` au lieu de `0`) fait tomber **deux** tests, pas un :
+`test_hierarchie_bout_en_bout.py::test_un_titre_racine_a_le_rang_zero` (livré
+par le lot 0) et `test_ranking.py::test_a_title_attached_to_the_body_has_rank_zero`
+(**antérieur**, déjà sur `main` en `77d4f5b`). Le lot 0 ne crée pas ce verrou,
+il le double. Les deux sites sont à amender ensemble.
 
 ### 3.4 L'instrument de mesure de la troncature tokenise le mauvais texte
 
@@ -364,6 +401,76 @@ gardé.
 
 ---
 
+### 4.15 Famine : un run bloqué gèle la réindexation, sur deux jobs
+
+`reindex_job.py` saute tant qu'un run d'ingestion est non terminal, **et**
+tant qu'un run de réindexation est en vol (garde ajoutée par la réparation).
+Les deux gardes sont justes et partagent le même mode de panne : un run coincé
+en `STARTED` — worker tué, daemon interrompu — bloque la réindexation
+**indéfiniment**. Aucun délai de garde, aucune alerte.
+
+Le *run monitoring* de Dagster, qui reprend les runs orphelins, est **absent de
+`dagster.yaml`**. C'est là que se corrige la famille entière, d'un seul geste,
+plutôt qu'au cas par cas dans chaque sensor.
+
+### 4.16 Deux réindexations concurrentes restent possibles, en plus étroit
+
+La réparation a fermé le cas large (le sensor relançait à chaque tick pendant
+qu'un run travaillait). Reste la fenêtre étroite : deux évaluations du sensor
+qui se croiseraient **avant** qu'un run ne soit enregistré. C'est précisément
+pourquoi le `run_key` reste déterministe **à l'intérieur** d'un tick — la
+déduplication de Dagster est la seconde ligne. Consigné pour ne pas croire le
+cas clos.
+
+### 4.17 La classification des statuts terminaux n'est gardée par aucun test
+
+`reindex_job.py` dérive `STATUTS_EN_COURS` par soustraction des terminaux, et
+la soustraction est correcte : vérifié contre le Dagster **épinglé** (1.13.16),
+`FINISHED_STATUSES` vaut exactement `{SUCCESS, FAILURE, CANCELED}`. Mais
+retirer `CANCELED` de `STATUTS_TERMINES` laisse la suite **verte** : une
+ingestion annulée bloquerait alors la réindexation pour toujours.
+
+Aggravant : le docstring écrit « les trois **seuls** états dont un run Dagster
+ne revient pas » — une phrase d'exhaustivité, qu'une montée de version de
+Dagster peut rendre fausse en silence.
+
+### 4.18 Les sensors d'ingestion sont livrés armés, et rien ne le garde
+
+`factory.py:335` déclare `default_status=RUNNING` sur **chaque** sensor de
+source. La réparation du lot 0 a gardé cette ligne pour le seul sensor de
+réindexation (§8). Les trois sensors d'ingestion — `pdfs`, `livres_html`,
+`markdown` — restent livrables à l'arrêt sans qu'un test bronche : tout le
+pipeline serait inerte au déploiement, en silence. Le test existe déjà à côté ;
+il suffit de le décliner.
+
+### 4.19 Le refus de démarrer hors contrat n'est prouvé par aucun test
+
+`main.py:93` place le contrôle du modèle d'embedding **hors** du `try` du
+préchargement, avant `queue.start()` : le service refuse donc bien de démarrer
+sur un modèle hors contrat, et `README.md:78` l'annonce. Mais retirer cette
+ligne, ou la déplacer *dans* le `try`, laisse la suite verte.
+
+Le contrat lui-même reste tenu par `get_embedding_model` (gardé). C'est le
+**fail-fast** — la propriété que la documentation vend — qui repose sur une
+relecture. C'est mot pour mot la leçon du mandat : « un code de sortie
+documenté et justifié n'était asserté nulle part ».
+
+### 4.20 `make audit` est rouge, et n'audite pas ce que la porte installe
+
+Deux choses distinctes, toutes deux antérieures au lot 0 (`mesuré`, 29 août
+2026) :
+
+- **rouge** : `pip-audit` sort en 1 — `chromadb 0.6.3`, `CVE-2026-45830`,
+  `-45831`, `-45833`, **sans version corrective proposée**. Il n'y a donc pas
+  de correction à appliquer, mais il y a une décision à prendre et à écrire ;
+- **aveugle** : la cible n'audite que les deux `requirements.txt`, ni le groupe
+  `dev` de `pyproject.toml`, ni `uv.lock`. Or le lot 0 fait de `pyproject.toml`
+  la source de vérité : l'audit vise désormais à côté de ce que la porte
+  installe.
+
+`make audit` ne fait pas partie de `make all` : la porte est verte, l'audit est
+rouge, et rien ne le rappelle.
+
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
 ### 5.1 Le découpage : trois valeurs pour un réglage qui n'existe pas
@@ -416,6 +523,24 @@ Une porte qualité qui écrit dans le dépôt ne peut pas servir de contrôle �
 correction est cosmétique et sans risque, mais elle touche `extraction.py`, que
 le chantier de la hiérarchie réécrit : à faire dans ce lot-là, pas avant.
 
+**Tranché autrement, sur l'argument du développeur de la réparation du lot 0,
+et le pilote se range.** Ce paragraphe mélangeait deux choses. *Reformater* les
+trois fichiers touche `extraction.py` : cela peut attendre le lot 2. Mais *une
+porte qualité qui écrit dans le dépôt qu'elle contrôle* ne peut pas attendre,
+et c'est indépendant.
+
+Aujourd'hui, `make all` oblige chaque développeur de chaque lot à se souvenir
+de révoquer trois fichiers avant chaque commit. Celui de la réparation l'a fait
+six fois, parce qu'il le savait ; le suivant ne le saura pas, livrera du
+reformatage sans rapport dans un commit, et personne ne le verra passer. C'est
+exactement la famille de défauts que ce chantier traque.
+
+La correction tient en **une ligne** du `Makefile` : dans la cible `all`,
+`ruff format src/` devient `ruff format --check src/`, la cible `format`
+restant pour l'écriture volontaire. La porte devient alors rouge sur `main` —
+ce qui est **vrai**, et ce que ce paragraphe dit déjà. **Affecté au lot 0b**,
+avec §5.5 : c'est le même sujet, les gardes qu'on croit avoir.
+
 ### 5.5 Les hooks `pre-commit` ne sont installés nulle part
 
 `.git/hooks/pre-commit` ne contient que le contrôle d'identité d'auteur. Le
@@ -456,6 +581,29 @@ phrase, pas le garde-fou. À traiter avec 4.7, d'une seule main.
 
 
 ---
+
+### 5.7 `ReindexOutcome.metadata_value` a désormais une branche morte
+
+La branche qui rend `"ECHEC — …"` n'est plus atteinte en production : l'asset
+lève avant de publier ses métadonnées (§8). Seuls les tests unitaires de
+`reindex.py` l'exercent.
+
+Le développeur de la réparation l'a rendue morte, l'a dit, et ne l'a pas
+retirée — argument retenu : `request_reindex` est une fonction publique dont le
+contrat est « ne lève jamais, dit ce qui s'est passé », et amputer son objet de
+retour parce que son unique appelant d'aujourd'hui lève d'abord la coupleraient
+à ce consommateur. À trancher avec §5.1 et §5.2, dans le lot du code mort.
+
+### 5.8 Le message de commit de `3eb5aef` porte une affirmation devenue fausse
+
+Il contient la phrase d'exhaustivité « la seule obligation que le contrat
+impose au pipeline », corrigée depuis dans le docstring de `reindex.py` (§8).
+Le commit n'a **pas** été réécrit : sa porte qualité a été prouvée verte, et la
+règle du chantier interdit de réécrire pour un gain cosmétique.
+
+Il existe donc une divergence permanente entre ce message et le code. C'est le
+prix connu de la règle, il est assumé, et il est écrit ici pour que personne ne
+le redécouvre comme un défaut.
 
 ## 6. Ouvert — ce que la documentation affirme et que le code ne fait pas
 
@@ -508,7 +656,90 @@ un chantier, pas un correctif.
 ## 8. Traité
 
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
-pas. Les commits cités sont ceux de `claude/rag-pipeline-lot-0-repairs-b232a1`.
+pas. Le lot 0 a été fusionné dans `main` le 29 août 2026 par la fusion `--no-ff`
+`b59bf38` : 8 commits de livraison, puis 6 de réparation exigés par le pilote
+après l'audit indépendant. Tous les commits cités sont désormais dans `main`.
+
+### La réparation du lot 0 — six points, exigés avant fusion
+
+L'audit indépendant a jugé le lot bon dans sa conception et a trouvé six
+défauts à ses bords. Le pilote a refusé de les reporter au registre : deux
+étaient des tests de quelques lignes dans des fichiers que le lot possédait
+déjà, et le premier était une régression.
+
+**1 → `33841c9` — une réindexation échouée n'est plus perdue.** C'était le seul
+défaut de comportement, et une **régression** : sur `main`, un agent
+momentanément injoignable recevait **une tentative par document ingéré**,
+dont la dernière pouvait aboutir ; le lot livré lui en donnait **une seule**. Le curseur du sensor avançait à
+l'**émission** de la demande, et le `run_key` déterministe
+(`reindex-<storage_id>`) interdisait toute reprise — un `run_key` consommé
+l'est pour toujours, Dagster le cherche dans tout l'historique. Remettre le
+curseur à zéro ne rattrapait rien.
+
+La correction retenue, et le pilote a lu ses alternatives : **le sensor ne
+tient plus aucun état.** `update_cursor` a disparu du module. Il compare deux
+*faits* lus dans l'historique des runs — le repère de la dernière ingestion
+réussie, et celui de la dernière **réindexation réussie** — et le `run_key`
+porte la rafale *et* la tentative. L'asset **lève** quand l'appel a été tenté
+et n'a pas abouti ; une URL vide ne lève pas, un appel non tenté n'est pas un
+appel échoué. Les trois propriétés du contrat sont tenues : une ingestion reste
+verte quoi qu'il advienne de l'agent, un échec est retenté **indéfiniment**, et
+un échec **rougit son run** — donc apparaît dans les filtres et les alertes,
+là où « une métadonnée dans un run vert » ne le faisait pas.
+
+La règle « ne jamais lever » a été rouverte à bon droit : elle venait de
+`factory.py`, où une reprise signifiait reconvertir des centaines de pages ;
+dans son propre run, une reprise coûte **un appel HTTP**. Le motif a disparu
+avec le déménagement.
+
+Prix assumé et consigné : un agent arrêté deux heures produit des runs rouges
+pendant deux heures, un par tick. Le levier est `minimum_interval_seconds`
+(30 s). Alternatives écartées et argumentées : garder un curseur mais l'avancer
+au succès (un état que rien ne réconcilie avec la réalité), une `RetryPolicy`
+bornée (**toute reprise bornée réintroduit la perte**), `run_key=None` (aurait
+supprimé la seule protection contre deux évaluations concurrentes).
+
+**2 → `bb74750` — le sensor est livré armé, et c'est prouvé.** `default_status=
+DefaultSensorStatus.RUNNING` n'était gardé par rien : la retirer laissait 508
+tests verts et rendait **tout le lot inerte au déploiement**. Un troisième test
+tient les deux autres honnêtes — un sensor témoin déclaré sans le champ ne doit
+**pas** être armé —, sans quoi ils resteraient vrais si Dagster changeait sa
+valeur par défaut.
+
+**3 → `1c002f2` — les deux moitiés du titre de `7d587b0`, enfin gardées.**
+`tests/unit/test_wipe_stores.py` n'importait que les trois fonctions d'aide : `main()`
+n'avait **aucun** test, et c'est là que vivent la purge MinIO et le
+`sys.exit(1)` sur purge partielle. Testé en **sous-processus**, et l'argument
+est bon : le comportement en cause *est* le code de sortie, ce qu'un
+`docker compose exec` remonte et ce qu'un `&&` lit. Un import laisserait
+attraper `SystemExit` — prouver qu'un objet a été levé, pas que la commande
+échoue. Seconde raison, suffisante seule : boucher `chromadb`/`nebula3` dans
+`sys.modules` laisserait les bouchons derrière soi et rendrait l'ordre des
+tests significatif.
+
+**4 → `3603492` — le `max()` sur plusieurs sources.** `max(reperes)` n'était
+gardé par rien : le harnais appelait `build_reindex` avec **un** nom de job,
+alors que `sources.yaml` en déclare **trois**. La configuration réellement
+livrée n'était testée nulle part.
+
+**5 → `46969bb` — « la seule obligation » corrigée.** `reindex.py` affirmait
+être la seule obligation du contrat ; le §0 en énonce **cinq**, et l'exigence 1
+est implémentée par `98bb20d`, du même lot. La correction ne recopie pas la
+liste — ce serait la même faute d'un cran plus loin : elle dit ce que le module
+porte, donne un contre-exemple vérifiable et renvoie ici. Le message de commit
+de `3eb5aef`, lui, garde l'affirmation fausse : §5.8.
+
+**6 → `4e3345c` — le chiffre 21 retiré.** Il vivait dans du **code de
+production** sans étiquette et ne correspondait à aucun corpus connu. Retiré
+plutôt qu'étiqueté, l'argument étant gardé : il ne dépend d'aucun corpus.
+
+**Mesures de la réparation** (`mesuré`) : `make all` vert sur chacun des 6
+commits — 508 / 508 / 511 / 521 / 532 / **535** —, balayage de graines
+**156/156**, et le compte du README juste **dans chaque commit qui le change**.
+Neuf mutations déclarées ; le pilote en a rejoué **huit de ses mains, toutes
+rouges**.
+
+**Les commits cités ci-dessous** sont ceux de la livraison initiale du lot.
 
 ### 3.6 → traité par `eaa8a8e` — la porte qualité est reproductible
 
@@ -540,7 +771,7 @@ un asset `agent/lexical_index`, son job `agent_reindex_job`, et un sensor qui
 l'arme quand **aucun run d'ingestion n'est en vol** (statuts non terminaux,
 `QUEUED` compris) **et** qu'au moins un a réussi depuis la dernière
 réindexation, repérée par un curseur. Le nombre d'appels ne suit plus le nombre
-de documents : 1 au lieu de 21 sur le corpus actuel.
+de documents : un appel par rafale au lieu d'un appel par partition.
 
 Options écartées, argumentées dans le docstring du module : un asset aval se
 matérialiserait dans le run de la partition et ne ferait que déplacer le défaut ;
@@ -553,7 +784,7 @@ est une suite de rafales, donc une suite de réindexations. C'est le
 comportement voulu, ce n'est pas « une seule fois » dans l'absolu.
 
 Le garde qui manquait : les tests assertent un **nombre**, depuis le côté qui
-le produit, pour 1, 3 et 21 documents — un test « l'appel a lieu » était vert
+le produit, pour 1, 3 et 12 documents — un test « l'appel a lieu » était vert
 des deux côtés du défaut. Treize mutations du code livré ont été vérifiées
 rouges. Détail dans `tests/unit/test_reindex_job.py`.
 

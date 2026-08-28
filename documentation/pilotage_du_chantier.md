@@ -11,7 +11,7 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 28 août 2026, à la fin du lot 0.**
+> **Dernière mise à jour : 29 août 2026, après la fusion du lot 0.**
 > Toute valeur chiffrée ci-dessous porte son étiquette `mesuré`, `calculé` ou
 > `supposé`. Une valeur non remesurée ne se recopie pas : on renvoie à son site
 > canonique.
@@ -38,8 +38,10 @@ Le prompt à coller dans une conversation neuve, tel quel :
 >
 > Ils sont autosuffisants : tu n'as aucun historique de conversation, et tu
 > n'en as pas besoin. Vérifie ensuite l'état de tes mains plutôt que de me
-> croire — les branches, et `make install && make all` sur `lot-0` — puis
-> dis-moi où on en est et quelle est la prochaine action. Un prompt à la fois.
+> croire — les branches, l'état non versionné du poste (corpus et stores), et
+> `make install && make all` sur `main` — puis dis-moi où on en est et quelle
+> est la prochaine action. Un prompt à la fois, et numérote les conversations
+> auxquelles tu me demandes de coller un prompt.
 
 Puis les trois choses qui ne voyagent pas avec un clone : §2.
 
@@ -156,21 +158,25 @@ plus coûteuse du système est déjà arrivée une fois (contrat, exigence 1).
 make install && make all
 ```
 
-Attendu au 28 août 2026, sur `lot-0`
-(`mesuré`) : `ruff` propre, `mypy --strict` sans erreur, **508 tests verts**.
-Le compte canonique de tests vit dans `README.md`, section Tests. Sur `main`
-(77d4f5b) : **395**.
+Attendu au 29 août 2026, sur `main` (`mesuré`) : `ruff` propre,
+`mypy --strict` sans erreur, **535 tests verts**. Le compte canonique de tests
+vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
+
+**`make all` mute l'arbre avant de le contrôler** : sa première cible est
+`ruff format src/`, qui réécrit trois fichiers à chaque exécution (registre
+§5.4). Révoque-les — `git checkout -- src/` — avant tout commit, sinon tu
+livres du reformatage sans rapport. C'est le sujet du lot 0b.
 
 Si le compte diffère, ne suppose rien : c'est le dépôt qui a bougé, et il faut
 comprendre pourquoi avant de continuer.
 
-**Et lis ce nombre avec sa réserve.** 508 est le compte des tests qui passent,
-pas le compte des tests qui prouvent quelque chose. Le fichier
-`tests/unit/test_hierarchie_bout_en_bout.py` — 20 tests environ — **fabrique
-l'arbre imbriqué qu'il prétend vérifier** et reste vert des deux côtés de son
-défaut (registre §3.3). Le développeur du lot 0 l'a signalé lui-même plutôt que
-de laisser le chiffre parler seul. Un compte de tests est une mesure de volume,
-jamais une mesure de garantie.
+**Et lis ce nombre avec sa réserve.** C'est le compte des tests qui passent, pas
+le compte des tests qui prouvent quelque chose. Le fichier
+`tests/unit/test_hierarchie_bout_en_bout.py` **fabrique l'arbre imbriqué qu'il
+prétend vérifier** et reste vert des deux côtés de son défaut (registre §3.3) —
+même si l'audit indépendant a montré qu'il apporte tout de même une couverture
+réelle, 3 mutations sur 7 n'étant vues que par lui. Un compte de tests est une
+mesure de volume, jamais une mesure de garantie.
 
 ---
 
@@ -194,9 +200,13 @@ au [§1 du registre](axes_amelioration.md).
 
 ## 4. Faits établis — ne les redérive pas
 
-- **Les stores sont vides et prêts.** Bind mounts sous `Datas/database/`, pas
-  de volumes nommés. Aucune collection ChromaDB, 0 objet MinIO, `rag_space`
-  recréé vide.
+- **Les stores sont vides et prêts — SUR LE POSTE DE RÉFÉRENCE SEULEMENT.**
+  Bind mounts sous `Datas/database/`, pas de volumes nommés. **Ce fait ne
+  voyage pas.** Sur le poste `/home/florian/mes_projets/`, ChromaDB porte la
+  collection `rag_documents` avec 137 854 vecteurs et MinIO un bucket
+  `documents` non vide (`mesuré`, 29 août 2026), et le corpus présent n'est pas
+  celui du §2.2. **Avant tout lot qui ingère, mesure le poste au lieu de lire
+  cette ligne** — registre §2.
 - **Le réseau `rag_network` est créé par ce dépôt.** `rag-agent-chat` s'y
   raccroche en `external: true` et ne démarre pas sans lui.
 - **Aucun GPU n'est requis.** L'ingestion tourne sur processeur. La réservation
@@ -220,13 +230,17 @@ au [§1 du registre](axes_amelioration.md).
 
 ## 5. Où on en est
 
-### 5.1 Les branches — il n'y en a que deux, et c'est voulu
+### 5.1 Les branches — il n'y en a plus qu'une
 
 | Réf | Pointe | Rôle |
 |---|---|---|
-| `main` | | **tout ce qui est fusionné, y compris ce mandat et le registre.** Un clone frais suffit : il n'y a rien à checkouter pour reprendre le chantier |
-| `lot-0` | `390ce8a` | **le seul lot en vol.** Livré, en attente de son audit indépendant puis de sa fusion. 8 commits, partis de `main` **avant** que le mandat n'y soit poussé |
-| tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 **avant** sa réparation. Ce n'est pas une ligne de travail, c'est une **base de comparaison** — d'où un tag et non une branche |
+| `main` | `b59bf38` | **tout ce qui est fusionné, y compris ce mandat et le registre.** Le lot 0 y est depuis le 29 août 2026. Un clone frais suffit : il n'y a rien à checkouter |
+| tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 avant sa **première** réparation. Base de comparaison, pas une ligne de travail — d'où un tag et non une branche |
+
+**Aucun lot n'est en vol.** `lot-0` a été fusionnée (`--no-ff`, `b59bf38`) puis
+supprimée en local. **Reste à supprimer côté distant** : tant que ce n'est pas
+fait, `origin/lot-0` traîne dans la liste et fait croire à un lot en cours. Le
+mandat l'exige — une branche fusionnée ne reste pas.
 
 **Règle, pour ne pas refaire le désordre : une branche par lot en vol, jamais
 plus.** Le chantier a compté jusqu'à cinq branches parce qu'une conversation
@@ -242,14 +256,14 @@ tag s'il faut pouvoir y revenir.
   savoir la checkouter pour lire ce fichier ;
 - `claude/rag-ingestion-pipeline-restore-5e9fa1` — remplacée par le tag
   `reference/lot-0-avant-reparation`, qui pointe **exactement le même commit**.
-  Rien n'est perdu : `git range-diff reference/lot-0-avant-reparation~5..reference/lot-0-avant-reparation lot-0`
-  reste possible, et c'est l'angle A du mandat d'audit ;
+  Rien n'est perdu : la comparaison qui a servi d'angle A à l'audit reste
+  possible depuis le tag, `lot-0` étant désormais dans `main` — l'audit a
+  conclu que rien n'avait été perdu au replantage (registre §8) ;
 - `claude/rag-ingestion-restore-9e5aa5` — 0 commit au-dessus de `main`, jamais
   poussée (`mesuré`). Vide.
 
-**Ce qui n'a PAS été fait, et ne le sera pas avant l'audit :** fusionner `lot-0`
-dans `main`. Ce serait la façon la plus rapide de n'avoir qu'une branche, et
-c'est précisément la règle qu'on ne casse pas.
+**La règle a tenu jusqu'au bout :** `lot-0` n'a été fusionnée qu'après son
+audit indépendant **et** la réparation que cet audit a rendue nécessaire.
 
 **L'écart au mandat du lot 0, tranché.** Le lot 0 avait été livré sur une
 branche neuve plutôt qu'en réparant celle du mandat, et proposait soit de
@@ -260,72 +274,66 @@ audit. Le choix du développeur — livrer ailleurs et garder l'originale — é
 le bon ; c'est de ne pas l'avoir posé comme un écart au moment de le faire qui
 était le défaut.
 
-### 5.2 Ce que le lot 0 a livré, et ce que j'en ai vérifié moi-même
+### 5.2 Le lot 0 : livré, audité, réparé, fusionné
 
-Les 8 commits de `lot-0` :
+Le détail complet — les six points de réparation, la conception retenue pour
+la reprise de réindexation, les alternatives écartées — vit au **registre §8**.
+C'est son site canonique ; ne le recopie pas ici.
 
-```
-eaa8a8e build: declarer le groupe de dependances de developpement dans pyproject.toml
-98bb20d feat: refuser de demarrer sur un modele d'embedding hors contrat
-7d587b0 fix: purger aussi le bucket MinIO, et echouer sur une purge partielle
-cc338b8 fix: ne plus reserver de GPU par defaut, le service etait increable sans nvidia
-3eb5aef feat: appeler POST /reindex sur l'agent en fin d'ingestion
-28cce7d test: prouver que le rang des titres remonte, du item Docling au graphe
-a3ad1f4 fix: reindexer l'agent une fois par rafale, et non une fois par document
-390ce8a docs: le compte de tests, mesure, a son site canonique dans le README
-```
+Ce que le pilote a vérifié **de ses mains**, sans reprendre un chiffre
+(`mesuré`, 29 août 2026) :
 
-**Vérifié par le pilote, pas repris du rapport** (`mesuré`, 28 août 2026) :
+- les 8 commits d'origine **intacts** : `390ce8a` est resté ancêtre, rien n'a
+  été réécrit ni rebasé ;
+- `make all` sur le **résultat de la fusion** — c'est le point où deux branches
+  vertes peuvent donner un arbre rouge, et personne ne l'avait mesuré :
+  **535 tests verts**, `ruff` propre, `mypy` sans erreur ;
+- **8 des 9 mutations annoncées, rejouées et rouges** : le `default_status` du
+  sensor, l'asset qui lève, le `run_key` à tentative, le filtre `SUCCESS`, la
+  garde « déjà en vol », le `max()` multi-sources, le code de sortie de
+  `wipe_stores` et le décompte de l'échec MinIO ;
+- aucun test perdu : deux noms disparus, **tous deux renommés**. Le test
+  `test_un_echec_ne_rougit_pas_le_run_mais_le_crie` *devait* disparaître — il
+  assertait le défaut ;
+- le compte du README juste **dans chaque commit qui le change** ;
+- hygiène : aucune mention d'IA, auteur en liste blanche, aucun `skip`,
+  `xfail`, `type: ignore` ni `noqa` ajouté.
 
-- avance rapide possible sur `main` ;
-- aucune mention de Claude, Anthropic, Copilot ou ChatGPT, ni dans les messages
-  de commit, ni dans le diff ; aucun trailer `Co-Authored-By` ;
-- auteurs : `floSa <florian.horellou@gmail.com>` et
-  `Florian Horellou <florian_horellou@laposte.net>`, tous deux dans la liste
-  blanche ;
-- après `rm -rf .venv && uv sync` : `pytest`, `ruff` et `mypy` sont bien
-  installés — le groupe `dev` de `pyproject.toml` fonctionne, `pip-audit` et
-  `pre-commit` y sont aussi, donc `make audit` n'est pas cassé par la
-  suppression de `requirements-dev.txt` ;
-- sur la pointe : `ruff check src/` propre, `mypy src/` « no issues found in 36
-  source files », **508 tests verts** ;
-- `ruff format --check src/` : **3 fichiers seraient reformatés**
-  (`extraction.py`, `language.py`, `matter.py`) — le constat §5.4 du registre
-  est confirmé, il préexiste au lot 0 et n'est pas de son fait.
+### 5.3 Ce que le lot 0 a fait apparaître, et qui reste ouvert
 
-**Non encore vérifié par le pilote** : le contenu de `reindex_job.py` (236
-lignes neuves), la validité des 13 mutations annoncées, et l'intégrité du
-replantage des 5 commits d'origine. **C'est le travail de l'audit
-indépendant.**
+Le lot lui-même avait fait naître §5.4, §5.5 et §5.6 au registre. Son audit et
+sa réparation en ont ajouté sept : **§4.15** (famine sur un run bloqué, et le
+*run monitoring* absent de `dagster.yaml` qui les fermerait toutes d'un geste),
+**§4.16** (réindexations concurrentes, cas étroit résiduel), **§4.17**
+(classification des statuts terminaux non gardée), **§4.18** (les sensors
+d'ingestion de `factory.py:335` livrés armés sans garde — tout le pipeline est
+livrable à l'arrêt), **§4.19** (le refus de démarrer hors contrat non prouvé),
+**§4.20** (`make audit` rouge et aveugle au groupe `dev`), **§5.7** et **§5.8**.
 
-### 5.3 Ce que le lot 0 a fait apparaître
+**Aucun n'est entré dans le diff.** Périmètre strict : ce qui est trouvé et non
+traité va au registre.
 
-Trois constats nouveaux, tous consignés au registre §5.4, §5.5 et §5.6 :
+### 5.4 Les deux désaccords tranchés
 
-- **§5.4** — `make format` mute l'arbre avant que `make all` ne le contrôle, et
-  `main` n'est pas format-propre ;
-- **§5.5** — les hooks du framework `pre-commit` ne sont installés nulle part :
-  `ruff`, `ruff-format`, `detect-secrets`, `check-yaml` sont déclarés dans
-  `.pre-commit-config.yaml` et **rien ne les exécute**. `detect-secrets` n'a
-  donc jamais servi de garde-fou. Arbitrage à faire : `.git/hooks/pre-commit`
-  est déjà occupé par le contrôle d'identité, et `pre-commit install`
-  l'écraserait ;
-- **§5.6** — trois `except Exception` nus sans justification au site dans
-  `wipe_stores.py`.
+**Le développeur du lot 0 sur « une fois par rafale ».** Il a livré une
+réindexation par rafale là où le contrat dit « une fois l'ingestion terminée »,
+et il l'a dit lui-même. Il avait raison : « fin d'ingestion » n'existe pas comme
+événement dans cette architecture. **C'est un écart assumé, écrit comme tel** —
+`README.md`, `documentation/orchestration.md` et le docstring de
+`reindex_job.py`. Le levier si l'agent supporte mal des réindexations
+rapprochées est `minimum_interval_seconds` (30 s). Un réglage, pas une refonte.
 
-### 5.4 Le désaccord du développeur, et ma position
+**Le développeur de la réparation sur `make all`, et le pilote s'est rangé.**
+Le registre rangeait §5.4 dans le lot de la hiérarchie au motif qu'il touche
+`extraction.py`. C'était confondre deux choses : *reformater* peut attendre,
+mais *une porte qualité qui écrit dans le dépôt qu'elle contrôle* ne le peut
+pas. Il a dû révoquer trois fichiers avant chacun de ses six commits, parce
+qu'il le savait ; le suivant ne le saura pas. **Versé au lot 0b.**
 
-Le développeur a livré « **une réindexation par rafale** » là où le contrat dit
-« une fois l'ingestion terminée », et il l'a dit lui-même plutôt que de laisser
-passer. Il a raison sur les deux points : « fin d'ingestion » n'existe pas comme
-événement dans cette architecture — un job par source, un run par fichier, des
-partitions créées au fil de l'eau — et attendre un signal qui n'existe pas
-reviendrait à ne jamais réindexer.
-
-**Position du pilote : c'est la bonne lecture, et elle doit rester écrite comme
-un écart assumé, pas comme une conformité.** Le levier si l'agent supporte mal
-des réindexations rapprochées est le `minimum_interval_seconds` du sensor
-(30 s aujourd'hui). C'est un réglage, pas une refonte.
+**Et l'auditeur sur `test_hierarchie_bout_en_bout.py`.** Le registre §3.3
+laissait entendre que le fichier ne prouve rien. L'auditeur a mesuré sa
+couverture marginale : **3 mutations sur 7 que lui seul voit**. Le registre a
+été nuancé.
 
 ---
 
@@ -336,13 +344,13 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 
 | Lot | Contenu | Débloque | État |
 |---|---|---|---|
-| **0** | Réparer et fusionner la branche de restauration : porte qualité reproductible, `mypy`, `/reindex` déplacé | démarrage de la stack, exigences **1** et **5** | **livré, à auditer puis à fusionner** |
-| **0b** | **Les gardes qu'on croit avoir** : §5.5, les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres. Entraîne §5.4 | un garde-fou de secrets qui existe vraiment, et un `make all` qui contrôle l'arbre au lieu de le muter | à faire, court |
+| **0** | Porte qualité reproductible, `mypy`, `/reindex` déplacé **et sa reprise réparée** | démarrage de la stack, exigences **1** et **5** | ✅ **fusionné le 29 août 2026** (`b59bf38`) |
+| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres. Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | **à faire, court — c'est l'action suivante** |
 | **1** | **Observer sans corriger.** Reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + 5 pages du PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` présent sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** — la décision « corriger la hiérarchie avant ou après l'ingestion complète » | à faire |
 | **2** | La hiérarchie des titres, **si et seulement si** le lot 1 la montre plate : §3.2, §3.3, §4.11, §4.12. Impose une purge du space | contrainte **6**, donc toute l'ablation | conditionnel |
 | **3** | Instruments et gardes : §3.4, §4.4 (dont la **monotonie de `sequence`**, exigence 4), §4.14, §4.5 | la confiance dans tout chiffre produit après l'ingestion | à faire **avant** l'ingestion complète |
-| **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6 | la certitude que le corpus ingéré est le corpus complet | à faire |
-| **5** | Code mort et documentation contre code : §5.1 à §5.5, tout le §6 | la lisibilité, et l'arrêt des faux réglages | à faire |
+| **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml` | la certitude que le corpus ingéré est le corpus complet | à faire |
+| **5** | Code mort et documentation contre code : §5.1 à §5.3, §5.7, §5.8, tout le §6 | la lisibilité, et l'arrêt des faux réglages | à faire |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | à faire |
 
 **Pourquoi le lot 1 ne corrige rien et passe quand même deuxième.** Un seul
@@ -362,27 +370,53 @@ C'est exactement ce que le lot 1 est fait de trancher.
 
 ## 7. L'action suivante
 
-**Distribuer l'audit indépendant du lot 0.** Le prompt est prêt, en annexe A de
-ce fichier : le coller tel quel dans une conversation neuve nommée
-`AUDIT-LOT-0`.
+**Distribuer le lot 0b.** Le prompt est prêt, en **annexe A** de ce fichier :
+le coller tel quel dans une conversation neuve nommée `LOT-0B`.
 
-Puis, dans l'ordre :
+C'est le lot le plus court du plan et celui dont
+l'absence coûte le plus cher : `detect-secrets` est déclaré dans
+`.pre-commit-config.yaml` et n'a **jamais** tourné, sur un dépôt dont le `.env`
+porte les mots de passe MinIO et PostgreSQL.
 
-1. lire son rapport ;
-2. lire le diff `main..lot-0` toi-même ;
-3. faire tourner `make all` de tes mains ;
+Trois choses dedans, et pas une de plus :
+
+1. **§5.5** — installer réellement les hooks du framework `pre-commit`.
+   L'arbitrage est ouvert : `.git/hooks/pre-commit` est déjà occupé par le
+   contrôle d'identité d'auteur, et `pre-commit install` l'écraserait. Une piste
+   qui n'est pas une consigne : faire du contrôle d'identité un hook
+   `repo: local` dans `.pre-commit-config.yaml`. Preuve exigée **par mutation** :
+   un commit portant une adresse hors liste blanche doit rester refusé après
+   comme avant.
+2. **§5.4** — `make all` cesse d'écrire dans le dépôt qu'il contrôle. Une ligne :
+   `ruff format --check src/` dans la cible `all`, `format` restant pour
+   l'écriture volontaire. La porte devient rouge sur `main` : **c'est vrai**, et
+   c'est le but. Reformater les trois fichiers reste au lot 2, qui réécrit
+   `extraction.py`.
+3. **§4.18** — le test qui fait régresser `default_status` sur les sensors
+   d'ingestion de `factory.py:335`. Il existe déjà pour le sensor de
+   réindexation ; il suffit de le décliner. Sans lui, tout le pipeline est
+   livrable à l'arrêt en silence.
+
+Puis, dans l'ordre invariable :
+
+1. lire le rapport du développeur ;
+2. **le faire auditer par une conversation qui n'en a écrit aucune ligne** — sur
+   les six lots du dépôt jumeau, l'audit indépendant a trouvé **chaque fois**
+   quelque chose de matériel ; sur le lot 0 d'ici, il a trouvé une régression que
+   ni le développeur ni le pilote n'avaient vue ;
+3. lire le diff toi-même et faire tourner `make all` de tes mains, **y compris
+   sur le résultat de la fusion** — deux branches vertes peuvent donner un arbre
+   rouge ;
 4. **alors seulement**, trancher la fusion ;
-5. si fusion : `git merge --no-ff lot-0` depuis `main`, puis `git push`, puis
-   **supprimer `lot-0`** — local et distant. Une branche fusionnée ne reste pas.
-   **Pas `--ff-only` :** `lot-0` est parti de `main` avant que ce mandat n'y
-   soit poussé, il n'est donc plus en avance rapide. La fusion a été essayée à
-   blanc (`git merge-tree`) et elle est **propre, sans conflit** (`mesuré`) ;
-   seul `README.md` est touché des deux côtés, à des endroits différents. Ne
-   rebase pas `lot-0` pour retrouver l'avance rapide : cela réécrirait les 8
-   commits dont le développeur a prouvé la porte verte un par un, et
-   invaliderait sa preuve pour un gain cosmétique ;
-6. mettre le registre à jour — §8 « Traité », et §2 pour la mesure d'après-fusion ;
+5. si fusion : `--no-ff`, jamais `--ff-only`, jamais de rebase — réécrire des
+   commits dont la porte a été prouvée verte un par un invaliderait cette preuve
+   pour un gain cosmétique. Puis supprimer la branche, local **et distant** ;
+6. mettre le registre à jour — §8 « Traité », §2 pour la mesure d'après-fusion ;
 7. écrire le prompt du lot 1.
+
+**Une dette de propreté à solder d'abord** : `origin/lot-0` existe encore. La
+branche est fusionnée et supprimée en local ; il reste à la supprimer côté
+distant.
 
 ---
 
@@ -494,6 +528,37 @@ dans un `.env`. Aucun de ces défauts n'était visible sans cette discipline.
 - **La question la plus productive des deux dépôts : qu'est-ce que la
   documentation affirme que le code ne fait pas ?**
 
+Celles que le lot 0 a ajoutées, et elles ont chacune trouvé quelque chose :
+
+- **Un curseur qui avance à l'ÉMISSION d'une demande, et non à son succès,
+  transforme une panne passagère en perte définitive.** C'était le défaut au
+  cœur du lot 0.
+- **Une clé d'idempotence déterministe interdit la reprise.** Un `run_key`
+  consommé l'est pour toujours ; Dagster le cherche dans tout l'historique,
+  sans borne de temps. Le geste de récupération naturel — remettre le curseur à
+  zéro — ne rattrapait rien.
+- **Toute reprise BORNÉE réintroduit la perte qu'elle prétend corriger.** Une
+  `RetryPolicy` à trois tentatives ne fait que déplacer l'échec définitif plus
+  tard.
+- **Ne rien écrire est plus robuste que bien écrire.** Si l'historique porte
+  déjà l'information, ne tiens pas d'état : un état que rien ne réconcilie avec
+  la réalité est une seconde source de vérité, donc une source de divergence.
+- **Une règle survit à son motif.** « Ne jamais lever » venait d'un endroit où
+  une reprise coûtait des heures de reconversion ; le code a déménagé, la
+  reprise est devenue un appel HTTP, et la règle est restée. Quand du code
+  change de place, rouvre les règles dont le seul motif était l'ancienne place.
+- **Un défaut peut être une ligne qui manque au TEST, pas au code.** La ligne
+  `default_status=RUNNING` était juste et rien ne la gardait : la retirer
+  laissait 508 tests verts et rendait tout le lot inerte au déploiement.
+- **Ce qu'un test n'importe pas, il ne teste pas.** `test_wipe_stores.py`
+  importait trois fonctions d'aide et jamais `main()` — où vivaient les deux
+  moitiés du titre du commit. Lis la ligne d'`import` avant de croire une
+  couverture.
+- **Un harnais de test peut effacer ce qu'il doit observer.** Le harnais du
+  sensor reconstruisait un contexte neuf à chaque tick, effaçant le curseur que
+  le sensor venait de poser : le test de reprise aurait été vert des deux côtés
+  du défaut. Vérifie ton harnais avant de croire ton rouge-d'abord.
+
 ---
 
 ## 11. Les erreurs de pilotage à ne pas refaire
@@ -516,210 +581,190 @@ relire.**
   questions. L'utilisateur a corrigé, et il avait raison : on échantillonne les
   questions, jamais le corpus.
 - **Fusionner un lot avant son audit indépendant.**
+- **Renvoyer à un fichier qu'on n'a pas écrit.** Le pilote a annoncé un prompt
+  « prêt, dans tel fichier » sans l'avoir produit. Un artefact qu'on cite doit
+  exister avant qu'on le cite.
+- **Distribuer un prompt sans le relire contre l'état réel du dépôt.**
+  L'annexe A portait « `main` = 77d4f5b, avance rapide possible » — vrai le jour
+  où elle a été écrite, faux dès que `main` a bougé. Un prompt prêt à
+  distribuer périme : relis-le contre `git`, pas contre ta mémoire.
+- **Accepter le verdict d'un auditeur sur sa sévérité.** L'audit du lot 0
+  qualifiait la perte de réindexation de « troc net-positif à consigner ».
+  C'était une régression. Un rapport excellent peut sous-appeler sa propre
+  trouvaille : lis ses faits, refais son raisonnement, et cote toi-même.
 
 Traite tes propres affirmations comme des hypothèses. Vérifie avant d'écrire un
 chiffre. Relis le code avant d'affirmer ce qu'il fait.
 
 ---
 
-# Annexe A — Prompt prêt à distribuer : audit indépendant du lot 0
+# Annexe A — Prompt prêt à distribuer : le lot 0b
 
-> **Routage : ceci va à une conversation NEUVE, à nommer `AUDIT-LOT-0`. Rien
+> **Routage : ceci va à une conversation NEUVE, à nommer `LOT-0B`. Rien
 > d'autre à envoyer, à personne.**
+>
+> Le prompt de l'audit du lot 0 a été consommé le 29 août 2026 ; il n'est pas
+> conservé ici. Ce qu'il a produit vit au registre §8 et au §5.3 ci-dessus.
 
 ```
-Tu es l'auditeur indépendant du LOT 0 sur le dépôt rag-ingestion-pipeline.
+Tu es le développeur du LOT 0b sur le dépôt rag-ingestion-pipeline.
 
-Tu es éligible pour une raison précise, et il faut que tu la saches : tu n'as
-écrit AUCUNE ligne de ce que tu vas auditer. C'est cela, et rien d'autre, qui
-rend ton verdict utile. Le développeur de ce lot est une autre conversation ;
-tu ne dialogues pas avec lui, tu ne reprends aucune de ses conclusions sans
-l'avoir refaite toi-même.
+C'est le lot le plus court du plan, et celui dont l'absence coûte le plus
+cher : « les gardes qu'on croit avoir ». Le dépôt déclare des garde-fous
+dans .pre-commit-config.yaml — ruff, ruff-format, detect-secrets,
+check-yaml — et RIEN NE LES EXÉCUTE. detect-secrets n'a donc jamais tourné
+sur un dépôt dont le .env porte les mots de passe MinIO et PostgreSQL.
 
-Dépôt : /home/florianhorellou/Projets/rag-ingestion-pipeline
-À auditer : lot-0 (pointe 390ce8a, 8 commits)
-Base : main = 77d4f5b, avance rapide possible.
-Base de comparaison, conservée comme tag : reference/lot-0-avant-reparation (832c566)
+Dépôt : /home/florian/mes_projets/rag-ingestion-pipeline
+Base : main (le lot 0 y a été fusionné le 29 août 2026).
+Tu travailles sur une branche `lot-0b` partie de `main`.
+Une branche par lot en vol, jamais plus : n'en crée pas d'autre.
 
-LIS D'ABORD, EN ENTIER, sur main :
+LIS D'ABORD, EN ENTIER :
   documentation/pilotage_du_chantier.md   (le mandat, l'état, les règles)
   documentation/axes_amelioration.md      (le registre : le contrat en tête)
 
-Installe le hook d'identité avant tout commit, si tu en fais un :
-  cp scripts/git-hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+Installe le hook d'identité AVANT ton premier commit :
+  cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+  chmod +x .git/hooks/pre-commit
   git config user.name "floSa" && git config user.email "florian.horellou@gmail.com"
 
-═══════════════════════════════════════════════════════════════
-CE QUE LE LOT PRÉTEND AVOIR FAIT
-═══════════════════════════════════════════════════════════════
-
-0.1  Déclarer les dépendances de développement dans pyproject.toml
-     (groupe [dependency-groups] dev), supprimer requirements-dev.txt,
-     faire passer chaque outil du Makefile derrière `uv run`.
-0.2  Corriger deux erreurs mypy (réexport implicite de get_embedding_model
-     via vectors.py) À LA SOURCE, et replier la correction dans le commit
-     qui introduisait l'erreur.
-0.3  Déplacer POST /reindex de « une fois par document » à « une fois par
-     rafale d'ingestion », via un asset, un job et un sensor dédiés
-     (src/pipeline/reindex_job.py, 236 lignes neuves).
-0.4  Remesurer le compte de tests (508) et lui donner un site canonique.
-
-Il annonce : make all vert sur les 8 commits individuellement, 26 graines de
-hachage vertes sur chacun, et 13 mutations vérifiées.
+AVERTISSEMENT SUR CE POSTE : les stores ne sont pas vides et le corpus n'est
+pas celui du mandat §2.2 (voir §4 et registre §2). Rien de ce lot n'en
+dépend. N'y touche pas.
 
 ═══════════════════════════════════════════════════════════════
-CE QUE LE PILOTE A DÉJÀ VÉRIFIÉ — NE LE REFAIS PAS
+TROIS POINTS — ET RIEN D'AUTRE
 ═══════════════════════════════════════════════════════════════
 
-Mesuré par le pilote sur la pointe 390ce8a, le 28 août 2026 :
-  - avance rapide possible sur main ;
-  - aucune mention de Claude / Anthropic / Copilot / ChatGPT dans les
-    messages de commit ni dans le diff ; aucun trailer Co-Authored-By ;
-  - auteurs dans la liste blanche ;
-  - après rm -rf .venv && uv sync : pytest, ruff, mypy, pip-audit et
-    pre-commit sont installés ;
-  - ruff check src/ propre, mypy src/ « no issues found in 36 source
-    files », 508 tests verts ;
-  - ruff format --check src/ : 3 fichiers seraient reformatés
-    (extraction.py, language.py, matter.py) — constat §5.4 du registre,
-    antérieur à ce lot.
+── 1. Installer réellement les hooks du framework pre-commit (§5.5)
 
-Ton travail commence là où celui-ci s'arrête.
+L'arbitrage est OUVERT et il est à toi : .git/hooks/pre-commit est déjà
+occupé par le contrôle d'identité d'auteur, et `pre-commit install`
+l'écraserait. Perdre ce contrôle est hors de question — sept commits sont
+partis avec une adresse professionnelle sur un dépôt personnel, il a fallu
+réécrire 165 commits PUIS détruire et recréer le dépôt GitHub.
 
-═══════════════════════════════════════════════════════════════
-TON MANDAT
-═══════════════════════════════════════════════════════════════
+Une piste existe et n'est PAS une consigne : faire du contrôle d'identité un
+hook `repo: local` dans .pre-commit-config.yaml, ce qui rend le fichier au
+framework sans rien perdre. Juge, tranche, argumente.
 
-Audite non seulement le code, mais l'algorithme, sa logique et son
-comportement. Six angles, et tu es libre d'en ouvrir d'autres.
+PREUVE EXIGÉE, PAR MUTATION : un commit portant une adresse hors liste
+blanche doit être refusé APRÈS comme il l'est aujourd'hui. Démontre-le, ne
+l'affirme pas. Vérifie aussi que detect-secrets tourne réellement — et dis
+ce qu'il trouve, s'il trouve quelque chose.
 
-── A. Le replantage des cinq commits d'origine ────────────────
+Le hook versionné doit rester versionné : quelqu'un qui clone doit pouvoir
+l'installer, et le mandat §2.1 doit rester vrai après ton lot. S'il cesse
+de l'être, c'est à toi de le corriger dans le même commit.
 
-Les 5 commits d'origine, reperables par le tag
-reference/lot-0-avant-reparation, ont ete
-replantés sur la nouvelle branche, avec une correction repliée dans le
-premier. Quelque chose a-t-il été perdu, ajouté ou altéré au passage ?
+── 2. `make all` cesse d'écrire dans le dépôt qu'il contrôle (§5.4)
 
-`git range-diff` est l'outil, mais ne t'y arrête pas : compare aussi les
-arbres. Le pilote a mesuré 477 tests sur l'origine et 508 sur la branche
-réparée. La différence est-elle entièrement expliquée par les tests
-nouveaux de 0.3, ou un test a-t-il disparu ?
+Aujourd'hui `all: format lint typecheck test`, et `format` est
+`ruff format src/` : la porte RÉÉCRIT trois fichiers avant de les contrôler.
+Chaque développeur doit se souvenir de révoquer extraction.py, language.py
+et matter.py avant chaque commit. Celui de la réparation du lot 0 l'a fait
+six fois parce qu'il le savait ; le suivant ne le saura pas et livrera du
+reformatage sans rapport.
 
-── B. reindex_job.py — le cœur du lot ─────────────────────────
+La correction tient en une ligne : dans la cible `all`, `ruff format --check
+src/`. La cible `format` reste, pour l'écriture volontaire.
 
-236 lignes neuves qui décident QUAND l'agent est réindexé. Le mécanisme
-annoncé : un sensor qui ne déclenche que si aucun run d'ingestion n'est en
-vol ET qu'au moins un a réussi depuis la dernière réindexation, avec un
-curseur sur le storage_id du dernier run réussi.
+CONSÉQUENCE ASSUMÉE : `make all` devient ROUGE sur main. C'est VRAI, le
+registre §5.4 le dit déjà, et c'est le but. Ne corrige PAS les trois
+fichiers : ils touchent extraction.py, que le lot 2 réécrit. Écris cette
+conséquence là où le prochain développeur la lira, et dis-lui quoi en faire.
 
-Les questions qui méritent une réponse démontrée, pas plausible :
-  - que se passe-t-il si le run de réindexation lui-même échoue ? Le
-    curseur a-t-il déjà avancé ? Perd-on la réindexation pour toujours ?
-  - le sensor peut-il se retrouver en famine — une ingestion continue qui
-    ne laisse jamais de fenêtre « rien en vol » ?
-  - peut-il déclencher DEUX runs de réindexation concurrents ?
-  - le curseur survit-il à un redémarrage du daemon Dagster ? à un reset
-    du sensor ?
-  - la garde « le job de réindexation ne se compte pas lui-même » tient-elle
-    si le job est lancé à la main depuis l'interface ?
-  - STATUTS_EN_COURS est dérivé par soustraction des statuts terminaux.
-    Vérifie que la soustraction porte sur la BONNE énumération, et que la
-    liste des terminaux est celle de la version de Dagster épinglée
-    (1.13.16) — pas celle d'une autre.
+── 3. Les sensors d'ingestion sont livrables à l'arrêt (§4.18)
 
-── C. La table de mutations : construis la TIENNE ─────────────
+factory.py:335 déclare default_status=RUNNING sur CHAQUE sensor de source.
+La réparation du lot 0 a gardé cette ligne pour le seul sensor de
+réindexation. Les trois sensors d'ingestion — pdfs, livres_html, markdown —
+restent livrables à l'arrêt sans qu'un test bronche : tout le pipeline
+serait inerte au déploiement, en silence.
 
-Le développeur annonce 13 mutations. **N'audite pas sa liste.** Construis
-la tienne, depuis les docstrings, la documentation et le comportement que
-le lot prétend garantir, puis DIFFE. Ce que ta liste contient et la sienne
-pas est le résultat qui compte.
-
-Vérifie en particulier qu'aucun de ses tests n'est vert des DEUX CÔTÉS du
-défaut qu'il prétend garder. Le développeur signale lui-même avoir dû
-corriger un point d'injection intestable (`post: Callable = requests.post`
-figeait l'objet fonction à l'import) : vérifie que la correction est
-complète et qu'il n'existe pas d'autre montage qui bouchonne au-dessus de
-ce qu'il vérifie.
-
-── D. 0.1 : ce que la suppression de requirements-dev.txt a coûté
-
-Quatre outils y étaient déclarés et n'ont pas été repris (httpx,
-pytest-mock, pytest-asyncio, pydantic-settings). L'argument est « aucun
-utilisateur ». Vérifie-le toi-même, sur tout le dépôt, y compris dans les
-Dockerfiles, le compose, la CI si elle existe, et .pre-commit-config.yaml.
-
-Vérifie aussi que le Makefile versionné fait bien ce que le lot dit qu'il
-fait, cible par cible, y compris `audit` et `test-cov`.
-
-── E. La documentation livrée dans le même commit que son code
-
-Le lot touche README.md, documentation/orchestration.md, .env.example.
-Applique la question la plus productive des deux dépôts : qu'est-ce que
-cette documentation affirme que le code ne fait pas ? Et l'inverse : le
-code fait-il quelque chose que la documentation ne dit pas ?
-
-Cherche les phrases d'exhaustivité — une énumération close est un défaut en
-attente.
-
-── F. La conformité au contrat
-
-Le lot prétend honorer l'exigence 5 du contrat (POST /reindex). Le
-développeur a lui-même signalé un écart : il livre « une fois par rafale »
-et non « une fois l'ingestion terminée ». Le pilote a accepté cet écart.
-
-Ta question n'est donc pas « est-ce littéralement conforme » — c'est tranché
-— mais : **l'écart est-il écrit là où quelqu'un le lira**, ou seulement dans
-un rapport qui va disparaître ? Et le comportement livré tient-il les trois
-propriétés que le contrat exige vraiment : un échec qui ne fait jamais
-échouer une ingestion, un échec qui ne passe pas inaperçu, une URL vide qui
-est un choix annoncé et non un oubli ?
+Le test existe déjà à côté, dans tests/unit/test_reindex_job.py : va le
+lire, décline-le. Il comporte un troisième test qui tient les deux autres
+honnêtes — un sensor témoin déclaré SANS le champ ne doit pas être armé —
+sans quoi ils resteraient vrais si Dagster changeait sa valeur par défaut.
+Reprends cette idée.
 
 ═══════════════════════════════════════════════════════════════
-CE QUE TU NE FAIS PAS
+CE QUI EST HORS PÉRIMÈTRE
 ═══════════════════════════════════════════════════════════════
 
-Tu n'écris pas de code de production. Tu peux écrire des tests jetables
-pour DÉMONTRER un défaut — dis-le alors explicitement, et ne les commite
-pas.
+Tout le reste du registre. En particulier : ne reformate pas les trois
+fichiers, ne touche pas à `make audit` (§4.20), ne corrige pas la famine
+des sensors (§4.15, elle se ferme par le run monitoring de dagster.yaml, au
+lot 4), ne touche pas au code mort (§5.1, §5.2, §5.7).
 
-Tu ne fusionnes rien. La fusion est la décision du pilote.
-
-Tu ne corriges pas ce que tu trouves : tu le rapportes, avec sa preuve
-fichier:ligne, sa sévérité, et ce qu'il coûte de ne pas le corriger.
+Si tu penses qu'un de ces points DOIT entrer, dis-le et argumente. Ne le
+fais pas de ton propre chef. Ce qui est trouvé et non traité va au RAPPORT
+et au REGISTRE, jamais au diff.
 
 ═══════════════════════════════════════════════════════════════
-LES LEÇONS — APPLIQUE-LES, NE TE CONTENTE PAS DE LES LIRE
+LES RÈGLES DU DÉPÔT
+═══════════════════════════════════════════════════════════════
+
+Commits atomiques en français, dans le style de `git log`. Documentation
+dans le MÊME commit que son code.
+
+Aucune mention de Claude, Claude Code, Anthropic, Copilot ou ChatGPT nulle
+part. Aucun trailer Co-Authored-By. Le hook refuse une adresse hors liste
+blanche ; ne le contourne jamais, pas de --no-verify.
+
+TEST ROUGE D'ABORD. Chaque garde prouvé par MUTATION du code livré : tu
+casses la ligne, le test devient rouge, tu remets, il redevient vert. Nomme
+chaque mutation dans ton rapport.
+
+Aucun test désactivé, aucun skip, xfail, type: ignore, aucune règle ruff ou
+mypy relâchée, aucun except élargi sans justification écrite AU SITE.
+
+`make all` vert sur CHACUN de tes commits pris individuellement — et
+attention, tu es précisément le lot qui change ce que « vert » veut dire :
+dis explicitement, pour chaque commit, ce que tu as mesuré et avec quelle
+version de la cible. Plus le balayage de graines : la graine 0 (qui
+désactive la randomisation, cas distinct) plus au moins 25 graines
+PYTHONHASHSEED aléatoires.
+
+Le compte de tests a UN site canonique, README.md section Tests. Remesure,
+mets-le à jour là, dans chaque commit qui le change. Ne le recopie ailleurs
+nulle part.
+
+Aucun chiffre inventé : étiquette mesuré / calculé / supposé, et donne la
+commande. Pousse au fil de l'eau.
+
+═══════════════════════════════════════════════════════════════
+LES LEÇONS — APPLIQUE-LES
 ═══════════════════════════════════════════════════════════════
 
 - Un test « ça marche » est vert DES DEUX CÔTÉS du défaut.
 - Asserte depuis le côté qui PRODUIT le comportement.
+- Un défaut peut être une ligne qui manque au TEST, pas au code.
+- Ce qu'un test n'importe pas, il ne teste pas : lis la ligne d'import
+  avant de croire une couverture.
+- Un harnais de test peut effacer ce qu'il doit observer. Vérifie ton
+  harnais avant de croire ton rouge-d'abord.
 - Une phrase d'exhaustivité est un défaut en attente.
-- Un test qui choisit lui-même son cas doit PROUVER qu'il l'a atteint.
-- Vérifie tes bornes de balayage.
-- Une généralisation tirée d'UNE branche d'une fonction qui en a plusieurs
-  est fausse jusqu'à preuve du contraire.
-- Un montage qui bouchonne trop haut rend intestable ce qu'il vérifie.
-- Deux erreurs qui se compensent se cachent mutuellement.
 - Tester un point d'entrée demande un SOUS-PROCESSUS, pas un import.
-- Lis le code avec `git show <branche>:<fichier>`, pas avec `cat` : sur ce
-  dépôt, un arbre de travail a porté du contenu périmé sur un HEAD récent.
-- Traite tes propres affirmations comme des hypothèses. Ne recopie aucun
-  chiffre sans l'avoir produit toi-même.
+- Lis le code avec `git show <branche>:<fichier>`, pas avec `cat`.
+- Traite tes propres affirmations comme des hypothèses.
 
 ═══════════════════════════════════════════════════════════════
 CE QUE TU RENDS
 ═══════════════════════════════════════════════════════════════
 
-1. Un verdict clair en tête : FUSIONNABLE / FUSIONNABLE SOUS RÉSERVE DE …
-   / NON FUSIONNABLE — et la raison en une phrase.
-2. Chaque constat avec sa preuve fichier:ligne, sa sévérité, et son coût.
-3. Ta table de couverture, construite par toi, et son diff avec celle du
-   développeur. Dis explicitement ce que ta liste contient et la sienne
-   pas.
-4. Les mesures que tu as produites toi-même, avec les commandes.
-5. Ce que tu as cherché et NON trouvé — c'est une information, pas un vide.
-6. Tes désaccords avec le pilote, s'il y en a. Ils sont attendus, pas
-   tolérés : le pilote a été renversé plusieurs fois, chaque fois à raison.
+1. Point par point, ce que tu as fait, et le commit qui le porte.
+2. Pour le point 1 : l'arbitrage que tu as retenu, ce que tu as écarté, et
+   POURQUOI. C'est ce que le pilote lira le plus attentivement.
+3. Ta table de mutations : la ligne cassée, le test devenu rouge, fichier
+   et ligne. Dont OBLIGATOIREMENT la preuve que le contrôle d'identité
+   refuse toujours une adresse hors liste blanche.
+4. Tes mesures avec leurs commandes.
+5. Tout écart au mandat, DÉCLARÉ COMME TEL au moment où tu le prends.
+6. Ce que tu as trouvé et NON traité, pour le registre.
+7. Tes désaccords avec le pilote. Ils sont attendus, pas tolérés : le
+   pilote a été renversé trois fois sur le lot 0, chaque fois à raison.
 
 Ta dernière ligne est exactement `TÂCHE TERMINÉE`, ou
 `TÂCHE BLOQUÉE — <raison>`.
