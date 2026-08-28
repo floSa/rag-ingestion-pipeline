@@ -81,10 +81,12 @@ class _Reponse:
         return self.charge
 
 
-def _rafale(instance, documents: int, statut=DagsterRunStatus.SUCCESS) -> None:
+def _rafale(
+    instance, documents: int, statut=DagsterRunStatus.SUCCESS, job_name: str = JOB_INGESTION
+) -> None:
     """Simule une rafale : `documents` runs d'ingestion, un par fichier."""
     for _ in range(documents):
-        create_run_for_test(instance, job_name=JOB_INGESTION, status=statut)
+        create_run_for_test(instance, job_name=job_name, status=statut)
 
 
 class _Capteur:
@@ -98,9 +100,9 @@ class _Capteur:
     quel qu'il soit, y compris vide.
     """
 
-    def __init__(self, instance, job_names=(JOB_INGESTION,)) -> None:
+    def __init__(self, instance, job_names=(JOB_INGESTION,), sensor=None) -> None:
         self.instance = instance
-        self.sensor = build_reindex(list(job_names)).sensor
+        self.sensor = sensor if sensor is not None else build_reindex(list(job_names)).sensor
         self.curseur: str | None = None
 
     def tick(self):
@@ -458,6 +460,74 @@ class TestUnEchecDeReindexationNEstPasPerdu:
         # de l'agent.
         resultats = _ingerer(monkeypatch, tmp_path, 3)
         assert [resultat.success for resultat in resultats] == [True, True, True]
+
+
+class TestToutesLesSourcesComptentDansLeRepere:
+    """Le ``max()`` sur plusieurs sources n'etait garde par rien.
+
+    Le harnais de ce fichier appelle ``build_reindex([JOB_INGESTION])`` — UN
+    seul nom de job. Avec une seule source, ``max`` et ``min`` rendent la meme
+    chose : remplacer l'un par l'autre laissait toute la suite verte. Or
+    ``sources.yaml`` en declare trois, et c'est cette configuration-la qui est
+    livree.
+
+    Avec ``min``, le repere reste accroche a la source la plus anciennement
+    ingeree : une rafale sur une seconde source ne le fait plus avancer, et
+    n'est jamais reindexee. Le cas se produit des le deuxieme depot de fichiers.
+    """
+
+    AUTRE_JOB = "livres_html_job"
+    DEUX = (JOB_INGESTION, AUTRE_JOB)
+
+    def test_les_deux_sources_ont_bien_reussi(self):
+        # Sinon le test suivant serait vert faute d'avoir atteint son cas : un
+        # test qui choisit lui-meme son scenario doit prouver qu'il l'a atteint.
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 2)
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            _rafale(instance, 2, job_name=self.AUTRE_JOB)
+            for nom in self.DEUX:
+                reussis = instance.get_runs(
+                    RunsFilter(job_name=nom, statuses=[DagsterRunStatus.SUCCESS])
+                )
+                assert len(reussis) == 2, nom
+
+    def test_une_rafale_sur_une_seconde_source_rearme(self):
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance, job_names=self.DEUX)
+            _rafale(instance, 2)
+            assert isinstance(capteur.tick(), RunRequest)
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            assert isinstance(capteur.tick(), SkipReason)
+
+            # Une autre source depose a son tour. Avec min, le repere reste
+            # celui de la premiere source, anterieur a la reindexation deja
+            # faite, et cette rafale-ci n'est jamais rendue cherchable.
+            _rafale(instance, 2, job_name=self.AUTRE_JOB)
+            resultat = capteur.tick()
+        assert isinstance(resultat, RunRequest), f"seconde source jamais reindexee : {resultat}"
+
+    def test_le_cablage_reel_suit_toutes_les_sources_declarees(self):
+        # Le meme enchainement, sur le sensor que definitions.py livre et sur
+        # les sources que sources.yaml declare vraiment — pas sur une liste
+        # ecrite par le test.
+        from src.pipeline.definitions import defs
+
+        sensor_livre = next(c for c in defs.sensors if c.name == REINDEX_SENSOR_NAME)
+        sources = load_sources()
+        assert len(sources) >= 2, (
+            "il faut deux sources declarees pour que ce test dise quelque chose"
+        )
+        premier, second = (f"{source.name}_job" for source in sources[:2])
+
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance, sensor=sensor_livre)
+            _rafale(instance, 2, job_name=premier)
+            assert isinstance(capteur.tick(), RunRequest)
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            _rafale(instance, 2, job_name=second)
+            resultat = capteur.tick()
+        assert isinstance(resultat, RunRequest), f"{second} n'avance pas le repere : {resultat}"
 
 
 class TestUrlVide:
