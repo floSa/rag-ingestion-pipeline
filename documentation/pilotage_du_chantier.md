@@ -225,7 +225,7 @@ au [§1 du registre](axes_amelioration.md).
 | Réf | Pointe | Rôle |
 |---|---|---|
 | `main` | | **tout ce qui est fusionné, y compris ce mandat et le registre.** Un clone frais suffit : il n'y a rien à checkouter pour reprendre le chantier |
-| `lot-0` | `390ce8a` | **le seul lot en vol.** Livré, en attente de son audit indépendant puis de sa fusion. 8 commits, avance rapide possible sur `main` |
+| `lot-0` | `390ce8a` | **le seul lot en vol.** Livré, en attente de son audit indépendant puis de sa fusion. 8 commits, partis de `main` **avant** que le mandat n'y soit poussé |
 | tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 **avant** sa réparation. Ce n'est pas une ligne de travail, c'est une **base de comparaison** — d'où un tag et non une branche |
 
 **Règle, pour ne pas refaire le désordre : une branche par lot en vol, jamais
@@ -372,8 +372,15 @@ Puis, dans l'ordre :
 2. lire le diff `main..lot-0` toi-même ;
 3. faire tourner `make all` de tes mains ;
 4. **alors seulement**, trancher la fusion ;
-5. si fusion : `git merge --ff-only lot-0` depuis `main`, puis `git push`, puis
-   **supprimer `lot-0`** — local et distant. Une branche fusionnée ne reste pas ;
+5. si fusion : `git merge --no-ff lot-0` depuis `main`, puis `git push`, puis
+   **supprimer `lot-0`** — local et distant. Une branche fusionnée ne reste pas.
+   **Pas `--ff-only` :** `lot-0` est parti de `main` avant que ce mandat n'y
+   soit poussé, il n'est donc plus en avance rapide. La fusion a été essayée à
+   blanc (`git merge-tree`) et elle est **propre, sans conflit** (`mesuré`) ;
+   seul `README.md` est touché des deux côtés, à des endroits différents. Ne
+   rebase pas `lot-0` pour retrouver l'avance rapide : cela réécrirait les 8
+   commits dont le développeur a prouvé la porte verte un par un, et
+   invaliderait sa preuve pour un gain cosmétique ;
 6. mettre le registre à jour — §8 « Traité », et §2 pour la mesure d'après-fusion ;
 7. écrire le prompt du lot 1.
 
