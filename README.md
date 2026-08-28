@@ -59,6 +59,7 @@ Le débit est cadencé à deux niveaux : la file Dagster (`max_concurrent_runs: 
 | [stockage_objets.md](documentation/stockage_objets.md) | Stockage des médias sur MinIO |
 | [llm_integration_plan.md](documentation/llm_integration_plan.md) | Contrat d'interface avec l'agent RAG (projet séparé) |
 | [rag_evaluation_strategy.md](documentation/rag_evaluation_strategy.md) | Stratégie d'évaluation du RAG |
+| **[axes_amelioration.md](documentation/axes_amelioration.md)** | **Le registre du chantier : le contrat avec `rag-agent-chat`, ce qui est ouvert, ce qui est traité — chaque ligne vérifiable dans le code** |
 
 ## Quickstart
 
