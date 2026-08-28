@@ -107,7 +107,7 @@ la bibliotheque standard : leur logique est testee sans Docling ni GPU.
 | NEBULA_PORT          | Port NebulaGraph                       | 9669             |
 | CHROMA_HOST          | Hostname ChromaDB                      | chromadb         |
 | CHROMA_PORT          | Port ChromaDB                          | 8000             |
-| EMBEDDING_MODEL_NAME | Modele SentenceTransformers (multilingue) | paraphrase-multilingual-MiniLM-L12-v2 |
+| EMBEDDING_MODEL_NAME | Modele SentenceTransformers (multilingue). Verrouille : le service refuse de demarrer sur un autre modele (cf. base_vectorielle.md) | paraphrase-multilingual-MiniLM-L12-v2 |
 | PDF_BATCH_PAGES      | Pages converties par passe             | 5                |
 | CHUNK_SIZE           | Taille d'un chunk vectorise (car.)     | 900              |
 | CHUNK_OVERLAP        | Recouvrement entre chunks (car.)       | 150              |
