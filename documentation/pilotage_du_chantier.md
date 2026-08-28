@@ -18,6 +18,33 @@ qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
 ---
 
+## 0. Reprendre le chantier en une manipulation
+
+Ce fichier vit sur `main`. Un clone frais le contient : il n'y a **aucune
+branche à checkouter** pour reprendre.
+
+Le prompt à coller dans une conversation neuve, tel quel :
+
+> Tu es le pilote d'un chantier d'audit et de refonte sur
+> `rag-ingestion-pipeline`. Le dépôt est le clone local de
+> `git@github.com-perso:floSa/rag-ingestion-pipeline.git`, sur `main`.
+>
+> Lis ces deux fichiers EN ENTIER avant de dire quoi que ce soit :
+> `documentation/pilotage_du_chantier.md` (ton mandat : ton rôle, l'état du
+> chantier, le plan de lots, les conventions, les leçons, et en annexe A le
+> prompt prêt à distribuer) et `documentation/axes_amelioration.md` (le
+> registre : le contrat avec `rag-agent-chat` en tête, puis les constats
+> ouverts et traités).
+>
+> Ils sont autosuffisants : tu n'as aucun historique de conversation, et tu
+> n'en as pas besoin. Vérifie ensuite l'état de tes mains plutôt que de me
+> croire — les branches, et `make install && make all` sur `lot-0` — puis
+> dis-moi où on en est et quelle est la prochaine action. Un prompt à la fois.
+
+Puis les trois choses qui ne voyagent pas avec un clone : §2.
+
+---
+
 ## 1. Ce que tu es, et ce que tu ne fais pas
 
 Tu es le **pilote**. Tu n'écris pas le code.
@@ -129,7 +156,7 @@ plus coûteuse du système est déjà arrivée une fois (contrat, exigence 1).
 make install && make all
 ```
 
-Attendu au 28 août 2026, sur `claude/rag-pipeline-lot-0-repairs-b232a1`
+Attendu au 28 août 2026, sur `lot-0`
 (`mesuré`) : `ruff` propre, `mypy --strict` sans erreur, **508 tests verts**.
 Le compte canonique de tests vit dans `README.md`, section Tests. Sur `main`
 (77d4f5b) : **395**.
@@ -193,39 +220,49 @@ au [§1 du registre](axes_amelioration.md).
 
 ## 5. Où on en est
 
-### 5.1 Les branches
+### 5.1 Les branches — il n'y en a que deux, et c'est voulu
 
-| Branche | Pointe | Rôle |
+| Réf | Pointe | Rôle |
 |---|---|---|
-| `main` | `77d4f5b` | référence, 395 tests (`mesuré`) |
-| `claude/audit-refonte-rag-pipeline-fd8418` | — | **la branche du pilote** : registre et mandat, documentation seule, aucun code |
-| `claude/rag-pipeline-lot-0-repairs-b232a1` | `390ce8a` | **le lot 0, livré, en attente d'audit puis de fusion**. 8 commits, avance rapide possible sur `main` |
-| `claude/rag-ingestion-pipeline-restore-5e9fa1` | `832c566` | **branche d'origine du lot 0, conservée comme référence — À NE TOUCHER SOUS AUCUN PRÉTEXTE.** Voir ci-dessous |
-| `claude/rag-ingestion-restore-9e5aa5` | `77d4f5b` | vide : 0 commit au-dessus de `main`, jamais poussée (`mesuré`). À supprimer, mais **retirer son arbre de travail d'abord** — une autre conversation peut y être posée |
+| `main` | | **tout ce qui est fusionné, y compris ce mandat et le registre.** Un clone frais suffit : il n'y a rien à checkouter pour reprendre le chantier |
+| `lot-0` | `390ce8a` | **le seul lot en vol.** Livré, en attente de son audit indépendant puis de sa fusion. 8 commits, avance rapide possible sur `main` |
+| tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 **avant** sa réparation. Ce n'est pas une ligne de travail, c'est une **base de comparaison** — d'où un tag et non une branche |
 
-**Décision du pilote sur les deux branches qui se ressemblent.** Le lot 0 a été
-livré sur une branche neuve, `b232a1`, plutôt qu'en réparant `5e9fa1` comme le
-mandat le demandait. Le développeur l'a signalé et a proposé soit de
-force-pousser l'historique réparé sur `5e9fa1`, soit de livrer directement dans
-`main`.
+**Règle, pour ne pas refaire le désordre : une branche par lot en vol, jamais
+plus.** Le chantier a compté jusqu'à cinq branches parce qu'une conversation
+qui répondait à une question créait sa branche. Un lot qui n'est pas en vol
+n'est pas une branche : soit il est fusionné dans `main`, soit il devient un
+tag s'il faut pouvoir y revenir.
 
-**Les deux sont refusées, et on garde l'état actuel.**
+**Ce qui a été supprimé, et pourquoi c'était sans risque :**
 
-- **Pas de force-push sur `5e9fa1`.** Cette branche est poussée, et surtout
-  elle est la **seule base de comparaison** qui permette de vérifier ce que le
-  replantage des 5 commits d'origine a pu perdre ou altérer. C'est l'angle A du
-  mandat d'audit, et son outil est `git range-diff` entre les deux branches. La
-  force-pousser détruirait la référence au moment précis où on en a besoin.
-  Elle sera supprimée **après** la fusion du lot 0, pas avant.
-- **Pas de livraison directe dans `main`.** On n'y fusionne rien avant l'audit
-  indépendant.
+- `claude/audit-refonte-rag-pipeline-fd8418` — portait ce mandat, le registre
+  et le hook versionné, **aucun code**. Fusionnée dans `main` en avance rapide.
+  Elle n'avait plus de raison d'être, et tant qu'elle existait il fallait
+  savoir la checkouter pour lire ce fichier ;
+- `claude/rag-ingestion-pipeline-restore-5e9fa1` — remplacée par le tag
+  `reference/lot-0-avant-reparation`, qui pointe **exactement le même commit**.
+  Rien n'est perdu : `git range-diff reference/lot-0-avant-reparation~5..reference/lot-0-avant-reparation lot-0`
+  reste possible, et c'est l'angle A du mandat d'audit ;
+- `claude/rag-ingestion-restore-9e5aa5` — 0 commit au-dessus de `main`, jamais
+  poussée (`mesuré`). Vide.
 
-Le choix du développeur était donc le bon ; c'est de ne pas l'avoir posé comme
-un écart au moment de le faire qui est le défaut, pas le choix lui-même.
+**Ce qui n'a PAS été fait, et ne le sera pas avant l'audit :** fusionner `lot-0`
+dans `main`. Ce serait la façon la plus rapide de n'avoir qu'une branche, et
+c'est précisément la règle qu'on ne casse pas.
+
+**L'écart au mandat du lot 0, tranché.** Le lot 0 avait été livré sur une
+branche neuve plutôt qu'en réparant celle du mandat, et proposait soit de
+force-pousser l'historique réparé sur l'originale, soit de livrer droit dans
+`main`. Les deux ont été refusées : la première aurait détruit la base de
+comparaison au moment où l'audit en a besoin, la seconde aurait fusionné sans
+audit. Le choix du développeur — livrer ailleurs et garder l'originale — était
+le bon ; c'est de ne pas l'avoir posé comme un écart au moment de le faire qui
+était le défaut.
 
 ### 5.2 Ce que le lot 0 a livré, et ce que j'en ai vérifié moi-même
 
-Les 8 commits de `claude/rag-pipeline-lot-0-repairs-b232a1` :
+Les 8 commits de `lot-0` :
 
 ```
 eaa8a8e build: declarer le groupe de dependances de developpement dans pyproject.toml
@@ -332,10 +369,11 @@ ce fichier : le coller tel quel dans une conversation neuve nommée
 Puis, dans l'ordre :
 
 1. lire son rapport ;
-2. lire le diff `main..claude/rag-pipeline-lot-0-repairs-b232a1` toi-même ;
+2. lire le diff `main..lot-0` toi-même ;
 3. faire tourner `make all` de tes mains ;
 4. **alors seulement**, trancher la fusion ;
-5. si fusion : `git checkout main && git merge --ff-only claude/rag-pipeline-lot-0-repairs-b232a1`, puis `git push` ;
+5. si fusion : `git merge --ff-only lot-0` depuis `main`, puis `git push`, puis
+   **supprimer `lot-0`** — local et distant. Une branche fusionnée ne reste pas ;
 6. mettre le registre à jour — §8 « Traité », et §2 pour la mesure d'après-fusion ;
 7. écrire le prompt du lot 1.
 
@@ -357,6 +395,10 @@ Conventions apprises à leurs dépens sur le dépôt jumeau.
   Un auditeur ne doit **jamais** avoir écrit une ligne de ce qu'il audite —
   c'est ce qui le rend éligible, et il faut le lui dire dans son mandat.
 - **Audite avant de fusionner.** Toujours.
+- **Une branche par lot en vol, jamais plus.** Une conversation qui répond à
+  une question ne crée pas de branche. Un lot fusionné disparaît de la liste ;
+  un commit auquel il faut pouvoir revenir devient un **tag**, pas une branche.
+  Le chantier a compté cinq branches avant qu'on ne pose la règle.
 - **Quand une conversation grossit, demande-lui un `/compact`** avant de lui
   envoyer la suite, avec des instructions sur ce qu'elle doit **garder** — sa
   méthode et sa connaissance du dépôt — et ce qu'elle doit **jeter** : ses
@@ -488,11 +530,11 @@ tu ne dialogues pas avec lui, tu ne reprends aucune de ses conclusions sans
 l'avoir refaite toi-même.
 
 Dépôt : /home/florianhorellou/Projets/rag-ingestion-pipeline
-À auditer : claude/rag-pipeline-lot-0-repairs-b232a1 (pointe 390ce8a, 8 commits)
+À auditer : lot-0 (pointe 390ce8a, 8 commits)
 Base : main = 77d4f5b, avance rapide possible.
-Branche d'origine, conservée comme référence : claude/rag-ingestion-pipeline-restore-5e9fa1 (832c566)
+Base de comparaison, conservée comme tag : reference/lot-0-avant-reparation (832c566)
 
-LIS D'ABORD, EN ENTIER, sur la branche claude/audit-refonte-rag-pipeline-fd8418 :
+LIS D'ABORD, EN ENTIER, sur main :
   documentation/pilotage_du_chantier.md   (le mandat, l'état, les règles)
   documentation/axes_amelioration.md      (le registre : le contrat en tête)
 
@@ -546,7 +588,8 @@ comportement. Six angles, et tu es libre d'en ouvrir d'autres.
 
 ── A. Le replantage des cinq commits d'origine ────────────────
 
-Les 5 commits de claude/rag-ingestion-pipeline-restore-5e9fa1 ont été
+Les 5 commits d'origine, reperables par le tag
+reference/lot-0-avant-reparation, ont ete
 replantés sur la nouvelle branche, avec une correction repliée dans le
 premier. Quelque chose a-t-il été perdu, ajouté ou altéré au passage ?
 
