@@ -310,7 +310,7 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 docker compose restart docling-service
 ```
 
-**Réindexation lexicale de l'agent.** À la fin de chaque extraction, le pipeline appelle
+**Réindexation lexicale de l'agent.** Une fois l'ingestion retombée, le pipeline appelle
 `POST /reindex` sur `rag-agent-chat`. L'agent tient son index BM25 **en mémoire** : sans cet
 appel, un document ingéré après son démarrage reste trouvable en recherche dense — la requête
 part à ChromaDB à chaque fois — mais **invisible en recherche lexicale** jusqu'à son prochain
@@ -320,15 +320,25 @@ L'agent possède bien un filet — il compare le nombre de chunks de sa collecti
 indexé — mais ce filet **ne voit pas** une réingestion qui retire autant de chunks qu'elle en
 ajoute, ce qui est précisément le cas d'une réingestion. D'où un contrat, et non une option.
 
-Un échec d'appel **ne fait jamais échouer une ingestion réussie** : le document est dans les
-trois stores, et rougir la partition déclencherait des reprises qui reconvertiraient des
-centaines de pages pour rien. L'agent peut d'ailleurs être légitimement arrêté — c'est le cas
-d'une première mise en route. L'échec ressort dans les **métadonnées de l'asset** (champ
-`reindex`, visible par partition dans l'interface Dagster) et dans le journal du run.
+**Une fois par rafale, pas une fois par document.** L'appel ne vit pas dans l'asset
+d'extraction : il a son propre job, `agent_reindex_job`, et son propre sensor. Ce sensor
+regarde l'état des runs d'ingestion, et n'arme le job que lorsque **plus aucun n'est en vol**
+— ni en cours, ni en attente dans la file — et qu'au moins un a réussi depuis la dernière
+réindexation. Le nombre d'appels ne suit donc pas le nombre de documents : sur les 21
+documents du corpus, c'est une reconstruction BM25 au lieu de vingt-et-une, chacune étant
+complète et synchrone côté agent. Un corpus déposé en goutte-à-goutte donne en revanche une
+réindexation par rafale, ce qui est le comportement voulu — un document ingéré doit devenir
+cherchable.
+
+Un échec d'appel **ne fait jamais échouer une ingestion réussie** : il ne le peut plus, l'appel
+vivant dans son propre run. L'agent peut d'ailleurs être légitimement arrêté — c'est le cas
+d'une première mise en route. L'échec ressort dans les **métadonnées de l'asset**
+`agent/lexical_index` (champ `reindex`, avec l'historique des matérialisations dans le
+catalogue) et dans le journal du run.
 
 | Variable | Rôle | Défaut |
 |---|---|---|
-| `AGENT_SERVICE_URL` | Racine de l'API de l'agent sur `rag_network`. **Vide = appel désactivé**, annoncé au démarrage de Dagster | `http://agent-api:8000` |
+| `AGENT_SERVICE_URL` | Racine de l'API de l'agent sur `rag_network`. **Vide = appel désactivé**, annoncé au démarrage de Dagster et à chaque tick du sensor | `http://agent-api:8000` |
 | `AGENT_API_KEY` | Clé d'API, si l'agent en exige une | *(vide)* |
 
 **Contrôle avant-vol.** Avant de lancer le gros corpus, vérifiez que les trois stores répondent :

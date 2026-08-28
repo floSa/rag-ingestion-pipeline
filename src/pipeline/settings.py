@@ -42,14 +42,16 @@ class PipelineSettings(BaseSettings):
     # (redemarrage du service, coupure reseau passagere).
     extraction_max_poll_failures: int = 20
 
-    # ── rag-agent-chat : POST /reindex en fin d'ingestion ────────────────────
+    # ── rag-agent-chat : POST /reindex une fois l'ingestion retombee ─────────
     # L'agent tient son index lexical BM25 en memoire. Sans cet appel, un
     # document ingere apres son demarrage reste invisible en recherche
     # lexicale. Le defaut vise le service tel qu'il se nomme sur rag_network,
     # le reseau que ce pipeline cree et auquel l'agent s'attache.
     #
     # Vider cette URL DESACTIVE l'appel. C'est un choix possible, pas un
-    # oubli : definitions.py l'annonce alors au chargement du code location.
+    # oubli : definitions.py l'annonce alors au chargement du code location, et
+    # le sensor de reindexation le redit a chaque tick au lieu de lancer des
+    # runs qui n'ont rien a faire.
     agent_service_url: str = "http://agent-api:8000"
     # Cle d'API de l'agent, si le sien en exige une (sa route /reindex est
     # protegee des que API_KEY est renseignee de son cote).

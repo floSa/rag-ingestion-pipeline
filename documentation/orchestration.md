@@ -28,7 +28,9 @@ Un corpus de plusieurs dizaines de livres crée autant de partitions et de runs.
 1. **La file Dagster** — `QueuedRunCoordinator` avec `max_concurrent_runs: 2` dans `dagster.yaml`. Sans limite explicite, le coordinateur en lance jusqu'à dix, soit autant de processus dans le conteneur daemon.
 2. **Le worker du service d'extraction** — un seul document converti à la fois, la conversion saturant déjà le GPU.
 
-À la fin de chaque extraction, l'asset appelle `POST /reindex` sur `rag-agent-chat` pour que son index lexical BM25 — tenu en mémoire — voie le document qui vient d'être écrit. L'appel ne peut pas faire échouer l'asset ; son résultat est publié dans les métadonnées de sortie sous la clé `reindex`.
+Une fois l'ingestion retombée, `POST /reindex` part sur `rag-agent-chat` pour que son index lexical BM25 — tenu en mémoire — voie les documents qui viennent d'être écrits. L'appel n'est pas dans l'asset d'extraction : il a son job, `agent_reindex_job`, et son sensor, `agent_reindex_sensor`.
+
+Le sensor définit « fin d'ingestion » comme un **état** et non comme un événement, faute de point de fin dans cette architecture — un job par source, un run par fichier, des partitions créées au fil de l'eau. Il arme le job quand aucun run d'ingestion n'est en vol (les statuts non terminaux, `QUEUED` compris : les runs d'une rafale attendent dans la file) et qu'au moins un a réussi depuis la dernière réindexation, repérée par un curseur. Le nombre d'appels ne suit donc pas le nombre de documents. L'appel ne peut pas faire échouer une ingestion ; son résultat est publié dans les métadonnées de l'asset `agent/lexical_index`, sous la clé `reindex`.
 
 Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurrent_runs` n'accélère rien tant que le service reste mono-worker : c'est un levier à ne toucher que si l'extraction est parallélisée.
 

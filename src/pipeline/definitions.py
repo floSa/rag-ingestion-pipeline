@@ -3,6 +3,11 @@
 Les sources sont declarees dans ``sources.yaml`` : la factory genere pour
 chacune ses partitions, assets, job et sensor. La persistance (NebulaGraph,
 ChromaDB, MinIO) est assuree par le service Docling lui-meme.
+
+S'y ajoute un objet qui n'appartient a aucune source : la reindexation de
+``rag-agent-chat``. Elle est declenchee par son propre sensor, qui surveille
+les jobs d'ingestion et arme son job quand plus aucun run n'est en vol — voir
+``reindex_job.py``.
 """
 
 import logging
@@ -10,6 +15,7 @@ import logging
 from dagster import Definitions
 
 from src.pipeline.factory import build_source
+from src.pipeline.reindex_job import build_reindex
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import load_sources
 
@@ -24,7 +30,11 @@ def _annoncer_reindexation() -> None:
     """
     url = get_settings().agent_service_url.strip()
     if url:
-        logger.info("Fin d'ingestion : POST %s/reindex sera appele sur rag-agent-chat.", url)
+        logger.info(
+            "Fin d'ingestion : POST %s/reindex sera appele sur rag-agent-chat, une fois par "
+            "rafale de documents et non une fois par document.",
+            url,
+        )
     else:
         logger.warning(
             "AGENT_SERVICE_URL est vide : POST /reindex NE SERA PAS appele. Les documents "
@@ -37,9 +47,10 @@ def _annoncer_reindexation() -> None:
 _annoncer_reindexation()
 
 _built = [build_source(source) for source in load_sources()]
+_reindex = build_reindex([built.job.name for built in _built])
 
 defs = Definitions(
-    assets=[asset_def for built in _built for asset_def in built.assets],
-    jobs=[built.job for built in _built],
-    sensors=[built.sensor for built in _built],
+    assets=[asset_def for built in _built for asset_def in built.assets] + [_reindex.asset],
+    jobs=[built.job for built in _built] + [_reindex.job],
+    sensors=[built.sensor for built in _built] + [_reindex.sensor],
 )

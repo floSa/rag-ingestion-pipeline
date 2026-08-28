@@ -1,4 +1,8 @@
-"""Appel de ``POST /reindex`` sur rag-agent-chat, en fin d'ingestion.
+"""L'appel ``POST /reindex`` sur rag-agent-chat : ce qu'il fait, et rien d'autre.
+
+QUAND il part est une autre question, et elle a son module : ``reindex_job.py``.
+Les avoir confondus est ce qui a fait poster une fois par document une route
+que le contrat veut en fin d'ingestion.
 
 C'est la **seule obligation** que le contrat d'interface impose au pipeline, et
 elle etait absente : aucun appel, aucune configuration, nulle part.
@@ -24,8 +28,8 @@ Trois choix, tous les trois deliberes :
    est d'ailleurs arrete pendant une premiere mise en route — c'est le cas
    nominal, pas l'incident.
 2. **Mais l'echec ne passe pas inapercu.** Il part dans les metadonnees de
-   l'asset Dagster, visibles par partition dans l'interface et conservees avec
-   le run, en plus d'un journal en avertissement. Une ligne de journal seule
+   l'asset ``agent/lexical_index``, conservees avec le run et visibles dans le
+   catalogue, en plus d'un journal en avertissement. Une ligne de journal seule
    serait une degradation silencieuse de plus.
 3. **L'absence d'URL est un choix explicite, annonce au chargement**, pas une
    surprise en fin de course. L'URL a une valeur par defaut qui marche sur le
@@ -81,7 +85,7 @@ def request_reindex(
     base_url: str,
     api_key: str = "",
     timeout: float = 300.0,
-    post: Callable[..., Any] = requests.post,
+    post: Callable[..., Any] | None = None,
 ) -> ReindexOutcome:
     """Demande a l'agent de reconstruire son index lexical.
 
@@ -93,11 +97,17 @@ def request_reindex(
         api_key: Cle d'API de l'agent, si le sien en exige une.
         timeout: Plafond de l'appel. La reconstruction parcourt tout le corpus
             et l'agent la fait de maniere synchrone : elle est lente par nature.
-        post: Fonction d'envoi. Injectee par les tests.
+        post: Fonction d'envoi. Injectee par les tests. Laissee vide, elle est
+            resolue A L'APPEL sur ``requests.post`` — et non figee en valeur par
+            defaut a l'import. Une valeur par defaut capture l'objet fonction :
+            aucun test ne peut alors intercepter l'appel sans se substituer a
+            ``request_reindex`` elle-meme, c'est-a-dire sans bouchonner
+            au-dessus de ce qu'il pretend verifier.
 
     Returns:
         Le resultat de l'appel.
     """
+    envoyer = post if post is not None else requests.post
     url = base_url.strip().rstrip("/")
     if not url:
         return ReindexOutcome(
@@ -113,7 +123,7 @@ def request_reindex(
 
     headers = {API_KEY_HEADER: api_key} if api_key else {}
     try:
-        reponse = post(f"{url}{REINDEX_PATH}", headers=headers, timeout=timeout)
+        reponse = envoyer(f"{url}{REINDEX_PATH}", headers=headers, timeout=timeout)
         reponse.raise_for_status()
         charge = reponse.json()
     except Exception as exc:
