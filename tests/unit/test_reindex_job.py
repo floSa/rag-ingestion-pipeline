@@ -5,7 +5,7 @@ propriete que le contrat avec ``rag-agent-chat`` enonce et que le code n'avait
 jamais tenue : l'appel a lieu **en fin d'ingestion**, pas une fois par document.
 
 Le defaut precedent est instructif. Un test qui verifie « l'appel a lieu »
-serait reste vert avec 21 appels comme avec un seul : il est vert des deux
+serait reste vert avec un appel par document comme avec un seul : il est vert des deux
 cotes du defaut. Les tests ci-dessous asserttent donc un NOMBRE, et ils le
 font depuis le cote qui le PRODUIT — l'asset qui ingere pour le zero, le
 sensor qui arme la reindexation pour le un.
@@ -53,6 +53,12 @@ BILAN = {"progress": {"elements": 12, "chunks": 34, "pages": 5}, "elapsed_second
 
 # Nom du job d'ingestion surveille par le sensor dans ces tests.
 JOB_INGESTION = "pdfs_job"
+
+# Tailles de rafale exercees. Elles ne mesurent aucun corpus et ne pretendent
+# pas en decrire un : ce sont trois ordres de grandeur, choisis pour que le
+# compte d'appels puisse diverger du nombre de documents. Un test parametre sur
+# une seule taille resterait vert si l'appel repartait une fois par document.
+RAFALES = (1, 3, 12)
 
 # Toujours posee explicitement. Un `.env` local a AGENT_SERVICE_URL vide
 # desactiverait l'appel et rendrait « zero appel » vrai sans rien prouver.
@@ -166,10 +172,8 @@ def test_le_montage_configure_bien_un_agent():
 class TestIngererNeReindexePas:
     """La propriete de fond : le nombre d'appels ne suit pas le nombre de documents."""
 
-    @pytest.mark.parametrize("documents", [1, 3, 21])
+    @pytest.mark.parametrize("documents", RAFALES)
     def test_aucun_appel_pendant_l_ingestion(self, documents, espion, monkeypatch, tmp_path):
-        # 21 : la taille du corpus en place. C'etait 21 reconstructions BM25
-        # completes et synchrones cote agent, a 300 s de plafond chacune.
         _ingerer(monkeypatch, tmp_path, documents)
         assert espion.appels == []
 
@@ -194,11 +198,11 @@ class TestLeSensorNArmeQuUneFois:
     """L'autre moitie de la propriete : une rafale de N documents, UNE demande.
 
     L'asset d'ingestion ne poste plus rien (ci-dessus) ; c'est ici que le
-    nombre d'appels se decide. Le compte est asserte pour N = 1, 3 et 21 : s'il
-    suivait le nombre de documents, seul N = 1 resterait vert.
+    nombre d'appels se decide. Le compte est asserte pour chaque taille de
+    ``RAFALES`` : s'il suivait le nombre de documents, seul N = 1 resterait vert.
     """
 
-    @pytest.mark.parametrize("documents", [1, 3, 21])
+    @pytest.mark.parametrize("documents", RAFALES)
     def test_une_seule_demande_par_rafale(self, documents):
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, documents)
@@ -208,8 +212,8 @@ class TestLeSensorNArmeQuUneFois:
     def test_la_rafale_a_bien_eu_lieu(self):
         # Sinon « une seule demande » serait vrai faute d'ingestion a reindexer.
         with DagsterInstance.ephemeral() as instance:
-            _rafale(instance, 21)
-            assert len(instance.get_runs(RunsFilter(job_name=JOB_INGESTION))) == 21
+            _rafale(instance, max(RAFALES))
+            assert len(instance.get_runs(RunsFilter(job_name=JOB_INGESTION))) == max(RAFALES)
 
     @pytest.mark.parametrize(
         "statut",
@@ -287,10 +291,10 @@ class TestLeSensorNArmeQuUneFois:
         assert "Aucune ingestion" in str(resultat.skip_message)
 
     def test_une_rafale_partiellement_rouge_reindexe_quand_meme(self):
-        # Vingt documents sur vingt-et-un sont dans les stores : les taire en
+        # Les documents deja passes sont dans les stores : les taire en
         # recherche lexicale serait pire que le document manquant.
         with DagsterInstance.ephemeral() as instance:
-            _rafale(instance, 20)
+            _rafale(instance, 3)
             create_run_for_test(instance, job_name=JOB_INGESTION, status=DagsterRunStatus.FAILURE)
             resultat, _ = _tick(instance)
         assert isinstance(resultat, RunRequest)

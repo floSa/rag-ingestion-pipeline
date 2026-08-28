@@ -3,10 +3,11 @@
 Le contrat avec ``rag-agent-chat`` dit « en fin de pipeline, une fois
 l'ingestion terminee ». Le code disait la meme chose et faisait autre chose :
 ``factory._record_metadata`` postait, et il tourne UNE FOIS PAR PARTITION.
-Sur les 21 documents du corpus, cela faisait 21 reconstructions BM25 completes
-et synchrones cote agent, a 300 s de plafond chacune, dont seule la derniere
-servait. Et une fonction nommee « publier le bilan d'extraction » n'est pas a
-la hauteur d'un appel reseau vers un autre service.
+Cela faisait donc autant de reconstructions BM25 completes et synchrones cote
+agent qu'il y a de documents, a 300 s de plafond chacune, dont seule la
+derniere servait — et le cout suivait la taille du corpus, quelle qu'elle soit.
+Et une fonction nommee « publier le bilan d'extraction » n'est pas a la hauteur
+d'un appel reseau vers un autre service.
 
 **Ce que « fin d'ingestion » veut dire ici.** L'architecture n'offre aucun point
 de fin evident : un job par source, un run par fichier, des partitions

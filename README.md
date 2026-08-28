@@ -324,9 +324,9 @@ ajoute, ce qui est précisément le cas d'une réingestion. D'où un contrat, et
 d'extraction : il a son propre job, `agent_reindex_job`, et son propre sensor. Ce sensor
 regarde l'état des runs d'ingestion, et n'arme le job que lorsque **plus aucun n'est en vol**
 — ni en cours, ni en attente dans la file — et qu'au moins un a réussi depuis la dernière
-réindexation. Le nombre d'appels ne suit donc pas le nombre de documents : sur les 21
-documents du corpus, c'est une reconstruction BM25 au lieu de vingt-et-une, chacune étant
-complète et synchrone côté agent. Un corpus déposé en goutte-à-goutte donne en revanche une
+réindexation. Le nombre d'appels ne suit donc pas le nombre de documents : une rafale de N
+documents donne **une** reconstruction BM25 au lieu de N, chacune étant complète et synchrone
+côté agent. Un corpus déposé en goutte-à-goutte donne en revanche une
 réindexation par rafale, ce qui est le comportement voulu — un document ingéré doit devenir
 cherchable.
 
