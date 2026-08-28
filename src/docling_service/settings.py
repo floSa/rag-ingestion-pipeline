@@ -6,6 +6,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.docling_service.embedding import CONTRACT_MODEL
+
 
 class DoclingSettings(BaseSettings):
     """Variables d'environnement du service d'extraction Docling."""
@@ -24,7 +26,10 @@ class DoclingSettings(BaseSettings):
     chroma_host: str = "chromadb"
     chroma_port: int = 8000
 
-    embedding_model_name: str = "paraphrase-multilingual-MiniLM-L12-v2"
+    # Le defaut EST le contrat : aucun litteral a maintenir en double, donc
+    # aucune derive possible entre le code et lui. Reste le seul chemin de
+    # divergence, l'environnement, que verify_model_name() ferme.
+    embedding_model_name: str = CONTRACT_MODEL
 
     # ── Connexion NebulaGraph ────────────────────────────────────────────────
     nebula_max_attempts: int = 15

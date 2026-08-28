@@ -28,6 +28,14 @@ Un corpus de plusieurs dizaines de livres crée autant de partitions et de runs.
 1. **La file Dagster** — `QueuedRunCoordinator` avec `max_concurrent_runs: 2` dans `dagster.yaml`. Sans limite explicite, le coordinateur en lance jusqu'à dix, soit autant de processus dans le conteneur daemon.
 2. **Le worker du service d'extraction** — un seul document converti à la fois, la conversion saturant déjà le GPU.
 
+Une fois l'ingestion retombée, `POST /reindex` part sur `rag-agent-chat` pour que son index lexical BM25 — tenu en mémoire — voie les documents qui viennent d'être écrits. L'appel n'est pas dans l'asset d'extraction : il a son job, `agent_reindex_job`, et son sensor, `agent_reindex_sensor`.
+
+Le sensor définit « fin d'ingestion » comme un **état** et non comme un événement, faute de point de fin dans cette architecture — un job par source, un run par fichier, des partitions créées au fil de l'eau. Il arme le job quand aucun run d'ingestion n'est en vol (les statuts non terminaux, `QUEUED` compris : les runs d'une rafale attendent dans la file) et qu'au moins un a réussi depuis la dernière réindexation. Le nombre d'appels ne suit donc pas le nombre de documents.
+
+Le sensor **ne tient aucun curseur**. Il compare deux faits qu'il lit dans l'historique des runs : le repère de la dernière ingestion réussie, et celui de la dernière **réindexation réussie**. Un repère est un `storage_id`, entier croissant attribué à la création d'un run. La conséquence est la propriété qui manquait : tant qu'aucune réindexation n'a réussi, il en reste une à faire, et le sensor rearme au tick suivant. Une réindexation lancée à la main depuis l'interface compte elle aussi, si elle réussit.
+
+L'appel ne peut pas faire échouer une ingestion — il vit dans son propre run. Ce run-là, en revanche, **rougit** quand l'appel n'aboutit pas : c'est ce qui le rend visible, et c'est le fait que le sensor relit pour décider de retenter. Une URL vide ne fait rien rougir : l'appel n'a pas été tenté, c'est un choix de configuration. En cas de succès, le résultat est publié dans les métadonnées de l'asset `agent/lexical_index`, sous la clé `reindex`.
+
 Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurrent_runs` n'accélère rien tant que le service reste mono-worker : c'est un levier à ne toucher que si l'extraction est parallélisée.
 
 Avant de soumettre, l'asset attend que le service se déclare prêt (`GET /health`) : au démarrage de la stack, le chargement des modèles et l'initialisation du schéma NebulaGraph prennent plusieurs minutes, et le premier run échouerait pour une raison sans rapport avec le document.

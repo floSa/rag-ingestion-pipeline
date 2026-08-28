@@ -317,7 +317,8 @@ def _extract_flat(
     elements: list[dict[str, Any]] = []
 
     for item, _ in document.iterate_items():
-        element = accumulator.add_item(item, document, heading_rank=_flat_rank(item, document))
+        rang = ranking.flat_rank(item, document)
+        element = accumulator.add_item(item, document, heading_rank=rang)
 
         # Balise laissee par la preparation du Markdown : cet element est une
         # image. On lui rend sa nature et son URL, en place — donc rattache a
@@ -351,26 +352,6 @@ def _extract_flat(
         "language": langue,
         "type_file": type_file,
     }
-
-
-def _flat_rank(item: Any, document: Any) -> int | None:
-    """Rang d'un titre pour un document non pagine (HTML, Markdown).
-
-    Le parent declare par Docling prime : sur les captures HTML, il rattache
-    chaque titre a celui qui le domine. A defaut, l'attribut ``level``, que
-    Docling renseigne fidelement sur le Markdown d'apres les dieses.
-
-    Args:
-        item: Item Docling.
-        document: Document Docling, pour resoudre les references.
-
-    Returns:
-        Le rang, ou ``None`` si aucun signal ne repond.
-    """
-    if str(getattr(item, "label", "")) not in ranking.HEADING_LABELS:
-        return None
-    rang = ranking.docling_parent_rank(item, document)
-    return rang if rang is not None else ranking.docling_level_rank(item)
 
 
 def _detect_document_language(elements: list[dict[str, Any]], stem: str) -> str:
@@ -664,15 +645,11 @@ def _pdf_heading_rank(
     body_size: float,
     size_ranks: dict[float, int],
 ) -> int | None:
-    """Rang d'un titre dans un PDF, deduit de sa taille de police.
+    """Mesure ce qu'il faut au classement d'un titre, puis delegue la decision.
 
-    Docling ne declare aucun parent sur les PDF et met tous les titres au meme
-    niveau. La taille, elle, est ecrite en clair dans le fichier.
-
-    Deux titres sont ecartes du classement : celui dont la boite est contenue
-    dans une image ou un tableau — le texte d'une figure peut etre grand sans
-    etre un titre — et celui qui n'est pas plus grand que le corps du texte,
-    qui est presque toujours un faux positif de detection.
+    La mesure vit ici parce qu'elle demande PyMuPDF et le document ouvert ; la
+    decision vit dans :func:`src.docling_service.ranking.pdf_heading_rank`, qui
+    n'a besoin d'aucun des deux et se verifie donc seule.
 
     Args:
         item: Item Docling.
@@ -682,34 +659,20 @@ def _pdf_heading_rank(
         size_ranks: Rang de chaque taille de titre du document.
 
     Returns:
-        Le rang du titre. ``None`` uniquement quand l'element n'est pas un
-        titre, ou quand le document n'offre aucun classement — auquel cas tous
-        ses titres restent freres sous le document.
+        Le rang du titre, ou ``None``.
     """
-    if str(getattr(item, "label", "")) not in ranking.HEADING_LABELS:
-        return None
-    if not size_ranks:
-        return None
-
-    # Un titre que l'on ne sait pas classer se range sous le titre courant.
-    # Lui donner le rang 0 en ferait un chapitre et remettrait l'arbre a zero :
-    # c'est ce que faisait « Then: », faux titre detecte en pleine page.
-    inclassable = max(size_ranks.values()) + 1
-
+    label = str(getattr(item, "label", ""))
     prov = item_provenance(item)
     bbox = extract_bbox(prov.bbox if prov else None)
-    if not prov or not bbox:
-        return inclassable
 
-    page = document[int(prov.page_no) - 1]
-    boite = (bbox["l"], bbox["b"], bbox["r"], bbox["t"])
-    if not ranking.is_heading_candidate(boite, _figure_boxes(elements, int(prov.page_no))):
-        return inclassable
+    taille = 0.0
+    boites: list[tuple[float, float, float, float]] = []
+    if prov and bbox:
+        page = document[int(prov.page_no) - 1]
+        taille = round(_heading_size(page, bbox, page.rect.height), 1)
+        boites = _figure_boxes(elements, int(prov.page_no))
 
-    taille = round(_heading_size(page, bbox, page.rect.height), 1)
-    if not ranking.exceeds_body_size(taille, body_size):
-        return inclassable
-    return size_ranks.get(taille, inclassable)
+    return ranking.pdf_heading_rank(label, bbox, taille, body_size, size_ranks, boites)
 
 
 def _convert_batch(

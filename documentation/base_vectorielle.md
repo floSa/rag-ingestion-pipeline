@@ -75,6 +75,27 @@ Ce qui compte n'est pas la valeur absolue mais **l'écart entre les candidats**.
 
 Le modèle se change par `EMBEDDING_MODEL_NAME` dans `.env`, mais **ce n'est pas une décision locale** : l'agent doit encoder ses questions avec le même modèle, sans quoi les vecteurs ne sont plus comparables et les réponses deviennent aberrantes **sans qu'aucune erreur n'apparaisse**. La dimension étant identique (384), c'est le seul changement à faire de son côté.
 
+### Le garde-fou : le service refuse de démarrer sur un autre modèle
+
+Cette panne est la plus coûteuse de la chaîne et la seule qui ne laisse **aucune trace** : ni exception, ni journal, ni sonde de santé. La recherche rend des passages plausibles et faux.
+
+Elle est muette pour une raison qui dicte la forme de la protection : `all-MiniLM-L6-v2` produit lui aussi des vecteurs de **384 dimensions**. ChromaDB les accepte sans broncher. **Vérifier la dimension ne protège donc de rien** — ce serait le contrôle vert des deux côtés du défaut. C'est le **nom** qui discrimine.
+
+Et le chemin réel de la dérive n'est pas le code, c'est l'environnement. `DoclingSettings` dérive de `BaseSettings` : `EMBEDDING_MODEL_NAME` **écrase le défaut du code**. Un `.env` resté à `all-MiniLM-L6-v2` a survécu ici à toute la réingestion multilingue, hors de portée du versionnement — le fichier n'est pas suivi par git.
+
+Deux verrous, posés dans `src/docling_service/embedding.py`, tous deux du côté qui **produit** les vecteurs :
+
+| Verrou | Où | Ce qu'il attrape |
+|---|---|---|
+| `verify_model_name()` | au démarrage du service, et avant chaque chargement de modèle | un `EMBEDDING_MODEL_NAME` hors contrat, qu'il vienne du code ou de l'environnement |
+| `verify_dimension()` | sur le modèle réellement chargé | un artefact qui ne correspond pas au nom sous lequel il a été chargé |
+
+Le démarrage est **délibérément brutal** : l'exception n'est pas rattrapée dans `lifespan`, le conteneur meurt. Un service mort se voit ; un index silencieusement anglais, non.
+
+Le défaut de `embedding_model_name` **est** la constante `CONTRACT_MODEL`, et non un littéral recopié : il ne reste aucune dérive possible entre le code et le contrat. Le seul chemin qui subsiste est l'environnement, que le garde-fou ferme.
+
+> Le préfixe d'organisation Hugging Face est accepté : `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` désigne le même artefact. Un garde-fou qui produit des faux positifs finit désactivé.
+
 ### Les quatre façons de traiter le multilingue
 
 Quand la question et le corpus ne sont pas dans la même langue, quatre approches existent. Elles ne se valent pas.

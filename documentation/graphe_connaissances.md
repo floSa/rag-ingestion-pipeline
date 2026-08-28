@@ -80,3 +80,15 @@ Une fois accompli, voici le catalogue de recherches possibles (idéal lors du d�
 - **La commande interdite "DO NOT switch between graph spaces"** :
   - *Problème* : L'interface Nebula Studio bloquait systématiquement le système (avec le code de warning) suite au copier-coller de l'instruction globale "USE rag_space; MATCH ...".
   - *Solution conceptuelle* : Les requêtes s'exécutent manuellement sous l'onglet pré-orienté via le menu UI Studio, requérant une mise à jour exhaustive de ces documentations et du Readme sans mention de ces switchs.
+
+## Ce qui garantit que le graphe n'est plus plat
+
+Le graphe de production mesuré avant cette passe avait **exactement deux niveaux** : 901 `SectionHeader` enfants du `Document`, 0 enfant d'un autre `SectionHeader`, 0 chemin de longueur 3 *(chiffres repris de la mesure côté `rag-agent-chat`, non remesurés ici — le corpus n'est plus sur la machine)*.
+
+Le code qui reconstruit la hiérarchie (`hierarchy.py`, `ranking.py`) existe. Ce qui manquait, c'est **la preuve qu'il est atteint**. `tests/unit/test_elements.py` vérifiait bien l'imbrication, mais en injectant `heading_rank` à la main : il restait vert si `flat_rank` et `pdf_heading_rank` rendaient toujours `None` — cas où tous les titres reçoivent le rang 0, deviennent frères sous le document, et reproduisent exactement le graphe plat. Le test était vert des deux côtés du défaut.
+
+`tests/unit/test_hierarchie_bout_en_bout.py` part donc d'items tels que Docling les rend, traverse le calcul du rang, et n'assertit qu'à l'arrivée : la forme de l'arbre. Vérifié par mutation — quand `flat_rank` est forcé à `None`, 9 tests rougissent.
+
+La décision de rang a été déplacée d'`extraction.py` vers `ranking.py` pour cela : `extraction.py` importe Docling et PyMuPDF, donc rien de ce qu'il contenait n'était vérifiable hors de l'image d'extraction. `ranking.py` reçoit des mesures déjà prises et ne fait que décider.
+
+> **La profondeur réelle reste à constater sur un corpus.** Ces tests prouvent que le rang remonte ; ils ne prouvent pas ce que Docling déclare sur de vrais ouvrages. `src/index_report.py` donne le rapport de profondeur par document après ingestion. **L'ablation du graphe ne doit pas être mesurée côté agent avant ce constat** : mesurée sur un graphe plat puis rejouée sur un graphe hiérarchique, la campagne serait à refaire.

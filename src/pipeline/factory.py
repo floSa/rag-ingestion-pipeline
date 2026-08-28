@@ -301,7 +301,14 @@ def _build_direct_assets(
 
 
 def _record_metadata(context: AssetExecutionContext, result: dict[str, Any]) -> None:
-    """Publie le bilan d'extraction dans les metadonnees de l'asset."""
+    """Publie le bilan d'extraction dans les metadonnees de l'asset.
+
+    Rien d'autre. Cette fonction a longtemps poste ``/reindex`` sur l'agent au
+    passage : un appel reseau vers un autre service, dans une fonction qui
+    publie des metadonnees, et une fois par partition alors que le contrat le
+    veut en fin d'ingestion. Le declenchement vit desormais dans
+    ``reindex_job.py``, hors du chemin du document.
+    """
     progress = result.get("progress") or {}
     context.add_output_metadata(
         {

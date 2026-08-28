@@ -73,26 +73,32 @@ cp .env.example .env
 ```
 
 ### 2. Démarrer les services
-Assurez-vous d'avoir Docker et le plugin NVIDIA Container Toolkit installés (si utilisation GPU).
+Docker suffit : **la stack démarre sur processeur, sans GPU ni NVIDIA Container Toolkit**.
 ```bash
 # Construire et lancer toute la stack en arrière-plan
 docker compose up -d --build
 ```
 
+> **Vérifiez le modèle d'embedding avant d'ingérer quoi que ce soit.** Il doit être identique
+> à celui de `rag-agent-chat`, et un désaccord ne lève aucune erreur — la recherche rend des
+> passages plausibles et faux. Le service refuse désormais de démarrer sur un autre modèle ;
+> si le conteneur meurt au lancement, lisez son journal avant toute autre hypothèse :
+> ```bash
+> docker compose exec docling-service printenv EMBEDDING_MODEL_NAME
+> ```
+
 > **Après avoir modifié `.env`**, `docker compose restart` ne suffit pas : il relance le conteneur avec son ancien environnement. Utilisez `docker compose up -d --force-recreate <service>`, puis vérifiez avec `docker compose exec <service> printenv <VARIABLE>`.
 
 > Construisez bien **toute** la stack. `dagster-webserver` et `dagster-daemon` partagent le même `Dockerfile.dagster` mais donnent deux images distinctes : n'en reconstruire qu'une laisse l'autre sur l'ancienne base, et les runs s'exécutent dans le *daemon*.
 
-**Machine sans GPU ?** Créez un `docker-compose.override.yml` (gitignoré) pour retirer la
-réservation nvidia de Docling — l'extraction tourne alors en CPU, plus lentement :
-```yaml
-services:
-  docling-service:
-    deploy: !override
-      resources:
-        limits:
-          memory: 10G
+**Machine avec GPU ?** Le compose principal ne réserve **aucun** GPU : une réservation
+`nvidia` écrite en dur rend le service *incréable* là où le runtime manque, avec un
+`could not select device driver "nvidia"` qui bloque toute la stack. Pour rendre un GPU à
+Docling, superposez le fichier prévu :
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
+L'extraction et l'encodage y gagnent en vitesse ; rien d'autre ne change.
 
 ### 3. Accéder aux interfaces
 | Service | URL | Note |
@@ -103,7 +109,7 @@ services:
 | **Docling API** | `http://localhost:8000/health` | `POST /extract` rend un `job_id`, suivi sur `GET /jobs/{id}`. |
 | **ChromaDB** | `http://localhost:8080/api/v1` | Point d'entrée de la base vectorielle. |
 
-Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autres services ne le sont que via `docker-compose.override.yml` (gitignoré, cf. § *Machine sans GPU* ci-dessus) : si l'un de ces ports est déjà pris sur votre machine, c'est là qu'il faut le décaler.
+Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autres services ne le sont que via un `docker-compose.override.yml` (gitignoré) que vous créez : si l'un de ces ports est déjà pris sur votre machine, c'est là qu'il faut le décaler.
 
 ### 4. Lancer l'ingestion
 1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML, `Datas/mds/` pour le Markdown).
@@ -292,7 +298,7 @@ docker compose logs -f docling-service
 | `Service Docling toujours pas prêt` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
 | `nGQL rejeté ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
 
-**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro sur tous les stores, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb` et `graphd` par leur nom de service) :
+**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro sur **les trois stores** — collection ChromaDB, space NebulaGraph et bucket MinIO —, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et `minio` par leur nom de service) :
 
 ```bash
 docker compose exec docling-service python -m src.wipe_stores
@@ -300,9 +306,49 @@ docker compose exec docling-service python -m src.wipe_stores
 
 Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
+> Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'un des trois stores résiste : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes.
+
 ```bash
 docker compose restart docling-service
 ```
+
+**Réindexation lexicale de l'agent.** Une fois l'ingestion retombée, le pipeline appelle
+`POST /reindex` sur `rag-agent-chat`. L'agent tient son index BM25 **en mémoire** : sans cet
+appel, un document ingéré après son démarrage reste trouvable en recherche dense — la requête
+part à ChromaDB à chaque fois — mais **invisible en recherche lexicale** jusqu'à son prochain
+redémarrage. La recherche devient silencieusement asymétrique.
+
+L'agent possède bien un filet — il compare le nombre de chunks de sa collection à celui qu'il a
+indexé — mais ce filet **ne voit pas** une réingestion qui retire autant de chunks qu'elle en
+ajoute, ce qui est précisément le cas d'une réingestion. D'où un contrat, et non une option.
+
+**Une fois par rafale, pas une fois par document.** L'appel ne vit pas dans l'asset
+d'extraction : il a son propre job, `agent_reindex_job`, et son propre sensor. Ce sensor
+regarde l'état des runs d'ingestion, et n'arme le job que lorsque **plus aucun n'est en vol**
+— ni en cours, ni en attente dans la file — et qu'au moins un a réussi depuis la dernière
+réindexation. Le nombre d'appels ne suit donc pas le nombre de documents : une rafale de N
+documents donne **une** reconstruction BM25 au lieu de N, chacune étant complète et synchrone
+côté agent. Un corpus déposé en goutte-à-goutte donne en revanche une
+réindexation par rafale, ce qui est le comportement voulu — un document ingéré doit devenir
+cherchable.
+
+Un échec d'appel **ne fait jamais échouer une ingestion réussie** : il ne le peut plus, l'appel
+vivant dans son propre run.
+
+**Mais il fait rougir le sien, et il est retenté.** Le run de réindexation échoue pour de bon,
+donc il apparaît là où l'on regarde les échecs. Et le sensor le retente au tick suivant, aussi
+longtemps qu'il le faut : il ne tient aucun curseur à lui, il compare le repère de la dernière
+ingestion réussie à celui de la dernière **réindexation réussie**. Tant que ce second repère
+n'existe pas, il reste quelque chose à faire. L'agent peut être légitimement arrêté — c'est le
+cas d'une première mise en route — et il verra alors des runs rouges jusqu'à ce qu'il réponde.
+C'est bruyant, et c'est voulu : la version précédente avançait son repère à l'**émission** de
+la demande, si bien qu'une réindexation manquée était perdue définitivement, sans que rien ne
+rougisse nulle part.
+
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `AGENT_SERVICE_URL` | Racine de l'API de l'agent sur `rag_network`. **Vide = appel désactivé**, annoncé au démarrage de Dagster et à chaque tick du sensor | `http://agent-api:8000` |
+| `AGENT_API_KEY` | Clé d'API, si l'agent en exige une | *(vide)* |
 
 **Contrôle avant-vol.** Avant de lancer le gros corpus, vérifiez que les trois stores répondent :
 
@@ -410,8 +456,22 @@ RAG_Assistant/
 ## Tests
 
 ```bash
-uv sync && uv pip install -r requirements-dev.txt && uv run pytest
+make install && make all
 ```
+
+`make install` appelle `uv sync`, qui installe les dépendances de production
+**et** le groupe `dev` déclaré dans `pyproject.toml` : `pytest`, `ruff`, `mypy`
+et les stubs de typage. La porte qualité est donc reproductible depuis la seule
+source de vérité du dépôt, sans liste annexe à se rappeler. `make all` enchaîne
+`format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
+aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
+
+**535 tests verts** (`mesuré` le 28 août 2026 par `make test` sur cette
+révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
+canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
+toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
+recopié cesse d'être une mesure — « 407 tests » a circulé pour une révision qui
+en comptait 477, sans qu'aucune commande ne l'ait jamais produit.
 
 La logique sensible du service d'extraction vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph, et couverte à 100 %.
 
