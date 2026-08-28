@@ -126,7 +126,7 @@ la bibliotheque standard : leur logique est testee sans Docling ni GPU.
 
 ## Ressources
 
-- GPU NVIDIA (CUDA 12.1)
+- GPU NVIDIA (CUDA 12.1) — **optionnel**, via `docker-compose.gpu.yml` ; sinon processeur
 - RAM : 10 Go max (`deploy.resources.limits.memory`)
 - SHM : 2 Go (`shm_size`)
 

@@ -1,0 +1,20 @@
+# Rend un GPU nvidia au service d'extraction.
+#
+# A superposer au compose principal, qui n'en reserve aucun :
+#
+#     docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# Sans runtime nvidia sur la machine, Docker refuse de CREER le conteneur
+# (« could not select device driver "nvidia" ») : c'est pourquoi cette
+# reservation vit dans un fichier separe et non dans le compose principal.
+# L'ingestion fonctionne sur processeur, le GPU ne fait qu'accelerer
+# l'extraction Docling et l'encodage des embeddings.
+services:
+  docling-service:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

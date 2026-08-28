@@ -71,26 +71,32 @@ cp .env.example .env
 ```
 
 ### 2. Démarrer les services
-Assurez-vous d'avoir Docker et le plugin NVIDIA Container Toolkit installés (si utilisation GPU).
+Docker suffit : **la stack démarre sur processeur, sans GPU ni NVIDIA Container Toolkit**.
 ```bash
 # Construire et lancer toute la stack en arrière-plan
 docker compose up -d --build
 ```
 
+> **Vérifiez le modèle d'embedding avant d'ingérer quoi que ce soit.** Il doit être identique
+> à celui de `rag-agent-chat`, et un désaccord ne lève aucune erreur — la recherche rend des
+> passages plausibles et faux. Le service refuse désormais de démarrer sur un autre modèle ;
+> si le conteneur meurt au lancement, lisez son journal avant toute autre hypothèse :
+> ```bash
+> docker compose exec docling-service printenv EMBEDDING_MODEL_NAME
+> ```
+
 > **Après avoir modifié `.env`**, `docker compose restart` ne suffit pas : il relance le conteneur avec son ancien environnement. Utilisez `docker compose up -d --force-recreate <service>`, puis vérifiez avec `docker compose exec <service> printenv <VARIABLE>`.
 
 > Construisez bien **toute** la stack. `dagster-webserver` et `dagster-daemon` partagent le même `Dockerfile.dagster` mais donnent deux images distinctes : n'en reconstruire qu'une laisse l'autre sur l'ancienne base, et les runs s'exécutent dans le *daemon*.
 
-**Machine sans GPU ?** Créez un `docker-compose.override.yml` (gitignoré) pour retirer la
-réservation nvidia de Docling — l'extraction tourne alors en CPU, plus lentement :
-```yaml
-services:
-  docling-service:
-    deploy: !override
-      resources:
-        limits:
-          memory: 10G
+**Machine avec GPU ?** Le compose principal ne réserve **aucun** GPU : une réservation
+`nvidia` écrite en dur rend le service *incréable* là où le runtime manque, avec un
+`could not select device driver "nvidia"` qui bloque toute la stack. Pour rendre un GPU à
+Docling, superposez le fichier prévu :
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
+L'extraction et l'encodage y gagnent en vitesse ; rien d'autre ne change.
 
 ### 3. Accéder aux interfaces
 | Service | URL | Note |
@@ -101,7 +107,7 @@ services:
 | **Docling API** | `http://localhost:8000/health` | `POST /extract` rend un `job_id`, suivi sur `GET /jobs/{id}`. |
 | **ChromaDB** | `http://localhost:8080/api/v1` | Point d'entrée de la base vectorielle. |
 
-Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autres services ne le sont que via `docker-compose.override.yml` (gitignoré, cf. § *Machine sans GPU* ci-dessus) : si l'un de ces ports est déjà pris sur votre machine, c'est là qu'il faut le décaler.
+Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autres services ne le sont que via un `docker-compose.override.yml` (gitignoré) que vous créez : si l'un de ces ports est déjà pris sur votre machine, c'est là qu'il faut le décaler.
 
 ### 4. Lancer l'ingestion
 1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML, `Datas/mds/` pour le Markdown).
