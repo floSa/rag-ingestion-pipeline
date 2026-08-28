@@ -1,0 +1,148 @@
+"""Appel de ``POST /reindex`` sur rag-agent-chat, en fin d'ingestion.
+
+C'est la **seule obligation** que le contrat d'interface impose au pipeline, et
+elle etait absente : aucun appel, aucune configuration, nulle part.
+
+Ce qu'elle repare. L'agent tient son index lexical BM25 **en memoire**,
+construit au premier appel. La recherche dense, elle, part a ChromaDB a chaque
+requete et suit donc le corpus sans effort. Un document ingere apres le
+demarrage de l'agent etait donc trouvable en dense et invisible en lexical
+jusqu'au prochain redemarrage : la recherche devenait silencieusement
+asymetrique, ce qui ne se voit dans aucune sonde.
+
+**Le filet de l'agent ne nous couvre pas.** L'agent compare le nombre de chunks
+de sa collection au nombre qu'il a indexe, et se reconstruit s'ils different.
+Mais une re-ingestion qui retire autant de chunks qu'elle en ajoute affiche le
+meme compte : le filet ne voit rien, et c'est exactement ce que produit une
+re-ingestion d'un corpus deja present. D'ou un contrat, et non une option.
+
+Trois choix, tous les trois deliberes :
+
+1. **Un echec d'appel ne fait jamais echouer une ingestion reussie.** Les trois
+   stores sont ecrits, le document est la ; rougir la partition declencherait
+   des reprises qui reconvertiraient des centaines de pages pour rien. L'agent
+   est d'ailleurs arrete pendant une premiere mise en route — c'est le cas
+   nominal, pas l'incident.
+2. **Mais l'echec ne passe pas inapercu.** Il part dans les metadonnees de
+   l'asset Dagster, visibles par partition dans l'interface et conservees avec
+   le run, en plus d'un journal en avertissement. Une ligne de journal seule
+   serait une degradation silencieuse de plus.
+3. **L'absence d'URL est un choix explicite, annonce au chargement**, pas une
+   surprise en fin de course. L'URL a une valeur par defaut qui marche sur le
+   reseau ``rag_network`` ; la vider revient a desactiver l'appel, et
+   ``definitions.py`` le dit alors au demarrage.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
+import requests
+
+# Route du contrat, cote agent.
+REINDEX_PATH = "/reindex"
+
+# En-tete attendu par l'agent quand il est protege par une cle. Sans cle
+# configuree de son cote, la dependance ne fait rien et l'en-tete est ignore.
+API_KEY_HEADER = "X-API-Key"
+
+
+@dataclass(frozen=True)
+class ReindexOutcome:
+    """Ce qu'il est advenu de l'appel, sans jamais lever.
+
+    Attributes:
+        called: L'appel a-t-il ete tente. Faux si l'appel est desactive.
+        ok: L'agent a-t-il reconstruit son index.
+        chunks_indexed: Taille de l'index APRES reconstruction, telle que
+            l'agent la rapporte. ``None`` si l'appel n'a pas abouti. C'est le
+            nombre a confronter aux chunks que l'ingestion vient d'ecrire.
+        detail: Message lisible, destine au journal et aux metadonnees.
+    """
+
+    called: bool
+    ok: bool
+    chunks_indexed: int | None
+    detail: str
+
+    @property
+    def metadata_value(self) -> str:
+        """Rendu court pour les metadonnees d'asset Dagster."""
+        if not self.called:
+            return f"non appele — {self.detail}"
+        if self.ok:
+            return f"ok — {self.chunks_indexed} chunks indexes"
+        return f"ECHEC — {self.detail}"
+
+
+def request_reindex(
+    base_url: str,
+    api_key: str = "",
+    timeout: float = 300.0,
+    post: Callable[..., Any] = requests.post,
+) -> ReindexOutcome:
+    """Demande a l'agent de reconstruire son index lexical.
+
+    Ne leve jamais : une ingestion reussie ne doit pas rougir parce que l'agent
+    est arrete. Tout echec ressort dans l'objet rendu.
+
+    Args:
+        base_url: Racine de l'API de l'agent. Vide, l'appel est desactive.
+        api_key: Cle d'API de l'agent, si le sien en exige une.
+        timeout: Plafond de l'appel. La reconstruction parcourt tout le corpus
+            et l'agent la fait de maniere synchrone : elle est lente par nature.
+        post: Fonction d'envoi. Injectee par les tests.
+
+    Returns:
+        Le resultat de l'appel.
+    """
+    url = base_url.strip().rstrip("/")
+    if not url:
+        return ReindexOutcome(
+            called=False,
+            ok=False,
+            chunks_indexed=None,
+            detail=(
+                "AGENT_SERVICE_URL est vide : l'index lexical de rag-agent-chat ne sera "
+                "pas reconstruit et les documents ingeres resteront invisibles en "
+                "recherche lexicale jusqu'a son redemarrage."
+            ),
+        )
+
+    headers = {API_KEY_HEADER: api_key} if api_key else {}
+    try:
+        reponse = post(f"{url}{REINDEX_PATH}", headers=headers, timeout=timeout)
+        reponse.raise_for_status()
+        charge = reponse.json()
+    except Exception as exc:
+        # Volontairement large : requests leve une famille entiere d'exceptions
+        # reseau, et une reponse illisible en leve d'autres encore. Aucune ne
+        # doit remonter jusqu'a l'asset.
+        return ReindexOutcome(
+            called=True,
+            ok=False,
+            chunks_indexed=None,
+            detail=f"{type(exc).__name__} : {exc}",
+        )
+
+    return ReindexOutcome(
+        called=True,
+        ok=True,
+        chunks_indexed=_lire_compte(charge),
+        detail="index lexical reconstruit",
+    )
+
+
+def _lire_compte(charge: Any) -> int | None:
+    """Extrait ``chunks_indexed`` de la reponse, ``None`` si elle n'en porte pas.
+
+    Un agent d'une version anterieure peut rendre autre chose : l'appel a
+    quand meme eu lieu, seul le compte manque.
+    """
+    if isinstance(charge, dict):
+        valeur = charge.get("chunks_indexed")
+        if isinstance(valeur, int):
+            return valeur
+    return None

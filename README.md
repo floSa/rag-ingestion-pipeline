@@ -310,6 +310,27 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 docker compose restart docling-service
 ```
 
+**Réindexation lexicale de l'agent.** À la fin de chaque extraction, le pipeline appelle
+`POST /reindex` sur `rag-agent-chat`. L'agent tient son index BM25 **en mémoire** : sans cet
+appel, un document ingéré après son démarrage reste trouvable en recherche dense — la requête
+part à ChromaDB à chaque fois — mais **invisible en recherche lexicale** jusqu'à son prochain
+redémarrage. La recherche devient silencieusement asymétrique.
+
+L'agent possède bien un filet — il compare le nombre de chunks de sa collection à celui qu'il a
+indexé — mais ce filet **ne voit pas** une réingestion qui retire autant de chunks qu'elle en
+ajoute, ce qui est précisément le cas d'une réingestion. D'où un contrat, et non une option.
+
+Un échec d'appel **ne fait jamais échouer une ingestion réussie** : le document est dans les
+trois stores, et rougir la partition déclencherait des reprises qui reconvertiraient des
+centaines de pages pour rien. L'agent peut d'ailleurs être légitimement arrêté — c'est le cas
+d'une première mise en route. L'échec ressort dans les **métadonnées de l'asset** (champ
+`reindex`, visible par partition dans l'interface Dagster) et dans le journal du run.
+
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `AGENT_SERVICE_URL` | Racine de l'API de l'agent sur `rag_network`. **Vide = appel désactivé**, annoncé au démarrage de Dagster | `http://agent-api:8000` |
+| `AGENT_API_KEY` | Clé d'API, si l'agent en exige une | *(vide)* |
+
 **Contrôle avant-vol.** Avant de lancer le gros corpus, vérifiez que les trois stores répondent :
 
 ```bash
