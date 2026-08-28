@@ -1,0 +1,28 @@
+#!/bin/sh
+# Refuse un commit dont l'adresse d'auteur ou de committer n'est pas autorisée.
+#
+# Raison : deux identités portent le même NOM (« Florian Horellou »), donc un
+# contrôle sur le nom ne voit rien. Sept commits sont partis avec l'adresse
+# professionnelle sur le dépôt personnel rag-agent-chat, et il a fallu réécrire
+# l'historique PUIS détruire et recréer le dépôt : la liste des contributeurs de
+# GitHub, une fois constituée, ne se défait pas.
+#
+# Pour autoriser une adresse : l'ajouter à ADRESSES_AUTORISEES.
+# Pour désactiver ponctuellement : git commit --no-verify
+ADRESSES_AUTORISEES="florian.horellou@gmail.com florian_horellou@laposte.net"
+
+email=$(git var GIT_AUTHOR_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')
+committer=$(git var GIT_COMMITTER_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')
+
+for adresse in $email $committer; do
+    autorisee=0
+    for permise in $ADRESSES_AUTORISEES; do
+        [ "$adresse" = "$permise" ] && autorisee=1
+    done
+    if [ "$autorisee" -eq 0 ]; then
+        echo "COMMIT REFUSÉ : l'adresse « $adresse » n'est pas autorisée sur ce dépôt." >&2
+        echo "Adresses autorisées : $ADRESSES_AUTORISEES" >&2
+        echo "Corriger :  git config user.email <adresse>" >&2
+        exit 1
+    fi
+done
