@@ -21,6 +21,32 @@ dependencies = [
     "minio==7.2.20",
 ]
 
+# Outils de la porte qualite (`make all`, `make audit`, les hooks pre-commit).
+# Ils vivent ici, et non dans un requirements-dev.txt separe, pour une raison
+# precise : une liste non referencee par la source de verite ne s'installe pas,
+# donc la porte ne tourne pas, donc un chiffre de tests circule sans qu'aucune
+# commande ne l'ait produit. C'est exactement ce qui est arrive.
+# `uv sync` installe ce groupe par defaut, et le Makefile appelle chaque outil
+# derriere `uv run` : la sequence complete tient en `make install && make all`,
+# sans activation d'environnement ni etape a se rappeler.
+#
+# Les versions sont epinglees comme celles de production. Un `ruff` non epingle
+# rend un verdict qui change avec la date : la porte cesse d'etre reproductible
+# au sens ou l'entend ce depot. `ruff` est epingle a la version du hook
+# `.pre-commit-config.yaml` : deux formateurs de versions differentes se
+# defont mutuellement le travail a chaque commit.
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.11.8",
+    "mypy==2.3.1",
+    "types-requests==2.33.0.20260712",
+    "types-PyYAML==6.0.12.20260815",
+    "pip-audit==2.10.1",
+    "pre-commit==4.6.2",
+]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

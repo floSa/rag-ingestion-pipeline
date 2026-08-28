@@ -408,8 +408,15 @@ RAG_Assistant/
 ## Tests
 
 ```bash
-uv sync && uv pip install -r requirements-dev.txt && uv run pytest
+make install && make all
 ```
+
+`make install` appelle `uv sync`, qui installe les dépendances de production
+**et** le groupe `dev` déclaré dans `pyproject.toml` : `pytest`, `ruff`, `mypy`
+et les stubs de typage. La porte qualité est donc reproductible depuis la seule
+source de vérité du dépôt, sans liste annexe à se rappeler. `make all` enchaîne
+`format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
+aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
 
 La logique sensible du service d'extraction vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph, et couverte à 100 %.
 
