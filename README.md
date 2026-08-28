@@ -457,6 +457,13 @@ source de vérité du dépôt, sans liste annexe à se rappeler. `make all` ench
 `format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
 aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
 
+**508 tests verts** (`mesuré` le 28 août 2026 par `make test` sur cette
+révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
+canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
+toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
+recopié cesse d'être une mesure — « 407 tests » a circulé pour une révision qui
+en comptait 477, sans qu'aucune commande ne l'ait jamais produit.
+
 La logique sensible du service d'extraction vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph, et couverte à 100 %.
 
 | Module | Rôle | Couverture |
