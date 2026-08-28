@@ -30,19 +30,22 @@ re-ingestion d'un corpus deja present. D'ou un contrat, et non une option.
 
 Trois choix, tous les trois deliberes :
 
-1. **Un echec d'appel ne fait jamais echouer une ingestion reussie.** Les trois
-   stores sont ecrits, le document est la ; rougir la partition declencherait
-   des reprises qui reconvertiraient des centaines de pages pour rien. L'agent
-   est d'ailleurs arrete pendant une premiere mise en route — c'est le cas
-   nominal, pas l'incident.
-2. **Mais l'echec ne passe pas inapercu.** Il part dans les metadonnees de
-   l'asset ``agent/lexical_index``, conservees avec le run et visibles dans le
-   catalogue, en plus d'un journal en avertissement. Une ligne de journal seule
-   serait une degradation silencieuse de plus.
+1. **Cette fonction-ci ne leve jamais.** Elle rend ce qu'il est advenu de
+   l'appel, y compris l'echec, et laisse son appelant decider ce qu'il en fait.
+   La separation compte : quand l'appel vivait dans le run d'une partition,
+   rougir aurait declenche des reprises qui reconvertissent des centaines de
+   pages. Il vit desormais dans son propre run, ou une reprise coute UN appel
+   HTTP — et c'est ``reindex_job.py`` qui tranche, en connaissance de sa
+   hauteur. Dans les deux cas, une ingestion reussie reste verte.
+2. **Un echec ne passe pas inapercu.** L'appelant a tout ce qu'il faut pour le
+   dire : ``ok``, ``detail``, et un rendu court pour les metadonnees. Ce que
+   ``reindex_job.py`` en fait — faire rougir son run et le retenter jusqu'a ce
+   qu'il passe — est decrit la-bas.
 3. **L'absence d'URL est un choix explicite, annonce au chargement**, pas une
    surprise en fin de course. L'URL a une valeur par defaut qui marche sur le
    reseau ``rag_network`` ; la vider revient a desactiver l'appel, et
-   ``definitions.py`` le dit alors au demarrage.
+   ``definitions.py`` le dit alors au demarrage. ``called`` distingue ce choix
+   d'une panne : un appel non tente n'est pas un appel echoue.
 """
 
 from __future__ import annotations

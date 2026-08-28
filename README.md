@@ -331,10 +331,17 @@ réindexation par rafale, ce qui est le comportement voulu — un document ingé
 cherchable.
 
 Un échec d'appel **ne fait jamais échouer une ingestion réussie** : il ne le peut plus, l'appel
-vivant dans son propre run. L'agent peut d'ailleurs être légitimement arrêté — c'est le cas
-d'une première mise en route. L'échec ressort dans les **métadonnées de l'asset**
-`agent/lexical_index` (champ `reindex`, avec l'historique des matérialisations dans le
-catalogue) et dans le journal du run.
+vivant dans son propre run.
+
+**Mais il fait rougir le sien, et il est retenté.** Le run de réindexation échoue pour de bon,
+donc il apparaît là où l'on regarde les échecs. Et le sensor le retente au tick suivant, aussi
+longtemps qu'il le faut : il ne tient aucun curseur à lui, il compare le repère de la dernière
+ingestion réussie à celui de la dernière **réindexation réussie**. Tant que ce second repère
+n'existe pas, il reste quelque chose à faire. L'agent peut être légitimement arrêté — c'est le
+cas d'une première mise en route — et il verra alors des runs rouges jusqu'à ce qu'il réponde.
+C'est bruyant, et c'est voulu : la version précédente avançait son repère à l'**émission** de
+la demande, si bien qu'une réindexation manquée était perdue définitivement, sans que rien ne
+rougisse nulle part.
 
 | Variable | Rôle | Défaut |
 |---|---|---|
@@ -457,7 +464,7 @@ source de vérité du dépôt, sans liste annexe à se rappeler. `make all` ench
 `format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
 aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
 
-**521 tests verts** (`mesuré` le 28 août 2026 par `make test` sur cette
+**532 tests verts** (`mesuré` le 28 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre

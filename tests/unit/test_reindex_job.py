@@ -87,17 +87,41 @@ def _rafale(instance, documents: int, statut=DagsterRunStatus.SUCCESS) -> None:
         create_run_for_test(instance, job_name=JOB_INGESTION, status=statut)
 
 
-def _tick(instance, cursor: str | None = None):
-    """Fait tourner le sensor une fois.
+class _Capteur:
+    """Le sensor tel que Dagster le fait tourner : des ticks qui se suivent.
+
+    Le curseur laisse par un tick est repasse au suivant, comme le daemon le
+    fait. C'est indispensable et non cosmetique : un harnais qui reconstruit un
+    contexte neuf a chaque tick efface l'etat que le sensor a pu poser, et rend
+    alors verts des tests d'enchainement qui devraient etre rouges. Le harnais
+    ne suppose rien de ce que le sensor met dans son curseur — il le transporte,
+    quel qu'il soit, y compris vide.
+    """
+
+    def __init__(self, instance, job_names=(JOB_INGESTION,)) -> None:
+        self.instance = instance
+        self.sensor = build_reindex(list(job_names)).sensor
+        self.curseur: str | None = None
+
+    def tick(self):
+        """Fait tourner le sensor une fois.
+
+        Returns:
+            Ce qu'il decide.
+        """
+        context = build_sensor_context(instance=self.instance, cursor=self.curseur)
+        decision = self.sensor(context)
+        self.curseur = context.cursor
+        return decision
+
+
+def _tick(instance, job_names=(JOB_INGESTION,)):
+    """Fait tourner le sensor une seule fois, sur une instance vierge de ticks.
 
     Returns:
-        Ce qu'il decide, et le curseur qu'il laisse derriere lui — celui que
-        Dagster lui repasserait au tick suivant. Le reconstituer a la main
-        rendrait les tests d'enchainement complaisants.
+        Ce que le sensor decide.
     """
-    built = build_reindex([JOB_INGESTION])
-    context = build_sensor_context(instance=instance, cursor=cursor)
-    return built.sensor(context), context.cursor
+    return _Capteur(instance, job_names).tick()
 
 
 class EspionReseau:
@@ -209,7 +233,7 @@ class TestLeSensorNArmeQuUneFois:
     def test_une_seule_demande_par_rafale(self, documents):
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, documents)
-            resultat, _ = _tick(instance)
+            resultat = _tick(instance)
         assert isinstance(resultat, RunRequest)
 
     def test_la_rafale_a_bien_eu_lieu(self):
@@ -231,7 +255,7 @@ class TestLeSensorNArmeQuUneFois:
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 3)
             create_run_for_test(instance, job_name=JOB_INGESTION, status=statut)
-            resultat, _ = _tick(instance)
+            resultat = _tick(instance)
         assert isinstance(resultat, SkipReason)
         assert "Ingestion en cours" in str(resultat.skip_message)
 
@@ -247,41 +271,50 @@ class TestLeSensorNArmeQuUneFois:
         assert set(STATUTS_EN_COURS).isdisjoint(STATUTS_TERMINES)
         assert set(STATUTS_EN_COURS) | STATUTS_TERMINES == set(DagsterRunStatus)
 
-    def test_un_second_tick_ne_redemande_rien(self):
+    def test_un_second_tick_ne_redemande_rien_une_fois_la_rafale_reindexee(self):
+        # « Ne redemande rien » se merite : c'est la reindexation REUSSIE qui
+        # ferme la rafale, pas l'emission de la demande. Sans le run reussi
+        # ci-dessous, le sensor doit rearmer — c'est le sujet de
+        # TestUnEchecDeReindexationNEstPasPerdu.
         with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
             _rafale(instance, 3)
-            premier, curseur = _tick(instance)
+            premier = capteur.tick()
             assert isinstance(premier, RunRequest)
-            assert curseur, "le sensor doit poser un curseur, sinon il rearme sans fin"
-            second, _ = _tick(instance, cursor=curseur)
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            second = capteur.tick()
         assert isinstance(second, SkipReason)
         assert "Rien de nouveau" in str(second.skip_message)
 
     def test_une_nouvelle_rafale_rearme(self):
         with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
             _rafale(instance, 3)
-            _, curseur = _tick(instance)
+            capteur.tick()
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
             _rafale(instance, 2)
-            resultat, _ = _tick(instance, cursor=curseur)
+            resultat = capteur.tick()
         assert isinstance(resultat, RunRequest)
 
     def test_le_run_de_reindexation_ne_se_compte_pas_lui_meme(self):
         # Sans quoi le sensor s'auto-entretiendrait : sa propre execution
         # deplacerait le repere, et la reindexation ne s'arreterait jamais.
         with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
             _rafale(instance, 2)
-            premier, curseur = _tick(instance)
+            premier = capteur.tick()
             assert isinstance(premier, RunRequest)
-            create_run_for_test(
-                instance, job_name=REINDEX_JOB_NAME, status=DagsterRunStatus.SUCCESS
-            )
-            second, _ = _tick(instance, cursor=curseur)
-        assert isinstance(second, SkipReason)
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            second = capteur.tick()
+            assert isinstance(second, SkipReason)
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            troisieme = capteur.tick()
+        assert isinstance(troisieme, SkipReason)
 
     def test_un_job_etranger_ne_declenche_rien(self):
         with DagsterInstance.ephemeral() as instance:
             create_run_for_test(instance, job_name="autre_job", status=DagsterRunStatus.SUCCESS)
-            resultat, _ = _tick(instance)
+            resultat = _tick(instance)
         assert isinstance(resultat, SkipReason)
         assert "Aucune ingestion" in str(resultat.skip_message)
 
@@ -289,7 +322,7 @@ class TestLeSensorNArmeQuUneFois:
         # Rien n'est entre dans les stores : il n'y a rien a rendre cherchable.
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 3, statut=DagsterRunStatus.FAILURE)
-            resultat, _ = _tick(instance)
+            resultat = _tick(instance)
         assert isinstance(resultat, SkipReason)
         assert "Aucune ingestion" in str(resultat.skip_message)
 
@@ -299,8 +332,132 @@ class TestLeSensorNArmeQuUneFois:
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 3)
             create_run_for_test(instance, job_name=JOB_INGESTION, status=DagsterRunStatus.FAILURE)
-            resultat, _ = _tick(instance)
+            resultat = _tick(instance)
         assert isinstance(resultat, RunRequest)
+
+
+def _reindexation(instance, statut=DagsterRunStatus.SUCCESS) -> None:
+    """Enregistre un run du job de reindexation, dans l'etat voulu."""
+    create_run_for_test(instance, job_name=REINDEX_JOB_NAME, status=statut)
+
+
+def _cause_du_rouge(resultat) -> str:
+    """Texte de l'erreur qui a fait rougir le run, chaine des causes comprise."""
+    echecs = [e for e in resultat.all_events if e.event_type_value == "STEP_FAILURE"]
+    assert echecs, "le run n'a pas echoue : il n'y a aucune cause a lire"
+    erreur = echecs[0].event_specific_data.error
+    morceaux = []
+    while erreur is not None:
+        morceaux.append(erreur.message or "")
+        erreur = erreur.cause
+    return "\n".join(morceaux)
+
+
+class TestUnEchecDeReindexationNEstPasPerdu:
+    """Le defaut de comportement : le curseur avancait a l'EMISSION de la demande.
+
+    Deux chemins menaient a la perte, et le premier etait le chemin nominal :
+    l'agent injoignable ne faisait pas lever l'asset, le run finissait VERT avec
+    une metadonnee « ECHEC », et le curseur avait deja avance ; ou le run
+    lui-meme echouait, meme resultat sans meme la metadonnee. Au tick suivant :
+    « Rien de nouveau n'a ete ingere ». Et remettre le curseur a zero ne
+    sauvait rien, le run_key « reindex-<repere> » etant deterministe et un
+    run_key consomme l'etant pour toujours.
+
+    La reparation tient en deux gestes. L'asset LEVE quand l'appel echoue : le
+    run rougit, ce qui est la seule visibilite qu'une supervision Dagster sait
+    lire. Et le sensor ne tient plus d'etat a lui : il compare le repere de la
+    derniere ingestion reussie a celui de la derniere REINDEXATION REUSSIE, deux
+    faits que l'historique des runs porte deja. Tant que la reindexation n'a pas
+    reussi, le sensor rearme — indefiniment.
+    """
+
+    def test_un_echec_de_reindexation_rougit_son_run(self, espion):
+        # Un run vert portant « ECHEC » dans une metadonnee n'est pas une
+        # visibilite : aucune alerte Dagster ne se declenche dessus.
+        resultat = materialize([lexical_index], raise_on_error=False)
+        assert resultat.success is False
+
+    def test_le_run_rouge_nomme_la_panne(self, espion):
+        resultat = materialize([lexical_index], raise_on_error=False)
+        assert "ConnectionError" in _cause_du_rouge(resultat)
+
+    def test_une_reindexation_echouee_est_retentee_au_tick_suivant(self):
+        # LE test de la reparation. Avant elle, ce second tick rendait
+        # « Rien de nouveau n'a ete ingere » et la rafale n'etait jamais
+        # reindexee — definitivement, le run_key etant consomme.
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
+            _rafale(instance, 3)
+            premier = capteur.tick()
+            assert isinstance(premier, RunRequest)
+            _reindexation(instance, statut=DagsterRunStatus.FAILURE)
+            second = capteur.tick()
+        assert isinstance(second, RunRequest), f"reindexation perdue : {second}"
+
+    def test_la_reprise_ne_rejoue_pas_un_run_key_deja_consomme(self):
+        # Dagster cherche un run_key dans TOUT l'historique et refuse de
+        # recreer un run pour un run_key deja vu. Une reprise qui reutilise la
+        # meme cle est une reprise qui n'a pas lieu.
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
+            _rafale(instance, 3)
+            premier = capteur.tick()
+            _reindexation(instance, statut=DagsterRunStatus.FAILURE)
+            second = capteur.tick()
+            _reindexation(instance, statut=DagsterRunStatus.FAILURE)
+            troisieme = capteur.tick()
+        cles = [premier.run_key, second.run_key, troisieme.run_key]
+        assert len(set(cles)) == 3, cles
+
+    def test_une_reindexation_annulee_est_retentee(self):
+        # CANCELED est un statut terminal qui n'est pas un succes : la rafale
+        # n'a pas ete rendue cherchable, il reste quelque chose a faire.
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
+            _rafale(instance, 3)
+            capteur.tick()
+            _reindexation(instance, statut=DagsterRunStatus.CANCELED)
+            resultat = capteur.tick()
+        assert isinstance(resultat, RunRequest)
+
+    def test_une_reindexation_reussie_ferme_la_rafale(self):
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
+            _rafale(instance, 3)
+            capteur.tick()
+            _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
+            resultat = capteur.tick()
+        assert isinstance(resultat, SkipReason)
+        assert "Rien de nouveau" in str(resultat.skip_message)
+
+    @pytest.mark.parametrize(
+        "statut",
+        [
+            DagsterRunStatus.NOT_STARTED,
+            DagsterRunStatus.STARTING,
+            DagsterRunStatus.STARTED,
+            DagsterRunStatus.CANCELING,
+        ],
+    )
+    def test_rien_ne_repart_pendant_qu_une_reindexation_est_en_vol(self, statut):
+        # Sans cette garde, la reprise lancerait un second run de reindexation
+        # a chaque tick pendant que le premier travaille.
+        with DagsterInstance.ephemeral() as instance:
+            capteur = _Capteur(instance)
+            _rafale(instance, 3)
+            capteur.tick()
+            _reindexation(instance, statut=statut)
+            resultat = capteur.tick()
+        assert isinstance(resultat, SkipReason)
+        assert "deja en vol" in str(resultat.skip_message)
+
+    def test_l_echec_de_l_agent_ne_rougit_aucune_ingestion(self, espion, monkeypatch, tmp_path):
+        # La propriete que la reparation ne doit PAS perdre : l'appel vit dans
+        # son propre run, une ingestion reussie reste verte quoi qu'il advienne
+        # de l'agent.
+        resultats = _ingerer(monkeypatch, tmp_path, 3)
+        assert [resultat.success for resultat in resultats] == [True, True, True]
 
 
 class TestUrlVide:
@@ -311,7 +468,7 @@ class TestUrlVide:
         get_settings.cache_clear()
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 3)
-            resultat, _ = _tick(instance)
+            resultat = _tick(instance)
         assert isinstance(resultat, SkipReason)
         assert "AGENT_SERVICE_URL est vide" in str(resultat.skip_message)
 
@@ -334,13 +491,14 @@ class TestLAssetDeReindexation:
         assert metadata["chunks_indexed"].value == 8421
         assert "ok" in metadata["reindex"].value
 
-    def test_un_echec_ne_rougit_pas_le_run_mais_le_crie(self, espion):
-        resultat = materialize([lexical_index])
+    def test_un_echec_rougit_le_run_et_le_crie(self, espion):
+        # Voir TestUnEchecDeReindexationNEstPasPerdu pour le pourquoi : un run
+        # vert portant « ECHEC » dans une metadonnee n'alerte personne, et
+        # laissait le sensor croire la rafale traitee.
+        resultat = materialize([lexical_index], raise_on_error=False)
 
-        assert resultat.success is True
-        metadata = resultat.asset_materializations_for_node("agent__lexical_index")[0].metadata
-        assert "ECHEC" in metadata["reindex"].value
-        assert "ConnectionError" in metadata["reindex"].value
+        assert resultat.success is False
+        assert "ConnectionError" in _cause_du_rouge(resultat)
 
     def test_url_vide_le_dit_dans_les_metadonnees(self, espion, monkeypatch):
         monkeypatch.setenv("AGENT_SERVICE_URL", "")

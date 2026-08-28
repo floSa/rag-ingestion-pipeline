@@ -43,13 +43,50 @@ Les trois proprietes de l'appel survivent, et deux se renforcent :
 
 1. **Un echec ne fait jamais echouer une ingestion reussie.** Il ne le peut
    plus : l'appel vit dans son propre run, et ``request_reindex`` ne leve
-   toujours pas.
-2. **Mais il ne passe pas inapercu.** Le resultat part dans les metadonnees de
-   l'asset ``agent/lexical_index`` — donc dans le catalogue, avec un historique
-   de materialisations — en plus du journal du run.
+   toujours pas. C'est le run de reindexation qui rougit, jamais celui qui a
+   converti les pages.
+2. **Un echec rougit son run, et il est retente jusqu'a ce qu'il passe.** Voir
+   ci-dessous : c'est la propriete qui manquait, et son absence perdait la
+   reindexation pour toujours.
 3. **Une URL vide desactive l'appel, et c'est annonce au chargement** par
    ``definitions.py``. Le sensor le redit a chaque tick dans sa raison de saut,
    plutot que de lancer des runs qui n'ont rien a faire.
+
+**Pourquoi le sensor ne tient aucun etat a lui.** La premiere version posait un
+curseur a l'EMISSION de la demande : le repere avancait des que la demande
+partait, avant meme que le run n'ait tourne. Un agent injoignable, ou un run de
+reindexation rouge, laissait donc le curseur en avance sur ce qui avait
+reellement ete fait — et le tick suivant repondait « rien de nouveau ». La perte
+etait definitive, parce qu'un ``run_key`` consomme l'est pour toujours : Dagster
+le cherche dans TOUT l'historique et refuse de recreer un run pour une cle deja
+vue. Remettre le curseur a zero n'y aurait rien change.
+
+Le sensor compare donc desormais deux FAITS, tous deux lus dans l'historique des
+runs, qu'aucun tick n'a besoin d'ecrire :
+
+- le repere de la derniere **ingestion** reussie ;
+- le repere de la derniere **reindexation** reussie.
+
+Le repere est un ``storage_id``, entier croissant attribue par le stockage de
+Dagster a la creation du run. La reindexation n'est armee que lorsque plus rien
+n'est en vol, donc son run est toujours cree apres l'ingestion qu'elle traite :
+comparer les deux reperes revient a demander « la derniere reindexation reussie
+est-elle posterieure a la derniere ingestion reussie ? ».
+
+Trois consequences, toutes voulues :
+
+- **une reindexation echouee est retentee au tick suivant**, indefiniment, tant
+  qu'elle n'a pas reussi. Un agent arrete pendant deux heures produit des runs
+  rouges pendant deux heures — c'est bruyant, et c'est le prix a payer pour ne
+  jamais perdre en silence ce que le contrat exige. Rendre la reprise finie,
+  c'est reintroduire la perte, juste plus tard ;
+- **le ``run_key`` varie a chaque tentative** : il porte le repere de la derniere
+  tentative en plus de celui de la rafale. Il reste deterministe a l'interieur
+  d'un tick — deux evaluations concurrentes du sensor ne creeraient pas deux
+  runs —, mais il n'est plus consomme d'avance ;
+- **une reindexation lancee a la main depuis l'interface compte**. Si elle
+  reussit, le sensor n'en redemande pas une : l'index EST reconstruit, et c'est
+  le fait qui decide, pas l'auteur du run.
 
 NB : pas de ``from __future__ import annotations`` ici — Dagster valide le type
 reel de l'argument ``context``, pas sa forme differee en chaine.
@@ -112,6 +149,17 @@ STATUTS_TERMINES = frozenset(
 STATUTS_EN_COURS = tuple(statut for statut in DagsterRunStatus if statut not in STATUTS_TERMINES)
 
 
+class ReindexError(Exception):
+    """L'appel a l'agent a eu lieu et n'a pas abouti.
+
+    Nommee a l'anglaise, comme ``NebulaError`` du service d'extraction : c'est
+    la convention du depot pour les exceptions, et celle que ruff impose (N818).
+
+    Elle ne traverse jamais un run d'ingestion : elle ne peut etre levee que par
+    l'asset ``agent/lexical_index``, qui vit dans son propre job.
+    """
+
+
 @dataclass
 class ReindexDefinitions:
     """Objets Dagster qui portent la reindexation de l'agent."""
@@ -130,11 +178,24 @@ class ReindexDefinitions:
 def lexical_index(context: AssetExecutionContext) -> None:
     """Demande a l'agent de reconstruire son index lexical, et rend compte.
 
-    Ne leve jamais. L'agent peut legitimement etre arrete — c'est le cas d'une
-    premiere mise en route, pas un incident — et rougir ce run n'y changerait
-    rien tout en declenchant des reprises. L'echec ressort dans les metadonnees
-    de l'asset, conservees avec le run et visibles dans le catalogue, ainsi que
-    dans le journal.
+    **Leve si l'appel a ete tente et n'a pas abouti.** La regle precedente etait
+    « ne leve jamais », et elle avait une raison qui a disparu avec le
+    demenagement : l'appel vivait alors dans le run de la partition, ou une
+    reprise aurait reconverti des centaines de pages pour un appel HTTP. Ici,
+    une reprise coute UN appel HTTP.
+
+    Rougir est ce qui rend l'echec visible. Un run vert portant « ECHEC » dans
+    une metadonnee ne declenche aucune alerte, n'apparait dans aucun filtre
+    d'echec, et laissait le sensor croire la rafale traitee. Le run rouge est en
+    outre le fait que le sensor relit pour decider s'il doit retenter : sans
+    lui, il n'a aucun moyen de distinguer une reindexation faite d'une
+    reindexation perdue.
+
+    Une URL vide ne leve pas : l'appel n'a pas ete tente, c'est un choix de
+    configuration annonce au chargement, pas une panne.
+
+    Raises:
+        ReindexError: Si l'appel a eu lieu et n'a pas abouti.
     """
     settings = get_settings()
     resultat = request_reindex(
@@ -142,14 +203,20 @@ def lexical_index(context: AssetExecutionContext) -> None:
         api_key=settings.agent_api_key,
         timeout=settings.reindex_timeout_seconds,
     )
+    if resultat.called and not resultat.ok:
+        context.log.error(
+            f"POST /reindex non honore ({resultat.detail}). Les documents sont bien ingeres, "
+            "mais ils resteront invisibles en recherche LEXICALE cote agent tant que cet "
+            "appel n'aura pas abouti. Le sensor le retentera au prochain tick."
+        )
+        raise ReindexError(
+            f"POST /reindex n'a pas abouti sur {settings.agent_service_url} : {resultat.detail}"
+        )
+
     if resultat.ok:
         context.log.info(f"rag-agent-chat reindexe : {resultat.chunks_indexed} chunks")
     else:
-        context.log.warning(
-            f"POST /reindex non honore ({resultat.detail}). Les documents sont bien ingeres, "
-            "mais ils resteront invisibles en recherche LEXICALE cote agent jusqu'au "
-            "prochain redemarrage de celui-ci ou au prochain appel reussi."
-        )
+        context.log.warning(resultat.detail)
     metadonnees: dict[str, Any] = {"reindex": resultat.metadata_value}
     if resultat.chunks_indexed is not None:
         metadonnees["chunks_indexed"] = resultat.chunks_indexed
@@ -186,6 +253,25 @@ def _derniere_ingestion_reussie(instance: DagsterInstance, job_names: Sequence[s
         )
     ]
     return max(reperes) if reperes else None
+
+
+def _dernier_repere(
+    instance: DagsterInstance, job_name: str, statuts: Sequence[DagsterRunStatus] | None = None
+) -> int | None:
+    """Repere du run le plus recent de ce job, ``None`` s'il n'y en a aucun.
+
+    Args:
+        instance: Instance Dagster interrogee.
+        job_name: Nom du job.
+        statuts: Statuts retenus. Tous, si omis.
+
+    Returns:
+        Le ``storage_id`` du run le plus recent, ou ``None``.
+    """
+    records = instance.get_run_records(
+        RunsFilter(job_name=job_name, statuses=list(statuts) if statuts else None), limit=1
+    )
+    return records[0].storage_id if records else None
 
 
 def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
@@ -226,11 +312,28 @@ def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
         repere = _derniere_ingestion_reussie(context.instance, job_names)
         if repere is None:
             return SkipReason("Aucune ingestion reussie a reindexer.")
-        if context.cursor == str(repere):
-            return SkipReason("Rien de nouveau n'a ete ingere depuis la derniere reindexation.")
 
-        context.update_cursor(str(repere))
-        return RunRequest(run_key=f"reindex-{repere}")
+        # Une reindexation en vol n'est ni faite ni perdue : on attend son
+        # issue. Sans cette garde, la reprise en lancerait une nouvelle a chaque
+        # tick pendant que la premiere travaille.
+        derniere_tentative = _dernier_repere(context.instance, REINDEX_JOB_NAME)
+        en_vol = _dernier_repere(context.instance, REINDEX_JOB_NAME, STATUTS_EN_COURS)
+        if en_vol is not None:
+            return SkipReason("Une reindexation est deja en vol : la suivante attend son issue.")
+
+        # Le fait qui ferme la rafale est un run de reindexation REUSSI, pas une
+        # demande emise. Tant qu'il n'existe pas, il reste quelque chose a faire
+        # et le sensor rearme.
+        reussie = _dernier_repere(context.instance, REINDEX_JOB_NAME, [DagsterRunStatus.SUCCESS])
+        if reussie is not None and reussie > repere:
+            return SkipReason(
+                "Rien de nouveau n'a ete ingere depuis la derniere reindexation reussie."
+            )
+
+        # La cle porte la rafale ET la tentative. Un run_key consomme l'est pour
+        # toujours : une cle qui ne bougerait pas d'une tentative a l'autre
+        # serait une reprise qui n'a jamais lieu.
+        return RunRequest(run_key=f"reindex-{repere}-apres-{derniere_tentative or 0}")
 
     return ReindexDefinitions(
         asset=lexical_index, job=agent_reindex_job, sensor=agent_reindex_sensor
