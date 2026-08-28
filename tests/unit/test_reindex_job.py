@@ -26,12 +26,15 @@ import requests
 from dagster import (
     DagsterInstance,
     DagsterRunStatus,
+    DefaultSensorStatus,
     Definitions,
     RunRequest,
     RunsFilter,
+    SensorEvaluationContext,
     SkipReason,
     build_sensor_context,
     materialize,
+    sensor,
 )
 from dagster._core.test_utils import create_run_for_test
 
@@ -347,6 +350,40 @@ class TestLAssetDeReindexation:
         assert espion.appels == []
         metadata = resultat.asset_materializations_for_node("agent__lexical_index")[0].metadata
         assert "non appele" in metadata["reindex"].value
+
+
+class TestLeSensorEstLivreArme:
+    """Le lot entier est inerte si le sensor arrive a l'arret.
+
+    Un sensor sans ``default_status`` est livre STOPPED : Dagster le charge, il
+    apparait dans l'interface, et il ne tourne jamais. Aucune ingestion ne
+    reindexe plus rien, et rien ne rougit — c'est la panne muette que ce lot
+    existe pour supprimer, revenue par la porte du deploiement.
+
+    Retirer la ligne ``default_status=DefaultSensorStatus.RUNNING`` laissait
+    toute la suite verte. L'assertion porte donc sur l'objet PRODUIT par
+    ``build_reindex`` et sur celui que ``definitions.py`` livre reellement,
+    jamais sur la presence du mot dans la source.
+    """
+
+    def test_le_sensor_construit_est_arme(self):
+        built = build_reindex([JOB_INGESTION])
+        assert built.sensor.default_status is DefaultSensorStatus.RUNNING
+
+    def test_le_sensor_livre_par_les_definitions_est_arme(self):
+        from src.pipeline.definitions import defs
+
+        capteur = next(c for c in defs.sensors if c.name == REINDEX_SENSOR_NAME)
+        assert capteur.default_status is DefaultSensorStatus.RUNNING
+
+    def test_l_arme_ne_vient_pas_du_defaut_de_dagster(self):
+        # Sinon les deux assertions ci-dessus seraient vraies sans que la ligne
+        # existe, et le test serait vert des deux cotes du defaut.
+        @sensor(name="temoin_sans_default_status", job_name=REINDEX_JOB_NAME)
+        def temoin(context: SensorEvaluationContext) -> SkipReason:
+            return SkipReason("temoin")
+
+        assert temoin.default_status is not DefaultSensorStatus.RUNNING
 
 
 class TestDefinitionsResolvent:
