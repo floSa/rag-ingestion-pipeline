@@ -154,6 +154,15 @@ mesure donne 477.
 
 Stabilité : 25 graines `PYTHONHASHSEED` sur `main` → 25/25 vertes.
 
+**Après le lot 0** (branche `claude/rag-pipeline-lot-0-repairs-b232a1`, pointe
+`390ce8a`, 8 commits sur `main`) : `make all` passe sur **chacun des 8 commits
+pris individuellement** — 395 / 420 / 430 / 430 / 457 / 477 / 508 / 508 tests
+verts, `ruff` propre et `mypy --strict` sans erreur partout (`mesuré`). Le
+compte canonique de tests vit désormais dans `README.md`, section Tests :
+**508**. Stabilité : graine 0 puis graines 1 à 25 → **26/26 vertes sur chacun
+des 8 commits** (la graine 0 désactive la randomisation du hachage, c'est un
+cas distinct et elle est comptée à part).
+
 Corpus en place : 24 fichiers HTML (2 ouvrages × 12) + 1 PDF de 73 pages
 (`mesuré`). Parmi les 12 fichiers de chaque ouvrage, `Index.html` est écarté par
 le capteur (`matter.py:40`) ; **`Preface.html` ne l'est pas** — « preface » n'est
@@ -165,19 +174,6 @@ ouvrages, ce qui est le cas d'école de l'exigence 3.
 ## 3. Ouvert — bloque une mesure
 
 Un défaut qui bloque une mesure passe devant un défaut plus grave mais inerte.
-
-### 3.1 `POST /reindex` est absent de `main` — exigence 5 non tenue
-
-`grep -rn reindex` sur `main` : **zéro occurrence**. Le contrat n'est pas tenu.
-Une implémentation existe sur `claude/rag-ingestion-pipeline-restore-5e9fa1`
-(`src/pipeline/reindex.py`), mais elle appelle `/reindex` **par document** :
-`factory.py:_record_metadata` invoque `_reindex(context)`, et `_record_metadata`
-tourne une fois par partition. Le docstring du module dit « en fin
-d'ingestion », le contrat dit « en fin de pipeline ». Sur 21 documents, cela
-fait 21 reconstructions BM25 complètes et synchrones côté agent.
-
-**Coût de l'attente** : total. Sans cet appel, toute campagne mesure une
-recherche lexicale aveugle aux documents ingérés, sans que rien ne le signale.
 
 ### 3.2 Le graphe est peut-être toujours plat — contrainte 6
 
@@ -235,13 +231,6 @@ l'attribut `src` n'est vérifié par aucun test ni aucune mesure. Si c'est faux,
 **aucune image de capture HTML ne porte de `minio_url`** — donc aucune n'est
 servie par l'agent, qui ne sert que ce que le graphe référence
 (`RESTRICT_MEDIA_TO_GRAPH=true`). `supposé`, à prouver sur un chapitre.
-
-### 3.6 La porte qualité n'est pas reproductible depuis `pyproject.toml`
-
-`pyproject.toml` ne déclare **aucun** groupe de dépendances de développement :
-`uv sync` n'installe ni `pytest`, ni `ruff`, ni `mypy`. `requirements-dev.txt`
-existe mais n'est référencé ni par `pyproject.toml` ni par le `Makefile`. C'est
-pourquoi le chiffre « 407 tests » n'a pas pu être vérifié tel quel.
 
 ---
 
@@ -406,6 +395,33 @@ Les deux ne peuvent pas être vrais.
 importés, et `DOCUMENT_PROPERTIES` y compte **3** champs contre **7** dans
 `nebula.py:50-58`. Un lecteur qui ouvre `ngql.py` lit un schéma périmé.
 
+### 5.4 `make format` écrit dans le dépôt, et `main` n'est pas format-propre
+
+`ruff format src/` reformate **3 fichiers** à chaque exécution sur `main` comme
+sur toute la branche : `extraction.py:412`, `:442`, `:479` ; `language.py:136-140` ;
+`matter.py:134-137` (`mesuré` avec `ruff` 0.11.8 — la version du hook — et
+0.16.5, même résultat). Ce sont des lignes tenant dans les 100 colonnes mais
+pliées à la main.
+
+Conséquence : `make all` **mute l'arbre de travail** avant de le contrôler.
+Une porte qualité qui écrit dans le dépôt ne peut pas servir de contrôle — un
+`ruff format --check src/` en intégration continue serait rouge sur `main`. La
+correction est cosmétique et sans risque, mais elle touche `extraction.py`, que
+le chantier de la hiérarchie réécrit : à faire dans ce lot-là, pas avant.
+
+### 5.5 Les hooks `pre-commit` ne sont installés nulle part
+
+`.git/hooks/pre-commit` ne contient que le contrôle d'identité d'auteur. Le
+framework `pre-commit` n'est pas installé : `ruff`, `ruff-format`,
+`detect-secrets`, `trailing-whitespace` et `check-yaml` sont déclarés dans
+`.pre-commit-config.yaml` et **rien ne les exécute** (`mesuré`). C'est la cause
+directe de §5.4, et cela veut dire que `detect-secrets` n'a jamais tourné en
+garde-fou : il ne protège que ce qu'un humain pense à lancer.
+
+`make install` installe désormais le paquet `pre-commit` ; il reste à décider
+si `pre-commit install` doit être appelé, et par qui — le hook d'identité
+occupe déjà `.git/hooks/pre-commit` et le framework l'écraserait.
+
 ---
 
 ## 6. Ouvert — ce que la documentation affirme et que le code ne fait pas
@@ -458,4 +474,59 @@ un chantier, pas un correctif.
 
 ## 8. Traité
 
-*(vide — le chantier commence)*
+Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
+pas. Les commits cités sont ceux de `claude/rag-pipeline-lot-0-repairs-b232a1`.
+
+### 3.6 → traité par `eaa8a8e` — la porte qualité est reproductible
+
+`[dependency-groups] dev` déclaré dans `pyproject.toml`, épinglé comme les
+dépendances de production, `ruff` à la version du hook `.pre-commit-config.yaml`.
+`requirements-dev.txt` supprimé : il n'était référencé que par une ligne du
+README, aucune image ne l'installait, et quatre des douze outils qu'il déclarait
+n'avaient aucun utilisateur (`httpx`, `pytest-mock`, `pytest-asyncio` — aucun
+test ne les importe — et `pydantic-settings`, déjà dépendance de production).
+Le `Makefile` appelle chaque outil derrière `uv run` et gagne une cible
+`install` : la séquence tient en `make install && make all`, sans activation
+d'environnement.
+
+Reste ouvert et détaché de ce constat : §5.4 et §5.5.
+
+### « mypy rouge dès le premier commit » → traité par `98bb20d`
+
+Corrigé **à la source**, sans `type: ignore` ni assouplissement : `main.py` et
+`index_report.py` lisent `get_embedding_model` dans `embedding.py`, son module
+source, et non par réexport implicite depuis `vectors.py`. La correction est
+repliée dans le commit qui introduisait l'erreur — sans quoi la branche aurait
+gardé cinq commits rouges. Mutation vérifiée : remettre l'import depuis
+`vectors` rend `mypy --strict` rouge.
+
+### 3.1 → traité par `a3ad1f4` — `POST /reindex` une fois par rafale
+
+L'appel quitte `factory._record_metadata`. Il vit dans `src/pipeline/reindex_job.py` :
+un asset `agent/lexical_index`, son job `agent_reindex_job`, et un sensor qui
+l'arme quand **aucun run d'ingestion n'est en vol** (statuts non terminaux,
+`QUEUED` compris) **et** qu'au moins un a réussi depuis la dernière
+réindexation, repérée par un curseur. Le nombre d'appels ne suit plus le nombre
+de documents : 1 au lieu de 21 sur le corpus actuel.
+
+Options écartées, argumentées dans le docstring du module : un asset aval se
+matérialiserait dans le run de la partition et ne ferait que déplacer le défaut ;
+un `run_status_sensor` sur SUCCESS se déclenche lui aussi une fois par run et
+demanderait la même garde pour un harnais de test plus lourd ; un asset check
+vérifie, il n'agit pas.
+
+Limite consignée plutôt que découverte : un corpus déposé en goutte-à-goutte
+est une suite de rafales, donc une suite de réindexations. C'est le
+comportement voulu, ce n'est pas « une seule fois » dans l'absolu.
+
+Le garde qui manquait : les tests assertent un **nombre**, depuis le côté qui
+le produit, pour 1, 3 et 21 documents — un test « l'appel a lieu » était vert
+des deux côtés du défaut. Treize mutations du code livré ont été vérifiées
+rouges. Détail dans `tests/unit/test_reindex_job.py`.
+
+### « 407 tests verts » → traité par `390ce8a`
+
+Le dépôt ne portait **aucun** compte de tests : le 407 vivait hors du dépôt. Il
+en a désormais un seul, dans `README.md` section Tests, avec sa commande, sa
+date et son étiquette `mesuré` — **508** —, et la consigne d'y renvoyer plutôt
+que de le recopier.
