@@ -4,8 +4,16 @@ QUAND il part est une autre question, et elle a son module : ``reindex_job.py``.
 Les avoir confondus est ce qui a fait poster une fois par document une route
 que le contrat veut en fin d'ingestion.
 
-C'est la **seule obligation** que le contrat d'interface impose au pipeline, et
-elle etait absente : aucun appel, aucune configuration, nulle part.
+C'est **l'une des exigences dures** du contrat d'interface, et la seule que ce
+module-ci porte. Ce n'est pas la seule que le contrat impose au pipeline : le
+modele d'embedding en est une autre, verifiee au demarrage du service par
+``main.py:93`` via ``embedding.verify_model_name``, et le contrat en enonce
+d'autres encore, portees ailleurs dans la chaine. La liste qui fait foi est
+tenue hors du code, dans le registre du chantier : elle n'est pas recopiee ici,
+parce qu'une enumeration recopiee se ferme et que personne ne la rouvre.
+
+Ce qui etait vrai et qui justifie ce module : cette exigence-la etait absente,
+aucun appel, aucune configuration, nulle part.
 
 Ce qu'elle repare. L'agent tient son index lexical BM25 **en memoire**,
 construit au premier appel. La recherche dense, elle, part a ChromaDB a chaque
