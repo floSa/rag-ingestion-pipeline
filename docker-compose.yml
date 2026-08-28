@@ -194,11 +194,12 @@ services:
       resources:
         limits:
           memory: 10G
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # Pas de reservation GPU ici. Elle etait ecrite en dur et rendait le service
+    # INCREABLE sur une machine sans runtime nvidia : « could not select device
+    # driver "nvidia" ». Or l'ingestion tourne sur processeur, et c'est le cas
+    # nominal de cette chaine. Pour rendre un GPU au service, superposer
+    # docker-compose.gpu.yml :
+    #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
     networks:
       - rag_network
 

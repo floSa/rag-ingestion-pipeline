@@ -53,7 +53,10 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
   Studio UI pour la visualisation
 - **Volume partagé** `/Datas` monté dans Dagster et Docling : évite le transfert réseau
   de gros fichiers PDF
-- **Docling sur GPU** : seul service avec accès CUDA, isole la charge lourde
+- **Docling, seul service à pouvoir prendre le GPU** : la charge lourde y est isolée. La
+  réservation `nvidia` vit dans `docker-compose.gpu.yml` et n'est pas appliquée par
+  défaut — écrite en dur, elle rendait le service incréable sans runtime nvidia. Le cas
+  nominal est donc le processeur
 - **Embeddings locaux et multilingues** : `paraphrase-multilingual-MiniLM-L12-v2` via SentenceTransformers, pas d'appel API. Une question française retrouve les passages anglais, et réciproquement
   externe (pas d'OpenAI)
 - **Un sensor par source** : découplage des pipelines, chacun avec son job Dagster
