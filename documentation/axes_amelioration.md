@@ -163,6 +163,13 @@ compte canonique de tests vit désormais dans `README.md`, section Tests :
 des 8 commits** (la graine 0 désactive la randomisation du hachage, c'est un
 cas distinct et elle est comptée à part).
 
+**508 est un volume, pas une garantie.** Le fichier
+`tests/unit/test_hierarchie_bout_en_bout.py` fabrique l'arbre imbriqué qu'il
+prétend vérifier et reste vert des deux côtés de son défaut (§3.3) ; il compte
+pourtant dans les 508. Le développeur du lot 0 l'a signalé de lui-même plutôt
+que de laisser le chiffre parler seul. Toute lecture de ce compte doit porter
+cette réserve.
+
 Corpus en place : 24 fichiers HTML (2 ouvrages × 12) + 1 PDF de 73 pages
 (`mesuré`). Parmi les 12 fichiers de chaque ouvrage, `Index.html` est écarté par
 le capteur (`matter.py:40`) ; **`Preface.html` ne l'est pas** — « preface » n'est
@@ -421,6 +428,19 @@ garde-fou : il ne protège que ce qu'un humain pense à lancer.
 `make install` installe désormais le paquet `pre-commit` ; il reste à décider
 si `pre-commit install` doit être appelé, et par qui — le hook d'identité
 occupe déjà `.git/hooks/pre-commit` et le framework l'écraserait.
+
+**Sorti du §5 par décision du pilote, sur l'argument du développeur du lot 0.**
+Ce constat n'est pas du code mort : c'est un **garde-fou qu'on croit avoir et
+qui n'existe pas**, sur un dépôt dont le `.env` porte les mots de passe MinIO
+et PostgreSQL. C'est la même famille que le modèle d'embedding non gardé, et
+elle a déjà coûté cher ici. Il est donc traité en **lot 0b**, juste après la
+fusion du lot 0, et non avec le nettoyage du code mort.
+
+Une piste existe et n'est pas une consigne : le contrôle d'identité peut
+devenir un hook `repo: local` dans `.pre-commit-config.yaml`, ce qui rend le
+fichier `.git/hooks/pre-commit` au framework sans rien perdre. À arbitrer dans
+le lot, avec sa preuve par mutation — un commit portant une adresse hors liste
+blanche doit être refusé après comme il l'est aujourd'hui.
 
 ### 5.6 Trois `except Exception` sans justification écrite au site
 

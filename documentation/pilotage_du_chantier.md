@@ -137,6 +137,14 @@ Le compte canonique de tests vit dans `README.md`, section Tests. Sur `main`
 Si le compte diffère, ne suppose rien : c'est le dépôt qui a bougé, et il faut
 comprendre pourquoi avant de continuer.
 
+**Et lis ce nombre avec sa réserve.** 508 est le compte des tests qui passent,
+pas le compte des tests qui prouvent quelque chose. Le fichier
+`tests/unit/test_hierarchie_bout_en_bout.py` — 20 tests environ — **fabrique
+l'arbre imbriqué qu'il prétend vérifier** et reste vert des deux côtés de son
+défaut (registre §3.3). Le développeur du lot 0 l'a signalé lui-même plutôt que
+de laisser le chiffre parler seul. Un compte de tests est une mesure de volume,
+jamais une mesure de garantie.
+
 ---
 
 ## 3. Le contrat avec `rag-agent-chat`
@@ -192,8 +200,28 @@ au [§1 du registre](axes_amelioration.md).
 | `main` | `77d4f5b` | référence, 395 tests (`mesuré`) |
 | `claude/audit-refonte-rag-pipeline-fd8418` | — | **la branche du pilote** : registre et mandat, documentation seule, aucun code |
 | `claude/rag-pipeline-lot-0-repairs-b232a1` | `390ce8a` | **le lot 0, livré, en attente d'audit puis de fusion**. 8 commits, avance rapide possible sur `main` |
-| `claude/rag-ingestion-pipeline-restore-5e9fa1` | `832c566` | **branche d'origine du lot 0, conservée comme référence.** Ne pas fusionner : `mypy` y est rouge dès son premier commit |
-| `claude/rag-ingestion-restore-9e5aa5` | `77d4f5b` | vide, sans objet |
+| `claude/rag-ingestion-pipeline-restore-5e9fa1` | `832c566` | **branche d'origine du lot 0, conservée comme référence — À NE TOUCHER SOUS AUCUN PRÉTEXTE.** Voir ci-dessous |
+| `claude/rag-ingestion-restore-9e5aa5` | `77d4f5b` | vide : 0 commit au-dessus de `main`, jamais poussée (`mesuré`). À supprimer, mais **retirer son arbre de travail d'abord** — une autre conversation peut y être posée |
+
+**Décision du pilote sur les deux branches qui se ressemblent.** Le lot 0 a été
+livré sur une branche neuve, `b232a1`, plutôt qu'en réparant `5e9fa1` comme le
+mandat le demandait. Le développeur l'a signalé et a proposé soit de
+force-pousser l'historique réparé sur `5e9fa1`, soit de livrer directement dans
+`main`.
+
+**Les deux sont refusées, et on garde l'état actuel.**
+
+- **Pas de force-push sur `5e9fa1`.** Cette branche est poussée, et surtout
+  elle est la **seule base de comparaison** qui permette de vérifier ce que le
+  replantage des 5 commits d'origine a pu perdre ou altérer. C'est l'angle A du
+  mandat d'audit, et son outil est `git range-diff` entre les deux branches. La
+  force-pousser détruirait la référence au moment précis où on en a besoin.
+  Elle sera supprimée **après** la fusion du lot 0, pas avant.
+- **Pas de livraison directe dans `main`.** On n'y fusionne rien avant l'audit
+  indépendant.
+
+Le choix du développeur était donc le bon ; c'est de ne pas l'avoir posé comme
+un écart au moment de le faire qui est le défaut, pas le choix lui-même.
 
 ### 5.2 Ce que le lot 0 a livré, et ce que j'en ai vérifié moi-même
 
@@ -272,6 +300,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | Lot | Contenu | Débloque | État |
 |---|---|---|---|
 | **0** | Réparer et fusionner la branche de restauration : porte qualité reproductible, `mypy`, `/reindex` déplacé | démarrage de la stack, exigences **1** et **5** | **livré, à auditer puis à fusionner** |
+| **0b** | **Les gardes qu'on croit avoir** : §5.5, les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres. Entraîne §5.4 | un garde-fou de secrets qui existe vraiment, et un `make all` qui contrôle l'arbre au lieu de le muter | à faire, court |
 | **1** | **Observer sans corriger.** Reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + 5 pages du PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` présent sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** — la décision « corriger la hiérarchie avant ou après l'ingestion complète » | à faire |
 | **2** | La hiérarchie des titres, **si et seulement si** le lot 1 la montre plate : §3.2, §3.3, §4.11, §4.12. Impose une purge du space | contrainte **6**, donc toute l'ablation | conditionnel |
 | **3** | Instruments et gardes : §3.4, §4.4 (dont la **monotonie de `sequence`**, exigence 4), §4.14, §4.5 | la confiance dans tout chiffre produit après l'ingestion | à faire **avant** l'ingestion complète |
