@@ -49,6 +49,7 @@ if TYPE_CHECKING:
 
 from src.pipeline.cleaning import clean_html_file
 from src.pipeline.media import MinioImageExporter
+from src.pipeline.reindex import ReindexOutcome, request_reindex
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig
 
@@ -309,8 +310,38 @@ def _record_metadata(context: AssetExecutionContext, result: dict[str, Any]) -> 
             "chunks": progress.get("chunks", 0),
             "pages": progress.get("pages", progress.get("pages_total", 0)),
             "elapsed_seconds": result.get("elapsed_seconds", 0),
+            "reindex": _reindex(context).metadata_value,
         }
     )
+
+
+def _reindex(context: AssetExecutionContext) -> ReindexOutcome:
+    """Demande a l'agent de reconstruire son index lexical, et rend compte.
+
+    Ne leve jamais et ne fait jamais echouer l'asset : les trois stores sont
+    ecrits, le document est ingere. Rougir la partition declencherait des
+    reprises qui reconvertiraient le document pour rien, alors que l'agent
+    peut legitimement etre arrete — c'est le cas d'une premiere mise en route.
+
+    L'echec n'est pas silencieux pour autant : il part dans les metadonnees de
+    l'asset, conservees avec le run et lisibles par partition dans l'interface
+    Dagster, en plus du journal.
+    """
+    settings = get_settings()
+    resultat = request_reindex(
+        settings.agent_service_url,
+        api_key=settings.agent_api_key,
+        timeout=settings.reindex_timeout_seconds,
+    )
+    if resultat.ok:
+        context.log.info(f"rag-agent-chat reindexe : {resultat.chunks_indexed} chunks")
+    else:
+        context.log.warning(
+            f"POST /reindex non honore ({resultat.detail}). Le document est bien ingere, "
+            "mais il restera invisible en recherche LEXICALE cote agent jusqu'au "
+            "prochain redemarrage de celui-ci ou au prochain appel reussi."
+        )
+    return resultat
 
 
 def _build_sensor(

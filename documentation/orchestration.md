@@ -28,6 +28,8 @@ Un corpus de plusieurs dizaines de livres crée autant de partitions et de runs.
 1. **La file Dagster** — `QueuedRunCoordinator` avec `max_concurrent_runs: 2` dans `dagster.yaml`. Sans limite explicite, le coordinateur en lance jusqu'à dix, soit autant de processus dans le conteneur daemon.
 2. **Le worker du service d'extraction** — un seul document converti à la fois, la conversion saturant déjà le GPU.
 
+À la fin de chaque extraction, l'asset appelle `POST /reindex` sur `rag-agent-chat` pour que son index lexical BM25 — tenu en mémoire — voie le document qui vient d'être écrit. L'appel ne peut pas faire échouer l'asset ; son résultat est publié dans les métadonnées de sortie sous la clé `reindex`.
+
 Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurrent_runs` n'accélère rien tant que le service reste mono-worker : c'est un levier à ne toucher que si l'extraction est parallélisée.
 
 Avant de soumettre, l'asset attend que le service se déclare prêt (`GET /health`) : au démarrage de la stack, le chargement des modèles et l'initialisation du schéma NebulaGraph prennent plusieurs minutes, et le premier run échouerait pour une raison sans rapport avec le document.
