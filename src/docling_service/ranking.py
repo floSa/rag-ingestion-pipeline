@@ -125,3 +125,81 @@ def exceeds_body_size(size: float, body_size: float) -> bool:
         ``True`` si le titre depasse le corps du texte.
     """
     return bool(body_size) and size > body_size
+
+
+def flat_rank(item: Any, document: Any) -> int | None:
+    """Rang d'un titre dans un document non pagine (HTML, Markdown).
+
+    Le parent declare par Docling prime : sur les captures HTML, il rattache
+    chaque titre a celui qui le domine. A defaut, l'attribut ``level``, que
+    Docling renseigne fidelement sur le Markdown d'apres les dieses.
+
+    Args:
+        item: Item Docling.
+        document: Document Docling, pour resoudre les references.
+
+    Returns:
+        Le rang, ou ``None`` si l'element n'est pas un titre ou si aucun signal
+        ne repond.
+    """
+    if str(getattr(item, "label", "")) not in HEADING_LABELS:
+        return None
+    rang = docling_parent_rank(item, document)
+    return rang if rang is not None else docling_level_rank(item)
+
+
+def pdf_heading_rank(
+    label: str,
+    bbox: dict[str, float] | None,
+    heading_size: float,
+    body_size: float,
+    size_ranks: dict[float, int],
+    figure_boxes: list[tuple[float, float, float, float]],
+) -> int | None:
+    """Rang d'un titre dans un PDF, deduit de sa taille de police.
+
+    Docling ne declare aucun parent sur les PDF et met tous les titres au meme
+    niveau. La taille, elle, est ecrite en clair dans le fichier.
+
+    La fonction ne lit ni le PDF ni l'item Docling : elle recoit des mesures
+    deja prises et ne fait que decider. C'est ce qui la rend verifiable sans
+    PyMuPDF, et c'est la decision — pas la mesure — qui determine si le graphe
+    est plat ou hierarchique.
+
+    Deux titres sont ecartes du classement : celui dont la boite est contenue
+    dans une image ou un tableau — le texte d'une figure peut etre grand sans
+    etre un titre — et celui qui n'est pas plus grand que le corps du texte,
+    qui est presque toujours un faux positif de detection.
+
+    Args:
+        label: Label Docling de l'element.
+        bbox: Boite de l'element, ``None`` si inconnue.
+        heading_size: Taille de police relevee dans la boite du titre.
+        body_size: Taille dominante du corps du texte.
+        size_ranks: Rang de chaque taille de titre du document.
+        figure_boxes: Boites des images et tableaux de la meme page.
+
+    Returns:
+        Le rang du titre. ``None`` uniquement quand l'element n'est pas un
+        titre, ou quand le document n'offre aucun classement — auquel cas tous
+        ses titres restent freres sous le document.
+    """
+    if label not in HEADING_LABELS:
+        return None
+    if not size_ranks:
+        return None
+
+    # Un titre que l'on ne sait pas classer se range sous le titre courant.
+    # Lui donner le rang 0 en ferait un chapitre et remettrait l'arbre a zero :
+    # c'est ce que faisait « Then: », faux titre detecte en pleine page.
+    inclassable = max(size_ranks.values()) + 1
+
+    if not bbox:
+        return inclassable
+
+    boite = (bbox["l"], bbox["b"], bbox["r"], bbox["t"])
+    if not is_heading_candidate(boite, figure_boxes):
+        return inclassable
+    if not exceeds_body_size(heading_size, body_size):
+        return inclassable
+    return size_ranks.get(heading_size, inclassable)
