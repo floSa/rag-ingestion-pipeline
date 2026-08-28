@@ -8,6 +8,11 @@ juste — c'est en cela qu'elle ressemble aux autres pannes de cette chaine.
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from src.wipe_stores import purge_bucket, purge_collection, purge_space
@@ -151,3 +156,248 @@ class TestPurgeCollection:
         client = FauxChroma()
         purge_collection(client, "rag_documents")
         assert client.supprimees == ["rag_documents"]
+
+
+# ── Le point d'entree lui-meme ───────────────────────────────────────────────
+#
+# Les tests ci-dessus exercent les trois fonctions de purge. Ils ne touchent pas
+# a main(), qui porte pourtant les deux moities du titre du commit 7d587b0 :
+# « purger AUSSI le bucket MinIO » et « ECHOUER sur une purge partielle ». Trois
+# mutations y survivaient : remplacer sys.exit(1) par sys.exit(0), retirer le
+# bloc MinIO, ou ne plus ajouter « MinIO » a la liste des echecs.
+#
+# On teste ce point d'entree dans un SOUS-PROCESSUS, et non par import. Deux
+# raisons, la premiere seule suffirait :
+#
+#   - le comportement en cause EST le code de sortie du processus. C'est ce
+#     qu'un operateur voit, c'est ce qu'un `docker compose exec` remonte, et
+#     c'est ce qu'un `&&` dans une procedure de purge lit. Un import laisse
+#     attraper SystemExit et lire son attribut, ce qui prouve qu'un objet a ete
+#     leve, pas que la commande echoue ;
+#   - main() importe chromadb et nebula3, absents de l'environnement de
+#     developpement. Les bouchonner dans sys.modules du processus de test
+#     laisserait ces bouchons derriere lui pour les autres fichiers de la suite,
+#     et l'ordre des tests deviendrait significatif.
+#
+# Les bouchons sont donc de vrais paquets, ecrits sur disque et places en tete
+# de PYTHONPATH. Ils shuntent aussi `minio`, present lui, mais dont le client
+# ouvrirait une connexion reseau.
+
+RACINE_DEPOT = Path(__file__).resolve().parents[2]
+
+# Journal partage par les trois bouchons. Chaque geste effectivement pratique
+# sur un store y laisse une ligne : c'est ce qui distingue « la purge a eu
+# lieu » de « le script est alle jusqu'au bout ».
+_TRACE = '''
+import os
+
+
+def trace(ligne):
+    with open(os.environ["WIPE_TRACE"], "a", encoding="utf-8") as fichier:
+        fichier.write(ligne + "\\n")
+
+
+def doit_echouer(store):
+    return store in os.environ.get("WIPE_ECHECS", "").split(",")
+'''
+
+BOUCHONS = {
+    "_bouchon_commun.py": _TRACE,
+    "chromadb/__init__.py": """
+from _bouchon_commun import doit_echouer, trace
+
+
+class HttpClient:
+    def __init__(self, host=None, port=None):
+        if doit_echouer("chroma"):
+            raise RuntimeError("chromadb injoignable")
+
+    def delete_collection(self, nom):
+        trace("chroma delete_collection " + nom)
+""",
+    "minio/__init__.py": """
+from _bouchon_commun import doit_echouer, trace
+
+
+class _Objet:
+    def __init__(self, nom):
+        self.object_name = nom
+
+
+class Minio:
+    def __init__(self, endpoint, access_key=None, secret_key=None, secure=False):
+        pass
+
+    def bucket_exists(self, bucket):
+        if doit_echouer("minio"):
+            raise RuntimeError("minio injoignable")
+        return True
+
+    def list_objects(self, bucket, recursive=False):
+        trace("minio list_objects recursive=%s" % recursive)
+        return [_Objet("images/livre/1.png"), _Objet("images/livre/2.png")]
+
+    def remove_object(self, bucket, nom):
+        trace("minio remove_object " + nom)
+""",
+    "minio/error.py": """
+class S3Error(Exception):
+    pass
+""",
+    "nebula3/__init__.py": "",
+    "nebula3/Config.py": """
+class Config:
+    pass
+""",
+    "nebula3/gclient/__init__.py": "",
+    "nebula3/gclient/net.py": """
+from _bouchon_commun import doit_echouer, trace
+
+
+class _Reponse:
+    def is_succeeded(self):
+        return True
+
+    def error_msg(self):
+        return ""
+
+
+class _Session:
+    def execute(self, requete):
+        trace("nebula execute " + requete)
+        return _Reponse()
+
+    def release(self):
+        pass
+
+
+class ConnectionPool:
+    def init(self, adresses, config):
+        if doit_echouer("nebula"):
+            raise RuntimeError("graphd injoignable")
+        return True
+
+    def get_session(self, utilisateur, mot_de_passe):
+        return _Session()
+
+    def close(self):
+        pass
+""",
+}
+
+
+def _purger(tmp_path: Path, echecs: str = ""):
+    """Lance ``python -m src.wipe_stores`` pour de bon, stores bouchonnes.
+
+    Args:
+        tmp_path: Repertoire de travail du sous-processus. Il n'y a pas de
+            ``.env`` dedans, donc les reglages sont ceux du code et non ceux du
+            poste.
+        echecs: Stores qui doivent echouer, separes par des virgules, parmi
+            ``chroma``, ``minio`` et ``nebula``.
+
+    Returns:
+        Le processus termine, et la liste des gestes tracee par les bouchons.
+    """
+    bouchons = tmp_path / "bouchons"
+    for chemin, source in BOUCHONS.items():
+        cible = bouchons / chemin
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.write_text(source, encoding="utf-8")
+
+    trace = tmp_path / "trace.txt"
+    trace.write_text("", encoding="utf-8")
+
+    environnement = dict(os.environ)
+    environnement["PYTHONPATH"] = os.pathsep.join([str(bouchons), str(RACINE_DEPOT)])
+    environnement["WIPE_TRACE"] = str(trace)
+    environnement["WIPE_ECHECS"] = echecs
+    # Sans quoi un graphd injoignable serait retente quinze fois, cinq secondes
+    # d'attente entre chaque.
+    environnement["NEBULA_MAX_ATTEMPTS"] = "1"
+    environnement["NEBULA_RETRY_SECONDS"] = "0"
+
+    processus = subprocess.run(
+        [sys.executable, "-m", "src.wipe_stores"],
+        cwd=tmp_path,
+        env=environnement,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    return processus, trace.read_text(encoding="utf-8").splitlines()
+
+
+class TestLesBouchonsFonctionnent:
+    """Sans ceci, « la purge a tout fait » serait vrai pour la mauvaise raison."""
+
+    def test_le_sous_processus_a_bien_charge_les_bouchons(self, tmp_path):
+        processus, gestes = _purger(tmp_path)
+        assert processus.returncode == 0, processus.stderr
+        assert gestes, f"aucun geste trace — les bouchons n'ont pas ete atteints : {processus}"
+
+
+class TestMainPurgeLesTroisStores:
+    def test_chromadb_est_purge(self, tmp_path):
+        _, gestes = _purger(tmp_path)
+        assert "chroma delete_collection rag_documents" in gestes
+
+    def test_le_bucket_minio_est_purge(self, tmp_path):
+        # La moitie du titre de 7d587b0 : « purger AUSSI le bucket MinIO ».
+        # Retirer le bloc MinIO de main() laissait la suite verte.
+        _, gestes = _purger(tmp_path)
+        assert "minio list_objects recursive=True" in gestes
+        assert [geste for geste in gestes if geste.startswith("minio remove_object")] == [
+            "minio remove_object images/livre/1.png",
+            "minio remove_object images/livre/2.png",
+        ]
+
+    def test_le_space_nebula_est_supprime(self, tmp_path):
+        _, gestes = _purger(tmp_path)
+        assert any("DROP SPACE IF EXISTS" in geste for geste in gestes)
+
+    def test_une_purge_complete_sort_en_zero(self, tmp_path):
+        processus, _ = _purger(tmp_path)
+        assert processus.returncode == 0
+        assert "PURGE INCOMPLETE" not in processus.stdout
+
+
+class TestUnePurgePartielleEchoue:
+    """L'autre moitie du titre : « ECHOUER sur une purge partielle ».
+
+    Le code de sortie est le comportement lui-meme, pas son temoin : c'est ce
+    qu'un `&&` lit dans une procedure de purge. Remplacer sys.exit(1) par
+    sys.exit(0) laissait la suite verte, et une purge partielle passait alors
+    pour une purge reussie — on croit repartir propre et on re-ingere par-dessus
+    des restes.
+    """
+
+    def test_un_bucket_minio_en_echec_fait_sortir_en_un(self, tmp_path):
+        # Le store le plus recemment ajoute a main(), donc celui dont
+        # l'oubli dans la liste des echecs se verrait le moins.
+        processus, _ = _purger(tmp_path, echecs="minio")
+        assert processus.returncode == 1
+        assert "PURGE INCOMPLETE : MinIO" in processus.stdout
+
+    def test_chromadb_en_echec_fait_sortir_en_un(self, tmp_path):
+        processus, _ = _purger(tmp_path, echecs="chroma")
+        assert processus.returncode == 1
+        assert "PURGE INCOMPLETE : ChromaDB" in processus.stdout
+
+    def test_le_graphe_en_echec_fait_sortir_en_un(self, tmp_path):
+        processus, _ = _purger(tmp_path, echecs="nebula")
+        assert processus.returncode == 1
+        assert "PURGE INCOMPLETE : NebulaGraph" in processus.stdout
+
+    def test_les_stores_encore_debout_sont_purges_quand_meme(self, tmp_path):
+        # Une purge partielle sort en 1, elle ne s'arrete pas au premier echec :
+        # les deux autres stores doivent bien avoir ete vides.
+        processus, gestes = _purger(tmp_path, echecs="chroma")
+        assert processus.returncode == 1
+        assert "minio list_objects recursive=True" in gestes
+        assert any("DROP SPACE IF EXISTS" in geste for geste in gestes)
+
+    def test_tous_les_stores_en_echec_sont_nommes(self, tmp_path):
+        processus, _ = _purger(tmp_path, echecs="chroma,minio,nebula")
+        assert processus.returncode == 1
+        assert "PURGE INCOMPLETE : ChromaDB, MinIO, NebulaGraph" in processus.stdout
