@@ -22,12 +22,12 @@ from functools import lru_cache
 from typing import Any
 
 import chromadb
-from sentence_transformers import SentenceTransformer
 
 from src.docling_service.anchoring import block_size, resolve_anchors
 from src.docling_service.blocks import has_content
 from src.docling_service.chunking import contextualize
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
+from src.docling_service.embedding import get_embedding_model
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
 
@@ -35,21 +35,8 @@ logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "rag_documents"
 
-_model: SentenceTransformer | None = None
-_model_lock = threading.Lock()
 _collection: Any = None
 _collection_lock = threading.Lock()
-
-
-def get_embedding_model() -> SentenceTransformer:
-    """Retourne le modele d'embedding, charge au premier appel."""
-    global _model
-    with _model_lock:
-        if _model is None:
-            name = get_settings().embedding_model_name
-            logger.info("Chargement du modele d'embedding %s...", name)
-            _model = SentenceTransformer(name)
-        return _model
 
 
 def get_collection() -> Any:

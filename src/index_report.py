@@ -19,8 +19,9 @@ from typing import Any
 import chromadb
 
 from src.docling_service.blocks import has_content
+from src.docling_service.embedding import get_embedding_model
 from src.docling_service.settings import get_settings
-from src.docling_service.vectors import COLLECTION_NAME, get_embedding_model
+from src.docling_service.vectors import COLLECTION_NAME
 
 # En deca, un chunk ne porte pas assez de matiere pour etre retrouve utilement.
 FAIBLE_CONTENU_CARACTERES = 40

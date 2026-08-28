@@ -22,7 +22,8 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 
-from src.docling_service import extraction, images, vectors
+from src.docling_service import extraction, images
+from src.docling_service.embedding import get_embedding_model, verify_model_name
 from src.docling_service.jobs import Job, JobQueue
 from src.docling_service.nebula import get_writer
 from src.docling_service.settings import get_settings
@@ -59,7 +60,7 @@ def _warm_up() -> None:
     """Precharge les modeles pour que le premier job ne les attende pas."""
     try:
         extraction.get_converter()
-        vectors.get_embedding_model()
+        get_embedding_model()
     except Exception:
         logger.exception("Prechargement des modeles echoue")
     else:
@@ -78,7 +79,18 @@ def _init_objects() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Demarre le worker et lance les initialisations en arriere-plan."""
+    """Demarre le worker et lance les initialisations en arriere-plan.
+
+    Le modele d'embedding est verifie AVANT tout le reste, et l'exception n'est
+    pas rattrapee : le service refuse de demarrer plutot que d'indexer avec un
+    modele que rag-agent-chat ne saura pas interroger. C'est deliberement plus
+    brutal que le prechargement ci-dessous, qui se contente de journaliser :
+    un service mort se voit, un index silencieusement anglais, non.
+
+    Raises:
+        EmbeddingContractError: Si EMBEDDING_MODEL_NAME n'est pas celui du contrat.
+    """
+    verify_model_name(get_settings().embedding_model_name)
     queue.start()
     for target in (_init_graph, _init_objects, _warm_up):
         threading.Thread(target=target, name=target.__name__, daemon=True).start()
