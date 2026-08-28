@@ -422,6 +422,19 @@ garde-fou : il ne protège que ce qu'un humain pense à lancer.
 si `pre-commit install` doit être appelé, et par qui — le hook d'identité
 occupe déjà `.git/hooks/pre-commit` et le framework l'écraserait.
 
+### 5.6 Trois `except Exception` sans justification écrite au site
+
+`wipe_stores.py:107`, `:115` et `:126` (branche `…restore-5e9fa1`, commit
+`50fcb44`) attrapent `Exception` nu, journalisent et poursuivent, sans une
+ligne qui dise pourquoi la largeur est voulue. La règle du dépôt l'exige au
+site, et §4.7 relève exactement le même défaut dans `cleaning.py:486-489`.
+
+Le cas est ici moins grave qu'en 4.7 : la conséquence est portée par
+`wipe_stores.py:135-138`, qui accumule les stores en échec et sort en 1 — une
+purge partielle ne passe donc pas pour une purge réussie. Ce qui manque est la
+phrase, pas le garde-fou. À traiter avec 4.7, d'une seule main.
+
+
 ---
 
 ## 6. Ouvert — ce que la documentation affirme et que le code ne fait pas
