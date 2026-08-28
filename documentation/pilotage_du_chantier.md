@@ -85,22 +85,37 @@ Le distant est **personnel** : `git@github.com-perso:floSa/rag-ingestion-pipelin
 `Datas/htms/`, `Datas/pdfs/`, `Datas/mds/`, `Datas/database/` sont dans le
 `.gitignore` : **le corpus n'est pas versionné**. Un clone arrive vide.
 
-Sauvegarde hors dépôt : `/home/florianhorellou/corpus-rag-sauvegarde`
-(27 fichiers, 64 Mo, noms d'origine). Elle est **locale au poste initial** — sur
-un poste neuf, il faut l'y apporter.
+Il faut donc le **transporter à la main** d'un poste à l'autre. Deux sources
+existent, et **elles ne sont pas interchangeables.**
 
-Ce que le corpus doit contenir pour que le chantier reprenne (`mesuré`) :
+**Copier `Datas/htms/` et `Datas/pdfs/` du dépôt lui-même** (`mesuré`,
+28 août 2026) :
 
 ```
 Datas/htms/MLOps with Databricks/                              12 fichiers
 Datas/htms/Practical MLflow for Generative AI on Databricks/   12 fichiers
 Datas/pdfs/Hands-On_RAG_for_Production_ER_-_Ofer_Mendelevitch.pdf   73 pages
+                                            25 fichiers, environ 56 Mo au total
 ```
 
-**Les horodatages de capture ont été retirés des noms AVANT toute ingestion,
-délibérément** — voir l'exigence 2 du contrat : `source_path` entre dans le
-calcul de `element_id`, donc tout renommage postérieur à une ingestion tue le
-jeu de questions. **Ne renomme rien.**
+**Ne pas copier la sauvegarde** `/home/florianhorellou/corpus-rag-sauvegarde`
+(27 fichiers, 64 Mo, locale au poste initial). Elle diverge de l'arbre de
+travail sur deux points, tous deux nuisibles :
+
+- elle porte **13** fichiers pour `MLOps with Databricks` contre 12 : c'est le
+  chapitre capturé deux fois, dont le doublon a été retiré. Elle contient aussi
+  un `docling_paper.pdf` qui n'appartient pas au corpus ;
+- elle porte **les noms d'origine, horodatages de capture compris**. Ceux du
+  dépôt en ont été débarrassés **avant toute ingestion, délibérément**.
+
+C'est le second point qui compte. `source_path` entre dans le calcul de
+`element_id` (contrat, exigence 2) : deux machines dont les noms de fichiers
+diffèrent d'un caractère produisent des identifiants différents, donc des
+mesures que rien ne permet de comparer, **sans qu'aucune erreur ne le
+signale**. Les noms doivent être identiques au caractère près des deux côtés.
+
+La sauvegarde reste le filet en cas de perte — jamais la source d'une copie.
+**Et ne renomme rien.**
 
 ### 2.3 Le `.env`
 
