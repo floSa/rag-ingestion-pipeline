@@ -517,8 +517,8 @@ massif.
 
 **Un QUATRIÈME fichier n'est pas format-propre, et il est dans un angle mort.**
 `tests/unit/test_wipe_stores.py`, préexistant sur `main` (`mesuré`, 31 août
-2026 : `uv run ruff format --check src/ tests/` → « 4 files would be reformatted,
-56 files already formatted »). Il n'a rien à voir avec le lot 2. Son angle mort
+2026, remesuré sur cette révision : `uv run ruff format --check src/ tests/` →
+« 4 files would be reformatted, 58 files already formatted »). Il n'a rien à voir avec le lot 2. Son angle mort
 est triple : `make format-check` est **borné à `src/`** et ne le signale jamais ;
 `make format` ne le répare pas, pour la même raison ; mais le hook
 `ruff-format --check`, installé depuis le lot 0b, **bloque** tout commit qui le
@@ -533,12 +533,16 @@ c'est une phrase d'exhaustivité, et c'en est la deuxième de ce lot.
 
 **Le coût du reformatage est MESURÉ, et il est petit.** `uv run ruff format src/`
 produit **16 lignes** de diff — 4 ajoutées, 12 supprimées
-(`git diff --numstat -- src`) — sur **1 213** lignes dans les trois fichiers
-(`wc -l`), à **quatre** endroits, tous des replis de ligne faits à la main
-(`mesuré`, 31 août 2026). **Ce n'est pas un « reformatage massif ».** La phrase
+(`git diff --numstat -- src`) — sur **1 221** lignes dans les trois fichiers
+(`wc -l` **avant** le reformatage : le « 1 213 » écrit ici comptait l'arbre
+**d'après**, et un diff ne se rapporte pas au tas qu'il a produit), à **cinq**
+endroits, dont **quatre** replis de ligne faits à la main et un doublon de ligne
+vide dans `_extract_pdf` (`mesuré`, 31 août 2026, `ruff` 0.11.8 avec le
+`pyproject.toml` du dépôt — sans lui, `ruff` retombe sur 88 colonnes et le chiffre
+n'a plus rien à voir). **Ce n'est pas un « reformatage massif ».** La phrase
 qui l'affirmait était surdimensionnée, et le mandat instruisait chaque
 conversation à venir de l'accepter sans remesurer. **La décision de ne pas
-reformater reste la bonne, pour une autre raison :** trois des quatre endroits
+reformater reste la bonne, pour une autre raison :** trois des cinq endroits
 sont dans `extraction.py`, que le lot 2 réécrit, et un diff de formatage mêlé à
 cette réécriture se relit mal. C'est un argument de lisibilité, pas de volume.
 
@@ -988,8 +992,8 @@ corpus est hors de portée des hooks, et voici comment l'étendre » :** c'est u
 ajouter — et c'est précisément l'effet voulu de l'exclusion. Les deux seules
 réserves y sont écrites : **ne renommer aucun fichier** (`source_path` entre dans
 `element_id`), et les bornes de GitHub (avertissement à 50 Mo par fichier, refus
-à 100 Mo — sans objet aujourd'hui, le plus gros fichier du corpus pesant moins
-de 1 Mo).
+à 100 Mo — sans objet aujourd'hui, mais **pas de loin** : voir F1 plus bas, le
+« moins de 1 Mo » écrit ici était faux d'un facteur 6).
 
 **Ce que l'exclusion coûte, assumé et écrit au site :** un secret réel déposé
 sous `Datas/` ne serait pas vu par `detect-secrets`. Accepté — le corpus est une
@@ -1160,7 +1164,7 @@ code fait.
 | **D3** | README : `check-added-large-files` = « aucun fichier > 500 ko » | **faux.** Seuls les fichiers **ajoutés** sont contrôlés ; un fichier déjà suivi qu'on modifie passe quelle que soit sa taille, et le dépôt post-fusion en porte **25** au-dessus du seuil (`mesuré`) | README, tableau des hooks — ligne détachée de `check-yaml` |
 | **D4** | Makefile : « `uv sync` … c'est la **seule** étape d'installation de la porte qualité » | **rendue fausse par le lot**, qui en avait fait deux. Redevenue **vraie** : `make install` arme aussi les hooks | Makefile, cible `install` — voir R1 |
 | **D7** | README, mandat §2.4, ce registre §5.4 : « trois fichiers » non format-propres | **faux.** Il y en a **quatre** : `tests/unit/test_wipe_stores.py`, préexistant sur `main`, invisible à `make format-check` (borné à `src/`), non réparé par `make format`, mais **bloqué** par le hook `ruff-format --check` | §5.4 ci-dessus, plus README et mandat §2.4. Le geste de sortie y est écrit |
-| **D8** | « reformatage massif » qui « noierait le lot 2 » | **surdimensionné.** `mesuré` : **16 lignes** de diff sur **1 213**, à quatre endroits, tous des replis de ligne. La décision de ne pas reformater reste bonne — pour la **lisibilité** du lot 2, pas pour un volume | §5.4 ci-dessus : le récit est remplacé par la mesure |
+| **D8** | « reformatage massif » qui « noierait le lot 2 » | **surdimensionné.** `mesuré` : **16 lignes** de diff sur **1 221**, à cinq endroits, dont quatre replis de ligne (le « 1 213, quatre endroits » de cette ligne était lui-même imprécis — voir F2 plus bas). La décision de ne pas reformater reste bonne — pour la **lisibilité** du lot 2, pas pour un volume | §5.4 ci-dessus : le récit est remplacé par la mesure |
 | **D9** | README : « le dépôt en portait **2** » pragmas | **faux.** Il y en a **3** — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et `:92` (`mesuré`). La troisième est née du piège de déduplication décrit plus haut, et n'avait pas été recomptée | README, avec la commande de comptage |
 | **D10** | `is_verified: false` lu comme un signe de pourrissement de la baseline | **faux.** En sémantique `detect-secrets`, `is_verified` signifie « vérifié contre le **service réel** » ; le champ d'audit humain est `is_secret`. C'est la valeur normale de presque toute entrée. **La preuve du fantôme reste entière** — la ligne 44 disparue — mais elle tenait seule | `.pre-commit-config.yaml` et ce registre, aux deux sites |
 | **H8** | mandat §6 et §7 : le lot 0b justifié par « un dépôt dont le `.env` porte les mots de passe » | **survente.** Un hook `pre-commit` ne voit que les fichiers **indexés**, `.env` est ignoré et non suivi, donc l'installer ne le fera **jamais** scanner. Le lot avait corrigé cette survente au README et à `SECURITY.md`, **pas au mandat** — le texte le plus copié du chantier | mandat §6 et §7 |
@@ -1430,6 +1434,67 @@ passe **11/11** et le dépôt désigné ne reçoit **aucun** hook. Avant, elle r
 peut effacer ce qu'il doit observer — celui-ci pouvait *armer* ce qu'il doit
 observer. Quand un fichier de test purge une variable d'environnement à un
 endroit, la question n'est pas « pourquoi ici », c'est « **où encore** ».
+
+#### F1 et F2 → deux chiffres faux dans le commit qui corrigeait les chiffres
+
+**F1 — « le plus gros fichier du corpus pèse aujourd'hui moins de 1 Mo ».** C'est
+la phrase sur laquelle le `README.md` concluait que les bornes de GitHub ne se
+posent pas. Elle est **fausse d'un facteur 6**. `mesuré` le 31 août 2026 **sur le
+résultat de la fusion d'essai `--no-ff` avec `a005172`** :
+
+```bash
+git ls-files -z -- Datas | xargs -0 -I{} stat -c '%s %n'
+```
+
+| Mesure | Valeur |
+|---|---|
+| plus gros fichier | **6 362 475 o** — `Datas/htms/Practical MLflow for Generative AI on Databricks/8. Deploying a GenAI Application with MLflow.html` |
+| plus petit fichier | **671 707 o** — `…/Practical MLflow…/Preface.html` |
+| au-dessus de 1 Mo | **19 sur 25** |
+| total | 57 381 999 o, soit les 55 Mo de `du -sh Datas` |
+
+**La conclusion survit, la marge non.** Elle est de **8×** face à l'avertissement
+à 50 Mo, pas de 50×. Corrigé aux **deux** sites : `README.md` et ce registre.
+
+**F2 — « 4 files would be reformatted, 56 files already formatted ».** Le chiffre
+est **58**, remesuré sur cette révision. Et son défaut n'est pas d'être faux :
+**56 est une valeur juste, mesurée sur le mauvais arbre.** `mesuré` par
+`git archive 6f554e8 | tar -x` puis `ruff format --check src/ tests/` :
+« 4 files would be reformatted, **56** files already formatted » à `6f554e8` —
+c'est-à-dire **avant** que la réparation n'ajoute ses deux fichiers de tests.
+Le commit qui modifie l'arbre citait donc une mesure prise sur l'arbre d'avant.
+Corrigé aux **trois** sites : `README.md`, mandat §2.4, ce registre §5.4.
+
+**C'est cette forme-là qu'il faut retenir**, pas les deux chiffres : *un nombre
+mesuré, exact, et périmé par le commit qui le porte*. Un `mesuré` n'est pas une
+étiquette de véracité, c'est une étiquette de **provenance** — et une provenance
+comprend l'arbre, pas seulement la commande et la date.
+
+##### Le balayage de provenance qu'ils ont rendu nécessaire
+
+Tous les chiffres du diff `6f554e8..566eb35` ont été repassés. Deux autres
+portaient le même défaut, plus petits, et ils sont corrigés dans le même commit :
+
+| Chiffre | Écrit | Mesuré | Ce qui n'allait pas |
+|---|---|---|---|
+| dénominateur du coût de reformatage | « 16 lignes sur **1 213** » | **1 221** | `wc -l` pris sur l'arbre **d'après** `ruff format`. Un diff ne se rapporte pas au tas qu'il a produit : 1 221 − 8 = 1 213, et l'écart **est** le diff lui-même |
+| nombre d'endroits reformatés | « **quatre**, tous des replis de ligne » | **cinq**, dont quatre replis | le cinquième est un doublon de ligne vide dans `_extract_pdf`, sans addition en face. `git diff -U0 \| grep -c '^@@'` → 5 |
+
+Les six autres ont été **reconfirmés justes**, avec leur commande :
+`3 files would be reformatted, 33 files already formatted` (`src/` seul) ;
+**111** commits de `main` dont **aucun** ne déclare `identite-auteur` (boucle
+`git show <c>:.pre-commit-config.yaml`) ; **3** pragmas porteurs
+(`grep -rn 'pragma: allowlist secret' --include='*.py'`) ; **25** fichiers et
+**55 Mo** de corpus (`git ls-files -- Datas`, `du -sh Datas`) ; **16 lignes** de
+diff, 4 ajoutées et 12 supprimées (`git diff --numstat`) ; et le compte de tests
+du `README.md`, remesuré à chaque commit de cette réparation.
+
+**Un piège de mesure trouvé au passage, et consigné parce qu'il se reproduira :**
+`ruff format` sur un arbre extrait **sans** le `pyproject.toml` du dépôt retombe
+sur ses 88 colonnes par défaut au lieu des 100 déclarées, et rend alors
+« 2 files reformatted » et **66** lignes de diff au lieu de 3 et 16. Un
+reformatage se mesure **avec la configuration du dépôt**, jamais sur les fichiers
+seuls.
 
 ### Trouvé par la réparation du lot 0b, et NON traité
 

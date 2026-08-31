@@ -323,8 +323,8 @@ signale trois fichiers pliés à la main — `extraction.py`, `language.py`,
 
 **Mais le dépôt en porte QUATRE, et ce quatrième est dans un angle mort.**
 `tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré`,
-31 août 2026 : `uv run ruff format --check src/ tests/` → « 4 files would be
-reformatted, 56 files already formatted »). `make format-check` est borné à
+31 août 2026, remesuré sur cette révision : `uv run ruff format --check src/
+tests/` → « 4 files would be reformatted, 58 files already formatted »). `make format-check` est borné à
 `src/` et ne le voit jamais ; `make format` ne le répare pas ; le hook
 `ruff-format --check` **bloque** tout commit qui le touche. Toute phrase qui dit
 « trois fichiers » parle donc de la **portée de `make format-check`**, jamais de
@@ -333,9 +333,9 @@ celle du garde installé.
 
 Ne lance pas `make format` : les trois fichiers de `src/` sont réservés au lot 2,
 qui réécrit `extraction.py`. **Le motif est la lisibilité de ce lot-là, pas un
-volume** : le reformatage coûte **16 lignes** de diff sur **1 213**, à quatre
-endroits, tous des replis de ligne (`mesuré`, `git diff --numstat` après
-`uv run ruff format src/`). Le récit d'un « reformatage massif » était
+volume** : le reformatage coûte **16 lignes** de diff sur **1 221**, à cinq
+endroits — quatre replis de ligne et un doublon de ligne vide (`mesuré`,
+`git diff --numstat` après `uv run ruff format src/`). Le récit d'un « reformatage massif » était
 surdimensionné, et il instruisait chaque conversation à venir de l'accepter sans
 remesurer. Le détail et la marche à suivre vivent au `README.md`, section Tests ;
 le constat au registre §5.4.

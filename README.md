@@ -490,7 +490,7 @@ des lignes qui tiennent dans les 100 colonnes mais ont été pliées à la main.
 
 **Il y en a un QUATRIÈME, et `make format-check` ne le voit pas.**
 `tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré` :
-`uv run ruff format --check src/ tests/` → « 4 files would be reformatted, 56
+`uv run ruff format --check src/ tests/` → « 4 files would be reformatted, 58
 files already formatted »). Il préexiste sur `main`, il n'a rien à voir avec le
 lot 2, et il tombe dans un angle mort : `make format-check` est borné à `src/` et
 ne le signale jamais, `make format` ne le répare pas — mais le hook
@@ -506,11 +506,12 @@ au lot de la hiérarchie, qui réécrit `extraction.py`.
 
 **Et la raison tient à la lisibilité du lot 2, pas à un volume.** Le coût du
 reformatage est **mesuré** : `uv run ruff format src/` produit **16 lignes** de
-diff — 4 ajoutées, 12 supprimées, `git diff --numstat` — sur **1 213** lignes
-dans les trois fichiers, à **quatre** endroits, tous des replis de ligne faits à
-la main. Ce n'est pas un « reformatage massif » : la phrase qui l'affirmait était
-surdimensionnée, et elle instruisait chaque lot à venir de l'accepter sans
-remesurer. La décision reste la bonne pour une autre raison — trois de ces quatre
+diff — 4 ajoutées, 12 supprimées, `git diff --numstat` — sur **1 221** lignes
+dans les trois fichiers, à **cinq** endroits, dont **quatre** replis de ligne
+faits à la main et un doublon de ligne vide. Ce n'est pas un « reformatage
+massif » : la phrase qui l'affirmait était surdimensionnée, et elle instruisait
+chaque lot à venir de l'accepter sans remesurer. La décision reste la bonne pour
+une autre raison — trois de ces cinq
 endroits sont dans `extraction.py`, que le lot 2 réécrit, et un diff de
 formatage mêlé à cette réécriture se relit mal. Le rouge est un constat exact sur
 l'état du dépôt, consigné au registre §5.4, et il tombera avec ce lot-là.
@@ -758,8 +759,16 @@ seuil à relever, aucune exception à ajouter. Deux choses seulement :
   entre dans `element_id`. Les noms doivent être identiques au caractère près
   d'un poste à l'autre (mandat §2.2) ;
 - au-delà de **50 Mo par fichier**, GitHub avertit ; au-delà de **100 Mo**, il
-  refuse. Le plus gros fichier du corpus pèse aujourd'hui moins de 1 Mo, donc
-  la question ne se pose pas — mais elle se poserait pour une capture vidéo.
+  refuse. Aucun fichier du corpus n'approche ces bornes aujourd'hui — mais
+  **pas « de loin » comme ce paragraphe l'a affirmé**. Il disait « le plus gros
+  fichier du corpus pèse aujourd'hui moins de 1 Mo » : c'est **faux**, et de
+  presque un ordre de grandeur. `mesuré` le 31 août 2026 **sur le résultat de la
+  fusion d'essai**, `git ls-files -z -- Datas | xargs -0 -I{} stat -c '%s %n'` :
+  le plus gros pèse **6 362 475 o** — `Datas/htms/Practical MLflow for
+  Generative AI on Databricks/8. Deploying a GenAI Application with
+  MLflow.html` — le plus petit **671 707 o**, et **19 des 25** dépassent 1 Mo.
+  La conclusion tient, la marge est de **8×** et non de 50× : une capture plus
+  lourde, ou un PDF d'images, la rapprocherait vite.
 
 **Ce que l'exclusion coûte**, écrit pour que personne ne le découvre : un secret
 réel déposé sous `Datas/` ne serait pas vu par `detect-secrets`. C'est accepté —
