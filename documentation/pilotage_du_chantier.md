@@ -478,7 +478,7 @@ au [§1 du registre](axes_amelioration.md).
 
 | Réf | Pointe | Rôle |
 |---|---|---|
-| `main` | `e998e7d` | **tout ce qui est fusionné, y compris ce mandat, le registre et le corpus.** Le lot 0 y est depuis le 29 août 2026 (fusion `b59bf38`), le lot 0b depuis le 31 (fusion `e998e7d`). Un clone frais suffit : il n'y a rien à checkouter. **Remesure cette pointe avant de t'en servir** — elle a périmé deux fois en trois jours |
+| `main` | `528748d` | **tout ce qui est fusionné, y compris ce mandat, le registre et le corpus.** Le lot 0 y est depuis le 29 août 2026 (fusion `b59bf38`), le lot 0b depuis le 31 (fusion `e998e7d`). Un clone frais suffit : il n'y a rien à checkouter. **Remesure cette pointe avant de t'en servir** — elle a périmé deux fois en trois jours |
 | tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 avant sa **première** réparation. Base de comparaison, pas une ligne de travail — d'où un tag et non une branche |
 
 **Aucun lot n'est en vol.** `lot-0` a été fusionnée (`--no-ff`, `b59bf38`) puis
@@ -948,7 +948,9 @@ détruis la mesure que le chantier attend.
 Dépôt : mesure-le, ne le lis pas — `git rev-parse --show-toplevel`. Sur le
 poste vérifié le 31 août 2026 : /home/ubuntu/RAG/rag-ingestion-pipeline.
 Base : main. Mesure sa pointe : `git rev-parse --short main`. Elle était à
-`e998e7d` le 31 août 2026, après la fusion du lot 0b.
+`528748d` le 31 août 2026 — la fusion du lot 0b est `e998e7d`, plus un commit de
+documentation du pilote. **Ce chiffre périme vite** : il a bougé deux fois en
+trois jours, et une fois dans l'heure qui a suivi l'écriture de ce prompt.
 Tu travailles sur une branche `lot-1` partie de `main`.
 Une branche par lot en vol, jamais plus : n'en crée pas d'autre.
 
