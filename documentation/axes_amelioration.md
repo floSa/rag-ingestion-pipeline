@@ -1359,6 +1359,47 @@ en sort inchangé. Chaque fois qu'une boucle **vérifie**, il faut se demander c
 qu'elle rend quand elle ne tourne pas — et le rendre impossible, pas le
 documenter.
 
+#### F11 / C6 → le garde du corpus n'avait aucun modèle de la clé `files`
+
+`tests/unit/test_hooks_contre_le_corpus.py` ne lisait que `config.get("exclude")`.
+Or `pre-commit` filtre la liste de fichiers par **deux** clés de racine : un
+fichier est vu par les hooks si `re.search(files, chemin)` **et** non
+`re.search(exclude, chemin)`. `files` vaut `''` par défaut, ce qui matche tout —
+et c'est pour cela que son absence ne se remarquait pas.
+
+**Deux mutations survivaient** (`mesuré` le 31 août 2026, suite entière **verte à
+550** dans les deux cas) :
+
+| Mutation | Ce qu'elle fait | Ce que les tests disaient |
+|---|---|---|
+| ajouter `files: '^Datas/'` à la **racine** | les **sept** hooks basés fichiers rendent « no files to check » et un `.py` volontairement sale se commite en `rc=0` (`mesuré` bout en bout, mutation **commitée**, dans un clone armé) | **550 verts** |
+| `exclude: '^Datas/\|^scripts/'` | soustrait à **tous** les hooks `scripts/git-hooks/pre-commit` — le contrôle d'identité lui-même — et `scripts/installer-les-garde-fous.sh` | **550 verts** |
+
+La première est la plus large : elle désarme la porte **entière** en laissant
+l'`exclude` livré intact, donc en restant verte sur les trois tests du fichier.
+La seconde passait parce que la liste témoin `CHEMINS_A_GARDER_SOUS_CONTROLE` ne
+portait **aucun** chemin sous `scripts/`.
+
+**Fermées par assertion, et chacune prouvée par mutation :**
+
+- le témoin — renommé `test_le_reste_du_depot_reste_sous_controle`, son ancien nom
+  `test_l_exclusion_n_emporte_rien_d_autre` ne décrivant plus ce qu'il fait —
+  modélise désormais **les deux clés**, par un `_sous_controle(chemin)` qui
+  reproduit le filtrage réel de `pre-commit` ;
+- la liste témoin gagne `scripts/git-hooks/pre-commit` et
+  `scripts/installer-les-garde-fous.sh`.
+
+Mutation A rougit sur `files « ^Datas/ », exclude « ^Datas/ »` avec sept chemins
+nommés ; mutation B sur les deux scripts, et eux seuls. La configuration remise,
+les trois tests repassent au vert.
+
+**Relevé au passage, et il compte :** sous la mutation A, `identite-auteur` est le
+seul hook qui **tourne encore** — « Passed » — parce qu'il porte `always_run:
+true`. Ce réglage, posé pour le commit sans fichier éligible (registre §5.5), se
+révèle être aussi ce qui met le contrôle d'identité hors de portée d'un `files`
+mal posé. Ce n'est pas une raison de relâcher le témoin : les sept autres hooks,
+eux, tombent.
+
 ### Trouvé par la réparation du lot 0b, et NON traité
 
 - **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun

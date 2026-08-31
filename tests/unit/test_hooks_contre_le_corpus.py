@@ -43,6 +43,25 @@ Ce qu'il attrape, en revanche, est le defaut reel : la disparition du motif, ou
 son affaiblissement. ``^Datas`` sans barre oblique finale, par exemple, exclurait
 aussi un futur ``Datastore/`` — et ``Datas/`` sans ancre exclurait
 ``src/Datas/``.
+
+IL Y A DEUX CLES A LA RACINE, PAS UNE. `pre-commit` filtre la liste de fichiers
+par ``files`` PUIS par ``exclude`` : un fichier est vu par les hooks si
+``re.search(files, chemin)`` est vrai ET ``re.search(exclude, chemin)`` est faux.
+``files`` vaut ``''`` par defaut, ce qui matche tout. Ce fichier n'en lisait
+qu'une, ``exclude``, et deux mutations lui survivaient (``mesure`` le 31 aout
+2026, suite entiere verte a 550 dans les deux cas) :
+
+- ajouter ``files: '^Datas/'`` a la RACINE desarme les SEPT hooks — « no files to
+  check » sur chacun — et fait passer en ``rc=0`` un commit portant un ``.py``
+  volontairement sale. La porte entiere disparait, et l'``exclude`` livre, lui,
+  ne bouge pas : les trois tests restaient verts ;
+- elargir l'exclusion a ``'^Datas/|^scripts/'`` soustrait a TOUS les hooks
+  ``scripts/git-hooks/pre-commit`` — le controle d'identite lui-meme — et
+  ``scripts/installer-les-garde-fous.sh``. La liste temoin ne couvrait aucun
+  chemin sous ``scripts/``.
+
+Les deux sont fermees ici : le temoin modelise les DEUX cles, et il couvre les
+deux scripts dont depend tout le montage.
 """
 
 from __future__ import annotations
@@ -77,6 +96,11 @@ CHEMINS_A_GARDER_SOUS_CONTROLE = [
     "documentation/pilotage_du_chantier.md",
     ".pre-commit-config.yaml",
     "docker-compose.yml",
+    # Les deux scripts dont depend TOUT le montage des garde-fous. Sans eux,
+    # une exclusion elargie a `^scripts/` soustrairait le controle d'identite
+    # lui-meme a la porte, en restant verte ici.
+    "scripts/git-hooks/pre-commit",
+    "scripts/installer-les-garde-fous.sh",
     # Les deux pieges d'un motif mal ancre ou mal termine.
     "Datastore/settings.py",
     "src/Datas/faux_corpus.py",
@@ -92,6 +116,27 @@ def _exclusion_racine() -> str:
         "les hooks reecrivent le corpus versionne et refusent de l'etendre"
     )
     return str(exclusion)
+
+
+def _inclusion_racine() -> str:
+    """Le motif `files` de la racine, `''` par defaut — qui matche tout.
+
+    `pre-commit` applique `files` AVANT `exclude`. Un `files` pose a la racine
+    reduit donc la liste distribuee a TOUS les hooks, et un motif etroit les
+    desarme tous d'un coup, sans toucher a l'`exclude` que ce fichier garde.
+    """
+    config = yaml.safe_load(CONFIG.read_text())
+    return str(config.get("files", ""))
+
+
+def _sous_controle(chemin: str) -> bool:
+    """Reproduit le filtrage de `pre-commit` : `files` d'abord, `exclude` ensuite.
+
+    C'est un `re.search` dans les deux cas, et non un `re.match`.
+    """
+    return bool(re.search(_inclusion_racine(), chemin)) and not re.search(
+        _exclusion_racine(), chemin
+    )
 
 
 class TestLeCorpusEstHorsDePorteeDesHooks:
@@ -113,19 +158,29 @@ class TestLeCorpusEstHorsDePorteeDesHooks:
         assert re.search(exclusion, "Datas/htms/MLOps with Databricks/11. Un chapitre de plus.html")
         assert re.search(exclusion, "Datas/pdfs/Un_ouvrage_de_plus.pdf")
 
-    def test_l_exclusion_n_emporte_rien_d_autre(self):
-        """Le temoin, sans lequel tout ce fichier serait vert sur un motif large.
+    def test_le_reste_du_depot_reste_sous_controle(self):
+        """Le temoin, sans lequel tout ce fichier serait vert sur une porte morte.
 
-        Un `exclude` trop permissif desarmerait la porte entiere en restant vert
-        ici : c'est la definition d'un test vert des deux cotes du defaut. Les
-        deux derniers chemins sont les pieges d'ancrage — un motif `^Datas`
-        emporterait `Datastore/`, un motif `Datas/` non ancre emporterait
-        `src/Datas/`.
+        Il modelise les DEUX cles de la racine, parce que deux mutations
+        distinctes desarment la porte en laissant l'`exclude` livre intact :
+
+        - un `files: '^Datas/'` a la racine ne laisse aux sept hooks que le
+          corpus, qui est ensuite exclu — donc plus rien du tout. `mesure` le
+          31 aout 2026 : « no files to check » sur les sept, un `.py`
+          volontairement sale commite en `rc=0`, et 550 tests verts ;
+        - un `exclude: '^Datas/|^scripts/'` soustrait `scripts/git-hooks/pre-commit`
+          — le controle d'identite lui-meme — et l'installeur. `mesure` : 550
+          tests verts.
+
+        Les deux derniers chemins de la liste sont les pieges d'ancrage : un
+        motif `^Datas` emporterait `Datastore/`, un motif `Datas/` non ancre
+        emporterait `src/Datas/`.
         """
-        exclusion = _exclusion_racine()
-        emportes = [
-            chemin for chemin in CHEMINS_A_GARDER_SOUS_CONTROLE if re.search(exclusion, chemin)
+        inclusion, exclusion = _inclusion_racine(), _exclusion_racine()
+        hors_de_portee = [
+            chemin for chemin in CHEMINS_A_GARDER_SOUS_CONTROLE if not _sous_controle(chemin)
         ]
-        assert not emportes, (
-            f"le motif « {exclusion} » soustrait ces chemins a la porte : {emportes}"
+        assert not hors_de_portee, (
+            f"les motifs de la racine — files « {inclusion} », exclude « {exclusion} » — "
+            f"soustraient ces chemins a la porte : {hors_de_portee}"
         )
