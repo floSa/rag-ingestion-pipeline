@@ -1214,6 +1214,97 @@ contrôle écrit `rc = 1` serait vert sur le défaut ; et le code de retour d'un
 gardé par `tests/unit/test_hooks_contre_le_corpus.py`, le premier ne l'est pas —
 aucun test ne lit le README. C'est la même famille que F7 ci-dessous.
 
+#### F4 et « rien à se rappeler » → le §2.1 du mandat, le texte le plus copié
+
+Deux affirmations fausses vivaient dans la section que le pilote colle dans
+**chaque** prompt.
+
+**« Si `uv` manque sur le poste, le script s'exécute seul. »** `mesuré` le
+31 août 2026, clone frais,
+`env PATH=/usr/bin:/bin sh scripts/installer-les-garde-fous.sh` : **`rc=1`**, et
+seules les **deux copies du contrôle d'identité** sont posées —
+`.git/hooks/pre-commit` et `.git/hooks/pre-merge-commit`, tous deux le script
+d'identité, **aucun** hook du framework, **aucun** `.legacy`. Le script est
+honnête sur sa sortie d'erreur (« `uv: not found` », puis « le contrôle
+d'identité est copié et actif ; les hooks du framework ne le sont pas ») : c'est
+la phrase du mandat qui mentait, pas le code. Un montage à moitié armé est le
+pire des trois états — il ressemble au bon.
+
+**« Il n'y a rien d'autre à taper, rien à faire dans un ordre, rien à se
+rappeler. »** Il y a **trois** choses, et elles sont désormais numérotées au
+§2.1 : `git config user.email` (que la même section demande deux paragraphes plus
+bas), relancer `make install` après toute édition de la liste blanche (F13), et
+relancer `make install` si le `.venv` visé par le hook disparaît (F6).
+
+C'est la troisième **phrase d'exhaustivité** de ce lot, après « c'est là la SEULE
+faiblesse » (qui a caché R1) et « trois fichiers » (D7). Elles se ressemblent
+toutes : elles closent une énumération que personne ne rouvre. La liste des trois
+gestes est donc écrite **comme ouverte**, avec la consigne d'y ajouter la
+quatrième plutôt que de la garder.
+
+#### F6 → l'armement fige un chemin absolu, et rien ne le disait
+
+`pre-commit install` écrit dans le hook généré une ligne
+`INSTALL_PYTHON=<interpréteur de l'arbre d'où l'installation a été lancée>`, et
+`.git/hooks` est **partagé par tout le clone**. Le dépôt réel pointe aujourd'hui
+le `.venv` de l'arbre de travail **temporaire** du lot 0b (`mesuré`,
+`grep INSTALL_PYTHON .git/hooks/pre-commit`). Or le mandat §7 prescrit de
+supprimer la branche après fusion, donc son arbre.
+
+`mesuré` le 31 août 2026, dans un clone armé par le script livré dont on fait
+ensuite disparaître le chemin visé, `PATH` sans `pre-commit` (`which pre-commit`
+→ `rc=1` sur ce poste) : le commit est **refusé**, `rc=1`, **HEAD inchangé**, sur
+le seul message « `` `pre-commit` not found.  Did you forget to activate your
+virtualenv? `` ». Il ne nomme ni le chemin disparu, ni `make install`. Et le
+repli `elif command -v pre-commit` du hook généré ne rattrape rien ici, puisque
+`pre-commit` n'est pas au PATH.
+
+**C'est fail-closed, donc sans danger pour l'historique** : rien ne part avec une
+mauvaise adresse, tout s'arrête. Le défaut était de ne pas être **écrit**. Il
+l'est désormais au mandat §2.1 — dans le tableau des portées et dans la liste des
+trois gestes — et au `README.md`, section des garde-fous.
+
+**Proposé et NON retenu dans ce diff, à trancher par le pilote.** Rendre le hook
+lui-même robuste demanderait d'éditer `.git/hooks/<type>`, un fichier **non
+versionné** que `pre-commit install` réécrit : c'est exactement l'anti-patron que
+§5.5 avait écarté. La piste qui tient debout est ailleurs, dans
+`scripts/installer-les-garde-fous.sh`, qui calcule déjà `--git-common-dir` :
+**comparer `git rev-parse --git-dir` et `--git-common-dir`**, et avertir — ou
+refuser — quand l'installation est lancée depuis un arbre de travail secondaire,
+puisqu'elle grave alors dans le clone entier un chemin qui mourra avec cet arbre.
+C'est trois lignes, c'est la doctrine du lot (« un garde-fou qui repose sur la
+mémoire du suivant n'est pas un garde-fou »), et le mandat de cette réparation
+demandait de le **proposer**, pas de le faire. Il est proposé.
+
+**Conséquence immédiate, pour le pilote :** à l'étape 5 du §7 — « supprimer la
+branche, local **et** distant » — s'ajoute « puis relancer `make install` depuis
+le clone principal ». Ce n'est pas écrit dans le §7 : ce lot n'y touche pas.
+
+#### F13 → la liste blanche d'adresses a DEUX sites au runtime
+
+Le `README.md` et le mandat §2.1 affirmaient « la liste blanche d'adresses n'a
+qu'un site et ne peut pas diverger ». C'est vrai du **dépôt versionné**, et faux
+du **montage armé** : `<type>.legacy` est une copie **figée à l'installation**,
+là où le hook `repo: local` relit le script versionné à chaque commit.
+
+`mesuré` le 31 août 2026, clone frais armé par le script livré, édition
+**commitée** de `ADRESSES_AUTORISEES`, dans les deux sens :
+
+| Édition | Mesure |
+|---|---|
+| **ajouter** `essai@exemple.test` | commit suivant portant cette adresse : `« Identite d'auteur autorisee ... Passed »` **puis** `pre-commit.legacy` refuse — `rc=1`, HEAD inchangé, et le message énumère l'**ancienne** liste |
+| **retirer** `florian_horellou@laposte.net` | commit suivant portant cette adresse : la couche `repo: local` refuse — `rc=1`, HEAD inchangé |
+
+**Fail-closed dans les deux sens** : friction, jamais exposition. C'est pourquoi
+le montage n'est **pas** changé — la copie figée **est** la propriété qui rend le
+contrôle inconditionnel, et la rendre dynamique la reprendrait. Seule
+l'affirmation est corrigée, aux deux sites, avec le geste : **relancer
+`make install` après toute édition de `ADRESSES_AUTORISEES`**.
+
+Consigné au passage, parce que c'est ce qu'un lecteur verra : dans ce cas précis,
+le message de refus **énumère l'ancienne liste**, donc il paraît contredire le
+fichier qu'on vient d'éditer. C'est le seul cas où cela se produit.
+
 ### Trouvé par la réparation du lot 0b, et NON traité
 
 - **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun

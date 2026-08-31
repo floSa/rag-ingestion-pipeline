@@ -538,7 +538,23 @@ croit l'avoir.
 `make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`.
 Ce script monte les deux couches **dans l'ordre**, ne passe **jamais** `-f`, et
 **vérifie son propre résultat** : il sort en erreur si le montage n'est pas
-celui qu'il annonce. Si `uv` manque, il s'exécute seul.
+celui qu'il annonce.
+
+**`uv` est requis.** Cette phrase disait « si `uv` manque, il s'exécute seul » :
+c'est faux, et `mesuré` — `env PATH=/usr/bin:/bin sh
+scripts/installer-les-garde-fous.sh` rend **`rc=1`** et ne pose que les deux
+copies du contrôle d'identité, sans aucun hook du framework ni `.legacy`. Le
+script le dit sur sa sortie d'erreur ; c'était la documentation qui mentait.
+
+**Lance-le depuis le clone principal.** `pre-commit install` grave dans le hook
+généré une ligne `INSTALL_PYTHON=<interpréteur de l'arbre d'où on l'a lancé>`, et
+`.git/hooks` est partagé par tout le clone. Si cet arbre disparaît — un
+`git worktree remove` après fusion, par exemple — et qu'aucun `pre-commit` n'est
+au PATH, **tout commit du dépôt et de tous ses arbres de travail** est refusé,
+sur le seul message « `` `pre-commit` not found. `` », qui ne nomme pas la cause
+(`mesuré`, 31 août 2026 : `rc=1`, HEAD inchangé). C'est fail-closed, donc sans
+danger pour l'historique. **Le geste de sortie :** relancer `make install` depuis
+le clone principal.
 
 L'ordre n'est pas cosmétique, et il ne pouvait pas rester une consigne écrite.
 Le lot 0b, tel qu'il avait été livré, demandait deux gestes dans un sens précis ;
@@ -567,7 +583,27 @@ Il est déclaré **deux fois**, et ce n'est pas une redondance décorative :
   de travail.
 
 Les deux pointent le même script versionné, `scripts/git-hooks/pre-commit` : la
-liste blanche d'adresses n'a qu'un site et ne peut pas diverger.
+liste blanche d'adresses n'a **qu'un site versionné**.
+
+**Elle en a deux une fois armée, et il faut le savoir.** Cette phrase disait
+« un seul site, et il ne peut pas diverger » : c'est vrai du dépôt, faux du
+montage. `pre-commit.legacy` est une **copie figée à l'installation** ; le hook
+`repo: local`, lui, relit le script versionné à chaque commit. `mesuré` le
+31 août 2026, dans un clone frais armé par le script livré, une édition
+**commitée** de `ADRESSES_AUTORISEES` :
+
+| Édition | Effet au commit suivant |
+|---|---|
+| **ajouter** une adresse | **sans effet** — la couche `repo: local` l'accepte, puis `pre-commit.legacy` refuse (`rc=1`, HEAD inchangé) en affichant l'**ancienne** liste |
+| **retirer** une adresse | **appliqué** — la couche `repo: local` refuse (`rc=1`, HEAD inchangé) |
+
+C'est **fail-closed dans les deux sens** : de la friction, jamais une exposition.
+Et le montage n'est pas changé pour autant — la copie figée **est** la propriété
+qui rend le contrôle indépendant de l'arbre de travail (section ci-dessous).
+**Le geste : après toute édition de `ADRESSES_AUTORISEES`, relancer
+`make install`**, qui réécrit la copie. Le message de refus énumère alors
+l'ancienne liste : une adresse fraîchement ajoutée qui n'y figure pas est ce
+cas-là, et rien d'autre.
 
 **Seule la seconde couche est inconditionnelle.** Le hook généré par le
 framework ouvre sa configuration en chemin **relatif** : un arbre de travail

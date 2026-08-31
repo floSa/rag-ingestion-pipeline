@@ -98,9 +98,34 @@ make install
 
 `make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`,
 qui arme les hooks git **et sort en erreur si le montage n'est pas celui qu'il
-annonce**. Il n'y a rien d'autre à taper, rien à faire dans un ordre, rien à se
-rappeler. Si `uv` manque sur le poste, le script s'exécute seul :
-`sh scripts/installer-les-garde-fous.sh`.
+annonce**. Il n'y a rien à faire dans un ordre : c'est le script qui tient
+l'ordre, et il constate son résultat.
+
+**`uv` est requis, et ce paragraphe a affirmé le contraire.** Il disait « si
+`uv` manque sur le poste, le script s'exécute seul ». C'est **faux** : `mesuré`
+le 31 août 2026 dans un clone frais,
+`env PATH=/usr/bin:/bin sh scripts/installer-les-garde-fous.sh` rend **`rc=1`**,
+et il ne pose que les **deux copies du contrôle d'identité** — aucun hook du
+framework, aucun `.legacy`. Le script, lui, est honnête : il l'écrit sur sa
+sortie d'erreur (« `uv: not found` », puis « le contrôle d'identité est copié et
+actif ; les hooks du framework ne le sont pas »). C'était la phrase qui mentait,
+pas le code. Un montage à moitié armé est le pire des trois états, parce qu'il
+ressemble au bon.
+
+**Et il y a trois choses à se rappeler.** Ce paragraphe disait « rien à se
+rappeler » : c'est une phrase d'exhaustivité, et c'est la famille de phrase qui
+a caché la régression R1 pendant tout le lot 0b. Les voici, toutes les trois
+`mesuré`es :
+
+1. **`git config user.email`** — deux paragraphes plus bas, dans cette même
+   section. Le script n'y touche pas ;
+2. **relancer `make install` après toute édition de `ADRESSES_AUTORISEES`** —
+   voir « la liste blanche a deux sites au runtime » ci-dessous ;
+3. **relancer `make install` depuis le clone principal si le `.venv` visé par le
+   hook disparaît** — voir « le hook fige un chemin absolu » ci-dessous.
+
+Cette liste-ci n'est pas fermée non plus. Si tu en trouves une quatrième,
+écris-la ici plutôt que de la garder.
 
 **Ce que le script monte, et pourquoi l'ordre compte.** Le contrôle d'identité
 vit sous `scripts/git-hooks/pre-commit`, versionné, donc il arrive avec le clone
@@ -108,8 +133,48 @@ vit sous `scripts/git-hooks/pre-commit`, versionné, donc il arrive avec le clon
 arrive avec un dépôt. Le script le copie d'abord dans le répertoire des hooks,
 **puis** lance `pre-commit install`, qui déplace cette copie en
 `pre-commit.legacy`, continue de l'exécuter **avant** ses propres hooks, et
-s'installe par-dessus. Les deux voies exécutent donc les **mêmes octets**, et la
-liste blanche d'adresses n'a qu'un site.
+s'installe par-dessus. Les deux voies exécutent donc les mêmes octets **au
+moment de l'installation**.
+
+**Mais la liste blanche a DEUX sites au runtime, et ils peuvent diverger.** Ce
+paragraphe affirmait « la liste blanche d'adresses n'a qu'un site » : c'est vrai
+du dépôt versionné, **faux du montage armé**. `<type>.legacy` est une **copie
+figée à l'installation** ; le hook `repo: local`, lui, relit le script versionné
+à chaque commit. `mesuré` le 31 août 2026 dans un clone frais armé par le script
+livré, dans les deux sens :
+
+| Édition de `ADRESSES_AUTORISEES`, **commitée** | Effet au commit suivant |
+|---|---|
+| **ajouter** une adresse | **sans effet** : la couche `repo: local` l'accepte (« Passed »), puis `pre-commit.legacy` refuse, `rc=1`, en affichant l'**ancienne** liste. HEAD ne bouge pas |
+| **retirer** une adresse | **appliqué** : la couche `repo: local` refuse, `rc=1`, HEAD ne bouge pas |
+
+C'est donc **fail-closed dans les deux sens** — de la friction, jamais une
+exposition — et c'est pour cela que le montage n'est pas changé : la copie figée
+**est** la propriété qui rend le contrôle indépendant de l'arbre de travail.
+**Le geste :** après toute édition de `ADRESSES_AUTORISEES`, relancer
+`make install`, qui réécrit la copie.
+
+Le message de refus est trompeur dans ce cas précis, et il faut le savoir : il
+énumère la liste de la copie figée, pas celle du fichier qu'on vient d'éditer.
+Si une adresse fraîchement ajoutée est refusée en n'apparaissant pas dans la
+liste affichée, c'est ce cas-là, et rien d'autre.
+
+**Le hook fige aussi un chemin absolu, et personne ne le savait.**
+`pre-commit install` écrit dans `.git/hooks/<type>` une ligne
+`INSTALL_PYTHON=<interpréteur de l'arbre qui a lancé l'installation>`. Un
+`make install` lancé depuis un **arbre de travail temporaire** y grave donc le
+`.venv` de cet arbre-là — et `.git/hooks` est **partagé par tout le clone**.
+`mesuré` le 31 août 2026 : quand ce chemin disparaît et qu'aucun `pre-commit`
+n'est au PATH (`which pre-commit` → `rc=1` sur ce poste), **tout commit du dépôt
+et de tous ses arbres de travail** est refusé — `rc=1`, HEAD inchangé, sur le
+seul message « `` `pre-commit` not found.  Did you forget to activate your
+virtualenv? `` », qui ne nomme ni la cause ni `make install`.
+
+C'est **fail-closed**, donc sans danger pour l'historique. Mais le §7 prescrit de
+supprimer une branche fusionnée, donc son arbre de travail : **relance
+`make install` depuis le clone principal après avoir supprimé un arbre de
+travail**, et fais-le de préférence depuis lui dès le départ. Une piste pour ne
+plus avoir à s'en souvenir est au registre, non retenue dans ce lot.
 
 **`pre-commit.legacy` n'est pas un doublon : c'est la protection.** Ce point a
 coûté au lot 0b sa fusion au premier tour, et il faut le lire en entier. Le hook
@@ -138,7 +203,8 @@ conclusion n'est pas la même pour les deux :
 
 | Objet | Portée | Conséquence |
 |---|---|---|
-| l'**installation** des hooks | **une fois par clone** — `.git/hooks` est partagé entre le dépôt et tous ses arbres de travail, `core.hooksPath` n'étant pas positionné | rien à refaire par worktree |
+| l'**installation** des hooks | **une fois par clone** — `.git/hooks` est partagé entre le dépôt et tous ses arbres de travail, `core.hooksPath` n'étant pas positionné | rien à refaire par worktree — mais l'installation grave l'interpréteur de l'arbre **d'où on la lance**, donc lance-la depuis le clone principal |
+| la **liste blanche** d'adresses | **un site versionné, deux sites armés** : `<type>.legacy` est une copie figée à l'installation | relancer `make install` après toute édition de `ADRESSES_AUTORISEES` |
 | l'**identité** `user.email` | **une fois par clone** — `extensions.worktreeConfig` n'est pas activé, donc `git config` écrit dans `.git/config`, partagé (`mesuré`, 31 août 2026 : les quatre arbres de travail lisent le même fichier) | rien à refaire par worktree |
 | la **protection d'identité** | **toute branche**, grâce à `pre-commit.legacy` | inconditionnelle, comme avant le lot 0b |
 | la **configuration** des hooks du framework | **suit l'arbre de travail** : le hook lit `.pre-commit-config.yaml` en chemin relatif | un arbre sorti à un commit ancien exécute les hooks *de ce commit-là*. Ce n'est pas un défaut, c'est un fait à connaître |
