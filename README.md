@@ -488,11 +488,31 @@ Les deux gestes sont désormais séparés :
 31 août 2026 : « 3 files would be reformatted, 33 files already formatted ») :
 des lignes qui tiennent dans les 100 colonnes mais ont été pliées à la main.
 
+**Il y en a un QUATRIÈME, et `make format-check` ne le voit pas.**
+`tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré` :
+`uv run ruff format --check src/ tests/` → « 4 files would be reformatted, 56
+files already formatted »). Il préexiste sur `main`, il n'a rien à voir avec le
+lot 2, et il tombe dans un angle mort : `make format-check` est borné à `src/` et
+ne le signale jamais, `make format` ne le répare pas — mais le hook
+`ruff-format --check`, lui, **bloque** tout commit qui le touche. Le geste, quand
+ce jour viendra : `uv run ruff format tests/unit/test_wipe_stores.py`, dans le
+commit qui touche ce fichier et nulle part ailleurs. Toute phrase de ce dépôt qui
+dit « trois fichiers » parle de la portée de `make format-check`, jamais de
+l'état du dépôt.
+
 **Ce que le prochain développeur doit en faire : rien.** Ne lance pas
-`make format` pour éteindre ce rouge. Ces trois fichiers sont réservés au lot de
-la hiérarchie, qui réécrit `extraction.py` : les reformater maintenant
-mélangerait un reformatage massif à un diff qui n'a rien à voir, et rendrait
-illisible la relecture du lot qui compte. Le rouge est un constat exact sur
+`make format` pour éteindre ce rouge. Les trois fichiers de `src/` sont réservés
+au lot de la hiérarchie, qui réécrit `extraction.py`.
+
+**Et la raison tient à la lisibilité du lot 2, pas à un volume.** Le coût du
+reformatage est **mesuré** : `uv run ruff format src/` produit **16 lignes** de
+diff — 4 ajoutées, 12 supprimées, `git diff --numstat` — sur **1 213** lignes
+dans les trois fichiers, à **quatre** endroits, tous des replis de ligne faits à
+la main. Ce n'est pas un « reformatage massif » : la phrase qui l'affirmait était
+surdimensionnée, et elle instruisait chaque lot à venir de l'accepter sans
+remesurer. La décision reste la bonne pour une autre raison — trois de ces quatre
+endroits sont dans `extraction.py`, que le lot 2 réécrit, et un diff de
+formatage mêlé à cette réécriture se relit mal. Le rouge est un constat exact sur
 l'état du dépôt, consigné au registre §5.4, et il tombera avec ce lot-là.
 
 En attendant, la porte est utile telle quelle : `format-check` passe **en
@@ -565,10 +585,21 @@ configuration ne porte **pas** le contrôle, y exécute le script livré, et pro
 que le refus tient.
 
 Les hooks qui écrivent ne touchent que ce qui est **déjà indexé**, refusent le
-commit et montrent leur diff : on relit, on réindexe. C'est la différence de
-fond avec le défaut que le lot 0b vient de corriger dans `make all`
-(section précédente), qui réécrivait tout `src/` — y compris des fichiers qu'on
-n'avait pas touchés — et sortait **vert**.
+commit, et **nomment chaque fichier qu'ils ont corrigé** — sans montrer le diff.
+Cette phrase disait « et montrent leur diff » : c'était faux. `mesuré` le 31 août
+2026, la sortie se limite à `- files were modified by this hook` puis
+`Fixing <fichier>`. Le diff s'obtient avec `--show-diff-on-failure`, un drapeau
+de la **ligne de commande** que le hook généré ne porte pas et qu'aucune clé de
+`.pre-commit-config.yaml` ne peut activer. Pour le lire :
+
+```bash
+git diff                                   # ce que le hook vient d'écrire
+uv run pre-commit run --show-diff-on-failure --all-files
+```
+
+On relit, on réindexe. C'est la différence de fond avec le défaut que le lot 0b
+vient de corriger dans `make all` (section précédente), qui réécrivait tout
+`src/` — y compris des fichiers qu'on n'avait pas touchés — et sortait **vert**.
 
 #### Ce que le contrôle d'identité couvre, et ce qu'il ne couvre pas
 
@@ -617,9 +648,13 @@ avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
 désormais **au site**, avec sa justification, par un commentaire
 `# pragma: allowlist secret`.
 
-Le dépôt en portait **2** au 31 août 2026 (`mesuré`), tous deux dans
-`src/pipeline/reindex.py` et `tests/unit/test_reindex.py`, où le scanner lit un
-**nom** de variable — `API_KEY` — sans regarder sa valeur. Ne recopie pas ce
+Le dépôt en porte **3** au 31 août 2026 (`mesuré` :
+`grep -rn 'pragma: allowlist secret' --include='*.py' .`, trois lignes
+*porteuses* — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et
+`:92`, les autres occurrences étant les commentaires qui les justifient). Dans les
+deux fichiers, le scanner lit un **nom** de variable — `API_KEY` — sans regarder
+sa valeur. Le compte était annoncé à 2 : la troisième ligne était née du piège de
+déduplication décrit au registre, et n'avait pas été recomptée. Ne recopie pas ce
 compte : le scan complet du dépôt versionné se relance en une commande, et c'est
 lui qui fait foi. Il ne doit rien rendre.
 

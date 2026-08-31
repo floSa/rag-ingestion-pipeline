@@ -500,7 +500,7 @@ Les deux ne peuvent pas être vrais.
 importés, et `DOCUMENT_PROPERTIES` y compte **3** champs contre **7** dans
 `nebula.py:50-58`. Un lecteur qui ouvre `ngql.py` lit un schéma périmé.
 
-### 5.4 `main` n'est pas format-propre — trois fichiers, réservés au lot 2
+### 5.4 `main` n'est pas format-propre — quatre fichiers, dont trois réservés au lot 2
 
 `ruff format --check src/` signale **3 fichiers** sur `main` :
 `extraction.py:412`, `:442`, `:479` ; `language.py:136-140` ;
@@ -515,12 +515,39 @@ que le chantier de la hiérarchie réécrit : **à faire dans le lot 2, pas avan
 Les reformater plus tôt noierait le diff du lot qui compte dans un reformatage
 massif.
 
+**Un QUATRIÈME fichier n'est pas format-propre, et il est dans un angle mort.**
+`tests/unit/test_wipe_stores.py`, préexistant sur `main` (`mesuré`, 31 août
+2026 : `uv run ruff format --check src/ tests/` → « 4 files would be reformatted,
+56 files already formatted »). Il n'a rien à voir avec le lot 2. Son angle mort
+est triple : `make format-check` est **borné à `src/`** et ne le signale jamais ;
+`make format` ne le répare pas, pour la même raison ; mais le hook
+`ruff-format --check`, installé depuis le lot 0b, **bloque** tout commit qui le
+touche — sans issue automatique. **Le geste, quand ce jour viendra :**
+`uv run ruff format tests/unit/test_wipe_stores.py`, dans le commit qui touche ce
+fichier et nulle part ailleurs.
+
+**Toute phrase de ce dépôt qui dit « trois fichiers » parle de la portée de
+`make format-check`, jamais de l'état du dépôt.** Le lot 0b avait clos cette
+énumération sur une portée qui n'était plus celle du garde qu'il installait :
+c'est une phrase d'exhaustivité, et c'en est la deuxième de ce lot.
+
+**Le coût du reformatage est MESURÉ, et il est petit.** `uv run ruff format src/`
+produit **16 lignes** de diff — 4 ajoutées, 12 supprimées
+(`git diff --numstat -- src`) — sur **1 213** lignes dans les trois fichiers
+(`wc -l`), à **quatre** endroits, tous des replis de ligne faits à la main
+(`mesuré`, 31 août 2026). **Ce n'est pas un « reformatage massif ».** La phrase
+qui l'affirmait était surdimensionnée, et le mandat instruisait chaque
+conversation à venir de l'accepter sans remesurer. **La décision de ne pas
+reformater reste la bonne, pour une autre raison :** trois des quatre endroits
+sont dans `extraction.py`, que le lot 2 réécrit, et un diff de formatage mêlé à
+cette réécriture se relit mal. C'est un argument de lisibilité, pas de volume.
+
 **Conséquence, assumée et voulue : `make all` est ROUGE sur `main`.** C'est la
 moitié de ce constat qui a été fermée par le lot 0b (voir §8) : la porte
 **constate** désormais au lieu d'écrire, donc elle dit la vérité sur l'état du
-dépôt, et cette vérité est « trois fichiers ne sont pas format-propres ». Ne pas
-éteindre ce rouge avec `make format` — la marche à suivre est écrite au
-`README.md`, section Tests.
+dépôt — et cette vérité est « **quatre** fichiers ne sont pas format-propres,
+dont trois que `make format-check` sait voir ». Ne pas éteindre ce rouge avec
+`make format` — la marche à suivre est écrite au `README.md`, section Tests.
 
 ### 5.6 Trois `except Exception` sans justification écrite au site
 
@@ -1002,6 +1029,14 @@ une assertion sur `minio_root_password` comparée à une valeur d'essai, ligne
 de ligne 44, et il ne contient aucun secret (`mesuré`). La baseline mentait
 depuis deux mois et demi.
 
+**L'argument accessoire « et elle était `is_verified: false` » est FAUX, et il est
+retiré.** En sémantique `detect-secrets`, `is_verified` signifie « vérifié contre
+le **service réel** » par un plugin de vérification ; le champ d'audit humain est
+`is_secret`. Un `is_verified: false` est donc la valeur normale de presque toute
+entrée de baseline, et n'indique aucun pourrissement. **La preuve du fantôme
+reste entière** — elle tient à la ligne 44 disparue, mesurée — mais elle tenait
+seule, et cet argument-là ne lui ajoutait rien.
+
 Et elle ne mentait pas passivement. Mesuré : `detect-secrets-hook --baseline
 .secrets.baseline tests/unit/test_settings.py` **réécrit la baseline** et sort en
 **3** — « Please `git add .secrets.baseline` ». Le premier commit touchant ce
@@ -1110,6 +1145,57 @@ avec les trois précautions qui le rendent non creux :
   les assertions resteraient vraies si Dagster changeait sa valeur par défaut.
   Dagster livre bien `STOPPED` par défaut (`mesuré` sous mutation).
 
+### Les affirmations que le lot 0b avait rendues fausses → corrigées par sa réparation
+
+Le lot 0b a édité en profondeur le `README.md`, le `Makefile`, le mandat et ce
+registre. Neuf affirmations en sont sorties fausses ou surdimensionnées. Elles
+entrent dans le périmètre de la réparation parce que la règle du dépôt est
+« documentation dans le même commit que son code », et parce que ce chantier ne
+traque rien d'autre que l'écart entre ce que la documentation affirme et ce que le
+code fait.
+
+| Réf | L'affirmation | Ce que la mesure dit | Où c'est corrigé |
+|---|---|---|---|
+| **D2** | README : les hooks qui écrivent « montrent leur diff » | **faux.** `--show-diff-on-failure` n'est activé nulle part, et **aucune clé** de `.pre-commit-config.yaml` ne peut l'activer — c'est un drapeau de ligne de commande. La sortie se limite à `files were modified by this hook` puis `Fixing <fichier>` (`mesuré`) | README : la phrase est corrigée, et les deux commandes qui montrent le diff sont données |
+| **D3** | README : `check-added-large-files` = « aucun fichier > 500 ko » | **faux.** Seuls les fichiers **ajoutés** sont contrôlés ; un fichier déjà suivi qu'on modifie passe quelle que soit sa taille, et le dépôt post-fusion en porte **25** au-dessus du seuil (`mesuré`) | README, tableau des hooks — ligne détachée de `check-yaml` |
+| **D4** | Makefile : « `uv sync` … c'est la **seule** étape d'installation de la porte qualité » | **rendue fausse par le lot**, qui en avait fait deux. Redevenue **vraie** : `make install` arme aussi les hooks | Makefile, cible `install` — voir R1 |
+| **D7** | README, mandat §2.4, ce registre §5.4 : « trois fichiers » non format-propres | **faux.** Il y en a **quatre** : `tests/unit/test_wipe_stores.py`, préexistant sur `main`, invisible à `make format-check` (borné à `src/`), non réparé par `make format`, mais **bloqué** par le hook `ruff-format --check` | §5.4 ci-dessus, plus README et mandat §2.4. Le geste de sortie y est écrit |
+| **D8** | « reformatage massif » qui « noierait le lot 2 » | **surdimensionné.** `mesuré` : **16 lignes** de diff sur **1 213**, à quatre endroits, tous des replis de ligne. La décision de ne pas reformater reste bonne — pour la **lisibilité** du lot 2, pas pour un volume | §5.4 ci-dessus : le récit est remplacé par la mesure |
+| **D9** | README : « le dépôt en portait **2** » pragmas | **faux.** Il y en a **3** — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et `:92` (`mesuré`). La troisième est née du piège de déduplication décrit plus haut, et n'avait pas été recomptée | README, avec la commande de comptage |
+| **D10** | `is_verified: false` lu comme un signe de pourrissement de la baseline | **faux.** En sémantique `detect-secrets`, `is_verified` signifie « vérifié contre le **service réel** » ; le champ d'audit humain est `is_secret`. C'est la valeur normale de presque toute entrée. **La preuve du fantôme reste entière** — la ligne 44 disparue — mais elle tenait seule | `.pre-commit-config.yaml` et ce registre, aux deux sites |
+| **H8** | mandat §6 et §7 : le lot 0b justifié par « un dépôt dont le `.env` porte les mots de passe » | **survente.** Un hook `pre-commit` ne voit que les fichiers **indexés**, `.env` est ignoré et non suivi, donc l'installer ne le fera **jamais** scanner. Le lot avait corrigé cette survente au README et à `SECURITY.md`, **pas au mandat** — le texte le plus copié du chantier | mandat §6 et §7 |
+| **H9** | mandat §2.1 : « l'identité, dans chaque arbre de travail » | **faux.** `extensions.worktreeConfig` n'est pas activé, donc `git config user.email` écrit dans `.git/config`, **partagé** : `mesuré`, les quatre arbres de travail lisent le même fichier. Une fois suffit | mandat §2.1, dans le tableau des portées |
+
+### Trouvé par la réparation du lot 0b, et NON traité
+
+- **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun
+  hook ne voit** (`mesuré`, mouchards posés sur chaque hook de `.git/hooks`). Le
+  seul point d'accroche commun, `prepare-commit-msg`, est écarté sur mesure : il
+  y voit l'identité **locale** et non celle du commit produit — il serait vert
+  sur le défaut — et son refus laisse l'arbre sale. **La fermeture honnête est un
+  hook `pre-push`, et elle est à trancher par le pilote.** Le §5.5 avait écarté
+  `pre-push` au motif qu'il est « trop tard, le commit porte déjà la mauvaise
+  adresse ». C'est vrai, mais ce qui est irréversible n'est pas le commit local,
+  c'est le **push** : la liste des contributeurs GitHub, une fois constituée, ne
+  se défait pas, tandis que réécrire un historique non poussé est gratuit.
+  L'argument mérite d'être rouvert. Il ne l'a pas été dans le diff : hors
+  périmètre.
+- **Quatre fichiers de documentation portent des blancs de fin** —
+  `documentation/base_vectorielle.md` (3 lignes),
+  `documentation/graphe_connaissances.md` (9), `documentation/orchestration.md`
+  (1), `documentation/stockage_objets.md` (1), soit **14 lignes** (`mesuré` sur le
+  résultat de la fusion d'essai). Ce n'est **pas** un défaut : le hook
+  `trailing-whitespace` les corrigera au premier commit qui les touche, ce qui est
+  exactement son travail — contrairement au corpus, un document *doit* être
+  normalisé. C'est consigné pour qu'un développeur qui voit ces quatre fichiers
+  modifiés dans son `git status` sache d'où ils viennent et ne les révoque pas.
+- **`make format-check` est borné à `src/` alors que le hook `ruff-format` voit
+  tout ce qui est indexé.** Les deux portées divergent, et c'est la cause de
+  l'angle mort D7. Étendre `format-check` à `tests/` rendrait `make all` rouge
+  d'un quatrième fichier et **fermerait cet angle mort d'un geste** — mais cela
+  demande de reformater `test_wipe_stores.py`, ce que le mandat de la réparation
+  interdit explicitement. À trancher avec §5.4.
+
 ### 3.6 → traité par `eaa8a8e` — la porte qualité est reproductible
 
 `[dependency-groups] dev` déclaré dans `pyproject.toml`, épinglé comme les
@@ -1123,8 +1209,9 @@ Le `Makefile` appelle chaque outil derrière `uv run` et gagne une cible
 d'environnement.
 
 Restait ouvert et détaché de ce constat : §5.4 et §5.5, tous deux traités par
-le lot 0b — sauf les trois fichiers non format-propres, qui restent au §5.4
-ouvert, pour le lot 2.
+le lot 0b — sauf les fichiers non format-propres eux-mêmes, qui restent au §5.4
+ouvert. Ils sont **quatre**, dont trois pour le lot 2 : voir §5.4, c'est son site
+canonique.
 
 ### « mypy rouge dès le premier commit » → traité par `98bb20d`
 

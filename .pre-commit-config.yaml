@@ -110,7 +110,12 @@ repos:
   # Pas de `--baseline`. Le depot en portait un, `.secrets.baseline`, genere le
   # 30 avril 2026 et jamais regenere : sa seule entree pointait
   # `tests/unit/test_settings.py:44`, une ligne SUPPRIMEE le 11 juin 2026 par
-  # `b157e84`. Elle etait de surcroit `is_verified: false`. Une baseline est un
+  # `b157e84`. (Le commentaire d'origine ajoutait « et elle etait
+  # `is_verified: false` » comme signe de pourrissement : c'etait faux. En
+  # semantique detect-secrets, `is_verified` veut dire « verifie contre le
+  # SERVICE reel » ; le champ d'audit humain est `is_secret`. La preuve du
+  # fantome tient a la ligne 44 disparue, et elle tenait seule.)
+  # Une baseline est un
   # etat que rien ne reconcilie avec le code : elle avait donc silencieusement
   # pourri pendant deux mois et demi, et le hook refusait le premier commit
   # touchant ce fichier en sortant en 3 pour se faire reindexer (`mesure`).

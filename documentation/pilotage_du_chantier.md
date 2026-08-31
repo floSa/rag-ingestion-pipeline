@@ -253,11 +253,26 @@ sur la mémoire du développeur.
 
 En échange, `make all` sort en erreur sur `main` : `ruff format --check src/`
 signale trois fichiers pliés à la main — `extraction.py`, `language.py`,
-`matter.py`. **C'est un constat exact, et il ne faut pas l'éteindre.** Ne lance
-pas `make format` : ces trois fichiers sont réservés au lot 2, qui réécrit
-`extraction.py`, et les reformater maintenant noierait ce lot-là dans un
-reformatage massif. Le détail et la marche à suivre vivent au `README.md`,
-section Tests ; le constat au registre §5.4.
+`matter.py`. **C'est un constat exact, et il ne faut pas l'éteindre.**
+
+**Mais le dépôt en porte QUATRE, et ce quatrième est dans un angle mort.**
+`tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré`,
+31 août 2026 : `uv run ruff format --check src/ tests/` → « 4 files would be
+reformatted, 56 files already formatted »). `make format-check` est borné à
+`src/` et ne le voit jamais ; `make format` ne le répare pas ; le hook
+`ruff-format --check` **bloque** tout commit qui le touche. Toute phrase qui dit
+« trois fichiers » parle donc de la **portée de `make format-check`**, jamais de
+l'état du dépôt — l'énumération avait été close sur une portée qui n'est plus
+celle du garde installé.
+
+Ne lance pas `make format` : les trois fichiers de `src/` sont réservés au lot 2,
+qui réécrit `extraction.py`. **Le motif est la lisibilité de ce lot-là, pas un
+volume** : le reformatage coûte **16 lignes** de diff sur **1 213**, à quatre
+endroits, tous des replis de ligne (`mesuré`, `git diff --numstat` après
+`uv run ruff format src/`). Le récit d'un « reformatage massif » était
+surdimensionné, et il instruisait chaque conversation à venir de l'accepter sans
+remesurer. Le détail et la marche à suivre vivent au `README.md`, section Tests ;
+le constat au registre §5.4.
 
 `format-check` passe **en dernier**, donc `lint`, `typecheck` et `test` rendent
 leur verdict complet avant l'arrêt. Pour lire ce verdict seul, sans le rouge
@@ -452,7 +467,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | Lot | Contenu | Débloque | État |
 |---|---|---|---|
 | **0** | Porte qualité reproductible, `mypy`, `/reindex` déplacé **et sa reprise réparée** | démarrage de la stack, exigences **1** et **5** | ✅ **fusionné le 29 août 2026** (`b59bf38`) |
-| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres. Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | **à faire, court — c'est l'action suivante** |
+| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné en garde-fou. *(La justification d'origine ajoutait « sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres ». C'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**, et `.env` est ignoré par git, donc jamais indexé — l'installer ne le fera jamais scanner. Le gain réel est prospectif, et il est réel : empêcher qu'un secret parte un jour dans un fichier **versionné**. Registre §5.5.)* Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | **à faire, court — c'est l'action suivante** |
 | **1** | **Observer sans corriger.** Reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + 5 pages du PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` présent sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** — la décision « corriger la hiérarchie avant ou après l'ingestion complète » | à faire |
 | **2** | La hiérarchie des titres, **si et seulement si** le lot 1 la montre plate : §3.2, §3.3, §4.11, §4.12. Impose une purge du space | contrainte **6**, donc toute l'ablation | conditionnel |
 | **3** | Instruments et gardes : §3.4, §4.4 (dont la **monotonie de `sequence`**, exigence 4), §4.14, §4.5 | la confiance dans tout chiffre produit après l'ingestion | à faire **avant** l'ingestion complète |
@@ -482,8 +497,17 @@ le coller tel quel dans une conversation neuve nommée `LOT-0B`.
 
 C'est le lot le plus court du plan et celui dont
 l'absence coûte le plus cher : `detect-secrets` est déclaré dans
-`.pre-commit-config.yaml` et n'a **jamais** tourné, sur un dépôt dont le `.env`
-porte les mots de passe MinIO et PostgreSQL.
+`.pre-commit-config.yaml` et n'a **jamais** tourné.
+
+**Ne reprends pas la justification qui suivait cette phrase.** Elle disait
+« sur un dépôt dont le `.env` porte les mots de passe MinIO et PostgreSQL », et
+c'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**,
+`.env` est ignoré par git (`git check-ignore -v .env` → `.gitignore:2`) et non
+suivi, donc **installer le hook ne le fera jamais scanner** (`mesuré`, registre
+§5.5). Le gain est ailleurs, et il est réel : empêcher qu'un secret parte un jour
+dans un fichier **versionné**. Le lot 0b avait corrigé cette survente au
+`README.md` et à `SECURITY.md` — pas ici, dans le texte le plus copié du
+chantier.
 
 Trois choses dedans, et pas une de plus :
 
