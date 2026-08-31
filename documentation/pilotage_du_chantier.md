@@ -702,7 +702,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné en garde-fou. *(La justification d'origine ajoutait « sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres ». C'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**, et `.env` est ignoré par git, donc jamais indexé — l'installer ne le fera jamais scanner. Le gain réel est prospectif, et il est réel : empêcher qu'un secret parte un jour dans un fichier **versionné**. Registre §5.5.)* Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | ✅ **fusionné le 31 août 2026** (`e998e7d`) — et ce ne fut pas court : cinq conversations, dix commits, **deux** tours d'audit indépendant. Il a livré en plus un contrôle d'identité **inconditionnel**, les commits de **fusion** couverts, le corpus versionné **soustrait aux hooks**, et une installation en **un geste** — `make install` — qui vérifie son propre résultat |
 | **1** | **Observer sans corriger.** Monter la pile, reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + le PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** | ✅ **mesuré le 31 août 2026**, sans aucun commit — et son audit indépendant a élargi la mesure de 2 chapitres à **22**. Résultats au registre §3.2, §3.4, §3.5 et §4.21 à §4.27 |
 | **2** | ~~La hiérarchie des titres~~ | — | ❌ **SUPPRIMÉ le 31 août 2026.** Pas parce que le graphe est imbriqué — il l'est à 21/22 — mais parce que **la correction qu'il portait est un no-op** : `level` est absent sur les titres concernés et `elements.py:272` fait `heading_rank or 0`, donc le rang reste 0 (registre §3.2). §3.3 est **retourné** : les deux tests qu'il fallait « amender ensemble » assertent le comportement juste. §4.11 en sort vivant et monte au lot 3 ; §4.12 reste consigné inerte avec sa vraie condition d'activation — l'entrée d'un Markdown au corpus |
-| **3** | **Instruments et gardes, et c'est l'action suivante.** §3.4 (l'instrument sous-compte la troncature **de moitié**, mesuré), §4.4 (dont le garde de `sequence` : `page_no` ne décroît pas dans l'ordre des `sequence` — §6.16), §4.14, §4.5. **Plus, versés par le lot 1 et son audit** : §4.11 — le niveau du titre absent du graphe, devenu un **impératif d'ordre** puisqu'il change le schéma Nebula, qui n'évolue pas en place, donc il doit précéder le lot 6 — §4.21 (46 % des rangs PDF viennent d'un repli que rien ne compte), §4.23, §4.24, et le test de non-platitude que l'audit réclame | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | **à faire — c'est l'action suivante** |
+| **3** | **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — dix commits, **639 tests** (contre 552), **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24, §5.3 et §6.16, et corrigé **trois affirmations fausses du plan lui-même**. **À auditer**
 | **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme) | la certitude que le corpus ingéré est le corpus complet | à faire |
 | **5** | Code mort et documentation contre code : §5.1 à §5.3, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre | la lisibilité, et l'arrêt des faux réglages | à faire |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | à faire |
@@ -733,75 +733,86 @@ correction était un no-op. Un constat étiqueté `supposé` et traité comme te
 
 ## 7. L'action suivante
 
-**Distribuer le lot 3.** Le prompt est prêt, en **annexe A** de ce fichier : le
-coller tel quel dans une conversation neuve nommée `Conv' <n> LOT-3`.
+**Auditer le lot 3**, sur la branche `claude/lot3-instruments-gardes-88ca34`, par
+une conversation qui n'en a écrit aucune ligne. En neuf passages, l'audit
+indépendant n'a **jamais** rien manqué.
 
-**Mais AVANT, un geste de poste, et il n'attend pas : §4.26 du registre.** Toute
-la pile Docker et le **seul `.env`** du poste vivent dans l'arbre de travail
-`.claude/worktrees/lot-1-observation-b12761` — cinq stores en bind mount plus
-`src` et `Datas`. Le supprimer, ce que l'étape 5 ci-dessous prescrit, détruirait
-le graphe, les vecteurs, les objets et le Postgres de Dagster, et
-`Datas/database/` étant ignoré, **aucun garde-fou git ne s'y oppose**. Le lot 3
-doit donc soit remonter la pile depuis le clone principal, soit décider
-explicitement de garder cet arbre en vie. C'est la première chose que son prompt
-lui dit.
+**Ce que l'auditeur doit regarder en premier**, parce que le lot y a renversé le
+plan sur trois points mesurés :
 
-*(Le piège jumeau est déjà désamorcé : le pilote a relancé `make install` depuis
-le clone principal le 31 août 2026, donc `INSTALL_PYTHON` ne pointe plus le
-`.venv` d'un arbre temporaire. Contrôle : `grep INSTALL_PYTHON .git/hooks/pre-commit`.)*
+1. **« Le schéma Nebula n'évolue pas en place » est faux** d'une propriété de
+   tag. `ALTER TAG ... ADD` réussit sur un space peuplé. La conclusion d'ordre
+   du plan tient quand même — les données ne se rétro-remplissent pas — mais son
+   antécédent était faux (registre §4.11) ;
+2. **la conséquence annoncée du §4.14 est fausse** : la mutation décrite ne
+   produit pas un chevauchement silencieux, elle produit une **boucle infinie** ;
+3. **une migration Nebula n'est pas réversible.** Un `ALTER ... DROP` condamne le
+   tag jusqu'à la recréation du space, et le lot l'a découvert en éprouvant la
+   réversibilité sur `rag_space`.
 
-**Ce que le lot 3 porte, et pourquoi maintenant.** Le lot 1 a montré que tout
-chiffre produit après l'ingestion est suspect tant que les instruments ne sont
-pas réparés :
+**Et deux écarts au mandat, tous deux déclarés** : `extraction.py` et `matter.py`
+ont été **reformatés**, chacun dans un commit de style séparé sans une ligne de
+logique, parce que le hook `ruff-format --check` refuse tout commit qui les
+touche et que les gardes de §4.21 et §4.14 y vivent. Coût mesuré : 9 et 4 lignes.
+Il reste **deux** fichiers non format-propres au lot 5, `language.py` et
+`tests/unit/test_wipe_stores.py`. Le lot 4 visera aussi `extraction.py` : le
+report se serait heurté au même mur.
 
-1. **§3.4 — l'instrument de troncature sous-compte de moitié**, mesuré : 8
-   annoncés contre 16 réels, maximum 140 annoncé contre 149 réel. Il tokenise le
-   texte stocké là où le modèle reçoit le texte préfixé du titre.
-2. **§4.11 — le niveau du titre n'est pas dans le graphe, et c'est devenu un
-   impératif d'ORDRE.** Il change `VERTEX_PROPERTIES`, donc le schéma Nebula,
-   qui n'évolue pas en place : toute correction impose une réingestion. Le lot 6
-   *est* l'ingestion complète. Donc §4.11 doit atterrir **avant** le lot 6, et le
-   lot 3 est le seul créneau qui le précède. La hiérarchie existe désormais
-   (§3.2) et l'agent ne peut pas la lire : c'est ce constat, et non l'ancien
-   §3.2, qui l'empêche d'afficher un fil d'Ariane.
-3. **§4.4 — `verify_contract` est vert sur un index où 26 images sur 26 n'ont
-   pas de `minio_url`.** Il ne regarde ni les `PARENT_OF`, ni l'ordre de
-   `sequence`, ni `minio_url`. Le garde de `sequence` est mesuré et connu :
-   `page_no` ne décroît pas dans l'ordre des `sequence` (§6.16).
-4. **§4.21, §4.23, §4.24** — les instruments qui manquent : rien ne compte les
-   titres PDF tombés au repli (46 %), rien ne dit qu'un élément a été coupé à
-   2 000 caractères, et `depth` mélange deux échelles.
-5. **Le test de non-platitude que l'audit du lot 1 réclame**, sur des captures
-   réelles et versionnées, couvrant le chapitre imbriqué **et** le chapitre plat.
-   C'est le test qui aurait vu le trou de représentativité.
+### 7.1 L'état de la pile — §4.26 est TRAITÉ
 
-**§3.5 n'est PAS au lot 3** — 199 images sans `minio_url` est une perte de
-données, elle va au lot 4 avec la famille de la perte silencieuse. Le lot 3
-instrumente ; il ne répare pas la chaîne d'images.
+**La pile ne vit plus dans un arbre de travail.** Le lot 3 l'a remontée depuis le
+clone principal, et il a **déménagé les données du lot 1** plutôt que de
+réingérer : `docker compose down` depuis l'arbre du lot 1, copie de `.env` et de
+`Datas/database/` vers `/home/ubuntu/RAG/rag-ingestion-pipeline`, puis
+`docker compose up -d`. Le graphe a survécu à l'octet — 2 288 sommets avant,
+2 288 après (`mesuré`).
+
+État au 31 août 2026 (`mesuré`) : projet compose **`rag-ingestion-pipeline`**,
+bind mounts sous le clone principal, `.env` dans le clone principal.
+**L'arbre `lot-1-observation-b12761` n'ancre plus rien et peut être supprimé** —
+ses données y restent en copie, filet volontaire.
+
+**Ce qui n'a PAS été déménagé** : le `Datas/database/postgres` du lot 1,
+inaccessible en lecture (`root`, `Permission denied`). Le Postgres de Dagster est
+donc reparti **vierge**, et il faut savoir ce que cela a fait : les curseurs des
+sensors sont repartis de zéro, et **les sensors étant livrés armés** (§4.18,
+fermé par le lot 0b), le simple `docker compose up -d` a déclenché
+**l'ingestion complète du corpus**. Ce n'est pas un défaut — c'est le
+comportement voulu — mais c'est un effet à connaître avant de remonter la pile.
+
+Il en est sorti un bénéfice : le lot 3 a mesuré ses antécédents sur le **corpus
+complet** ingéré par le code de `main`, et non sur les 3 documents du lot 1.
+
+### 7.2 Ce que le lot 3 laisse au poste
+
+- **`verify_contract` sort désormais en 1**, et c'est le verdict juste : 251
+  sommets visuels sur 264 sans URL (§3.5, lot 4), et un index écrit avant que la
+  traçabilité du modèle n'existe. Il redeviendra vert quand le lot 4 aura réparé
+  la chaîne d'images et qu'une réingestion aura inscrit le modèle ;
+- **`dagster-daemon` est arrêté** — `docker compose start dagster-daemon` pour le
+  reprendre. Il a été arrêté pour que les sensors ne réingèrent pas par-dessus
+  les mesures ;
+- **le space `rag_space` a été recréé** : le lot y avait éprouvé la réversibilité
+  d'un `ALTER ... DROP`, et Nebula refuse ensuite le ré-ajout de la colonne. Le
+  corpus complet y est réingéré avec le code du lot.
 
 Puis, dans l'ordre invariable :
 
 1. lire le rapport ;
-2. **faire auditer par une conversation qui n'en a écrit aucune ligne.** En neuf
-   passages sur ce chantier, l'audit indépendant n'a **jamais** rien manqué : sur
-   le lot 1, qui n'avait produit aucun commit, il a quand même trouvé le chapitre
-   plat, les 46 % de rangs PDF issus d'un repli, le no-op de la correction, et le
-   piège de la pile ancrée dans un arbre de travail ;
-3. lire le diff toi-même et faire tourner `make all` de tes mains, **y compris
+2. **faire auditer par une conversation qui n'en a écrit aucune ligne** ;
+3. lire le diff soi-même et faire tourner `make all` de ses mains, **y compris
    sur le résultat de la fusion** ;
 4. **alors seulement**, trancher la fusion ;
 5. si fusion : `--no-ff`, jamais `--ff-only`, jamais de rebase. Puis **relancer
    `make install` depuis le clone principal**, et **vérifier qu'aucun projet
-   Compose ni bind mount n'ancre l'arbre de travail** — `docker inspect <conteneur>
-   --format '{{index .Config.Labels "com.docker.compose.project"}}'` et la liste
-   de ses `Mounts` — avant de supprimer quoi que ce soit. Alors seulement,
-   supprimer la branche, local **et distant** ;
+   Compose ni bind mount n'ancre l'arbre de travail** avant de supprimer quoi que
+   ce soit. Alors seulement, supprimer la branche, local **et distant** ;
 6. mettre le registre à jour ;
 7. écrire le prompt du lot suivant — et **relire l'annexe A contre `git`**, pas
-   contre ta mémoire.
+   contre sa mémoire.
 
-**Une leçon de rédaction de prompt, payée par le lot 1.** Son prompt annonçait
-le chiffre attendu (« le rapport annoncera 0 % de troncature »). La mesure valait
+**Une leçon de rédaction de prompt, payée par le lot 1.** Son prompt annonçait le
+chiffre attendu (« le rapport annoncera 0 % de troncature »). La mesure valait
 1,0 %, et un développeur qui cherchait à confirmer aurait lu ce 1,0 % comme un
 bruit d'arrondi et raté le défaut le plus intéressant des trois. **N'annonce
 jamais le résultat attendu d'une mesure que tu commandes** — donne le mécanisme,

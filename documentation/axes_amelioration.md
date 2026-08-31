@@ -683,6 +683,16 @@ toléré par construction, rien ne l'a signalé : le défaut ne se serait vu qu'
 le supposer : elle relit `DESCRIBE TAG` et lève si une colonne manque, en
 nommant le tag, la colonne et le geste de réparation. `init_schema()` rend
 `False`, et le service refuse de se déclarer prêt — un service mort se voit.
+**Vérifié sur le cas réel** : sur le space empoisonné, `init_schema()` rend
+`False` là où le code de `main` rendait `True`.
+
+**La propriété est lisible sur le space réel, après réingestion complète**
+(`mesuré` le 31 août 2026, corpus entier, 23 documents) : le tag `SectionHeader`
+porte `depth`, **746 sommets sur 746 la portent, 0 à NULL**, et sa distribution
+— `{0: 163, 1: 301, 2: 234, 3: 40, 4: 8}` — est **identique** à la profondeur
+calculée indépendamment en remontant les chaînes `PARENT_OF` avant le changement.
+Les deux voies concordent. `Paragraph` atteint désormais `depth = 5`, valeur que
+le plafond rendait inatteignable.
 
 **Deux conséquences à connaître, écrites ici parce qu'elles ne sont écrites
 nulle part ailleurs :**
@@ -933,6 +943,19 @@ Son seul effet mesurable était de rendre `depth` **non injectif**.
 Le plafond est retiré, et `MAX_DEPTH` avec lui. `depth` est désormais le nombre
 d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document.
 
+**Et ce n'était pas un no-op — mesuré avant/après sur le même corpus**, 4 365
+chunks réingérés (`mesuré` le 31 août 2026) :
+
+| | distribution de `depth` dans ChromaDB |
+|---|---|
+| avant, avec le plafond | `{1: 912, 2: 1993, 3: 1164, 4: 296}` |
+| après | `{1: 912, 2: 1993, 3: 1164, 4: 256, 5: 40}` |
+
+**40 chunks changent de valeur**, soit 0,9 % : ils valaient 4 et valent 5. Les
+296 de la valeur 4 recouvraient bien deux profondeurs réelles. Le total et les
+autres valeurs sont inchangés — la correction est exactement aussi étroite
+qu'annoncé.
+
 **Les deux échelles subsistent, et elles sont désormais ÉCRITES.** Retirer le
 plafond ne les fusionne pas : sur un titre, `depth` compte les titres au-dessus ;
 sur tout autre élément, il vaut celui de son titre + 1. Un paragraphe sous un
@@ -960,35 +983,42 @@ inutilisable sans identifiants et **hors du réseau Docker**. « 0 URL morte »
 dépend donc entièrement de la méthode de lecture. À trancher avec l'agent, qui
 « ne sert que ce que le graphe référence ».
 
-### 4.26 La pile entière et le seul `.env` du poste vivent dans un arbre de travail — À TRAITER AVANT TOUT
+### 4.26 → traité par le lot 3 — la pile est remontée depuis le clone principal
 
-**`mesuré` le 31 août 2026, et c'est un piège armé par le geste que le mandat
-prescrit.** Le lot 1 a monté la pile depuis son arbre de travail. Tous les
-stores sont des **bind mounts** de cet arbre :
+**Le constat, tel qu'il était ouvert.** Le lot 1 avait monté la pile depuis son
+arbre de travail : les cinq stores étaient des bind mounts de
+`.claude/worktrees/lot-1-observation-b12761/Datas/database/`, `src` et `Datas` du
+service Docling aussi, et le seul `.env` du poste y vivait. Supprimer cet arbre —
+ce que le §7 du mandat prescrit après une fusion — aurait détruit le graphe, les
+vecteurs, les objets et le Postgres, sans qu'aucun garde-fou git ne s'y oppose.
 
-```
-projet compose : lot-1-observation-b12761
-graphd / metad / storaged  -> <arbre>/Datas/database/nebula/{meta,storage}
-chromadb                   -> <arbre>/Datas/database/chromadb
-minio                      -> <arbre>/Datas/database/minio
-postgres-dagster           -> <arbre>/Datas/database/postgres
-docling-service            -> <arbre>/src  et  <arbre>/Datas
-.env                       -> n'existe QUE dans cet arbre
-```
+**Ce qui a été fait, et pourquoi pas une réingestion.** `docker compose down`
+depuis l'arbre du lot 1, copie de `.env` et de `Datas/database/` vers le clone
+principal, `docker compose up -d` depuis celui-ci. Déménager plutôt que
+réingérer préservait **l'antécédent** : un index produit par le code de `main`,
+sur lequel prouver que `verify_contract` était vert alors qu'il n'aurait pas dû
+l'être. Le graphe a survécu à l'octet — **2 288 sommets avant, 2 288 après**
+(`mesuré`), 773 chunks, mêmes empreintes de fichiers.
 
-**Supprimer cet arbre de travail — l'étape 5 du §7 du mandat — détruirait le
-graphe, les vecteurs, les objets et le Postgres de Dagster**, et
-`Datas/database/` étant dans le `.gitignore`, **aucun garde-fou git ne s'y
-oppose**. `git worktree remove` n'y verrait rien à protéger.
+État après (`mesuré`, 31 août 2026) : projet compose **`rag-ingestion-pipeline`**,
+bind mounts sous le clone principal, `.env` dans le clone principal.
+`docker compose ps` depuis le clone principal voit les dix services.
+**L'arbre du lot 1 n'ancre plus rien** ; ses données y restent en copie, filet
+volontaire, et il peut être supprimé.
 
-Second effet, mesuré : **`docker compose ps` depuis le clone principal ne voit
-rien** — 20 avertissements de variables vides et aucune ligne de service. Un
-pilote qui interroge la pile depuis le dépôt principal la croit éteinte.
+**Ce qui n'a PAS pu être déménagé, et ce qu'il en est sorti.**
+`Datas/database/postgres` appartient à `root` dans le conteneur : `Permission
+denied`. Le Postgres de Dagster est donc reparti **vierge**, les curseurs des
+sensors avec lui — et **les sensors étant livrés armés** (§4.18, fermé par le
+lot 0b), le simple `docker compose up -d` a déclenché **l'ingestion complète du
+corpus**. Ce n'est pas un défaut, c'est le comportement voulu ; c'est un effet à
+connaître avant de remonter la pile, et il n'était écrit nulle part.
 
-**Le §7 du mandat gagne donc une étape avant toute suppression d'arbre** :
-vérifier qu'aucun projet Compose ni bind mount ne l'ancre. Et le §4 doit dire
-qu'une pile montée depuis un arbre de travail est invisible depuis le clone
-principal.
+Il en est sorti un bénéfice inattendu : le lot 3 a mesuré tous ses antécédents
+sur le **corpus complet** — 23 documents, 15 196 sommets, 4 365 chunks — et non
+sur les 3 documents du lot 1. Plusieurs chiffres du registre s'en trouvent
+élargis, et **la projection `calculé` du §3.2 est confirmée à l'unité près** :
+elle annonçait 746 titres au total, le graphe en porte **746**.
 
 ### 4.27 Piège de mesure : `SHOW STATS` rend 0 sur un space peuplé
 
