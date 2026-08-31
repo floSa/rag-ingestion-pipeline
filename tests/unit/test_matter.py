@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.docling_service.matter import (
     detect_index_pages,
     has_text_layer,
@@ -9,6 +11,7 @@ from src.docling_service.matter import (
     kept_ranges,
     looks_like_index_page,
     normalize_title,
+    page_batches,
     pages_to_skip,
     sample_pages,
 )
@@ -221,3 +224,55 @@ class TestHasTextLayer:
 
     def test_no_sample(self):
         assert has_text_layer([])
+
+
+class TestPageBatches:
+    """Le contrat « pas de chevauchement de lots », que rien ne gardait.
+
+    ``extraction.py`` realise l'absence de chevauchement par
+    ``end_page = min(start + n - 1, range_end)`` puis ``start_page = end_page + 1``.
+    Remplacer ce ``+ 1`` par rien laissait toute la suite VERTE : le bug etait
+    corrige a la source, le contrat n'etait garde par aucun test (registre 4.14).
+
+    Une page convertie deux fois n'est pas inoffensive : ``compute_id`` derive
+    l'identifiant de ``(document, page, rang dans la page, texte)``, donc le
+    second passage REECRIT les memes sommets — mais ``_global_order`` a avance,
+    et ``sequence`` avec lui. L'ordre de lecture se decale sans qu'aucune erreur
+    ne le signale.
+    """
+
+    def test_a_range_shorter_than_a_batch_gives_one_batch(self):
+        assert page_batches([(1, 3)], 5) == [(1, 3)]
+
+    def test_batches_do_not_overlap(self):
+        """LA propriete. Sans le +1, on obtiendrait (1,5), (5,9), (9,10)."""
+        lots = page_batches([(1, 10)], 5)
+        assert lots == [(1, 5), (6, 10)]
+        for (_, fin), (debut_suivant, _) in zip(lots, lots[1:], strict=False):
+            assert debut_suivant == fin + 1
+
+    def test_no_page_is_lost_between_two_batches(self):
+        """L'erreur symetrique : un +2 sauterait une page sans rien dire."""
+        lots = page_batches([(1, 10)], 3)
+        couvertes = [page for debut, fin in lots for page in range(debut, fin + 1)]
+        assert couvertes == list(range(1, 11))
+        assert len(couvertes) == len(set(couvertes))
+
+    def test_each_range_starts_its_own_batches(self):
+        """Les plages sont disjointes : un lot ne franchit jamais leur frontiere."""
+        lots = page_batches([(1, 4), (10, 13)], 3)
+        assert lots == [(1, 3), (4, 4), (10, 12), (13, 13)]
+
+    def test_the_last_batch_stops_at_the_end_of_its_range(self):
+        assert page_batches([(1, 7)], 5)[-1] == (6, 7)
+
+    def test_a_batch_size_of_one_gives_one_page_each(self):
+        assert page_batches([(3, 6)], 1) == [(3, 3), (4, 4), (5, 5), (6, 6)]
+
+    def test_no_range_no_batch(self):
+        assert page_batches([], 5) == []
+
+    def test_a_batch_size_below_one_is_refused(self):
+        """Zero ferait boucler sans fin, un negatif reculerait."""
+        with pytest.raises(ValueError):
+            page_batches([(1, 10)], 0)

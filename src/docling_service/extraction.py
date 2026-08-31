@@ -430,55 +430,56 @@ def _extract_pdf(
     # le meme noeud Document.
     langue = ""
 
+    # Le decoupage en lots vit dans matter.page_batches et non ici : le contrat
+    # « pas de chevauchement » etait realise par un « + 1 » que rien ne gardait,
+    # et ce module n'est pas importable sans docling, donc pas testable.
+    lots = matter.page_batches(ranges, settings.pdf_batch_pages)
+
     # Le PDF est ouvert UNE fois pour tous les crops du document.
     with fitz.open(pdf_path) as document:
-        for range_start, range_end in ranges:
-            start_page = range_start
-            while start_page <= range_end:
-                end_page = min(start_page + settings.pdf_batch_pages - 1, range_end)
-                logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
+        for start_page, end_page in lots:
+            logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
 
-                try:
-                    batch_elements, batch_document, comptes = _convert_batch(
-                        converter,
-                        pdf_path,
-                        stem,
-                        document,
-                        accumulator,
-                        start_page,
-                        end_page,
-                        body_size,
-                        size_ranks,
-                    )
-                except Exception as exc:
-                    # Une page illisible ne doit pas condamner les 399 autres : on
-                    # note l'echec, on continue, et le job echouera a la fin avec
-                    # la liste des pages manquantes. Jamais un run vert sur un trou.
-                    logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
-                    failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
-                else:
-                    titres_total += comptes[0]
-                    titres_replis += comptes[1]
-                    if not langue:
-                        langue = _detect_document_language(batch_elements, stem)
-                    facts = DocumentFacts(
-                        type_file="pdf",
-                        total_pages=total_pages,
-                        language=langue,
-                        content_hash=content_hash,
-                    )
-                    # L'ecriture, elle, est bloquante : si un store refuse le lot,
-                    # continuer n'aurait aucun sens.
-                    total_chunks += storage.persist(batch_elements, identity, facts, batch_document)
-
-                report(
-                    pages_done=end_page,
-                    elements=accumulator.count,
-                    chunks=total_chunks,
-                    language=langue,
-                    failed_batches=list(failed_batches),
+            try:
+                batch_elements, batch_document, comptes = _convert_batch(
+                    converter,
+                    pdf_path,
+                    stem,
+                    document,
+                    accumulator,
+                    start_page,
+                    end_page,
+                    body_size,
+                    size_ranks,
                 )
-                start_page = end_page + 1
+            except Exception as exc:
+                # Une page illisible ne doit pas condamner les 399 autres : on
+                # note l'echec, on continue, et le job echouera a la fin avec
+                # la liste des pages manquantes. Jamais un run vert sur un trou.
+                logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
+                failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
+            else:
+                titres_total += comptes[0]
+                titres_replis += comptes[1]
+                if not langue:
+                    langue = _detect_document_language(batch_elements, stem)
+                facts = DocumentFacts(
+                    type_file="pdf",
+                    total_pages=total_pages,
+                    language=langue,
+                    content_hash=content_hash,
+                )
+                # L'ecriture, elle, est bloquante : si un store refuse le lot,
+                # continuer n'aurait aucun sens.
+                total_chunks += storage.persist(batch_elements, identity, facts, batch_document)
+
+            report(
+                pages_done=end_page,
+                elements=accumulator.count,
+                chunks=total_chunks,
+                language=langue,
+                failed_batches=list(failed_batches),
+            )
 
     if failed_batches:
         raise BatchExtractionError(

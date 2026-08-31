@@ -322,3 +322,50 @@ def kept_ranges(total_pages: int, skipped: set[int]) -> list[tuple[int, int]]:
         plages.append((debut, total_pages))
 
     return plages
+
+
+def page_batches(ranges: list[tuple[int, int]], taille: int) -> list[tuple[int, int]]:
+    """Decoupe des plages de pages en lots de conversion qui NE SE CHEVAUCHENT PAS.
+
+    C'est le contrat que ``_extract_pdf`` realisait sans qu'aucun test ne le
+    garde : remplacer son ``start_page = end_page + 1`` par ``= end_page``
+    laissait toute la suite verte (registre 4.14).
+
+    **Un chevauchement n'est pas inoffensif.** ``compute_id`` derive
+    l'identifiant d'un element de ``(document, page, rang dans la page, texte)``,
+    donc convertir une page deux fois REECRIT les memes sommets — rien ne
+    duplique, et c'est ce qui rend la chose invisible. Mais l'ordre de lecture,
+    lui, a avance : ``DocumentAccumulator._global_order`` est un compteur global
+    au document, donc ``sequence`` se decale sur tout ce qui suit. L'exigence 4
+    du contrat casse sans qu'aucune erreur ne le signale.
+
+    L'erreur symetrique — un pas de deux — sauterait une page en silence, ce que
+    les tests gardent aussi.
+
+    Chaque plage produit ses propres lots : un lot ne franchit jamais la
+    frontiere de deux plages, puisque les pages entre elles ont ete ecartees.
+
+    Args:
+        ranges: Plages ``(premiere, derniere)`` rendues par :func:`kept_ranges`.
+        taille: Nombre maximal de pages par lot.
+
+    Returns:
+        Les lots ``(premiere, derniere)``, dans l'ordre de lecture.
+
+    Raises:
+        ValueError: Si ``taille`` est inferieure a 1. Zero ferait boucler sans
+            fin, un negatif reculerait.
+    """
+    if taille < 1:
+        raise ValueError(f"taille de lot invalide : {taille}")
+
+    lots: list[tuple[int, int]] = []
+    for debut_plage, fin_plage in ranges:
+        debut = debut_plage
+        while debut <= fin_plage:
+            fin = min(debut + taille - 1, fin_plage)
+            lots.append((debut, fin))
+            # Le « + 1 » est LE contrat : sans lui, la derniere page d'un lot
+            # ouvre le suivant et se convertit deux fois.
+            debut = fin + 1
+    return lots

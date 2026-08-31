@@ -723,13 +723,38 @@ fidèlement (`graphe_connaissances.md:29`, `services/nebulagraph.md:33`) ; celle
 de l'agent annonce une arête `DESCRIBES`. L'agent accepte les deux, mais la
 divergence n'était documentée d'aucun côté d'ici. Elle l'est désormais.
 
-### 4.14 Le contrat « pas de chevauchement de lots » n'est gardé par aucun test
+### 4.14 → traité par le lot 3 — le contrat est gardé, et sa conséquence était mal décrite
 
-`extraction.py:453` et `extraction.py:496` réalisent l'absence de chevauchement
-(`end_page = min(start + n - 1, range_end)` puis `start_page = end_page + 1`).
-Aucun test ne fait régresser ce `+1` : le remplacer par `start_page = end_page`
-laisserait la suite verte. Le bug est corrigé à la source, le contrat n'est pas
-gardé.
+Le découpage en lots vit désormais dans `matter.page_batches`, fonction pure, et
+`_extract_pdf` la consomme. Le motif du déménagement est mécanique :
+`extraction.py` importe `docling` au niveau du module, donc **aucun test ne peut
+l'importer** sur un poste sans l'image d'extraction ; `matter.py` est importable,
+et il portait déjà `kept_ranges`, dont le découpage en lots est la suite.
+
+**Ce constat annonçait une conséquence, et elle est fausse — `mesuré` par
+mutation.** Il écrivait : « le remplacer par `start_page = end_page` laisserait
+la suite verte ». La première moitié est vraie — la suite reste verte, personne
+n'exerçait cette boucle. **La seconde est fausse** : cette mutation ne produit
+pas un chevauchement silencieux, elle produit une **boucle infinie**. Avec
+`start_page = end_page`, `end_page = min(start + n − 1, range_end)` cesse de
+progresser dès que la plage est épuisée, et la conversion ne termine jamais
+(`mesuré` : `rc=124`, la suite tuée au bout de 120 s). Un run qui ne finit pas
+n'est pas un run vert sur un graphe faux — c'est un run gelé, et le §4.15 dit ce
+qu'un run gelé coûte à la réindexation.
+
+**Le vrai chevauchement se produit autrement**, et c'est lui que les tests
+gardent : allonger un lot d'une page (`lots.append((debut, fin + 1))`) fait
+rougir **4 tests**, dont `test_batches_do_not_overlap`. L'erreur symétrique — un
+pas de deux, une page sautée en silence — en fait rougir **5**.
+
+**Et le chevauchement n'est pas inoffensif**, ce que le constat ne disait pas :
+`compute_id` dérive l'identifiant d'un élément de
+`(document, page, rang dans la page, texte)`, donc convertir une page deux fois
+**réécrit les mêmes sommets** — rien ne duplique, et c'est ce qui rend la chose
+invisible. Mais `DocumentAccumulator._global_order` est un compteur **global au
+document** : il a avancé, et `sequence` avec lui. **L'exigence 4 du contrat casse
+sans qu'aucune erreur ne le signale.** C'est le vrai coût, et il est plus grave
+que « des éléments en double ».
 
 ---
 
