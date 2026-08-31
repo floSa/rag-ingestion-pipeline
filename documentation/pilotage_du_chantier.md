@@ -212,7 +212,18 @@ au [§1 du registre](axes_amelioration.md).
 - **Aucun GPU n'est requis.** L'ingestion tourne sur processeur. La réservation
   `nvidia` écrite en dur rendait le service **incréable** sans runtime nvidia ;
   elle vit désormais dans un `docker-compose.gpu.yml` superposable.
-- **L'image Docling est à reconstruire.** Le conteneur tournait en Python 3.10
+- **L'image Docling est à reconstruire — toujours vrai au 31 août 2026**, et la
+  panne est identifiée précisément (`mesuré`) : `GET /health` rend **503** avec
+  `graph_ready: true`, `objects_ready: true`, **`models_ready: false`**, et le
+  journal donne la cause en clair —
+  `PermissionError: [Errno 13] Permission denied: '/tmp/.cache/huggingface'`,
+  levée par `_warm_up` au chargement de l'embedder. Le conteneur tourne en
+  **Python 3.10.17** alors que `Dockerfile.docling` déclare `python:3.12-slim` :
+  l'image précède donc le fichier. Or ce `Dockerfile` **corrige déjà** la panne
+  (`mkdir -p /tmp/.cache && chown -R docling:docling /tmp/.cache`). Un
+  `docker compose up -d --build docling-service` doit suffire — c'est la
+  première manipulation du lot 1.
+- *(Constat d'origine, conservé.)* Le conteneur tournait en Python 3.10
   alors que `Dockerfile.docling` déclare `python:3.12-slim` : l'image a plus de
   six semaines. Elle échouait sur `PermissionError: /tmp/.cache/huggingface`,
   que le `Dockerfile` actuel corrige déjà.
@@ -234,13 +245,13 @@ au [§1 du registre](axes_amelioration.md).
 
 | Réf | Pointe | Rôle |
 |---|---|---|
-| `main` | `b59bf38` | **tout ce qui est fusionné, y compris ce mandat et le registre.** Le lot 0 y est depuis le 29 août 2026. Un clone frais suffit : il n'y a rien à checkouter |
+| `main` | `75f96ca` | **tout ce qui est fusionné, y compris ce mandat et le registre.** Le lot 0 y est depuis le 29 août 2026 (fusion `b59bf38`). Un clone frais suffit : il n'y a rien à checkouter |
 | tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 avant sa **première** réparation. Base de comparaison, pas une ligne de travail — d'où un tag et non une branche |
 
 **Aucun lot n'est en vol.** `lot-0` a été fusionnée (`--no-ff`, `b59bf38`) puis
-supprimée en local. **Reste à supprimer côté distant** : tant que ce n'est pas
-fait, `origin/lot-0` traîne dans la liste et fait croire à un lot en cours. Le
-mandat l'exige — une branche fusionnée ne reste pas.
+supprimée, en local **et côté distant** (vérifié le 31 août 2026 : `git branch -r`
+ne rend que `origin/main`). Un clone frais ne voit donc qu'une seule branche et
+un tag.
 
 **Règle, pour ne pas refaire le désordre : une branche par lot en vol, jamais
 plus.** Le chantier a compté jusqu'à cinq branches parce qu'une conversation
@@ -414,9 +425,8 @@ Puis, dans l'ordre invariable :
 6. mettre le registre à jour — §8 « Traité », §2 pour la mesure d'après-fusion ;
 7. écrire le prompt du lot 1.
 
-**Une dette de propreté à solder d'abord** : `origin/lot-0` existe encore. La
-branche est fusionnée et supprimée en local ; il reste à la supprimer côté
-distant.
+*(La dette de propreté sur `origin/lot-0` est soldée : vérifié le 31 août 2026,
+le distant ne porte plus que `main` et le tag.)*
 
 ---
 
