@@ -503,6 +503,65 @@ qu'elle ne s'arrête. Pour lire ce verdict seul :
 make lint typecheck test
 ```
 
+### Les garde-fous du dépôt — une seule installation
+
+```bash
+make install && uv run pre-commit install
+```
+
+Ce geste, et lui seul, arme les hooks déclarés dans `.pre-commit-config.yaml`.
+**Il n'était fait nulle part avant le lot 0b** : les garde-fous étaient déclarés
+et rien ne les exécutait (registre §5.5). Un garde-fou déclaré et non installé
+est pire qu'absent — on croit l'avoir.
+
+| Hook | Ce qu'il fait | Écrit ? |
+|---|---|---|
+| `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche | non |
+| `trailing-whitespace`, `end-of-file-fixer` | hygiène de fin de ligne et de fin de fichier | oui, sur les fichiers **indexés** |
+| `check-yaml`, `check-added-large-files` | YAML valide, aucun fichier > 500 ko | non |
+| `ruff` | `--fix` sur les violations de lint | oui, sur les fichiers **indexés** |
+| `ruff-format` | `--check` — **constate**, ne reformate pas | non |
+| `detect-secrets` | refuse un secret dans un fichier **indexé** | non |
+
+**Le contrôle d'identité est un hook `repo: local`**, et son `entry` pointe le
+script versionné `scripts/git-hooks/pre-commit`. Il n'a donc qu'un site : la
+liste blanche d'adresses ne peut pas diverger entre le framework et la copie
+manuelle décrite dans le mandat §2.1. C'est ce qui permet de rendre le fichier
+`.git/hooks/pre-commit` au framework — un fichier qui ne peut héberger qu'un
+script — sans rien perdre.
+
+Les hooks qui écrivent ne touchent que ce qui est **déjà indexé**, refusent le
+commit et montrent leur diff : on relit, on réindexe. C'est la différence de
+fond avec le défaut que le lot 0b vient de corriger dans `make all`
+(section précédente), qui réécrivait tout `src/` — y compris des fichiers qu'on
+n'avait pas touchés — et sortait **vert**.
+
+#### Ce que `detect-secrets` protège, et ce qu'il ne protège pas
+
+À ne pas survendre. `.env` porte les mots de passe MinIO et PostgreSQL, mais
+**un hook `pre-commit` ne voit que les fichiers indexés, et `.env` est dans
+`.gitignore` : il n'est donc jamais indexé, et installer ce hook ne le fera
+jamais scanner.** Le gain est ailleurs, et il est réel : empêcher qu'un secret
+parte un jour dans un fichier **versionné**. Aujourd'hui `docker-compose.yml`
+passe par `${MINIO_ROOT_PASSWORD}` et ne porte aucun secret en clair (`mesuré`,
+31 août 2026).
+
+Il n'y a **pas de baseline**. Le dépôt en portait une, `.secrets.baseline`,
+générée le 30 avril 2026 et jamais regénérée ; le lot 0b l'a supprimée après
+avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
+désormais **au site**, avec sa justification, par un commentaire
+`# pragma: allowlist secret`.
+
+Le dépôt en portait **2** au 31 août 2026 (`mesuré`), tous deux dans
+`src/pipeline/reindex.py` et `tests/unit/test_reindex.py`, où le scanner lit un
+**nom** de variable — `API_KEY` — sans regarder sa valeur. Ne recopie pas ce
+compte : le scan complet du dépôt versionné se relance en une commande, et c'est
+lui qui fait foi. Il ne doit rien rendre.
+
+```bash
+git ls-files -z | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
+```
+
 **539 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et

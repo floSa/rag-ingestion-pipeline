@@ -91,11 +91,42 @@ Deux identités portent le même **nom**, « Florian Horellou ». **Ne vérifie
 jamais une identité sur le nom, toujours sur l'adresse.**
 
 Le hook vit sous `scripts/git-hooks/pre-commit` (versionné, donc il arrive avec
-le clone) mais **il n'est pas actif tant qu'il n'est pas installé** :
+le clone) mais **il n'est pas actif tant qu'il n'est pas installé.** Depuis le
+lot 0b il est aussi déclaré comme hook `repo: local` dans
+`.pre-commit-config.yaml`, ce qui donne **deux voies d'installation qui
+exécutent le même script**. Prends la première :
+
+```bash
+make install && uv run pre-commit install
+```
+
+C'est le geste recommandé : il installe le contrôle d'identité **et** les autres
+garde-fous du dépôt (`ruff`, `detect-secrets`, `check-yaml`…), qui n'étaient
+installés nulle part avant le lot 0b.
+
+La seconde voie ne dépend de rien — ni `uv`, ni environnement, ni réseau — et
+reste donc le filet quand `make install` n'a pas encore tourné :
 
 ```bash
 cp scripts/git-hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
+
+Elle n'installe que l'identité, et elle se combine sans risque avec la
+première : `.git/hooks/pre-commit` ne peut héberger qu'un script, mais
+`pre-commit install` **n'écrase pas** une copie manuelle déjà présente — il la
+déplace en `pre-commit.legacy` et continue de l'exécuter (`mesuré` sur un clone
+frais, 31 août 2026). Le contrôle d'identité tourne alors deux fois, ce qui est
+bruyant et sans conséquence : même script, même verdict. `uv run pre-commit
+install -f` n'en garde qu'un.
+
+L'ordre inverse, en revanche, coûte les autres hooks : recopier le script à la
+main **par-dessus** le hook du framework le remplace bel et bien. Dans ce cas,
+relance `uv run pre-commit install`.
+
+**`.git/hooks` est partagé entre le dépôt et tous ses arbres de travail**
+(`core.hooksPath` n'est pas positionné) : ce qui y est installé vaut pour tout le
+monde, et il n'y a donc qu'une installation à faire par clone, pas une par
+worktree.
 
 Puis l'identité, dans chaque arbre de travail :
 
@@ -104,10 +135,12 @@ git config user.name "floSa" && git config user.email "florian.horellou@gmail.co
 ```
 
 Adresses autorisées, et elles seules : `florian.horellou@gmail.com`,
-`florian_horellou@laposte.net`. Le hook ne se contourne jamais : pas de
-`--no-verify`.
+`florian_horellou@laposte.net`. Elles n'ont **qu'un site**,
+`ADRESSES_AUTORISEES` dans `scripts/git-hooks/pre-commit` — les deux voies
+d'installation lisent le même fichier, donc la liste ne peut pas diverger. Le
+hook ne se contourne jamais : pas de `--no-verify`.
 
-Le distant est **personnel** : `git@github.com-perso:floSa/rag-ingestion-pipeline.git`.
+Le distant est **personnel** : `floSa/rag-ingestion-pipeline`.
 
 ### 2.2 Le corpus
 

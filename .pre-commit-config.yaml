@@ -1,4 +1,35 @@
+# Les hooks de ce fichier sont INSTALLES par `pre-commit install`, et c'est le
+# seul geste : voir README, section « Les garde-fous du depot ».
+#
+# Ce fichier a longtemps declare des garde-fous que rien n'executait — le
+# framework n'etait installe nulle part, donc `detect-secrets` n'avait jamais
+# tourne en garde-fou (registre §5.5). Un garde-fou declare et non installe est
+# pire qu'absent : on croit l'avoir.
 repos:
+  # Le controle d'identite d'auteur passe par le framework, et non par un
+  # `.git/hooks/pre-commit` ecrit a la main. Raison : ce fichier ne peut heberger
+  # QU'UN script, et `pre-commit install` l'ecrase. Le declarer ici rend
+  # `.git/hooks/pre-commit` au framework sans rien perdre, et rend l'installation
+  # unique : `pre-commit install`.
+  #
+  # `entry` pointe le script VERSIONNE, celui-la meme que le mandat §2.1 fait
+  # copier a la main : les deux voies d'installation executent donc les MEMES
+  # octets, et la liste blanche d'adresses n'a qu'un seul site.
+  #
+  # `always_run` est indispensable : sans lui, un hook dont aucun fichier
+  # indexe ne matche est SAUTE, et le controle d'identite ne depend d'aucun
+  # fichier. `pass_filenames` est faux pour la meme raison — le script ne lit
+  # pas d'arguments, il lit `git var GIT_AUTHOR_IDENT`.
+  - repo: local
+    hooks:
+      - id: identite-auteur
+        name: "Identite d'auteur autorisee"
+        entry: scripts/git-hooks/pre-commit
+        language: script
+        stages: [pre-commit]
+        always_run: true
+        pass_filenames: false
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -13,10 +44,30 @@ repos:
     hooks:
       - id: ruff
         args: [--fix]
+      # `--check` : ce hook CONSTATE, il ne reformate pas. C'est la meme decision
+      # que pour la cible `all` du Makefile, et pour la meme raison — mais elle
+      # est ici plus mordante. Sans `--check`, le premier developpeur a toucher
+      # une ligne de `extraction.py` verrait le hook reformater le fichier
+      # ENTIER et emporterait dans son commit les trois plis reserves au lot 2
+      # (registre §5.4). Le reformatage reste un geste volontaire :
+      # `uv run ruff format <fichier>`, jamais `make format`, qui ecrit dans
+      # tout `src/`.
       - id: ruff-format
+        args: [--check]
 
+  # Pas de `--baseline`. Le depot en portait un, `.secrets.baseline`, genere le
+  # 30 avril 2026 et jamais regenere : sa seule entree pointait
+  # `tests/unit/test_settings.py:44`, une ligne SUPPRIMEE le 11 juin 2026 par
+  # `b157e84`. Elle etait de surcroit `is_verified: false`. Une baseline est un
+  # etat que rien ne reconcilie avec le code : elle avait donc silencieusement
+  # pourri pendant deux mois et demi, et le hook refusait le premier commit
+  # touchant ce fichier en sortant en 3 pour se faire reindexer (`mesure`).
+  #
+  # Les faux positifs se declarent desormais AU SITE, avec leur justification,
+  # par un commentaire `# pragma: allowlist secret`. Un pragma est relu dans le
+  # diff et meurt avec la ligne qu'il annote ; une entree de baseline survit a
+  # sa ligne. C'est la lecon « ne rien ecrire est plus robuste que bien ecrire ».
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']

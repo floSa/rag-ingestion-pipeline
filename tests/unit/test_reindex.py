@@ -84,9 +84,12 @@ class TestAppelReussi:
 
 class TestCleDApi:
     def test_cle_envoyee_quand_elle_est_configuree(self):
+        # `pragma: allowlist secret` : « secret » est le mot litteral, choisi
+        # comme valeur d'essai justement parce qu'il n'est un secret nulle part.
+        # `detect-secrets` ne voit que le nom de l'argument, `api_key`.
         espion = Espion()
-        request_reindex(URL, api_key="secret", post=espion)
-        assert espion.appels[0]["headers"][API_KEY_HEADER] == "secret"
+        request_reindex(URL, api_key="secret", post=espion)  # pragma: allowlist secret
+        assert espion.appels[0]["headers"][API_KEY_HEADER] == "secret"  # pragma: allowlist secret
 
     def test_aucun_en_tete_sans_cle(self):
         espion = Espion()

@@ -522,32 +522,6 @@ dépôt, et cette vérité est « trois fichiers ne sont pas format-propres ». 
 éteindre ce rouge avec `make format` — la marche à suivre est écrite au
 `README.md`, section Tests.
 
-### 5.5 Les hooks `pre-commit` ne sont installés nulle part
-
-`.git/hooks/pre-commit` ne contient que le contrôle d'identité d'auteur. Le
-framework `pre-commit` n'est pas installé : `ruff`, `ruff-format`,
-`detect-secrets`, `trailing-whitespace` et `check-yaml` sont déclarés dans
-`.pre-commit-config.yaml` et **rien ne les exécute** (`mesuré`). C'est la cause
-directe de §5.4, et cela veut dire que `detect-secrets` n'a jamais tourné en
-garde-fou : il ne protège que ce qu'un humain pense à lancer.
-
-`make install` installe désormais le paquet `pre-commit` ; il reste à décider
-si `pre-commit install` doit être appelé, et par qui — le hook d'identité
-occupe déjà `.git/hooks/pre-commit` et le framework l'écraserait.
-
-**Sorti du §5 par décision du pilote, sur l'argument du développeur du lot 0.**
-Ce constat n'est pas du code mort : c'est un **garde-fou qu'on croit avoir et
-qui n'existe pas**, sur un dépôt dont le `.env` porte les mots de passe MinIO
-et PostgreSQL. C'est la même famille que le modèle d'embedding non gardé, et
-elle a déjà coûté cher ici. Il est donc traité en **lot 0b**, juste après la
-fusion du lot 0, et non avec le nettoyage du code mort.
-
-Une piste existe et n'est pas une consigne : le contrôle d'identité peut
-devenir un hook `repo: local` dans `.pre-commit-config.yaml`, ce qui rend le
-fichier `.git/hooks/pre-commit` au framework sans rien perdre. À arbitrer dans
-le lot, avec sa preuve par mutation — un commit portant une adresse hors liste
-blanche doit être refusé après comme il l'est aujourd'hui.
-
 ### 5.6 Trois `except Exception` sans justification écrite au site
 
 `wipe_stores.py:107`, `:115` et `:126` (branche `…restore-5e9fa1`, commit
@@ -722,6 +696,133 @@ rouges**.
 
 **Les commits cités ci-dessous** sont ceux de la livraison initiale du lot.
 
+### 5.5 → traité par le lot 0b — les hooks `pre-commit` sont installés
+
+`.pre-commit-config.yaml` déclarait `ruff`, `ruff-format`, `detect-secrets`,
+`trailing-whitespace` et `check-yaml`, et **rien ne les exécutait** : le
+framework n'était installé nulle part. `.git/hooks/pre-commit` ne portait que le
+contrôle d'identité d'auteur.
+
+**L'arbitrage retenu : le contrôle d'identité devient un hook `repo: local`**, et
+son `entry` pointe le script versionné `scripts/git-hooks/pre-commit`. Le fichier
+`.git/hooks/pre-commit` — qui ne peut héberger qu'un script — est rendu au
+framework, et l'installation tient en un geste :
+`make install && uv run pre-commit install`.
+
+La propriété qui fait tenir l'arbitrage : les deux voies d'installation
+exécutent **les mêmes octets**. La liste blanche d'adresses n'a qu'un site,
+`ADRESSES_AUTORISEES` dans le script versionné, donc elle ne peut pas diverger.
+Le mandat §2.1 reste vrai, et il a été réécrit dans le même commit pour donner
+les deux voies et dire laquelle prendre.
+
+Écartées, et pourquoi :
+
+- **chaîner à la main dans `.git/hooks/pre-commit`** (identité, puis
+  `exec pre-commit run`) : c'est réécrire à la main ce que `pre-commit install`
+  génère, dans un fichier **non versionné** — donc un garde-fou qui n'existe
+  que sur le poste de celui qui l'a écrit. C'est exactement le défaut que §5.5
+  ferme ;
+- **`core.hooksPath` vers un dossier versionné** : `pre-commit` refuse
+  d'installer quand `core.hooksPath` est positionné, et la valeur est partagée
+  par tous les arbres de travail ;
+- **déplacer l'identité vers `pre-push` ou `commit-msg`** pour libérer
+  `pre-commit` : `pre-push` est trop tard — le commit porte déjà la mauvaise
+  adresse, et c'est la réécriture d'historique qui coûte cher. Inutile de toute
+  façon : `stages: [pre-commit]` conserve exactement le moment de déclenchement.
+
+**Deux réglages sans lesquels le hook serait creux.** `always_run: true` :
+un hook dont la liste de fichiers filtrée est **vide** est *sauté* par le
+framework, et le contrôle d'identité ne dépend d'aucun fichier. C'est là la
+seule faiblesse de la voie framework face au script brut, qui tourne toujours ;
+`always_run` rétablit la parité. Et `pass_filenames: false`, le script ne lisant
+pas d'arguments mais `git var GIT_AUTHOR_IDENT`.
+
+**Prouvé par mutation, sur un clone frais** (`mesuré`, 31 août 2026). Le cas
+atteignable est le commit sans fichier éligible, `git commit --allow-empty` :
+
+| Configuration | Commit vide portant `…@aosis.net` |
+|---|---|
+| `always_run: true` (livré) | **refusé**, `rc=1`, « COMMIT REFUSÉ » |
+| `always_run` retiré | **accepté**, `rc=0` — le hook affiche « (no files to check) Skipped » et le commit part avec l'adresse professionnelle |
+
+C'est exactement le sinistre d'origine, à un réglage de configuration près.
+
+**`ruff-format` est passé à `--check`.** Sans cela, le premier développeur à
+toucher une ligne de `extraction.py` aurait vu le hook reformater le fichier
+entier et emporté dans son commit les trois plis réservés au lot 2 (§5.4) : le
+défaut que le lot 0b ferme dans `make all`, revenu par la porte du hook. C'est un
+écart au fichier tel qu'il était déclaré, assumé et argumenté au site.
+
+### La réserve du pilote sur `.env` et `detect-secrets` — CONFIRMÉE
+
+Le §5.5 disait que `detect-secrets` « n'a jamais tourné en garde-fou sur un dépôt
+dont le `.env` porte les mots de passe MinIO et PostgreSQL ». La première moitié
+était vraie. **La seconde induisait en erreur, et le raisonnement du pilote est
+confirmé par la mesure** (31 août 2026) :
+
+- un hook `pre-commit` ne voit que les fichiers **indexés** ;
+- `.env` est ignoré (`git check-ignore -v .env` → `.gitignore:2`) et **non
+  suivi** (`git ls-files --error-unmatch .env` → échec). Il n'est donc jamais
+  indexé, et **installer le hook ne le fera jamais scanner** ;
+- `docker-compose.yml` ne porte **aucun** secret en clair : les sept sites
+  concernés passent tous par une interpolation `${…}` (`mesuré`,
+  `grep -nE "PASSWORD|SECRET|ROOT_USER|_KEY" docker-compose.yml`).
+
+Le gain réel est donc **ailleurs, et il est réel** : empêcher qu'un secret parte
+un jour dans un fichier **versionné**. C'est une protection prospective, pas la
+découverte d'un secret déjà présent. Écrit comme tel au `README.md` pour que
+personne ne la survende.
+
+### La baseline `detect-secrets` — supprimée, et pourquoi
+
+Les deux faits avancés par le pilote sont **confirmés**, et le second est pire
+que « non vérifié » : `.secrets.baseline` portait `generated_at`
+`2026-04-30T00:15:52Z` (quatre mois) et une seule entrée,
+`tests/unit/test_settings.py:44`, `Secret Keyword`, `is_verified: false`.
+
+**Cette entrée était un fantôme.** Elle désignait
+une assertion sur `minio_root_password` comparée à une valeur d'essai, ligne
+**supprimée le 11 juin 2026** par `b157e84` : le fichier ne compte plus que 36 lignes, il n'a donc pas
+de ligne 44, et il ne contient aucun secret (`mesuré`). La baseline mentait
+depuis deux mois et demi.
+
+Et elle ne mentait pas passivement. Mesuré : `detect-secrets-hook --baseline
+.secrets.baseline tests/unit/test_settings.py` **réécrit la baseline** et sort en
+**3** — « Please `git add .secrets.baseline` ». Le premier commit touchant ce
+fichier aurait donc été refusé pour une raison sans rapport avec lui.
+
+**Tranché : la baseline est supprimée, et `--baseline` retiré des `args`.** Une
+baseline est un état que rien ne réconcilie avec le code, indexé par des numéros
+de ligne et des hachages qui dérivent tous les deux — c'est la leçon « ne rien
+écrire est plus robuste que bien écrire » appliquée à la lettre, et le fantôme en
+est la preuve mesurée. Les faux positifs se déclarent désormais **au site**, par
+`# pragma: allowlist secret` avec sa justification : un pragma est relu dans le
+diff et **meurt avec la ligne qu'il annote**, là où une entrée de baseline lui
+survit.
+
+**Ce que `detect-secrets` a trouvé, en tournant vraiment** (`mesuré`, scan de
+tous les fichiers versionnés) : **trois** détections, toutes fausses.
+
+| Site | Détection | Verdict |
+|---|---|---|
+| `.secrets.baseline:130` | `Hex High Entropy String`, `Secret Keyword` | le hachage **de la baseline elle-même**. Ne se produit qu'en scan direct : le hook exclut son propre fichier. Disparu avec la baseline |
+| `src/pipeline/reindex.py` | `Secret Keyword` | la constante `API_KEY_HEADER`, dont la valeur est un **nom** d'en-tête HTTP et non une clé. Pragma posé |
+| `tests/unit/test_reindex.py` | `Secret Keyword` | l'argument `api_key` d'un test, dont la valeur d'essai est le mot « secret » lui-même. Pragma posé |
+
+**Aucun secret réel n'a été trouvé.** Et les deux faux positifs **bloquaient**
+tout commit touchant ces deux fichiers : le garde-fou, tel qu'il était déclaré,
+était non seulement inactif mais ininstallable en l'état.
+
+Piège mesuré au passage, et consigné parce qu'il se reproduira : le plugin
+`Secret Keyword` **déduplique par hachage** dans un fichier. Poser le pragma sur
+la première occurrence a fait apparaître une seconde ligne portant la même
+valeur, jusque-là masquée. Un scan après correction n'est pas une politesse.
+
+Second piège : `.secrets.baseline` ne se terminait pas par un saut de ligne, si
+bien que `end-of-file-fixer` la réécrivait, ce qui faisait ensuite échouer
+`detect-secrets` sur « your baseline file is unstaged ». Deux hooks du même
+fichier se défaisaient mutuellement le travail. Sans objet désormais.
+
 ### 5.4, première moitié → traitée par le lot 0b — la porte constate au lieu d'écrire
 
 `make all` avait `format` pour première cible, c'est-à-dire `ruff format src/`,
@@ -787,7 +888,9 @@ Le `Makefile` appelle chaque outil derrière `uv run` et gagne une cible
 `install` : la séquence tient en `make install && make all`, sans activation
 d'environnement.
 
-Reste ouvert et détaché de ce constat : §5.4 et §5.5.
+Restait ouvert et détaché de ce constat : §5.4 et §5.5, tous deux traités par
+le lot 0b — sauf les trois fichiers non format-propres, qui restent au §5.4
+ouvert, pour le lot 2.
 
 ### « mypy rouge dès le premier commit » → traité par `98bb20d`
 

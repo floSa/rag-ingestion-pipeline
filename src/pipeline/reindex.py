@@ -61,7 +61,12 @@ REINDEX_PATH = "/reindex"
 
 # En-tete attendu par l'agent quand il est protege par une cle. Sans cle
 # configuree de son cote, la dependance ne fait rien et l'en-tete est ignore.
-API_KEY_HEADER = "X-API-Key"
+#
+# `pragma: allowlist secret` : c'est un NOM d'en-tete HTTP, pas une valeur.
+# `detect-secrets` leve un « Secret Keyword » parce que le nom de la constante
+# contient `API_KEY`, sans regarder ce qu'elle vaut. La cle elle-meme n'est
+# jamais ecrite ici : elle arrive par `settings`.
+API_KEY_HEADER = "X-API-Key"  # pragma: allowlist secret
 
 
 @dataclass(frozen=True)

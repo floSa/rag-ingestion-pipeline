@@ -5,7 +5,19 @@
 - Tous les secrets sont dans `.env` (ignore par git)
 - `.env.example` documente les cles attendues sans valeurs sensibles
 - Les mots de passe sont generes avec `openssl rand -base64 24`
-- `detect-secrets` avec baseline (`.secrets.baseline`) integre au pre-commit
+- `detect-secrets` tourne en hook `pre-commit`, **et il faut l'installer** :
+  `make install && uv run pre-commit install`. Ce geste n'etait fait nulle part
+  avant le lot 0b — la ligne qui precedait celle-ci annoncait un garde-fou
+  « integre au pre-commit » que rien n'executait, avec une baseline
+  `.secrets.baseline` desormais supprimee (registre §5.5)
+- **Ce hook ne protege PAS le `.env`**, et il ne faut pas le croire : un hook
+  `pre-commit` ne voit que les fichiers **indexes**, et `.env` est ignore par
+  git, donc jamais indexe. Ce qu'il protege, c'est le depot **versionne** —
+  empecher qu'un secret y parte un jour. Detail au `README.md`, section
+  « Les garde-fous du depot »
+- Un faux positif se declare **au site**, avec sa justification, par un
+  commentaire `# pragma: allowlist secret` — jamais dans une baseline, qui est
+  un etat que rien ne reconcilie avec le code
 
 ## Audit des dependances
 
