@@ -90,45 +90,60 @@ se défait pas.
 Deux identités portent le même **nom**, « Florian Horellou ». **Ne vérifie
 jamais une identité sur le nom, toujours sur l'adresse.**
 
-Le hook vit sous `scripts/git-hooks/pre-commit` (versionné, donc il arrive avec
-le clone) mais **il n'est pas actif tant qu'il n'est pas installé.** Depuis le
-lot 0b il est aussi déclaré comme hook `repo: local` dans
-`.pre-commit-config.yaml`, ce qui donne **deux voies d'installation qui
-exécutent le même script**. Prends la première :
+**Un seul geste, et il vérifie son propre résultat :**
 
 ```bash
-make install && uv run pre-commit install
+make install
 ```
 
-C'est le geste recommandé : il installe le contrôle d'identité **et** les autres
-garde-fous du dépôt (`ruff`, `detect-secrets`, `check-yaml`…), qui n'étaient
-installés nulle part avant le lot 0b.
+`make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`,
+qui arme les hooks git **et sort en erreur si le montage n'est pas celui qu'il
+annonce**. Il n'y a rien d'autre à taper, rien à faire dans un ordre, rien à se
+rappeler. Si `uv` manque sur le poste, le script s'exécute seul :
+`sh scripts/installer-les-garde-fous.sh`.
 
-La seconde voie ne dépend de rien — ni `uv`, ni environnement, ni réseau — et
-reste donc le filet quand `make install` n'a pas encore tourné :
+**Ce que le script monte, et pourquoi l'ordre compte.** Le contrôle d'identité
+vit sous `scripts/git-hooks/pre-commit`, versionné, donc il arrive avec le clone
+— mais **inactif tant qu'il n'est pas installé**, git n'exécutant jamais ce qui
+arrive avec un dépôt. Le script le copie d'abord dans le répertoire des hooks,
+**puis** lance `pre-commit install`, qui déplace cette copie en
+`pre-commit.legacy`, continue de l'exécuter **avant** ses propres hooks, et
+s'installe par-dessus. Les deux voies exécutent donc les **mêmes octets**, et la
+liste blanche d'adresses n'a qu'un site.
 
-```bash
-cp scripts/git-hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
-```
+**`pre-commit.legacy` n'est pas un doublon : c'est la protection.** Ce point a
+coûté au lot 0b sa fusion au premier tour, et il faut le lire en entier. Le hook
+généré par le framework ouvre sa configuration en chemin **relatif**
+(`--config=.pre-commit-config.yaml`) : un contrôle déclaré dans ce fichier — donc
+dans l'**arbre de travail** — ne vaut que pour les arbres dont la configuration
+le porte. Sur les 111 commits de `main`, **aucun** ne la porte (`mesuré`,
+31 août 2026, `a005172`). Mesuré dans un clone frais monté par
+`pre-commit install` seul, arbre sorti à `298c77e` : un commit portant
+`@aosis.net` en auteur **et** en committer est **accepté**, `rc=0`. Le hook du
+framework tourne, son rapport ne contient aucune ligne d'identité, et le commit
+part. `pre-commit.legacy` vit **hors** de l'arbre de travail : c'est la seule
+couche qui vaille pour tout commit, toute branche, tout `git bisect`, tout HEAD
+détaché.
 
-Elle n'installe que l'identité, et elle se combine sans risque avec la
-première : `.git/hooks/pre-commit` ne peut héberger qu'un script, mais
-`pre-commit install` **n'écrase pas** une copie manuelle déjà présente — il la
-déplace en `pre-commit.legacy` et continue de l'exécuter (`mesuré` sur un clone
-frais, 31 août 2026). Le contrôle d'identité tourne alors deux fois, ce qui est
-bruyant et sans conséquence : même script, même verdict. `uv run pre-commit
-install -f` n'en garde qu'un.
+**Ne passe jamais `-f`.** `pre-commit install` le suggère lui-même dans sa
+sortie — « `Use -f to use only pre-commit.` » — et c'est exactement le geste qui
+supprime cette couche. Le script ne le passe pas, et sa vérification finale
+rougit si la couche a disparu. Un test la garde :
+`tests/unit/test_installation_des_garde_fous.py` monte un dépôt jetable dont la
+configuration ne déclare **pas** le contrôle d'identité, y exécute le script
+livré, et prouve que le refus tient quand même.
 
-L'ordre inverse, en revanche, coûte les autres hooks : recopier le script à la
-main **par-dessus** le hook du framework le remplace bel et bien. Dans ce cas,
-relance `uv run pre-commit install`.
+**Ce qui est par clone, et ce qui suit la branche.** À distinguer, parce que la
+conclusion n'est pas la même pour les deux :
 
-**`.git/hooks` est partagé entre le dépôt et tous ses arbres de travail**
-(`core.hooksPath` n'est pas positionné) : ce qui y est installé vaut pour tout le
-monde, et il n'y a donc qu'une installation à faire par clone, pas une par
-worktree.
+| Objet | Portée | Conséquence |
+|---|---|---|
+| l'**installation** des hooks | **une fois par clone** — `.git/hooks` est partagé entre le dépôt et tous ses arbres de travail, `core.hooksPath` n'étant pas positionné | rien à refaire par worktree |
+| l'**identité** `user.email` | **une fois par clone** — `extensions.worktreeConfig` n'est pas activé, donc `git config` écrit dans `.git/config`, partagé (`mesuré`, 31 août 2026 : les quatre arbres de travail lisent le même fichier) | rien à refaire par worktree |
+| la **protection d'identité** | **toute branche**, grâce à `pre-commit.legacy` | inconditionnelle, comme avant le lot 0b |
+| la **configuration** des hooks du framework | **suit l'arbre de travail** : le hook lit `.pre-commit-config.yaml` en chemin relatif | un arbre sorti à un commit ancien exécute les hooks *de ce commit-là*. Ce n'est pas un défaut, c'est un fait à connaître |
 
-Puis l'identité, dans chaque arbre de travail :
+Puis l'identité, une fois :
 
 ```bash
 git config user.name "floSa" && git config user.email "florian.horellou@gmail.com"
@@ -136,9 +151,21 @@ git config user.name "floSa" && git config user.email "florian.horellou@gmail.co
 
 Adresses autorisées, et elles seules : `florian.horellou@gmail.com`,
 `florian_horellou@laposte.net`. Elles n'ont **qu'un site**,
-`ADRESSES_AUTORISEES` dans `scripts/git-hooks/pre-commit` — les deux voies
-d'installation lisent le même fichier, donc la liste ne peut pas diverger. Le
-hook ne se contourne jamais : pas de `--no-verify`.
+`ADRESSES_AUTORISEES` dans `scripts/git-hooks/pre-commit`. Le hook ne se
+contourne jamais : pas de `--no-verify`.
+
+**Ce que le contrôle couvre, et ce qu'il ne couvre pas.** `mesuré` le 31 août
+2026, mouchards posés sur chaque hook de `.git/hooks` :
+
+| Geste | Couvert | Pourquoi |
+|---|---|---|
+| `git commit` | **oui** | hook `pre-commit` |
+| `git commit --amend` | **oui** | hook `pre-commit` |
+| `git merge --no-ff` | **non — voir registre** | `pre-commit install` n'installe que le type `pre-commit` ; la fusion déclenche `pre-merge-commit`, qui n'est pas installé |
+| `git revert`, `git cherry-pick` | **non** | git n'y déclenche ni `pre-commit` ni `commit-msg`. Le seul point d'accroche restant, `prepare-commit-msg`, y voit l'identité **locale** et non celle du commit produit (`mesuré`) : un contrôle posé là serait vert sur le défaut |
+| `git rebase` | **non** | aucun hook de la famille ; le rebase réécrit le committer |
+
+Les trois dernières lignes sont **ouvertes**, au registre.
 
 Le distant est **personnel** : `floSa/rag-ingestion-pipeline`.
 

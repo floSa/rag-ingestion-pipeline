@@ -1,10 +1,22 @@
 .PHONY: install lint format format-check typecheck test test-cov audit all
 
+# UN SEUL GESTE arme tout ce que ce depot sait garder, et c'est celui-ci.
+#
 # `uv sync` installe les dependances de production ET le groupe `dev` declare
-# dans pyproject.toml. C'est la seule etape d'installation de la porte qualite :
-# il n'y a pas de liste annexe a se rappeler.
+# dans pyproject.toml : il n'y a pas de liste annexe a se rappeler. Puis
+# `installer-les-garde-fous.sh` arme les hooks git — le controle d'identite
+# d'auteur et les hooks de `.pre-commit-config.yaml` — et VERIFIE qu'ils le
+# sont, en sortant en erreur sinon.
+#
+# La seconde ligne n'etait pas la avant la reparation du lot 0b, et cette cible
+# annoncait pourtant « la seule etape d'installation de la porte qualite ». Les
+# hooks demandaient un second geste, dans un ordre precis, connu de la seule
+# documentation. Un garde-fou qui repose sur la memoire du suivant n'est pas un
+# garde-fou : c'est la phrase que la cible `all` ci-dessous a fait respecter,
+# et elle valait aussi pour cette cible-ci.
 install:
 	uv sync
+	sh scripts/installer-les-garde-fous.sh
 
 # Chaque outil passe par `uv run` : la porte tourne immediatement apres
 # `make install`, sans activation d'environnement, et toujours aux versions

@@ -732,10 +732,17 @@ les deux voies et dire laquelle prendre.
 
 **Deux réglages sans lesquels le hook serait creux.** `always_run: true` :
 un hook dont la liste de fichiers filtrée est **vide** est *sauté* par le
-framework, et le contrôle d'identité ne dépend d'aucun fichier. C'est là la
-seule faiblesse de la voie framework face au script brut, qui tourne toujours ;
+framework, et le contrôle d'identité ne dépend d'aucun fichier ;
 `always_run` rétablit la parité. Et `pass_filenames: false`, le script ne lisant
 pas d'arguments mais `git var GIT_AUTHOR_IDENT`.
+
+**Ce paragraphe portait « c'est là la SEULE faiblesse de la voie framework face
+au script brut ». C'était faux, et cette phrase a caché la régression R1 pendant
+tout le lot.** Il y en avait une seconde, plus large : le hook généré ouvre sa
+configuration en chemin **relatif**, donc le contrôle ne valait plus que pour
+les arbres de travail dont la configuration le porte. Une phrase d'exhaustivité
+clôt une énumération que personne ne rouvre — c'est la leçon du chantier, et
+elle s'est appliquée au document qui l'énonce. Voir « R1 » ci-dessous.
 
 **Prouvé par mutation, sur un clone frais** (`mesuré`, 31 août 2026). Le cas
 atteignable est le commit sans fichier éligible, `git commit --allow-empty` :
@@ -752,6 +759,95 @@ toucher une ligne de `extraction.py` aurait vu le hook reformater le fichier
 entier et emporté dans son commit les trois plis réservés au lot 2 (§5.4) : le
 défaut que le lot 0b ferme dans `make all`, revenu par la porte du hook. C'est un
 écart au fichier tel qu'il était déclaré, assumé et argumenté au site.
+
+### R1 → traitée par la réparation du lot 0b — le contrôle d'identité était devenu conditionnel à la branche
+
+**C'était une régression, et de la famille de défaut qui a coûté un dépôt
+entier.** Le lot 0b, tel qu'il avait été livré, a fermé une porte et en a
+entrouvert une autre sans l'écrire.
+
+Le mécanisme, en trois lignes :
+
+- **avant** le lot, `.git/hooks/pre-commit` portait le script d'identité. Ce
+  fichier vit **hors** de l'arbre de travail : le contrôle valait pour toute
+  branche, tout commit détaché, tout `git bisect` ;
+- **après** le lot, le contrôle vivait dans `.pre-commit-config.yaml`, un
+  fichier **de l'arbre de travail**, et le hook généré l'ouvre en chemin
+  **relatif** (`--config=.pre-commit-config.yaml`) ;
+- donc tout arbre dont la configuration ne porte pas le hook était désarmé, **en
+  silence**. Sur les **111** commits de `main` (`a005172`), **aucun** ne la porte
+  (`mesuré` le 31 août 2026 :
+  `for c in $(git rev-list a005172); do git show "$c:.pre-commit-config.yaml" | grep -q identite-auteur; done`).
+
+**Mesuré, dans un clone frais monté par `pre-commit install` seul, arbre sorti à
+`298c77e`** (31 août 2026) :
+
+```bash
+GIT_AUTHOR_EMAIL=florian.horellou@aosis.net \
+GIT_COMMITTER_EMAIL=florian.horellou@aosis.net \
+git commit --allow-empty -m essai
+```
+
+→ `rc=0`, commit **créé**, auteur **et** committer `@aosis.net`. Le hook du
+framework tourne bel et bien, et son rapport ne contient **aucune** ligne
+d'identité.
+
+**C'est la leçon « une règle survit à son motif », appliquée à un fichier qui
+déménage.** La propriété « inconditionnel » du contrôle d'identité ne venait pas
+du script : elle venait de l'**endroit** où il vivait. Le script a changé de
+place, la propriété est morte dans le déménagement, et rien ne l'a notée — pas
+même le développeur qui a écrit, dans le même lot, que le mandat §2.1 devait
+rester vrai. La phrase d'exhaustivité du §5.5 ci-dessus a fermé la porte à
+double tour.
+
+#### Ce qui a été retenu, et pourquoi pas seulement de la documentation
+
+La réparation documentaire proposée par l'audit — au mandat §2.1, inverser
+l'ordre : copie manuelle **d'abord**, `pre-commit install` ensuite, jamais `-f`
+— **est correcte et elle est retenue**. Elle laisse `pre-commit` en « migration
+mode » et conserve le script en `pre-commit.legacy`, la seule couche indépendante
+de la branche. Mesuré : sous ce montage, dans un arbre à `298c77e`, le commit
+`@aosis.net` est **refusé**, `rc=1`, HEAD inchangé.
+
+**Elle ne suffisait pas, et pour une raison mesurée plutôt que rhétorique.**
+`pre-commit install` **suggère lui-même** le geste qui détruit la couche, dans sa
+propre sortie : « `Use -f to use only pre-commit.` ». Une consigne documentaire
+qui contredit l'outil qu'elle pilote perd, et elle perd en silence : `-f` ne
+produit aucune erreur, seulement l'absence d'une protection. L'inversion de
+l'ordre non plus. Une porte dont la seule preuve est une phrase dans un fichier
+de 900 lignes n'est pas une porte.
+
+**Ce qui a donc été livré, en plus :**
+
+1. `scripts/installer-les-garde-fous.sh`, versionné, qui fait les deux gestes
+   dans l'ordre, ne passe jamais `-f`, et **vérifie son propre résultat** —
+   `.git/hooks/<type>` doit être le hook du framework, `<type>.legacy` doit être
+   octet pour octet le script d'identité — en sortant en erreur avec la cause
+   probable sinon ;
+2. `make install` l'appelle. L'installation redevient **un seul geste**, ce qui
+   rend vraie la phrase d'exhaustivité que la cible `install` portait déjà
+   (« la seule étape d'installation de la porte qualité »), et qui était devenue
+   fausse avec le lot 0b ;
+3. `tests/unit/test_installation_des_garde_fous.py`, qui **prouve la propriété**
+   au lieu de la documenter : un dépôt jetable dont la configuration ne déclare
+   pas le contrôle d'identité, armé par le script livré, refuse le commit
+   `@aosis.net` — en auteur seul, en committer seul, et sur les deux — et accepte
+   une adresse de la liste blanche.
+
+**Écarté, et pourquoi.** `prepare-commit-msg` est le seul point d'accroche commun
+à `git commit`, `git revert`, `git cherry-pick` **et** `git merge` (`mesuré`,
+mouchards posés sur chaque hook). Il aurait donc pu couvrir d'un geste tout ce
+que `pre-commit` laisse passer. Il est écarté sur deux mesures :
+
+- lors d'un `git cherry-pick`, `git var GIT_AUTHOR_IDENT` y rend l'identité
+  **locale**, pas celle du commit produit. Mesuré : un commit dont l'auteur est
+  `@aosis.net`, cueilli depuis un arbre configuré en `@gmail.com`, se présente au
+  hook comme `@gmail.com` et passe. Le contrôle serait **vert sur le défaut** —
+  exactement le garde qu'on croit avoir ;
+- un refus depuis `prepare-commit-msg` laisse l'arbre sale : mesuré sur
+  `git merge --no-ff`, `MERGE_HEAD` reste **présent**, la fusion est en cours
+  et il faut un `git merge --abort` ; sur `git revert`, neuf fichiers modifiés
+  restent dans l'arbre sans qu'aucun état de git ne le signale.
 
 ### La réserve du pilote sur `.env` et `detect-secrets` — CONFIRMÉE
 

@@ -506,13 +506,25 @@ make lint typecheck test
 ### Les garde-fous du dépôt — une seule installation
 
 ```bash
-make install && uv run pre-commit install
+make install
 ```
 
-Ce geste, et lui seul, arme les hooks déclarés dans `.pre-commit-config.yaml`.
-**Il n'était fait nulle part avant le lot 0b** : les garde-fous étaient déclarés
-et rien ne les exécutait (registre §5.5). Un garde-fou déclaré et non installé
-est pire qu'absent — on croit l'avoir.
+Ce geste, et lui seul, arme les hooks déclarés dans `.pre-commit-config.yaml`
+**et** le contrôle d'identité d'auteur. **Il n'était fait nulle part avant le
+lot 0b** : les garde-fous étaient déclarés et rien ne les exécutait
+(registre §5.5). Un garde-fou déclaré et non installé est pire qu'absent — on
+croit l'avoir.
+
+`make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`.
+Ce script monte les deux couches **dans l'ordre**, ne passe **jamais** `-f`, et
+**vérifie son propre résultat** : il sort en erreur si le montage n'est pas
+celui qu'il annonce. Si `uv` manque, il s'exécute seul.
+
+L'ordre n'est pas cosmétique, et il ne pouvait pas rester une consigne écrite.
+Le lot 0b, tel qu'il avait été livré, demandait deux gestes dans un sens précis ;
+l'inversion ne produit aucune erreur, seulement l'absence d'une protection. Un
+garde-fou qui repose sur la mémoire du suivant n'est pas un garde-fou — c'est la
+phrase que ce même lot a fait respecter à `make all`, et elle valait aussi ici.
 
 | Hook | Ce qu'il fait | Écrit ? |
 |---|---|---|
@@ -523,12 +535,33 @@ est pire qu'absent — on croit l'avoir.
 | `ruff-format` | `--check` — **constate**, ne reformate pas | non |
 | `detect-secrets` | refuse un secret dans un fichier **indexé** | non |
 
-**Le contrôle d'identité est un hook `repo: local`**, et son `entry` pointe le
-script versionné `scripts/git-hooks/pre-commit`. Il n'a donc qu'un site : la
-liste blanche d'adresses ne peut pas diverger entre le framework et la copie
-manuelle décrite dans le mandat §2.1. C'est ce qui permet de rendre le fichier
-`.git/hooks/pre-commit` au framework — un fichier qui ne peut héberger qu'un
-script — sans rien perdre.
+#### Le contrôle d'identité tient sur `pre-commit.legacy`, et c'est essentiel
+
+Il est déclaré **deux fois**, et ce n'est pas une redondance décorative :
+
+- comme hook `repo: local` dans `.pre-commit-config.yaml` — donc dans l'**arbre
+  de travail** ;
+- comme `.git/hooks/pre-commit.legacy`, la copie manuelle que
+  `pre-commit install` déplace et continue d'exécuter — donc **hors** de l'arbre
+  de travail.
+
+Les deux pointent le même script versionné, `scripts/git-hooks/pre-commit` : la
+liste blanche d'adresses n'a qu'un site et ne peut pas diverger.
+
+**Seule la seconde couche est inconditionnelle.** Le hook généré par le
+framework ouvre sa configuration en chemin **relatif** : un arbre de travail
+dont `.pre-commit-config.yaml` ne déclare pas le contrôle est désarmé, en
+silence. Sur les 111 commits de `main`, aucun ne le déclare (`mesuré` le 31 août
+2026 sur `a005172`) — donc tout `git checkout` d'un commit ancien, tout
+`git bisect`, tout HEAD détaché. C'est pour cela que
+`scripts/installer-les-garde-fous.sh` copie le script **avant** d'appeler
+`pre-commit install`, et que **`-f` ne doit jamais être passé** : `-f` supprime
+`pre-commit.legacy`, et `pre-commit install` le suggère lui-même dans sa sortie.
+
+Un test garde cette propriété plutôt que de la documenter :
+`tests/unit/test_installation_des_garde_fous.py` monte un dépôt jetable dont la
+configuration ne porte **pas** le contrôle, y exécute le script livré, et prouve
+que le refus tient.
 
 Les hooks qui écrivent ne touchent que ce qui est **déjà indexé**, refusent le
 commit et montrent leur diff : on relit, on réindexe. C'est la différence de
@@ -562,7 +595,7 @@ lui qui fait foi. Il ne doit rien rendre.
 git ls-files -z | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
 ```
 
-**539 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
+**546 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
