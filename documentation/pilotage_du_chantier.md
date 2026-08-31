@@ -387,8 +387,10 @@ tests/` → « 4 files would be reformatted, 58 files already formatted »). `ma
 l'état du dépôt — l'énumération avait été close sur une portée qui n'est plus
 celle du garde installé.
 
-Ne lance pas `make format` : les trois fichiers de `src/` sont réservés au lot 2,
-qui réécrit `extraction.py`. **Le motif est la lisibilité de ce lot-là, pas un
+Ne lance pas `make format`. Les quatre fichiers non format-propres étaient
+réservés au lot 2 ; **le lot 2 ayant été supprimé du plan le 31 août 2026, ils
+passent au lot 5**, celui du code mort et de la documentation contre le code —
+c'est du cosmétique, et il n'a plus de lot d'accueil naturel ailleurs. **Le motif est la lisibilité de ce lot-là, pas un
 volume** : le reformatage coûte **16 lignes** de diff sur **1 221**, à cinq
 endroits — quatre replis de ligne et un doublon de ligne vide (`mesuré`,
 `git diff --numstat` après `uv run ruff format src/`). Le récit d'un « reformatage massif » était
@@ -552,7 +554,7 @@ résultat de la fusion (`mesuré`, 31 août 2026) :
 - **la porte sur le commit de fusion** : `ruff` propre, `mypy` « no issues found
   in 36 source files », **552 tests verts**, `make all` en **2** — le rouge
   attendu de `format-check` sur les quatre fichiers pliés à la main, réservés au
-  lot 2 — et l'arbre **non sali** ;
+  lot 2, désormais le lot 5 — et l'arbre **non sali** ;
 - **le contrôle d'identité, depuis un clone frais, après `make install` seul,
   dans un arbre sorti à un commit dont la configuration ne porte pas le hook** :
   auteur interdit → refusé ; committer interdit → refusé ; auteur seul interdit
@@ -718,12 +720,14 @@ le fait que la correction était un no-op — trois choses qu'aucun rapport en
 prose ne pouvait porter. **Quand une mesure décide du plan, mesure tout le
 corpus, ou dis le périmètre exact où ta conclusion vaut.**
 
-**La réserve du pilote, à ne pas perdre.** Le constat §3.2 — le graphe encore
-plat parce que `docling_parent_rank` rend `0` au lieu de `None` — est un
-raisonnement sur le comportement du backend HTML de Docling, **pas une
-observation**. Il est étiqueté `supposé` au registre. Si Docling imbrique bien
-les titres d'une capture SingleFile, le constat tombe et le lot 2 disparaît.
-C'est exactement ce que le lot 1 est fait de trancher.
+**La réserve du pilote a payé, et elle est conservée telle quelle parce qu'elle
+dit comment on l'a gagnée.** Elle disait : « le constat §3.2 est un raisonnement
+sur le comportement du backend HTML de Docling, **pas une observation** ; il est
+étiqueté `supposé` ; si Docling imbrique bien, le constat tombe et le lot 2
+disparaît ». Le lot 1 a mesuré, son audit a élargi la mesure aux 22 chapitres, et
+**le lot 2 a disparu** — pour une raison encore plus forte que celle prévue : la
+correction était un no-op. Un constat étiqueté `supposé` et traité comme tel a
+économisé un lot entier.
 
 ---
 

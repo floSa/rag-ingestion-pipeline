@@ -492,7 +492,7 @@ des lignes qui tiennent dans les 100 colonnes mais ont été pliées à la main.
 `tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré` :
 `uv run ruff format --check src/ tests/` → « 4 files would be reformatted, 58
 files already formatted »). Il préexiste sur `main`, il n'a rien à voir avec le
-lot 2, et il tombe dans un angle mort : `make format-check` est borné à `src/` et
+lot 2 — supprimé du plan le 31 août 2026, le reformatage passe au lot 5 —, et il tombe dans un angle mort : `make format-check` est borné à `src/` et
 ne le signale jamais, `make format` ne le répare pas — mais le hook
 `ruff-format --check`, lui, **bloque** tout commit qui le touche. Le geste, quand
 ce jour viendra : `uv run ruff format tests/unit/test_wipe_stores.py`, dans le
@@ -504,7 +504,7 @@ l'état du dépôt.
 `make format` pour éteindre ce rouge. Les trois fichiers de `src/` sont réservés
 au lot de la hiérarchie, qui réécrit `extraction.py`.
 
-**Et la raison tient à la lisibilité du lot 2, pas à un volume.** Le coût du
+**Et la raison tenait à la lisibilité du lot 2, pas à un volume.** Le coût du
 reformatage est **mesuré** : `uv run ruff format src/` produit **16 lignes** de
 diff — 4 ajoutées, 12 supprimées, `git diff --numstat` — sur **1 221** lignes
 dans les trois fichiers, à **cinq** endroits, dont **quatre** replis de ligne
@@ -512,7 +512,7 @@ faits à la main et un doublon de ligne vide. Ce n'est pas un « reformatage
 massif » : la phrase qui l'affirmait était surdimensionnée, et elle instruisait
 chaque lot à venir de l'accepter sans remesurer. La décision reste la bonne pour
 une autre raison — trois de ces cinq
-endroits sont dans `extraction.py`, que le lot 2 réécrit, et un diff de
+endroits sont dans `extraction.py`, que le lot 2 devait réécrire, et un diff de
 formatage mêlé à cette réécriture se relit mal. Le rouge est un constat exact sur
 l'état du dépôt, consigné au registre §5.4, et il tombera avec ce lot-là.
 

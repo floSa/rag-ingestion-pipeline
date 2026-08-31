@@ -799,7 +799,7 @@ n'a plus rien à voir). **Ce n'est pas un « reformatage massif ».** La phrase
 qui l'affirmait était surdimensionnée, et le mandat instruisait chaque
 conversation à venir de l'accepter sans remesurer. **La décision de ne pas
 reformater reste la bonne, pour une autre raison :** trois des cinq endroits
-sont dans `extraction.py`, que le lot 2 réécrit, et un diff de formatage mêlé à
+sont dans `extraction.py`, que le lot 2 devait réécrire — lot supprimé, voir §3.2 —, et un diff de formatage mêlé à
 cette réécriture se relit mal. C'est un argument de lisibilité, pas de volume.
 
 **Conséquence, assumée et voulue : `make all` est ROUGE sur `main`.** C'est la
