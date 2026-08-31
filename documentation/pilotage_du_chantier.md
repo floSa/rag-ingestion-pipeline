@@ -357,7 +357,10 @@ cette recette n'avait donc **aucun garde-fou** : ni contrôle d'identité, ni
 `detect-secrets`, exactement l'état que ce lot ferme. `mesuré` le 31 août 2026,
 clone frais : après le repli tel qu'il était écrit, `.git/hooks` ne porte **aucun**
 hook ; après celui-ci, les quatre attendus, et la suite rend `lint=0`,
-`typecheck=0`, `test=0`, `format-check=1` — le rouge connu.
+`typecheck=0`, `test=0`, `format-check=1` — le rouge d'alors. Ce rouge-la est
+**fermé** : les quatre fichiers ont été reformatés par la réparation du lot 3, et
+la même suite rend désormais `format-check=0`. Le repli est conservé tel quel ;
+seul son verdict attendu a changé.
 
 La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas de
 motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
@@ -367,40 +370,35 @@ Attendu sur `main` (`mesuré`, 31 août 2026) : `ruff` propre, `mypy --strict`
 « no issues found in 36 source files », et la suite verte. Le compte canonique
 de tests vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
 
-**`make all` ne mute plus l'arbre : il le constate, et il est ROUGE sur `main`.**
+**`make all` ne mute plus l'arbre : il le constate, et il rend 0.**
 Le lot 0b a séparé `format` — qui écrit, geste volontaire — de `format-check` —
 qui constate, et qui est la dernière étape de `make all`. Il n'y a donc plus
 rien à révoquer avant un commit, et c'est le point : le garde-fou ne repose plus
 sur la mémoire du développeur.
 
-En échange, `make all` sort en erreur sur `main` : `ruff format --check src/`
-signale trois fichiers pliés à la main — `extraction.py`, `language.py`,
-`matter.py`. **C'est un constat exact, et il ne faut pas l'éteindre.**
+**L'exception « rc=2 est le rouge attendu » est FERMÉE, et c'est un changement de
+sens.** Elle a vécu du lot 0b à la réparation du lot 3 : quatre fichiers pliés à
+la main faisaient sortir la porte en 2, chaque prompt du chantier devait porter
+l'exception, chaque conversation la redécouvrait, et **elle a déjà masqué un vrai
+rouge une fois**. Les quatre — `extraction.py` et `matter.py` par le lot 3,
+`language.py` et `tests/unit/test_wipe_stores.py` par sa réparation — sont
+désormais format-propres.
 
-**Mais le dépôt en porte QUATRE, et ce quatrième est dans un angle mort.**
-`tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré`,
-31 août 2026, remesuré sur cette révision : `uv run ruff format --check src/
-tests/` → « 4 files would be reformatted, 58 files already formatted »). `make format-check` est borné à
-`src/` et ne le voit jamais ; `make format` ne le répare pas ; le hook
-`ruff-format --check` **bloque** tout commit qui le touche. Toute phrase qui dit
-« trois fichiers » parle donc de la **portée de `make format-check`**, jamais de
-l'état du dépôt — l'énumération avait été close sur une portée qui n'est plus
-celle du garde installé.
+`mesuré` sur la pointe de la réparation du lot 3 :
+`uv run ruff format --check src/ tests/` → « 66 files already formatted »,
+`rc=0`, et `make all` → `rc=0`.
 
-Ne lance pas `make format`. Les quatre fichiers non format-propres étaient
-réservés au lot 2 ; **le lot 2 ayant été supprimé du plan le 31 août 2026, ils
-passent au lot 5**, celui du code mort et de la documentation contre le code —
-c'est du cosmétique, et il n'a plus de lot d'accueil naturel ailleurs. **Le motif est la lisibilité de ce lot-là, pas un
-volume** : le reformatage coûte **16 lignes** de diff sur **1 221**, à cinq
-endroits — quatre replis de ligne et un doublon de ligne vide (`mesuré`,
-`git diff --numstat` après `uv run ruff format src/`). Le récit d'un « reformatage massif » était
-surdimensionné, et il instruisait chaque conversation à venir de l'accepter sans
-remesurer. Le détail et la marche à suivre vivent au `README.md`, section Tests ;
-le constat au registre §5.4.
+**Ce que cela change pour toi : un `rc` non nul de `make all` est un défaut, sans
+exception à connaître.** N'écris plus « rc=2 attendu » dans un prompt.
+
+Le coût total du reformatage est **mesuré** et il est petit : **20 lignes** de
+diff sur les trois commits de style — 9 pour `extraction.py`, 4 pour `matter.py`,
+7 pour les deux derniers (`git show --numstat --format= <commit>`). Le récit d'un
+« reformatage massif » était surdimensionné de bout en bout. Le détail vit au
+registre §5.4.
 
 `format-check` passe **en dernier**, donc `lint`, `typecheck` et `test` rendent
-leur verdict complet avant l'arrêt. Pour lire ce verdict seul, sans le rouge
-connu : `make lint typecheck test`.
+leur verdict avant lui. Pour lire ces trois seuls : `make lint typecheck test`.
 
 Si le compte diffère, ne suppose rien : c'est le dépôt qui a bougé, et il faut
 comprendre pourquoi avant de continuer.
@@ -553,8 +551,10 @@ résultat de la fusion (`mesuré`, 31 août 2026) :
 
 - **la porte sur le commit de fusion** : `ruff` propre, `mypy` « no issues found
   in 36 source files », **552 tests verts**, `make all` en **2** — le rouge
-  attendu de `format-check` sur les quatre fichiers pliés à la main, réservés au
-  lot 2, désormais le lot 5 — et l'arbre **non sali** ;
+  d'alors, `format-check` sur les quatre fichiers pliés à la main — et l'arbre
+  **non sali**. *(Mesure du 31 août 2026, conservée telle quelle : elle décrit le
+  commit de fusion du lot 0b. Ces quatre fichiers ont été reformatés depuis, et
+  `make all` rend 0 — §2.4.)* ;
 - **le contrôle d'identité, depuis un clone frais, après `make install` seul,
   dans un arbre sorti à un commit dont la configuration ne porte pas le hook** :
   auteur interdit → refusé ; committer interdit → refusé ; auteur seul interdit
@@ -684,6 +684,16 @@ mais *une porte qualité qui écrit dans le dépôt qu'elle contrôle* ne le peu
 pas. Il a dû révoquer trois fichiers avant chacun de ses six commits, parce
 qu'il le savait ; le suivant ne le saura pas. **Versé au lot 0b.**
 
+**Et le développeur du lot 3 sur les quatre fichiers, deux fois de suite.** Il a
+reformaté `extraction.py` et `matter.py` en écarts déclarés, parce que le hook
+`ruff-format --check` refuse tout commit qui les touche et que ses gardes y
+vivent. **Le pilote s'est rangé, puis il est allé plus loin** : le report des deux
+derniers au lot 5 supposait que personne n'y toucherait, alors que le lot 4 vise
+`extraction.py` quatre fois. Sa réparation a donc reformaté `language.py` et
+`tests/unit/test_wipe_stores.py`, et **`make all` rend 0** — l'exception « rc=2
+est le rouge attendu », qui traînait dans chaque prompt depuis le lot 0b et avait
+déjà masqué un vrai rouge, disparaît avec eux. Le §5.4 du registre est fermé.
+
 **Et l'auditeur sur `test_hierarchie_bout_en_bout.py`.** Le registre §3.3
 laissait entendre que le fichier ne prouve rien. L'auditeur a mesuré sa
 couverture marginale : **3 mutations sur 7 que lui seul voit**. Le registre a
@@ -704,7 +714,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **2** | ~~La hiérarchie des titres~~ | — | ❌ **SUPPRIMÉ le 31 août 2026.** Pas parce que le graphe est imbriqué — il l'est à 21/22 — mais parce que **la correction qu'il portait est un no-op** : `level` est absent sur les titres concernés et `elements.py:272` fait `heading_rank or 0`, donc le rang reste 0 (registre §3.2). §3.3 est **retourné** : les deux tests qu'il fallait « amender ensemble » assertent le comportement juste. §4.11 en sort vivant et monte au lot 3 ; §4.12 reste consigné inerte avec sa vraie condition d'activation — l'entrée d'un Markdown au corpus |
 | **3** | **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — dix commits, **639 tests** (contre 552), **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24, §5.3 et §6.16, et corrigé **trois affirmations fausses du plan lui-même**. **À auditer**
 | **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme) | la certitude que le corpus ingéré est le corpus complet | à faire |
-| **5** | Code mort et documentation contre code : §5.1 à §5.3, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre | la lisibilité, et l'arrêt des faux réglages | à faire |
+| **5** | Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre | la lisibilité, et l'arrêt des faux réglages | à faire |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | à faire |
 
 **Le lot 1 a payé son pari, et pas comme prévu.** Il n'a rien corrigé, il n'a
@@ -754,9 +764,14 @@ plan sur trois points mesurés :
 ont été **reformatés**, chacun dans un commit de style séparé sans une ligne de
 logique, parce que le hook `ruff-format --check` refuse tout commit qui les
 touche et que les gardes de §4.21 et §4.14 y vivent. Coût mesuré : 9 et 4 lignes.
-Il reste **deux** fichiers non format-propres au lot 5, `language.py` et
-`tests/unit/test_wipe_stores.py`. Le lot 4 visera aussi `extraction.py` : le
-report se serait heurté au même mur.
+
+**Le pilote leur a donné raison, et il est allé plus loin.** Le report des deux
+derniers — `language.py` et `tests/unit/test_wipe_stores.py` — au lot 5 supposait
+que personne n'y toucherait, alors que le lot 4 vise `extraction.py` quatre fois
+(§4.1, §4.6, §4.7, §4.22) : le report se serait heurté au même mur. La réparation
+du lot 3 les a donc reformatés dans un commit de style seul, **7 lignes** de diff
+(`mesuré`). **Il n'y a plus aucun fichier non format-propre dans le dépôt**, et
+`make all` rend 0 — voir §2.4.
 
 ### 7.1 L'état de la pile — §4.26 est TRAITÉ
 

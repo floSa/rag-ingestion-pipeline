@@ -178,8 +178,10 @@ dans `README.md`, section Tests.
 les 3 commits de livraison, 5 de premiere reparation, 10 de seconde). Verifie
 par le pilote **sur le commit de fusion lui-meme** (`mesure`, 31 aout 2026) :
 **552 tests verts**, `ruff` propre, `mypy` « no issues found in 36 source
-files », `make all` en **2** — le rouge attendu de `format-check` sur les quatre
-fichiers plies a la main (§5.4) — et l'arbre **non sali**. La porte sur chacun
+files », `make all` en **2** — le rouge d'alors, `format-check` sur les quatre
+fichiers plies a la main (§5.4) — et l'arbre **non sali**. *(Mesure conservee
+telle quelle : elle decrit le commit de fusion du lot 0b. Ces quatre fichiers ont
+ete reformates depuis, et `make all` rend **0** — §5.4.)* La porte sur chacun
 des 18 commits pris individuellement, et le balayage de graines, sont aux
 rapports des developpeurs ; le pilote a rejoue la porte sur cinq commits et un
 sondage de graines, plus la mesure de fusion ci-dessus. Le compte canonique
@@ -1080,58 +1082,65 @@ canonique. `ngql.py` est le seul des deux modules « sans dépendance externe »
 donc le seul testable sans graphd — et c'est ce qui permet aux gardes de §4.11
 d'exister comme tests unitaires plutôt que comme intentions.
 
-### 5.4 `main` n'est pas format-propre — quatre fichiers, dont trois réservés au lot 2
+### 5.4 → FERMÉ par la réparation du lot 3 — les quatre fichiers sont format-propres, et `make all` rend 0
 
-`ruff format --check src/` signale **3 fichiers** sur `main` :
-`extraction.py:412`, `:442`, `:479` ; `language.py:136-140` ;
-`matter.py:134-137` (`mesuré` avec `ruff` 0.11.8 — la version épinglée par
-`pyproject.toml` **et** par `.pre-commit-config.yaml` — et 0.16.5, même
-résultat ; reconfirmé le 31 août 2026 : « 3 files would be reformatted, 33 files
-already formatted »). Ce sont des lignes tenant dans les 100 colonnes mais
-pliées à la main.
+**Le constat, tel qu'il était ouvert.** `ruff format --check src/` signalait
+**3 fichiers** sur `main` — `extraction.py:412`, `:442`, `:479` ;
+`language.py:136-140` ; `matter.py:134-137` — plus un **quatrième dans un angle
+mort**, `tests/unit/test_wipe_stores.py`, préexistant sur `main` : `make
+format-check` était **borné à `src/`** et ne le signalait jamais, `make format`
+ne le réparait pas, mais le hook `ruff-format --check` **bloquait** tout commit
+qui le touchait, sans issue automatique. Ce sont des lignes tenant dans les 100
+colonnes mais pliées à la main.
 
-La correction est cosmétique et sans risque, mais elle touche `extraction.py`,
-que le chantier de la hiérarchie réécrit : **à faire dans le lot 2, pas avant.**
-Les reformater plus tôt noierait le diff du lot qui compte dans un reformatage
-massif.
+**Ce qui a fermé le constat, et en trois temps.** Le report était rangé au lot 2,
+puis au lot 5 quand le lot 2 a disparu, au motif que reformater `extraction.py`
+noierait le diff du lot qui le réécrit. Deux arguments ont eu raison de ce motif :
 
-**Un QUATRIÈME fichier n'est pas format-propre, et il est dans un angle mort.**
-`tests/unit/test_wipe_stores.py`, préexistant sur `main` (`mesuré`, 31 août
-2026, remesuré sur cette révision : `uv run ruff format --check src/ tests/` →
-« 4 files would be reformatted, 58 files already formatted »). Il n'a rien à voir avec le lot 2. Son angle mort
-est triple : `make format-check` est **borné à `src/`** et ne le signale jamais ;
-`make format` ne le répare pas, pour la même raison ; mais le hook
-`ruff-format --check`, installé depuis le lot 0b, **bloque** tout commit qui le
-touche — sans issue automatique. **Le geste, quand ce jour viendra :**
-`uv run ruff format tests/unit/test_wipe_stores.py`, dans le commit qui touche ce
-fichier et nulle part ailleurs.
+1. **le lot 3 a reformaté `extraction.py` et `matter.py`**, en écarts déclarés,
+   parce que le hook refuse tout commit qui les touche et que les gardes de §4.21
+   et §4.14 y vivent. Coût `mesuré` : **9** et **4** lignes
+   (`git show --numstat --format= 23055cb 27c3c22`) ;
+2. **le report des deux derniers supposait que personne n'y toucherait**, alors
+   que le lot 4 vise `extraction.py` quatre fois (§4.1, §4.6, §4.7, §4.22) : le
+   report se serait heurté au même mur. La réparation du lot 3 a donc reformaté
+   `language.py` et `tests/unit/test_wipe_stores.py` dans un commit de style
+   seul. Coût `mesuré` : **7** lignes — 3 ajoutées, 4 retirées.
 
-**Toute phrase de ce dépôt qui dit « trois fichiers » parle de la portée de
+**Coût total : 20 lignes de diff, sur trois commits de style.** Le récit d'un
+« reformatage massif » était surdimensionné de bout en bout, et il instruisait
+chaque conversation à venir de l'accepter sans remesurer. Le chiffre de 16 lignes
+sur 1 221 qui vivait ici — mesuré pour les trois fichiers de `src/` avec `ruff`
+0.11.8 et le `pyproject.toml` du dépôt, sans lequel `ruff` retombe sur 88
+colonnes — était juste ; c'est le mot « massif » qui n'a jamais rien mesuré.
+
+**Ce que la fermeture obtient, et c'est le motif réel.** `make all` rend **0**.
+L'exception « rc=2 est le rouge attendu » — qui vivait dans chaque prompt du
+chantier depuis le lot 0b, que chaque conversation redécouvrait, et qui a déjà
+**masqué un vrai rouge une fois** — n'existe plus. Un `rc` non nul est désormais
+un défaut, sans exception à connaître.
+
+`mesuré` sur la pointe de la réparation du lot 3 :
+`uv run ruff format --check src/ tests/` → « 66 files already formatted »,
+`rc=0` ; `make all` → `rc=0`.
+
+**Et l'angle mort est fermé par la portée, pas par le nettoyage.** Reformater les
+quatre fichiers rend le dépôt propre **aujourd'hui** ; cela ne garde rien. La
+divergence des deux portées — `make format-check` sur `src/`, le hook sur tout ce
+qui est indexé — **était** le défaut, et c'est elle qui a produit l'angle mort
+D7. `make format` et `make format-check` portent désormais sur `src/ tests/`,
+donc les deux gardes voient la même chose. Sans ce second geste,
+`test_wipe_stores.py` pouvait redériver en silence et rebloquer le commit suivant
+qui le touche : *un garde-fou qui repose sur la mémoire du suivant n'est pas un
+garde-fou.* C'est un écart au périmètre de la réparation, déclaré, et il était
+déjà proposé au registre — « étendre `format-check` à `tests/` fermerait cet
+angle mort d'un geste », consigné par la seconde réparation du lot 0b.
+
+**Toute phrase de ce dépôt qui disait « trois fichiers » parlait de la portée de
 `make format-check`, jamais de l'état du dépôt.** Le lot 0b avait clos cette
 énumération sur une portée qui n'était plus celle du garde qu'il installait :
-c'est une phrase d'exhaustivité, et c'en est la deuxième de ce lot.
-
-**Le coût du reformatage est MESURÉ, et il est petit.** `uv run ruff format src/`
-produit **16 lignes** de diff — 4 ajoutées, 12 supprimées
-(`git diff --numstat -- src`) — sur **1 221** lignes dans les trois fichiers
-(`wc -l` **avant** le reformatage : le « 1 213 » écrit ici comptait l'arbre
-**d'après**, et un diff ne se rapporte pas au tas qu'il a produit), à **cinq**
-endroits, dont **quatre** replis de ligne faits à la main et un doublon de ligne
-vide dans `_extract_pdf` (`mesuré`, 31 août 2026, `ruff` 0.11.8 avec le
-`pyproject.toml` du dépôt — sans lui, `ruff` retombe sur 88 colonnes et le chiffre
-n'a plus rien à voir). **Ce n'est pas un « reformatage massif ».** La phrase
-qui l'affirmait était surdimensionnée, et le mandat instruisait chaque
-conversation à venir de l'accepter sans remesurer. **La décision de ne pas
-reformater reste la bonne, pour une autre raison :** trois des cinq endroits
-sont dans `extraction.py`, que le lot 2 devait réécrire — lot supprimé, voir §3.2 —, et un diff de formatage mêlé à
-cette réécriture se relit mal. C'est un argument de lisibilité, pas de volume.
-
-**Conséquence, assumée et voulue : `make all` est ROUGE sur `main`.** C'est la
-moitié de ce constat qui a été fermée par le lot 0b (voir §8) : la porte
-**constate** désormais au lieu d'écrire, donc elle dit la vérité sur l'état du
-dépôt — et cette vérité est « **quatre** fichiers ne sont pas format-propres,
-dont trois que `make format-check` sait voir ». Ne pas éteindre ce rouge avec
-`make format` — la marche à suivre est écrite au `README.md`, section Tests.
+c'était une phrase d'exhaustivité. Elle est sans objet désormais — les deux
+portées coïncident, et le compte est **zéro**.
 
 ### 5.6 Trois `except Exception` sans justification écrite au site
 
@@ -1815,7 +1824,7 @@ code fait.
 | **D2** | README : les hooks qui écrivent « montrent leur diff » | **faux.** `--show-diff-on-failure` n'est activé nulle part, et **aucune clé** de `.pre-commit-config.yaml` ne peut l'activer — c'est un drapeau de ligne de commande. La sortie se limite à `files were modified by this hook` puis `Fixing <fichier>` (`mesuré`) | README : la phrase est corrigée, et les deux commandes qui montrent le diff sont données |
 | **D3** | README : `check-added-large-files` = « aucun fichier > 500 ko » | **faux.** Seuls les fichiers **ajoutés** sont contrôlés ; un fichier déjà suivi qu'on modifie passe quelle que soit sa taille, et le dépôt post-fusion en porte **25** au-dessus du seuil (`mesuré`) | README, tableau des hooks — ligne détachée de `check-yaml` |
 | **D4** | Makefile : « `uv sync` … c'est la **seule** étape d'installation de la porte qualité » | **rendue fausse par le lot**, qui en avait fait deux. Redevenue **vraie** : `make install` arme aussi les hooks | Makefile, cible `install` — voir R1 |
-| **D7** | README, mandat §2.4, ce registre §5.4 : « trois fichiers » non format-propres | **faux.** Il y en a **quatre** : `tests/unit/test_wipe_stores.py`, préexistant sur `main`, invisible à `make format-check` (borné à `src/`), non réparé par `make format`, mais **bloqué** par le hook `ruff-format --check` | §5.4 ci-dessus, plus README et mandat §2.4. Le geste de sortie y est écrit |
+| **D7** | README, mandat §2.4, ce registre §5.4 : « trois fichiers » non format-propres | **faux.** Il y en avait **quatre** : `tests/unit/test_wipe_stores.py`, préexistant sur `main`, invisible à `make format-check` (borné à `src/`), non réparé par `make format`, mais **bloqué** par le hook `ruff-format --check`. **Sans objet depuis la réparation du lot 3** : les quatre sont reformatés, les deux portées coïncident sur `src/ tests/`, et le compte est zéro (§5.4) | §5.4 ci-dessus, plus README et mandat §2.4 |
 | **D8** | « reformatage massif » qui « noierait le lot 2 » | **surdimensionné.** `mesuré` : **16 lignes** de diff sur **1 221**, à cinq endroits, dont quatre replis de ligne (le « 1 213, quatre endroits » de cette ligne était lui-même imprécis — voir F2 plus bas). La décision de ne pas reformater reste bonne — pour la **lisibilité** du lot 2, pas pour un volume | §5.4 ci-dessus : le récit est remplacé par la mesure |
 | **D9** | README : « le dépôt en portait **2** » pragmas | **faux.** Il y en a **3** — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et `:92` (`mesuré`). La troisième est née du piège de déduplication décrit plus haut, et n'avait pas été recomptée | README, avec la commande de comptage |
 | **D10** | `is_verified: false` lu comme un signe de pourrissement de la baseline | **faux.** En sémantique `detect-secrets`, `is_verified` signifie « vérifié contre le **service réel** » ; le champ d'audit humain est `is_secret`. C'est la valeur normale de presque toute entrée. **La preuve du fantôme reste entière** — la ligne 44 disparue — mais elle tenait seule | `.pre-commit-config.yaml` et ce registre, aux deux sites |
@@ -2198,7 +2207,10 @@ de repli.
 `mesuré` le 31 août 2026, clone frais : après le repli tel qu'il était écrit,
 `.git/hooks` ne porte **aucun** hook ; après le repli corrigé, les **quatre**
 attendus, et la suite rend `lint=0`, `typecheck=0`, `test=0`, `format-check=1`
-— le rouge connu. Le repli du §2.4 porte désormais la ligne manquante.
+— le rouge d'alors. Le repli du §2.4 porte désormais la ligne manquante.
+*(`format-check` rend **0** depuis la réparation du lot 3 — §5.4. La mesure
+ci-dessus est conservée telle quelle : elle décrit le clone frais du 31 août
+2026.)*
 
 #### Trouvé par la SECONDE réparation, et NON traité — consigné, pas corrigé
 
@@ -2371,6 +2383,9 @@ fichier et nulle part ailleurs. Détail complet au §5.4.
   d'un quatrième fichier et **fermerait cet angle mort d'un geste** — mais cela
   demande de reformater `test_wipe_stores.py`, ce que le mandat de la réparation
   interdit explicitement. À trancher avec §5.4.
+  **→ RETENU et fait par la réparation du lot 3** : le fichier est reformaté,
+  `make format` et `make format-check` portent sur `src/ tests/`, et `make all`
+  rend 0. La piste était juste, et c'est le reformatage qui la débloquait.
 
 ### 3.6 → traité par `eaa8a8e` — la porte qualité est reproductible
 

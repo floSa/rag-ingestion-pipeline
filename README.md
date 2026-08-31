@@ -482,43 +482,31 @@ Les deux gestes sont désormais séparés :
 | `make format` | **écrit** — `ruff format src/` | geste volontaire, dans aucune porte |
 | `make format-check` | **constate** — `ruff format --check src/` | dernière étape de `make all` |
 
-**Conséquence assumée : `make all` est ROUGE sur `main`, et c'est voulu.**
-`format-check` signale trois fichiers —
-`src/docling_service/extraction.py`, `language.py`, `matter.py` (`mesuré` le
-31 août 2026 : « 3 files would be reformatted, 33 files already formatted ») :
-des lignes qui tiennent dans les 100 colonnes mais ont été pliées à la main.
+**`make all` rend 0, et l'exception « rc=2 est le rouge attendu » n'existe
+plus.** Elle a vécu du lot 0b au lot 3 : le dépôt portait quatre fichiers pliés
+à la main, `format-check` les signalait, et chaque conversation redécouvrait
+qu'un rc=2 sur `main` était normal. Cette exception a **déjà masqué un vrai
+rouge une fois**. Les quatre fichiers sont désormais format-propres, et la
+porte n'a plus qu'un seul verdict à rendre : 0 ou un défaut.
 
-**Il y en a un QUATRIÈME, et `make format-check` ne le voit pas.**
-`tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré` :
-`uv run ruff format --check src/ tests/` → « 4 files would be reformatted, 58
-files already formatted »). Il préexiste sur `main`, il n'a rien à voir avec le
-lot 2 — supprimé du plan le 31 août 2026, le reformatage passe au lot 5 —, et il tombe dans un angle mort : `make format-check` est borné à `src/` et
-ne le signale jamais, `make format` ne le répare pas — mais le hook
-`ruff-format --check`, lui, **bloque** tout commit qui le touche. Le geste, quand
-ce jour viendra : `uv run ruff format tests/unit/test_wipe_stores.py`, dans le
-commit qui touche ce fichier et nulle part ailleurs. Toute phrase de ce dépôt qui
-dit « trois fichiers » parle de la portée de `make format-check`, jamais de
-l'état du dépôt.
+L'état, `mesuré` sur cette révision :
 
-**Ce que le prochain développeur doit en faire : rien.** Ne lance pas
-`make format` pour éteindre ce rouge. Les trois fichiers de `src/` sont réservés
-au lot de la hiérarchie, qui réécrit `extraction.py`.
+```bash
+uv run ruff format --check src/ tests/
+```
 
-**Et la raison tenait à la lisibilité du lot 2, pas à un volume.** Le coût du
-reformatage est **mesuré** : `uv run ruff format src/` produit **16 lignes** de
-diff — 4 ajoutées, 12 supprimées, `git diff --numstat` — sur **1 221** lignes
-dans les trois fichiers, à **cinq** endroits, dont **quatre** replis de ligne
-faits à la main et un doublon de ligne vide. Ce n'est pas un « reformatage
-massif » : la phrase qui l'affirmait était surdimensionnée, et elle instruisait
-chaque lot à venir de l'accepter sans remesurer. La décision reste la bonne pour
-une autre raison — trois de ces cinq
-endroits sont dans `extraction.py`, que le lot 2 devait réécrire, et un diff de
-formatage mêlé à cette réécriture se relit mal. Le rouge est un constat exact sur
-l'état du dépôt, consigné au registre §5.4, et il tombera avec ce lot-là.
+→ « 66 files already formatted », `rc=0`. Et `make all` → `rc=0`.
 
-En attendant, la porte est utile telle quelle : `format-check` passe **en
-dernier**, donc `lint`, `typecheck` et `test` rendent leur verdict complet avant
-qu'elle ne s'arrête. Pour lire ce verdict seul :
+**Ce que le prochain développeur doit en faire : un rc non nul est un défaut,
+sans exception à connaître.** C'est tout l'intérêt du geste. Le détail de ce
+qu'il a coûté — quatre fichiers, un total de **20 lignes** de diff réparties
+sur trois commits de style, dont **7** pour celui-ci (`mesuré`,
+`git show --numstat --format= <commit>` sur les trois) — vit au registre §5.4.
+
+`format-check` passe **en dernier** dans `all`, et cela n'a plus de conséquence
+pratique : `lint`, `typecheck` et `test` rendent leur verdict, puis
+`format-check` rend le sien, et l'ensemble est vert. Pour lire les trois
+premiers seuls :
 
 ```bash
 make lint typecheck test

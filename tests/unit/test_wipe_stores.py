@@ -188,7 +188,7 @@ RACINE_DEPOT = Path(__file__).resolve().parents[2]
 # Journal partage par les trois bouchons. Chaque geste effectivement pratique
 # sur un store y laisse une ligne : c'est ce qui distingue « la purge a eu
 # lieu » de « le script est alle jusqu'au bout ».
-_TRACE = '''
+_TRACE = """
 import os
 
 
@@ -199,7 +199,7 @@ def trace(ligne):
 
 def doit_echouer(store):
     return store in os.environ.get("WIPE_ECHECS", "").split(",")
-'''
+"""
 
 BOUCHONS = {
     "_bouchon_commun.py": _TRACE,
