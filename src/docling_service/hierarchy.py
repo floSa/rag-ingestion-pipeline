@@ -28,10 +28,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Profondeur maximale d'imbrication des titres. Au-dela, un RAG n'y gagne
-# rien : l'objectif est de reconstruire un bloc avec ses titres parents, pas
-# de reproduire une arborescence complete.
-MAX_DEPTH = 3
+# Il n'y a plus de profondeur maximale, et c'est une correction, pas un
+# relachement. Un plafond MAX_DEPTH = 3 vivait ici, justifie par « au-dela, un
+# RAG n'y gagne rien : l'objectif est de reconstruire un bloc avec ses titres
+# parents, pas de reproduire une arborescence complete ». Ce motif decrit une
+# limitation de l'ARBRE qui n'a jamais existe : le plafond ne bornait que la
+# valeur rendue, jamais ``parent_id``, donc les aretes ecrites dans le graphe
+# etaient les memes avec ou sans lui.
+#
+# Son seul effet mesurable etait de rendre ``depth`` non injectif : la valeur 4
+# de ChromaDB recouvrait les profondeurs reelles 4 ET 5 (registre 4.24). Il ne
+# tenait meme pas sa propre promesse — un element qui n'est pas un titre recoit
+# ``profondeur_du_titre + 1``, sans plafond, donc la valeur 4 existait deja
+# alors que le maximum annonce etait 3.
 
 
 def dense_ranks(values: list[float]) -> dict[float, int]:
@@ -67,10 +76,13 @@ class HeadingStack:
     La profondeur est toujours ``parent + 1``, jamais le rang brut. Sans cela,
     un faux titre de tres petite taille tomberait directement au niveau 4 sous
     un titre de niveau 2, creant un trou dans l'arbre.
+
+    Elle n'est plafonnee par rien : elle compte les aretes ``PARENT_OF`` qui
+    separent le titre de la racine de son document, et deux titres de
+    profondeurs differentes ne partagent jamais sa valeur.
     """
 
-    def __init__(self, max_depth: int = MAX_DEPTH) -> None:
-        self._max_depth = max_depth
+    def __init__(self) -> None:
         self._ouverts: list[tuple[str, int, int]] = []  # (id, rang, profondeur)
 
     def place(self, element_id: str, rank: int) -> Placement:
@@ -81,14 +93,16 @@ class HeadingStack:
             rank: Son rang, 0 etant le niveau le plus haut.
 
         Returns:
-            Le parent et la profondeur retenus.
+            Le parent et la profondeur retenus. La profondeur est le nombre
+            d'aretes qui separent ce titre de la racine du document : 0 pour un
+            titre rattache au document, 1 pour un titre rattache a celui-la.
         """
         while self._ouverts and self._ouverts[-1][1] >= rank:
             self._ouverts.pop()
 
         if self._ouverts:
             parent_id, _, parent_depth = self._ouverts[-1]
-            depth = min(parent_depth + 1, self._max_depth)
+            depth = parent_depth + 1
         else:
             parent_id, depth = None, 0
 

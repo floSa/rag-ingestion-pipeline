@@ -651,25 +651,47 @@ graphe. Aucun journal, aucune métrique. ChromaDB n'est pas touché — le déco
 repart du document Docling — donc **graphe et vecteurs divergent en silence** sur
 ces quatre éléments.
 
-### 4.24 `depth` mélange deux échelles, et ne décrit jamais un titre
+### 4.24 → traité par le lot 3 — le plafond est retiré, les deux échelles sont écrites au contrat
 
-`mesuré`. `HeadingStack.place` (`hierarchy.py:91`) plafonne la profondeur d'un
-**titre** à `MAX_DEPTH = 3`, mais **`parent_id` n'est pas plafonné** : l'arête
-`PARENT_OF` pointe le vrai parent, donc la chaîne est plus longue que `depth`.
-`add_item` donne aux **non-titres** `depth = profondeur_du_titre + 1`, sans
-plafond. Résultat dans ChromaDB : `depth ∈ {1: 92, 2: 238, 3: 345, 4: 98}` — il
-ne vaut **jamais 0**, et **`depth = 4` recouvre les vraies profondeurs 4 ET 5**
-(1 chunk sur 773 aujourd'hui, davantage avec le corpus).
+**Le constat, tel qu'il était ouvert.** `HeadingStack.place` (`hierarchy.py:91`)
+plafonnait la profondeur d'un **titre** à `MAX_DEPTH = 3`, mais **`parent_id`
+n'était pas plafonné** : l'arête `PARENT_OF` pointe le vrai parent, donc la
+chaîne était plus longue que `depth`. `add_item` donne aux **non-titres**
+`depth = profondeur_du_titre + 1`, sans plafond. Résultat dans ChromaDB :
+`depth ∈ {1: 92, 2: 238, 3: 345, 4: 98}` — il ne vaut **jamais 0**, et
+**`depth = 4` recouvrait les vraies profondeurs 4 ET 5** (`mesuré` par le lot 1
+sur 773 chunks).
 
-Aggravant décisif : **aucun `section_header` n'est jamais un chunk** — labels
-ChromaDB mesurés : `text` 502, `code` 157, `list_item` 79, `table` 25,
-`caption` 10, **`section_header` 0**. L'agent ne peut donc **jamais** lire le
-niveau d'un titre par cette voie. À traiter avec §4.11, dont c'est la charge
-utile.
+**Ce qui a été tranché, et pourquoi le plafond ne se défendait pas.** Il ne
+bornait aucune structure : `parent_id` n'a jamais été plafonné, donc les arêtes
+écrites dans le graphe étaient **les mêmes** avec ou sans lui. Son motif écrit
+— « au-delà, un RAG n'y gagne rien : l'objectif est de reconstruire un bloc avec
+ses titres parents, pas de reproduire une arborescence complète » — décrivait
+une limitation de l'arbre qui n'a jamais existé. **Et il ne tenait pas sa propre
+promesse** : un non-titre recevait `profondeur_du_titre + 1` sans plafond, donc
+la valeur 4 existait déjà dans ChromaDB alors que le maximum annoncé était 3.
+Son seul effet mesurable était de rendre `depth` **non injectif**.
 
-**Ce que l'agent doit lire : la chaîne `PARENT_OF`, et rien d'autre.** C'est le
-seul signal exact — 0 double parent, acyclique, 3 racines `Document`, tout
-`SectionHeader` atteignable (`mesuré`).
+Le plafond est retiré, et `MAX_DEPTH` avec lui. `depth` est désormais le nombre
+d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document.
+
+**Les deux échelles subsistent, et elles sont désormais ÉCRITES.** Retirer le
+plafond ne les fusionne pas : sur un titre, `depth` compte les titres au-dessus ;
+sur tout autre élément, il vaut celui de son titre + 1. Un paragraphe sous un
+titre de premier niveau vaut donc 1, comme un sous-titre. **La valeur seule ne
+dit pas quelle échelle on lit — c'est `label` qui le dit**, et c'est écrit au
+site du contrat, `schemas.py`, sur `ChunkMetadata.depth`.
+
+Aggravant décisif, toujours vrai : **aucun `section_header` n'est jamais un
+chunk** — labels ChromaDB mesurés : `text` 502, `code` 157, `list_item` 79,
+`table` 25, `caption` 10, **`section_header` 0**. L'agent ne peut donc **jamais**
+lire le niveau d'un titre par ChromaDB. C'est la charge utile de §4.11, que le
+même lot ferme en écrivant `depth` sur le sommet du graphe.
+
+**Ce que l'agent doit lire : la chaîne `PARENT_OF`, et le `depth` du sommet.**
+La chaîne reste le signal exact — 0 double parent, acyclique, 3 racines
+`Document`, tout `SectionHeader` atteignable (`mesuré` par l'audit du lot 1) —
+et `depth` en donne désormais la longueur sans avoir à la parcourir.
 
 ### 4.25 Les URL du graphe rendent 403 en GET anonyme
 

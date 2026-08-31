@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from src.docling_service.hierarchy import (
-    MAX_DEPTH,
     HeadingStack,
     dense_ranks,
     is_inside,
@@ -69,11 +68,26 @@ class TestHeadingStack:
         placement = pile.place("faux_titre", 9)  # rang tres bas
         assert placement.depth == 2  # et non 9
 
-    def test_depth_is_capped(self):
+    def test_depth_counts_every_level_without_a_ceiling(self):
+        """Un plafond rendrait deux profondeurs REELLEMENT differentes egales.
+
+        C'est le defaut du registre 4.24 : ``depth = 4`` recouvrait les
+        profondeurs 4 ET 5, et un agent qui lit ``depth`` pour construire un
+        fil d'Ariane comptait faux sans qu'aucune erreur ne le signale.
+        """
         pile = HeadingStack()
-        for index in range(10):
-            placement = pile.place(f"h{index}", index)
-        assert placement.depth == MAX_DEPTH
+        profondeurs = [pile.place(f"h{index}", index).depth for index in range(6)]
+        assert profondeurs == [0, 1, 2, 3, 4, 5]
+
+    def test_two_different_depths_never_share_a_value(self):
+        """La propriete qui compte : depth distingue ce que l'arbre distingue."""
+        pile = HeadingStack()
+        quatre = pile.place("h0", 0), pile.place("h1", 1), pile.place("h2", 2)
+        cinquieme = pile.place("h3", 3)
+        sixieme = pile.place("h4", 4)
+        assert cinquieme.parent_id == "h2" and sixieme.parent_id == "h3"
+        assert cinquieme.depth != sixieme.depth
+        assert [p.depth for p in quatre] == [0, 1, 2]
 
     def test_current_id_follows_the_last_heading(self):
         pile = HeadingStack()

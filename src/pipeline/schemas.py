@@ -45,7 +45,7 @@ class DocumentElement(BaseModel):
     content: str | None = None
     reference_id: str = "DOC"
     # Profondeur dans la hierarchie des titres : 0 pour un titre de premier
-    # niveau, 1 pour ses sous-titres, etc. Plafonnee a 3.
+    # niveau, 1 pour ses sous-titres, etc. Elle n'est plafonnee par rien.
     depth: int = 0
     section_title: str = ""
     page_position: int = 0
@@ -91,7 +91,21 @@ class ChunkMetadata(BaseModel):
     page_no: int = 0
     minio_url: str = ""
     reference_id: str = "DOC"
-    # Profondeur dans la hierarchie des titres, 0 etant le premier niveau.
+    # Profondeur dans la hierarchie des titres. C'est le nombre d'aretes
+    # ``PARENT_OF`` qui separent l'element de la racine de son document, et
+    # DEUX ECHELLES S'Y CROISENT — a lire avant de s'en servir :
+    #
+    # - sur un TITRE, 0 designe un titre rattache au document, 1 un titre
+    #   rattache a celui-la, et ainsi de suite sans plafond ;
+    # - sur tout AUTRE element, la valeur est celle de son titre + 1. Un
+    #   element rattache a un titre de premier niveau vaut donc 1, comme un
+    #   sous-titre. La valeur seule ne dit pas laquelle des deux echelles on
+    #   lit : c'est ``label`` qui le dit.
+    #
+    # Et ``depth`` ne decrit JAMAIS un titre par cette voie : aucun
+    # ``section_header`` n'est jamais un chunk (registre 4.24, mesure). Le
+    # niveau d'un titre se lit sur le sommet du graphe, ou se compte sur la
+    # chaine ``PARENT_OF`` — le seul signal exact.
     depth: int = 0
     section_title: str = ""
     page_position: int = 0
