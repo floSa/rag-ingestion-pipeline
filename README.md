@@ -530,7 +530,8 @@ phrase que ce même lot a fait respecter à `make all`, et elle valait aussi ici
 |---|---|---|
 | `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche — voir la réserve ci-dessous, tous les chemins qui créent un commit ne sont pas couverts | non |
 | `trailing-whitespace`, `end-of-file-fixer` | hygiène de fin de ligne et de fin de fichier | oui, sur les fichiers **indexés** |
-| `check-yaml`, `check-added-large-files` | YAML valide, aucun fichier > 500 ko | non |
+| `check-yaml` | YAML valide | non |
+| `check-added-large-files` | refuse un fichier **nouvellement ajouté** de plus de 500 ko. Ne voit **pas** un fichier déjà suivi qu'on modifie, quelle que soit sa taille | non |
 | `ruff` | `--fix` sur les violations de lint | oui, sur les fichiers **indexés** |
 | `ruff-format` | `--check` — **constate**, ne reformate pas | non |
 | `detect-secrets` | refuse un secret dans un fichier **indexé** | non |
@@ -626,7 +627,50 @@ lui qui fait foi. Il ne doit rien rendre.
 git ls-files -z | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
 ```
 
-**548 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
+#### Le corpus est hors de portée des hooks, et voici comment l'étendre
+
+`Datas/htms/` et `Datas/pdfs/` sont **versionnés** — 25 fichiers, 55 Mo. Ce sont
+des données d'entrée, pas du code, et `.pre-commit-config.yaml` les soustrait à
+**tous** les hooks par un `exclude: '^Datas/'` au niveau racine.
+
+**Ce n'est pas de la commodité.** Sans cette exclusion, mesuré sur le résultat
+d'une fusion d'essai :
+
+| Hook | Ce qu'il faisait au corpus |
+|---|---|
+| `detect-secrets` | **refusait** le commit — deux `Hex High Entropy String`, faux positifs. Et un `# pragma` est impossible ici : le **contenu** entre dans le calcul de `element_id` (contrat, exigences 2 et 3) |
+| `trailing-whitespace`, `end-of-file-fixer` | **écrivaient** — 24 fichiers sur 25, 240 lignes. Au commit, `git add` puis recommit faisait entrer le fichier **altéré**, sans erreur |
+| `check-added-large-files` | **refusait** tout fichier **nouveau** de plus de 500 ko : le corpus ne pouvait plus grandir |
+
+La deuxième ligne est la plus grave. Le corpus est une donnée de mesure : deux
+postes dont les fichiers diffèrent d'un caractère produisent des `element_id`
+différents, donc des campagnes que rien ne permet de comparer, **sans qu'aucune
+erreur ne le signale** (mandat §2.2). Un hook qui « corrige » une fin de ligne
+dans un HTML capturé fait exactement ce dégât.
+
+**Le geste pour étendre le corpus, aujourd'hui :**
+
+```bash
+git add "Datas/htms/<ouvrage>/<chapitre>.html" && git commit
+```
+
+Rien de particulier — c'est le point de l'exclusion. Aucun `--no-verify`, aucun
+seuil à relever, aucune exception à ajouter. Deux choses seulement :
+
+- **ne renomme rien, jamais**, et surtout pas pour « ranger » : `source_path`
+  entre dans `element_id`. Les noms doivent être identiques au caractère près
+  d'un poste à l'autre (mandat §2.2) ;
+- au-delà de **50 Mo par fichier**, GitHub avertit ; au-delà de **100 Mo**, il
+  refuse. Le plus gros fichier du corpus pèse aujourd'hui moins de 1 Mo, donc
+  la question ne se pose pas — mais elle se poserait pour une capture vidéo.
+
+**Ce que l'exclusion coûte**, écrit pour que personne ne le découvre : un secret
+réel déposé sous `Datas/` ne serait pas vu par `detect-secrets`. C'est accepté —
+le corpus est une capture de documentation publique, et l'alternative consiste à
+altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
+et lui seul.
+
+**551 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre

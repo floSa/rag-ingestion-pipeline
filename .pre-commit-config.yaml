@@ -15,6 +15,44 @@
 # commits de fusion.
 default_install_hook_types: [pre-commit, pre-merge-commit]
 
+# LE CORPUS EST HORS DE PORTEE DE TOUS LES HOOKS, ET IL DOIT LE RESTER.
+#
+# Depuis `a005172`, `Datas/htms/` et `Datas/pdfs/` sont VERSIONNES : 25 fichiers,
+# 55 Mo de HTML capture et un PDF. Trois familles de hooks s'y cassaient les
+# dents, et deux d'entre elles y ecrivaient (`mesure` sur le resultat d'une
+# fusion d'essai `--no-ff` avec `a005172`, 0 conflit) :
+#
+#   - `detect-secrets` REFUSAIT un commit touchant deux fichiers du corpus, deux
+#     « Hex High Entropy String » qui sont des faux positifs. Et on ne peut pas y
+#     poser de pragma : le CONTENU du fichier entre dans le calcul de
+#     `element_id` (contrat, exigences 2 et 3), donc y ajouter un commentaire
+#     change les identifiants de tout ce qui en sort ;
+#   - `trailing-whitespace` et `end-of-file-fixer` ECRIVAIENT dedans : 24 fichiers
+#     sur 25, 240 lignes. Au commit, le geste naturel — `git add` puis recommit —
+#     faisait entrer le fichier ALTERE au-dela de ce que l'humain avait ecrit,
+#     sans aucune erreur. C'est le plus grave des trois : le corpus est une
+#     donnee d'entree, pas du code, et sa moindre alteration deplace les
+#     identifiants ;
+#   - `check-added-large-files --maxkb=500` laissait passer un fichier du corpus
+#     deja suivi qu'on modifie, et REFUSAIT un fichier NOUVEAU. Le corpus ne
+#     pouvait donc plus etre ETENDU, ni d'un chapitre ni d'un PDF.
+#
+# `exclude` a la RACINE et non par hook : `pre-commit` applique les motifs de la
+# racine a la liste de fichiers AVANT de la distribuer, donc un seul site couvre
+# les quatre hooks fautifs ET tous ceux qu'on ajoutera. Un `exclude` par hook
+# aurait demande de se souvenir de le reporter sur le suivant.
+#
+# CE QUE CETTE EXCLUSION COUTE, ecrit pour que personne ne le decouvre : un
+# secret reel depose sous `Datas/` ne serait PAS vu par `detect-secrets`. C'est
+# accepte parce que le corpus est une capture de documentation publique, et parce
+# que l'alternative — alterer le corpus — casse la comparabilite de toute mesure
+# du chantier. La borne est etroite : ce chemin-la, et lui seul.
+#
+# La barre oblique finale et l'ancre ne sont pas cosmetiques. `^Datas` sans barre
+# emporterait un futur `Datastore/` ; `Datas/` sans ancre emporterait
+# `src/Datas/`. Un test le garde : tests/unit/test_hooks_contre_le_corpus.py.
+exclude: '^Datas/'
+
 repos:
   # Le controle d'identite d'auteur passe par le framework, et non par un
   # `.git/hooks/pre-commit` ecrit a la main. Raison : ce fichier ne peut heberger

@@ -901,6 +901,74 @@ porte déjà la mauvaise adresse » — vrai, mais ce qui coûte cher n'est pas 
 commit local, c'est le **push**, et réécrire un historique non poussé est
 gratuit. L'argument mérite d'être rouvert ; il l'est ici, pas tranché.
 
+### C → traitée par la réparation du lot 0b — les hooks contre le corpus versionné
+
+**Ce constat n'est pas né du lot 0b, mais c'est sa fusion qui le rendait
+vivant.** Pendant que le lot travaillait, une autre conversation a poussé
+`a005172` sur `main` — « data: versionner le corpus, il fait partie de l'identité
+du projet » : `Datas/htms/` et `Datas/pdfs/` sortent du `.gitignore`, 25 fichiers,
+**55 Mo** (`mesuré`, `du -sh Datas` sur le résultat de la fusion d'essai). Le lot
+0b installe la porte. Les deux ensemble donnent un arbre rouge, et c'est
+exactement le cas que le mandat §7 fait mesurer : deux branches vertes peuvent
+donner un arbre rouge.
+
+Mesuré sur le résultat d'une fusion d'essai `--no-ff` avec `a005172`,
+**0 conflit** :
+
+| Fait | Mesure |
+|---|---|
+| `detect-secrets` refuse le corpus | `rc=1`, deux `Hex High Entropy String` — `Datas/htms/MLOps with Databricks/3. MLflow for Traditional ML.html:94` et `…/4. Model Serving： Architectures and Implementation.html:330`. Faux positifs |
+| les hooks d'hygiène écrivent dedans | **24 fichiers sur 25**, **240 lignes** — 216 pour `trailing-whitespace`, 24 pour `end-of-file-fixer` |
+| `check-added-large-files` interdit d'étendre | un fichier déjà suivi qu'on modifie : `rc=0`. Un chapitre **nouveau** de 661 ko : `rc=1`, refusé |
+| fichiers suivis au-dessus du seuil de 500 ko | **25** |
+
+**Le deuxième fait est le plus grave, et il ne se voit pas.** On ne peut pas
+poser de `# pragma: allowlist secret` sur les deux détections : le **contenu** du
+fichier entre dans le calcul de `element_id` (contrat, exigences 2 et 3). Et pour
+les hooks qui écrivent, le geste naturel — `git add` puis recommit — fait entrer
+le fichier **altéré**, au-delà de ce que l'humain a écrit, **sans aucune
+erreur**. C'est le sinistre du mandat §2.2 appliqué au contenu au lieu du nom :
+deux postes dont les fichiers diffèrent d'un caractère produisent des
+identifiants différents, donc des campagnes incomparables, et rien ne le signale.
+
+#### Ce qui a été retenu, et l'hypothèse écartée
+
+**L'hypothèse du pilote — `exclude` sur `detect-secrets` seul — était
+insuffisante, et l'audit l'a réfutée** : elle laisse ouvertes les deux autres
+familles, dont celle qui écrit. **Retenu : un `exclude: '^Datas/'` au niveau
+RACINE**, et non par hook.
+
+La raison est celle du lot tout entier. `pre-commit` applique les motifs
+`files`/`exclude` de la racine à la liste de fichiers **avant** de la distribuer
+aux hooks : un seul site couvre donc les quatre hooks fautifs **et tous ceux
+qu'on ajoutera**. Un `exclude` par hook aurait demandé de se souvenir de le
+reporter sur le hook suivant — un garde-fou qui repose sur la mémoire du suivant
+n'est pas un garde-fou.
+
+Gardé par `tests/unit/test_hooks_contre_le_corpus.py`, qui reproduit le filtrage
+de `pre-commit` (`re.search` du motif sur le chemin) et asserte le motif livré.
+Il porte son témoin : un motif trop large — `'.'` — désarmerait la porte entière
+en restant vert sur les deux autres tests. Quatre mutations, quatre rouges
+ciblés : `'^Datas'` (sans barre, emporte `Datastore/`), `'Datas/'` (sans ancre,
+emporte `src/Datas/`), `'^Datas/htms/'` (laisse le PDF dehors), `'.'`.
+
+#### La conséquence du point 3, écrite là où le prochain la lira
+
+Le constat « le corpus ne peut plus être étendu » demandait une réponse, pas
+seulement une correction. **Le geste est écrit au `README.md`, section « Le
+corpus est hors de portée des hooks, et voici comment l'étendre » :** c'est un
+`git add` ordinaire, sans `--no-verify`, sans seuil à relever, sans exception à
+ajouter — et c'est précisément l'effet voulu de l'exclusion. Les deux seules
+réserves y sont écrites : **ne renommer aucun fichier** (`source_path` entre dans
+`element_id`), et les bornes de GitHub (avertissement à 50 Mo par fichier, refus
+à 100 Mo — sans objet aujourd'hui, le plus gros fichier du corpus pesant moins
+de 1 Mo).
+
+**Ce que l'exclusion coûte, assumé et écrit au site :** un secret réel déposé
+sous `Datas/` ne serait pas vu par `detect-secrets`. Accepté — le corpus est une
+capture de documentation publique, et l'alternative consiste à altérer les
+données de mesure du chantier. La borne est étroite : ce chemin-là, et lui seul.
+
 ### La réserve du pilote sur `.env` et `detect-secrets` — CONFIRMÉE
 
 Le §5.5 disait que `detect-secrets` « n'a jamais tourné en garde-fou sur un dépôt
