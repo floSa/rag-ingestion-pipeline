@@ -14,6 +14,7 @@ from src.docling_service.ngql import (
     VERTEX_PROPERTIES,
     VID_MAX_BYTES,
     batch_values,
+    compter_les_textes_coupes,
     document_vid,
     edge_value,
     element_vertex_value,
@@ -308,3 +309,31 @@ class TestMissingVertexColumns:
     def test_an_empty_description_reports_every_column(self):
         """Un tag absent se lit comme un tag vide : il manque tout."""
         assert missing_vertex_columns(()) == VERTEX_PROPERTIES
+
+
+class TestTextesCoupes:
+    """graph_text_max_chars coupait quatre elements sans un mot.
+
+    `mesure` le 31 aout 2026 sur le corpus complet : **18 elements** du graphe
+    font exactement 2 000 caracteres. ChromaDB, lui, n'est pas coupe — le
+    decoupeur repart du document Docling — donc graphe et vecteurs divergent en
+    silence sur ces elements-la (registre 4.23).
+    """
+
+    def test_nothing_is_cut_below_the_limit(self):
+        elements = [{"text": "x" * 100}, {"text": "y" * 1999}]
+        assert compter_les_textes_coupes(elements, 2000) == 0
+
+    def test_a_text_exactly_at_the_limit_is_not_cut(self):
+        """La borne est stricte : couper a 2 000 laisse 2 000 caracteres."""
+        assert compter_les_textes_coupes([{"text": "x" * 2000}], 2000) == 0
+
+    def test_a_longer_text_is_counted(self):
+        assert compter_les_textes_coupes([{"text": "x" * 2001}], 2000) == 1
+
+    def test_each_cut_element_counts_once(self):
+        elements = [{"text": "x" * 5000}, {"text": "y" * 10}, {"text": "z" * 2500}]
+        assert compter_les_textes_coupes(elements, 2000) == 2
+
+    def test_a_missing_text_is_not_a_cut(self):
+        assert compter_les_textes_coupes([{}, {"text": None}], 2000) == 0

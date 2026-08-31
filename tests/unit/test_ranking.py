@@ -6,8 +6,10 @@ from src.docling_service.ranking import (
     docling_level_rank,
     docling_parent_rank,
     exceeds_body_size,
+    fallback_rank,
     font_size_ranks,
     is_heading_candidate,
+    pdf_heading_rank,
 )
 
 
@@ -116,3 +118,49 @@ class TestExceedsBodySize:
 
     def test_unknown_body_size_stays_permissive(self):
         assert not exceeds_body_size(18.0, 0.0)
+
+
+class TestFallbackRank:
+    """Le rang de REPLI, et le compteur qui manquait.
+
+    `mesure` sur le seul PDF du corpus : 40 titres sur 86 (46 %) recoivent ce
+    rang, et non un rang mesure — le PDF ne classe que trois niveaux. Les
+    profondeurs relevees dans le graphe melangeaient donc trois niveaux mesures
+    et un empilement par defaut, et RIEN ne le comptait (registre 4.21).
+
+    Le mecanisme typographique n'est pas refait ici : l'audit du lot 1 a montre
+    qu'il n'est robuste que sur ce PDF-ci, une refabrication calibre depuis un
+    EPUB. Le mesurer suffit.
+    """
+
+    RANGS = {27.5: 0, 21.2: 1, 16.9: 2}
+    REPLI = 3
+
+    def test_the_fallback_sits_just_below_the_lowest_measured_rank(self):
+        assert fallback_rank(self.RANGS) == self.REPLI
+
+    def test_a_document_without_any_classification_has_no_fallback(self):
+        """Sans classement, tous les titres restent freres : il n'y a pas de repli."""
+        assert fallback_rank({}) is None
+
+    def test_the_fallback_is_what_an_unmeasurable_heading_receives(self):
+        """Le compteur et la decision doivent lire la MEME valeur.
+
+        Si le repli etait calcule a deux endroits, le compteur compterait autre
+        chose que ce que la decision attribue.
+        """
+        sans_boite = pdf_heading_rank("title", None, 0.0, 15.0, self.RANGS, [])
+        assert sans_boite == fallback_rank(self.RANGS)
+
+    def test_a_heading_no_bigger_than_the_body_falls_back(self):
+        rang = pdf_heading_rank(
+            "title", {"l": 0, "t": 10, "r": 100, "b": 0}, 15.0, 15.0, self.RANGS, []
+        )
+        assert rang == fallback_rank(self.RANGS)
+
+    def test_a_measured_heading_does_not_fall_back(self):
+        rang = pdf_heading_rank(
+            "title", {"l": 0, "t": 10, "r": 100, "b": 0}, 21.2, 15.0, self.RANGS, []
+        )
+        assert rang == 1
+        assert rang != fallback_rank(self.RANGS)

@@ -151,6 +151,29 @@ def element_vertex_value(element: Mapping[str, Any], max_chars: int) -> str:
     )
 
 
+def compter_les_textes_coupes(elements: Sequence[Mapping[str, Any]], max_chars: int) -> int:
+    """Compte les elements dont le texte est coupe a l'ecriture dans le graphe.
+
+    ``graph_text_max_chars`` coupait sans un mot : aucun journal, aucune
+    metrique. Et ChromaDB n'est PAS coupe — le decoupeur repart du document
+    Docling — donc le graphe et les vecteurs divergent en silence sur ces
+    elements-la, l'agent lisant un texte tronque d'un cote et complet de
+    l'autre (registre 4.23).
+
+    `mesure` le 31 aout 2026, corpus complet : **18 elements** du graphe font
+    exactement 2 000 caracteres, dont 14 tables.
+
+    Args:
+        elements: Elements produits par ``DocumentAccumulator``.
+        max_chars: ``settings.graph_text_max_chars``.
+
+    Returns:
+        Le nombre d'elements dont le texte depasse la limite. Un texte qui fait
+        exactement la limite n'est pas coupe.
+    """
+    return sum(1 for element in elements if len(str(element.get("text") or "")) > max_chars)
+
+
 def tag_schema_statements(tags: Sequence[str]) -> list[str]:
     """Genere la creation ET la migration des tags d'element.
 

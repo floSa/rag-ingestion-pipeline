@@ -383,6 +383,62 @@ Les deux docstrings portent désormais le chiffre et la cause. `architecture.md`
 portait la même affirmation — « (aucune troncature) » — et est corrigé dans le
 même commit.
 
+### 3.6 bis → le test de non-platitude, livré par le lot 3
+
+L'audit du lot 1 réclamait un test qui distingue « **Docling** imbrique » de
+« **ce chapitre-là** imbrique ». Le chantier a failli supprimer un lot entier sur
+un antécédent jamais mesuré : `tests/unit/test_non_platitude.py` le mesure.
+
+Il rejoue le code de rang de production sur des arbres Docling **capturés depuis
+les captures réelles et versionnées**, et non sur un arbre fabriqué à la main —
+le reproche exact fait à `test_hierarchie_bout_en_bout.py`, qui pose lui-même
+les parents qu'il vérifie (§3.3). Il couvre les deux cas (`mesuré`) :
+
+| chapitre | titres | distribution des rangs | `<h1>` du source |
+|---|---|---|---|
+| `MLOps with Databricks/7. Foundation Models…` | 39 | **{0: 5, 1: 10, 2: 21, 3: 3}** | 5 |
+| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | **{0: 8}** — réellement plat | 8, et **aucun `<h2>`** |
+
+**Et le cas plat seul aurait été vert des deux côtés du défaut.** Mesuré par
+mutation : `docling_parent_rank` forcé à rendre 0 — le graphe devient plat —
+fait rougir **4 tests, tous du chapitre imbriqué** ; les assertions du chapitre
+plat restent vertes, puisqu'il rend 0 dans les deux cas. C'est exactement
+pourquoi il fallait les deux, et pourquoi un test à un seul cas n'aurait rien
+prouvé.
+
+**Il prouve qu'il a atteint le chapitre qu'il croit**, par l'empreinte SHA-256 du
+HTML brut versionné **et** par celle du HTML nettoyé, que le test recalcule en
+faisant tourner le vrai nettoyage. Deux développeurs de ce chantier s'étaient
+fabriqué un faux vert en bouclant sur une liste non protégée : le test échoue
+aussi si la capture ne porte pas exactement les deux cas attendus.
+
+**La capture est en YAML et non en JSON**, et ce n'est pas un goût : les deux
+empreintes SHA-256 sont lues par `detect-secrets` comme des « Hex High Entropy
+String ». Le dépôt déclare ses faux positifs **au site**, par un
+`pragma: allowlist secret` justifié — et JSON n'admet pas de commentaire. Le
+YAML porte la justification à côté de la valeur, où un relecteur la voit, et
+`check-yaml` le contrôle. Aucune baseline, aucune règle relâchée.
+
+**Ce qu'il ne voit pas, et qui le voit à sa place.** Un changement de
+comportement de Docling : la conversion est capturée une fois par
+`scripts/capturer-larbre-docling.py`, que `--verifier` rejoue en comparant.
+`docling` est épinglé à 2.117.0, et rejouer ce script fait partie du geste qui
+change cette version.
+
+**Pourquoi le test ne convertit pas lui-même**, `mesuré` le 31 août 2026 :
+`uv pip install docling==2.117.0` ajoute **85 paquets** — dont `torch` et
+**quinze paquets NVIDIA CUDA** — et **rétrograde `websockets`** (17.0.1 → 16.1.1),
+une dépendance de l'orchestrateur. Sur une chaîne qui tourne sur processeur et
+dont le `pyproject.toml` dit que « les deps lourdes d'extraction vivent dans
+`Dockerfile.docling` », faire porter cela à `make install` n'était pas
+défendable.
+
+**Coût sur `make test`** : **+1,26 s** (10,31 s contre 9,05 s sans lui, `mesuré`),
+soit +14 %. Le nettoyage réel des deux chapitres en est l'essentiel — 0,90 s et
+0,05 s. **Aucun marquage** : ni `slow`, ni `skip`, ni `xfail`. Un marqueur
+sortirait le test de la porte par défaut, et un garde qu'on n'exécute pas n'est
+pas un garde ; 1,26 s ne le justifie pas.
+
 ### 3.5 La chaîne d'images HTML est ROMPUE — mesuré, 199 images sans `minio_url`
 
 **CONFIRMÉ le 31 août 2026, et la cause est plus radicale que ce constat ne
@@ -722,10 +778,10 @@ Deux choses distinctes, toutes deux antérieures au lot 0 (`mesuré`, 29 août
 `make audit` ne fait pas partie de `make all` : la porte est verte, l'audit est
 rouge, et rien ne le rappelle.
 
-### 4.21 PDF : 46 % des titres reçoivent un rang de REPLI, pas un rang mesuré
+### 4.21 → traité par le lot 3 — le repli est compté, et il n'est pas réparé
 
-`mesuré` le 31 août 2026, sur le seul PDF du corpus, 86 des 87 titres du graphe
-retrouvés par leur taille de police réelle :
+**Le constat, tel qu'il était ouvert.** Sur le seul PDF du corpus, 86 des 87
+titres du graphe retrouvés par leur taille de police réelle :
 
 | taille | rang | origine | titres |
 |---|---|---|---|
@@ -735,31 +791,63 @@ retrouvés par leur taille de police réelle :
 | 15,0 pt (= corps) | 3 | **repli `inclassable`** | 39 |
 | 11,2 pt (< corps) | 3 | **repli `inclassable`** | 1 |
 
-**40 titres sur 86 (46 %) tombent sur le repli.** Le PDF ne mesure donc que
-**trois** niveaux (17 / 21 / 8), et les profondeurs `17/34/30/6` relevées dans le
-graphe mélangent trois niveaux mesurés et un niveau d'empilement par défaut :
-22 des 30 titres de profondeur 3 et **les 6** de profondeur 4 viennent du repli.
-Aucun compteur ne dit combien de titres sont tombés au repli.
+**Aucun compteur ne disait combien de titres tombaient au repli.** Il y en a un
+désormais, et il compte **à la source** — au moment où le rang est attribué,
+et non a posteriori en retrouvant les tailles.
 
-Le garde-fou `exceeds_body_size` **fonctionne** — il empêche « OceanofPDF.com »,
-à 15,0 pt, de remettre l'arbre à zéro, ce que `ranking.py:192-194` promet — et
-son effet de bord est que presque la moitié de l'arbre PDF est un empilement par
-défaut, invisible dans le chiffre de profondeur.
+**Remesuré par le compteur livré** (`mesuré` le 31 août 2026, journal de
+`_extract_pdf` sur le PDF entier) : **39 titres sur 87, soit 45 %**, et le
+document ne classe que **3 niveaux** (corps à 15,0 pt, `fallback_rank` = 3).
+Le lot 1 annonçait 40 sur 86 : l'écart d'une unité est le titre que sa méthode
+— retrouver les tailles après coup — n'avait pas retrouvé. **Les deux mesures
+concordent, et celle-ci est prise là où la décision se prend.**
 
-**Et le mécanisme n'est pas robuste, argumenté depuis le code.** Ce PDF est une
-re-fabrication `calibre 7.4.0` depuis un EPUB : ses tailles sont des multiples
-CSS exacts d'un `em` de 15 pt, donc *un niveau = une valeur*. Un PDF composé à
-la main rend 16,94 / 16,96 / 17,02 pour un seul niveau logique — trois rangs.
-`_pdf_font_profile` (`extraction.py:565-598`) prend **toute** taille arrondie
-supérieure au corps comme un niveau, quel que soit ce qui la porte : numéros de
-chapitre, lettrines, titres courants, en-têtes de tableau, formules. Chaque
-taille parasite consomme un rang et décale tous les vrais niveaux en dessous
-d'elle, en silence. `pdf_heading_rank` ne borne jamais le rang ; seul `MAX_DEPTH`
-borne la **profondeur**, pas le **rattachement**.
+`ranking.fallback_rank` existe pour que la **décision** et le **compteur** lisent
+la même valeur : recalculer le repli dans le compteur reviendrait à compter
+autre chose que ce qui est attribué. Un test le verrouille.
 
-Corollaire éditorial : `27,5 pt` porte à la fois la couverture, la « Revision
-History », le « Brief Table of Contents », les titres de chapitre **et** des
-sections de premier rang. Le niveau 0 du PDF est mélangé.
+**Le mécanisme typographique n'est PAS refait**, et c'est délibéré : l'audit du
+lot 1 a montré qu'il n'est robuste que sur ce PDF-ci, une refabrication
+`calibre 7.4.0` depuis un EPUB dont les tailles sont des multiples CSS exacts
+d'un `em` de 15 pt. Un PDF composé à la main rendrait 16,94 / 16,96 / 17,02 pour
+un seul niveau logique. **Le mesurer suffit ; le refaire est un chantier.** Le
+reste du constat d'origine — `_pdf_font_profile` prend toute taille arrondie
+supérieure au corps comme un niveau, le niveau 0 mélange couverture, « Revision
+History » et titres de chapitre — **reste ouvert et non traité**, au lot 4.
+
+**Ce que le compteur n'a PAS fait, et pourquoi.** Le mandat demandait de le dire
+« dans le rapport d'index ». Il n'y est pas : `index_report` lit ChromaDB, et
+**aucun `section_header` n'est jamais un chunk** (§4.24) — l'information n'y
+existe pas et n'a pas de raison d'y être. Le compteur vit donc là où le dépôt met
+déjà `pages_skipped`, `ocr` et `failed_batches` : le journal, en
+**avertissement**, et le bilan que `_extract_pdf` retourne, sous
+`headings` / `headings_fallback`. C'est un écart au mandat, déclaré.
+
+### 4.23 → traité par le lot 3 — la coupe à 2 000 caractères se journalise
+
+**Le constat, tel qu'il était ouvert.** `graph_text_max_chars = 2000` coupait
+sans un mot : aucun journal, aucune métrique. ChromaDB n'est pas touché — le
+découpeur repart du document Docling — donc **graphe et vecteurs divergent en
+silence** sur ces éléments-là, l'agent lisant un texte tronqué d'un côté et
+complet de l'autre.
+
+**Remesuré sur le corpus complet** (`mesuré` le 31 août 2026, 15 173 éléments du
+graphe) : **18 éléments font exactement 2 000 caractères** — 14 tables et
+4 paragraphes. Le lot 1 en comptait 4, sur 3 documents.
+
+`nebula.write_elements` compte désormais les éléments dont le texte dépasse la
+limite et émet un **avertissement**, pas un `info` : c'est une perte de texte,
+bornée et voulue, mais une perte. Le message nomme la divergence avec ChromaDB,
+qui est ce qui rend la coupe dangereuse.
+
+Le comptage vit dans `ngql.compter_les_textes_coupes`, donc testable sans
+graphd. La borne est stricte : un texte qui fait exactement la limite n'est pas
+coupé — un test le verrouille, sans quoi le compteur exagérerait d'autant.
+
+**Ce qui reste ouvert** : la divergence elle-même. Ce lot la rend bruyante, il ne
+la supprime pas. Réconcilier les deux stores demande soit de couper aussi le
+texte envoyé au découpeur — donc de perdre du texte des deux côtés — soit de ne
+plus couper le graphe. C'est un arbitrage, pas un correctif.
 
 ### 4.22 Six pages du PDF n'ont aucun élément — leur texte est attribué à la page précédente
 

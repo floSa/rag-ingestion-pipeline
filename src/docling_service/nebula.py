@@ -35,6 +35,7 @@ from src.docling_service.ngql import (
     DOCUMENT_PROPERTIES,
     VERTEX_PROPERTIES,
     VID_MAX_BYTES,
+    compter_les_textes_coupes,
     document_vid,
     edge_value,
     element_vertex_value,
@@ -211,6 +212,22 @@ class NebulaWriter:
             identity.key,
             len(vertices_by_tag),
         )
+
+        # La coupe a graph_text_max_chars ne disait rien, et ChromaDB n'est pas
+        # coupe : le graphe et les vecteurs divergent en silence sur ces
+        # elements-la. Un avertissement plutot qu'un info — c'est une perte de
+        # texte, meme bornee et voulue.
+        coupes = compter_les_textes_coupes(elements, max_chars)
+        if coupes:
+            logger.warning(
+                "Nebula: %d element(s) sur %d coupes a %d caracteres pour %s. "
+                "ChromaDB garde le texte entier : le graphe et les vecteurs "
+                "divergent sur ces elements",
+                coupes,
+                len(elements),
+                max_chars,
+                identity.key,
+            )
 
     def find_duplicate(self, content_hash: str, doc_vid_exclu: str) -> str:
         """Cherche un document deja ingere ayant exactement le meme fichier.
