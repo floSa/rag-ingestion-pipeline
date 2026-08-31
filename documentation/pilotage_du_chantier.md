@@ -11,7 +11,7 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 29 août 2026, après la fusion du lot 0.**
+> **Dernière mise à jour : 31 août 2026, après la fusion du lot 0b** (`e998e7d`).
 > Toute valeur chiffrée ci-dessous porte son étiquette `mesuré`, `calculé` ou
 > `supposé`. Une valeur non remesurée ne se recopie pas : on renvoie à son site
 > canonique.
@@ -26,8 +26,12 @@ branche à checkouter** pour reprendre.
 Le prompt à coller dans une conversation neuve, tel quel :
 
 > Tu es le pilote d'un chantier d'audit et de refonte sur
-> `rag-ingestion-pipeline`. Le dépôt est le clone local de
-> `git@github.com-perso:floSa/rag-ingestion-pipeline.git`, sur `main`.
+> `rag-ingestion-pipeline`. Le dépôt est un clone local de
+> `floSa/rag-ingestion-pipeline`, dépôt **personnel**, sur `main`. **Le chemin
+> du dépôt et l'URL du distant sont des faits de POSTE : mesure-les.**
+> `git rev-parse --show-toplevel` et `git remote -v`. Un poste portait un
+> distant SSH `git@github.com-perso:`, un autre le même dépôt en HTTPS
+> (`mesuré`, 31 août 2026).
 >
 > Lis ces deux fichiers EN ENTIER avant de dire quoi que ce soit :
 > `documentation/pilotage_du_chantier.md` (ton mandat : ton rôle, l'état du
@@ -38,12 +42,13 @@ Le prompt à coller dans une conversation neuve, tel quel :
 >
 > Ils sont autosuffisants : tu n'as aucun historique de conversation, et tu
 > n'en as pas besoin. Vérifie ensuite l'état de tes mains plutôt que de me
-> croire — les branches, l'état non versionné du poste (corpus et stores), et
+> croire — les branches, l'état non versionné du poste (`.env`, stores, pile
+> Docker ; le corpus, lui, est versionné depuis le 31 août 2026, §2.2), et
 > `make install && make all` sur `main` — puis dis-moi où on en est et quelle
-> est la prochaine action. Un prompt à la fois, et numérote les conversations
-> auxquelles tu me demandes de coller un prompt.
+> est la prochaine action. Un prompt à la fois, et **nomme ET numérote**
+> chaque conversation destinataire : `Conv' <n> <RÔLE-LOT>`.
 
-Puis les trois choses qui ne voyagent pas avec un clone : §2.
+Puis ce qui ne voyage pas avec un clone : §2.
 
 ---
 
@@ -77,8 +82,15 @@ Ce que tu ne fais pas :
 
 ## 2. Reprendre sur un poste de travail neuf
 
-Trois choses **ne voyagent pas** avec un `git clone`. Les oublier a déjà coûté
-un dépôt entier.
+Ce qui **ne voyage pas** avec un `git clone`. Les oublier a déjà coûté un dépôt
+entier.
+
+**Le corpus, lui, voyage désormais** — il a été versionné le 31 août 2026, et
+le §2.2 dit à quel prix. Restent le garde-fou d'identité (§2.1), le `.env`
+(§2.3), et les stores et la pile Docker (§4). **Vérifie chacun sur le poste, ne
+lis pas cette liste comme un état.** Un poste a été repris en croyant sur
+parole qu'il était le poste d'origine : il n'avait ni `.env`, ni hook installé,
+ni conteneur, ni corpus (`mesuré`, 31 août 2026).
 
 ### 2.1 Le garde-fou d'identité Git — À FAIRE EN PREMIER
 
@@ -237,16 +249,46 @@ leur fermeture honnête est un hook `pre-push`, qui reste à trancher.
 
 Le distant est **personnel** : `floSa/rag-ingestion-pipeline`.
 
-### 2.2 Le corpus
+### 2.2 Le corpus — versionné depuis le 31 août 2026
 
-`Datas/htms/`, `Datas/pdfs/`, `Datas/mds/`, `Datas/database/` sont dans le
-`.gitignore` : **le corpus n'est pas versionné**. Un clone arrive vide.
+**`Datas/htms/` et `Datas/pdfs/` sont VERSIONNÉS.** Le commit `a005172` les a
+sortis du `.gitignore` : 25 fichiers, **57 381 999 octets** (`mesuré`,
+31 août 2026, `git ls-files -z -- Datas | xargs -0 stat -c '%s %n'`). Un clone
+frais les porte. **Il n'y a plus rien à transporter à la main.**
 
-Il faut donc le **transporter à la main** d'un poste à l'autre. Deux sources
-existent, et **elles ne sont pas interchangeables.**
+Restent ignorés `Datas/database/` (volumes écrits par Docker), `Datas/.cleaned/`
+(sortie du nettoyage, régénérée) et `Datas/mds/`.
 
-**Copier `Datas/htms/` et `Datas/pdfs/` du dépôt lui-même** (`mesuré`,
-28 août 2026) :
+**Pourquoi c'est la bonne décision, et ce qu'elle a coûté.** Le corpus non
+versionné imposait un transport manuel, et `source_path` entre dans le calcul
+d'`element_id` (contrat, exigence 2) : deux postes dont les noms de fichiers
+diffèrent d'un caractère produisent des identifiants différents, donc des
+mesures que rien ne permet de comparer, **sans qu'aucune erreur ne le signale**.
+Versionner supprime ce chemin de divergence — les deux côtés lisent les mêmes
+octets sous les mêmes noms. Le prix : 55 Mo dans l'historique de chaque clone,
+et deux effets qu'il faut connaître, tous deux mesurés et traités par le lot 0b
+(registre, constat **C**) — les hooks du framework `pre-commit` **réécrivaient**
+le corpus, et `check-added-large-files` en **interdisait l'extension**. Le
+corpus est désormais soustrait à tous les hooks par un `exclude: '^Datas/'`
+racine, et le geste pour l'étendre est écrit au `README.md`.
+
+**Le procédé, en revanche, n'était pas bon, et c'est consigné.** `a005172` a été
+poussé droit dans `main` par une conversation sans mandat, pendant qu'un lot
+travaillait, sans audit — la règle centrale du chantier. Le fond se défend, le
+procédé non. Les deux sont vrais et ne s'annulent pas.
+
+**Ce que le corpus contient** (`mesuré`, 31 août 2026) :
+
+```
+Datas/htms/MLOps with Databricks/                              12 fichiers
+Datas/htms/Practical MLflow for Generative AI on Databricks/   12 fichiers
+Datas/pdfs/Hands-On_RAG_for_Production_ER_-_Ofer_Mendelevitch.pdf   73 pages
+                     25 fichiers, 57 381 999 octets ; le plus gros 6 362 475,
+                     le plus petit 671 707 — 19 des 25 dépassent 1 Mo
+```
+
+*(Historique, conservé parce qu'il explique les noms de fichiers.)* Deux sources
+ont existé et **n'étaient pas interchangeables** :
 
 ```
 Datas/htms/MLOps with Databricks/                              12 fichiers
@@ -255,8 +297,8 @@ Datas/pdfs/Hands-On_RAG_for_Production_ER_-_Ofer_Mendelevitch.pdf   73 pages
                                             25 fichiers, environ 56 Mo au total
 ```
 
-**Ne pas copier la sauvegarde** `/home/florianhorellou/corpus-rag-sauvegarde`
-(27 fichiers, 64 Mo, locale au poste initial). Elle diverge de l'arbre de
+**La sauvegarde** `corpus-rag-sauvegarde` (27 fichiers, 64 Mo, locale au poste
+initial ; **absente des postes vérifiés depuis**) divergeait de l'arbre de
 travail sur deux points, tous deux nuisibles :
 
 - elle porte **13** fichiers pour `MLOps with Databricks` contre 12 : c'est le
@@ -271,8 +313,8 @@ diffèrent d'un caractère produisent des identifiants différents, donc des
 mesures que rien ne permet de comparer, **sans qu'aucune erreur ne le
 signale**. Les noms doivent être identiques au caractère près des deux côtés.
 
-La sauvegarde reste le filet en cas de perte — jamais la source d'une copie.
-**Et ne renomme rien.**
+C'est ce second point qui a rendu le versionnement nécessaire. **Et ne renomme
+rien** : un renommage après ingestion tue le jeu de questions de l'agent.
 
 ### 2.3 Le `.env`
 
@@ -436,13 +478,20 @@ au [§1 du registre](axes_amelioration.md).
 
 | Réf | Pointe | Rôle |
 |---|---|---|
-| `main` | `75f96ca` | **tout ce qui est fusionné, y compris ce mandat et le registre.** Le lot 0 y est depuis le 29 août 2026 (fusion `b59bf38`). Un clone frais suffit : il n'y a rien à checkouter |
+| `main` | `e998e7d` | **tout ce qui est fusionné, y compris ce mandat, le registre et le corpus.** Le lot 0 y est depuis le 29 août 2026 (fusion `b59bf38`), le lot 0b depuis le 31 (fusion `e998e7d`). Un clone frais suffit : il n'y a rien à checkouter. **Remesure cette pointe avant de t'en servir** — elle a périmé deux fois en trois jours |
 | tag `reference/lot-0-avant-reparation` | `832c566` | la version du lot 0 avant sa **première** réparation. Base de comparaison, pas une ligne de travail — d'où un tag et non une branche |
 
 **Aucun lot n'est en vol.** `lot-0` a été fusionnée (`--no-ff`, `b59bf38`) puis
-supprimée, en local **et côté distant** (vérifié le 31 août 2026 : `git branch -r`
-ne rend que `origin/main`). Un clone frais ne voit donc qu'une seule branche et
-un tag.
+supprimée, en local **et côté distant**. Le lot 0b l'a été le 31 août 2026
+(`--no-ff`, `e998e7d`), branche supprimée des deux côtés dans le même geste.
+Un clone frais ne voit qu'une seule branche et un tag (`mesuré`, 31 août 2026).
+
+**Cinq branches vides ont été supprimées avec elle**, toutes à 0 commit hors
+`main` (`mesuré`) : le harnais crée un arbre de travail et une branche pour
+chaque conversation, y compris celles qui n'écrivent rien — un auditeur, un
+pilote. **Ce n'est pas une infraction à la règle « une branche par lot en
+vol »**, mais ça la rend illisible : à la fin d'un lot, compte les branches qui
+portent des commits, pas les branches.
 
 **Règle, pour ne pas refaire le désordre : une branche par lot en vol, jamais
 plus.** Le chantier a compté jusqu'à cinq branches parce qu'une conversation
@@ -475,6 +524,51 @@ comparaison au moment où l'audit en a besoin, la seconde aurait fusionné sans
 audit. Le choix du développeur — livrer ailleurs et garder l'originale — était
 le bon ; c'est de ne pas l'avoir posé comme un écart au moment de le faire qui
 était le défaut.
+
+### 5.1 bis Le lot 0b : livré, audité, réparé, réaudité, réparé, fusionné
+
+Cinq conversations, dix commits, deux tours d'audit indépendant. Le détail vit
+au **registre §8** — les constats **R1**, **D1**, **C**, les neuf affirmations
+fausses et les neuf points de la seconde réparation. C'est son site canonique.
+
+Ce que le pilote a vérifié **de ses mains**, sur le contenu final et sur le
+résultat de la fusion (`mesuré`, 31 août 2026) :
+
+- **la porte sur le commit de fusion** : `ruff` propre, `mypy` « no issues found
+  in 36 source files », **552 tests verts**, `make all` en **2** — le rouge
+  attendu de `format-check` sur les quatre fichiers pliés à la main, réservés au
+  lot 2 — et l'arbre **non sali** ;
+- **le contrôle d'identité, depuis un clone frais, après `make install` seul,
+  dans un arbre sorti à un commit dont la configuration ne porte pas le hook** :
+  auteur interdit → refusé ; committer interdit → refusé ; auteur seul interdit
+  → refusé ; liste blanche → accepté. Puis la même chose sur un **vrai**
+  `git merge --no-ff` : refusé, `HEAD` inchangé ;
+- **le corpus intouché** : `pre-commit run --all-files` laisse `Datas/` à
+  **0 fichier modifié**, `detect-secrets` passe sur tout l'arbre, une édition
+  de 26 octets entre à +26 octets, et un chapitre neuf de 4 Mo est accepté ;
+- **le geste canonique de scan du `README`** rend `rc=0` et **0 octet** sur le
+  résultat de la fusion — il rendait `rc=123` avant la seconde réparation ;
+- **les mutations rejouées** : `default_status` retiré → deux tests rouges et la
+  suite privée de la classe neuve **verte**, ce qui EST le constat §4.18 ;
+  `TYPES=""` dans l'installeur → il sortait en **0** en annonçant un montage
+  qu'il n'avait pas fait ; `files: '^Datas/'` ajouté à la racine → sept hooks
+  « no files to check », un fichier sale commité en `rc=0`, **550 tests verts** ;
+- **`make install` relancé depuis le clone principal** après la fusion :
+  `INSTALL_PYTHON` pointe désormais le `.venv` du dépôt et non celui d'un arbre
+  de travail temporaire. Sans ce geste, supprimer la branche fusionnée aurait
+  rendu **tout commit impossible** dans le dépôt et tous ses arbres — échec
+  fermé, donc sans danger, mais bloquant. **C'est désormais l'étape 5 bis du
+  §7.**
+
+**La leçon de pilotage du lot 0b, et elle est chère.** La première livraison a
+**fermé une porte et en a entrouvert une autre sans l'écrire** : en déménageant
+le contrôle d'identité de `.git/hooks` vers `.pre-commit-config.yaml`, elle l'a
+rendu **conditionnel à l'arbre de travail** — et aucun des 111 commits de `main`
+ne portait le hook. Trois arbres sur quatre acceptaient l'adresse
+professionnelle, et le pilote l'a mesuré en créant le commit. Ni le développeur
+ni le pilote ne l'avaient vu ; l'audit indépendant l'a trouvé. **Une règle
+survit à son motif : quand du code change de place, rouvre les propriétés dont
+le seul motif était l'ancienne place.**
 
 ### 5.2 Le lot 0 : livré, audité, réparé, fusionné
 
@@ -515,6 +609,12 @@ livrable à l'arrêt), **§4.19** (le refus de démarrer hors contrat non prouv�
 **Aucun n'est entré dans le diff.** Périmètre strict : ce qui est trouvé et non
 traité va au registre.
 
+**Trois d'entre eux sont désormais fermés par le lot 0b** — §4.18, §5.4
+(première moitié : la porte constate au lieu d'écrire) et §5.5. Le titre de
+cette section reste au passé : elle dit ce que le lot 0 a fait APPARAÎTRE, pas
+ce qui reste ouvert aujourd'hui. **L'état ouvert/fermé a un seul site canonique,
+le registre §3 à §7 contre son §8.** Ne le déduis pas d'ici.
+
 ### 5.4 Les deux désaccords tranchés
 
 **Le développeur du lot 0 sur « une fois par rafale ».** Il a livré une
@@ -547,8 +647,8 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | Lot | Contenu | Débloque | État |
 |---|---|---|---|
 | **0** | Porte qualité reproductible, `mypy`, `/reindex` déplacé **et sa reprise réparée** | démarrage de la stack, exigences **1** et **5** | ✅ **fusionné le 29 août 2026** (`b59bf38`) |
-| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné en garde-fou. *(La justification d'origine ajoutait « sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres ». C'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**, et `.env` est ignoré par git, donc jamais indexé — l'installer ne le fera jamais scanner. Le gain réel est prospectif, et il est réel : empêcher qu'un secret parte un jour dans un fichier **versionné**. Registre §5.5.)* Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | **à faire, court — c'est l'action suivante** |
-| **1** | **Observer sans corriger.** Reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + 5 pages du PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` présent sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** — la décision « corriger la hiérarchie avant ou après l'ingestion complète » | à faire |
+| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné en garde-fou. *(La justification d'origine ajoutait « sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres ». C'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**, et `.env` est ignoré par git, donc jamais indexé — l'installer ne le fera jamais scanner. Le gain réel est prospectif, et il est réel : empêcher qu'un secret parte un jour dans un fichier **versionné**. Registre §5.5.)* Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | ✅ **fusionné le 31 août 2026** (`e998e7d`) — et ce ne fut pas court : cinq conversations, dix commits, **deux** tours d'audit indépendant. Il a livré en plus un contrôle d'identité **inconditionnel**, les commits de **fusion** couverts, le corpus versionné **soustrait aux hooks**, et une installation en **un geste** — `make install` — qui vérifie son propre résultat |
+| **1** | **Observer sans corriger.** Monter la pile, reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + 5 pages du PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` présent sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** — la décision « corriger la hiérarchie avant ou après l'ingestion complète » | **à faire — c'est l'action suivante.** Le corpus est désormais versionné (§2.2), donc plus rien ne le bloque côté données ; il reste le `.env` (§2.3) et la pile Docker (§4), qui sont des faits de poste |
 | **2** | La hiérarchie des titres, **si et seulement si** le lot 1 la montre plate : §3.2, §3.3, §4.11, §4.12. Impose une purge du space | contrainte **6**, donc toute l'ablation | conditionnel |
 | **3** | Instruments et gardes : §3.4, §4.4 (dont la **monotonie de `sequence`**, exigence 4), §4.14, §4.5 | la confiance dans tout chiffre produit après l'ingestion | à faire **avant** l'ingestion complète |
 | **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml` | la certitude que le corpus ingéré est le corpus complet | à faire |
@@ -572,63 +672,75 @@ C'est exactement ce que le lot 1 est fait de trancher.
 
 ## 7. L'action suivante
 
-**Distribuer le lot 0b.** Le prompt est prêt, en **annexe A** de ce fichier :
-le coller tel quel dans une conversation neuve nommée `LOT-0B`.
+**Distribuer le lot 1.** Le prompt est prêt, en **annexe A** de ce fichier : le
+coller tel quel dans une conversation neuve nommée `Conv' <n> LOT-1`.
 
-C'est le lot le plus court du plan et celui dont
-l'absence coûte le plus cher : `detect-secrets` est déclaré dans
-`.pre-commit-config.yaml` et n'a **jamais** tourné.
+**Le lot 1 observe et ne corrige rien.** C'est sa raison d'être : trancher, par
+la mesure, si le lot 2 existe. Un seul chapitre par ouvrage suffit à voir si
+Docling imbrique les titres, et coûte quelques minutes ; ingérer tout d'abord
+puis découvrir le graphe plat coûterait deux heures d'ingestion, une purge du
+space et une campagne d'ablation à rejouer.
 
-**Ne reprends pas la justification qui suivait cette phrase.** Elle disait
-« sur un dépôt dont le `.env` porte les mots de passe MinIO et PostgreSQL », et
-c'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**,
-`.env` est ignoré par git (`git check-ignore -v .env` → `.gitignore:2`) et non
-suivi, donc **installer le hook ne le fera jamais scanner** (`mesuré`, registre
-§5.5). Le gain est ailleurs, et il est réel : empêcher qu'un secret parte un jour
-dans un fichier **versionné**. Le lot 0b avait corrigé cette survente au
-`README.md` et à `SECURITY.md` — pas ici, dans le texte le plus copié du
-chantier.
+Trois questions, et pas une de plus :
 
-Trois choses dedans, et pas une de plus :
+1. **§3.2 — la profondeur RÉELLE du graphe.** `ranking.docling_parent_rank`
+   rend `0` et non `None` quand le premier parent est `#/body`, et
+   `extraction._flat_rank` ne bascule sur `docling_level_rank` que si le premier
+   signal rend `None`. **Si** Docling n'imbrique pas les titres d'une capture
+   SingleFile, tous les titres reçoivent le rang 0 et le graphe est plat. **Ce
+   n'est PAS prouvé** — c'est un raisonnement sur le backend HTML de Docling,
+   étiqueté `supposé` au registre. Si Docling imbrique bien, le constat tombe et
+   **le lot 2 disparaît**. C'est la contrainte d'ordre **6** du contrat.
+2. **§3.5 — `minio_url` sur les images HTML.** `cleaning.py` réécrit `img src`
+   avec l'URL MinIO ; `extraction.py` ne propage cette URL que si
+   `item.image.uri` commence par `http`. Que le backend HTML de Docling
+   renseigne `image.uri` depuis l'attribut `src` n'est vérifié par aucun test.
+   Si c'est faux, **aucune image de capture HTML ne porte de `minio_url`**, donc
+   aucune n'est servie par l'agent.
+3. **§3.4 — la troncature réelle à l'embedding.** `index_report.py` tokenise le
+   texte **stocké** ; `vectors.py` encode le texte **préfixé du titre de
+   section**. Le rapport annoncera donc 0 % de troncature alors que le texte
+   réellement embarqué peut dépasser la fenêtre de 128 tokens.
 
-1. **§5.5** — installer réellement les hooks du framework `pre-commit`.
-   L'arbitrage est ouvert : `.git/hooks/pre-commit` est déjà occupé par le
-   contrôle d'identité d'auteur, et `pre-commit install` l'écraserait. Une piste
-   qui n'est pas une consigne : faire du contrôle d'identité un hook
-   `repo: local` dans `.pre-commit-config.yaml`. Preuve exigée **par mutation** :
-   un commit portant une adresse hors liste blanche doit rester refusé après
-   comme avant.
-2. **§5.4** — `make all` cesse d'écrire dans le dépôt qu'il contrôle. Une ligne :
-   `ruff format --check src/` dans la cible `all`, `format` restant pour
-   l'écriture volontaire. La porte devient rouge sur `main` : **c'est vrai**, et
-   c'est le but. Reformater les trois fichiers reste au lot 2, qui réécrit
-   `extraction.py`.
-3. **§4.18** — le test qui fait régresser `default_status` sur les sensors
-   d'ingestion de `factory.py:335`. Il existe déjà pour le sensor de
-   réindexation ; il suffit de le décliner. Sans lui, tout le pipeline est
-   livrable à l'arrêt en silence.
+**Avant les trois questions, deux préalables de poste**, à mesurer et non à
+lire : le `.env` (§2.3 — vérifier `EMBEDDING_MODEL_NAME` en priorité, exigence 1
+du contrat) et la pile Docker (§4 — sur le poste vérifié le 31 août 2026, il n'y
+avait **aucun** conteneur du projet, **aucun** réseau `rag_network`, **aucun**
+volume). L'image Docling est à reconstruire, et la panne est identifiée :
+`GET /health` rend 503 avec `models_ready: false`, cause
+`PermissionError: '/tmp/.cache/huggingface'`, que le `Dockerfile.docling`
+**corrige déjà**. Un `docker compose up -d --build docling-service` doit suffire.
+
+**Le lot 1 n'ingère qu'un échantillon, et c'est le seul endroit du chantier où
+c'est permis.** On échantillonne pour observer un mécanisme ; on n'échantillonne
+**jamais** l'ingestion pour construire le jeu de questions (registre §1) — ce
+serait rendre le rappel trivial et la mesure creuse.
 
 Puis, dans l'ordre invariable :
 
-1. lire le rapport du développeur ;
-2. **le faire auditer par une conversation qui n'en a écrit aucune ligne** — sur
-   les six lots du dépôt jumeau, l'audit indépendant a trouvé **chaque fois**
-   quelque chose de matériel ; sur le lot 0 d'ici, il a trouvé une régression que
-   ni le développeur ni le pilote n'avaient vue ;
+1. lire le rapport ;
+2. **faire auditer par une conversation qui n'en a écrit aucune ligne** — sur le
+   lot 0, l'audit indépendant a trouvé une régression ; sur le lot 0b, il en a
+   trouvé une autre, vivante, que ni le développeur ni le pilote n'avaient vue.
+   Il n'a **jamais** rien manqué en huit passages ;
 3. lire le diff toi-même et faire tourner `make all` de tes mains, **y compris
-   sur le résultat de la fusion** — deux branches vertes peuvent donner un arbre
-   rouge ;
+   sur le résultat de la fusion** ;
 4. **alors seulement**, trancher la fusion ;
-5. si fusion : `--no-ff`, jamais `--ff-only`, jamais de rebase — réécrire des
-   commits dont la porte a été prouvée verte un par un invaliderait cette preuve
-   pour un gain cosmétique. Puis supprimer la branche, local **et distant** ;
-6. mettre le registre à jour — §8 « Traité », §2 pour la mesure d'après-fusion ;
-7. écrire le prompt du lot 1.
+5. si fusion : `--no-ff`, jamais `--ff-only`, jamais de rebase. Puis
+   **relancer `make install` depuis le clone principal** — avant toute
+   suppression d'arbre de travail — et alors seulement supprimer la branche,
+   local **et distant**. Le hook généré fige un chemin **absolu** vers
+   le `.venv` de l'arbre qui a lancé l'installation : si cet arbre disparaît,
+   tout commit devient impossible dans le dépôt et tous ses arbres. Échec fermé,
+   donc sans danger — mais bloquant, et le message d'erreur ne nomme pas
+   `make install` (`mesuré`, lot 0b) ;
+6. mettre le registre à jour ;
+7. écrire le prompt du lot suivant — et **relire l'annexe A contre `git`**, pas
+   contre ta mémoire : elle a périmé deux fois en trois jours.
 
-*(La dette de propreté sur `origin/lot-0` est soldée : vérifié le 31 août 2026,
-le distant ne porte plus que `main` et le tag.)*
-
----
+**Un lot 1 qui ne trouve rien est un résultat.** Si Docling imbrique, si
+`minio_url` est là, si la troncature est nulle, le lot 2 disparaît et le lot 3
+avance. Ne cherche pas à ce qu'il trouve quelque chose.
 
 ## 8. Comment on pilote
 
@@ -636,7 +748,11 @@ Conventions apprises à leurs dépens sur le dépôt jumeau.
 
 - **Un seul prompt à la fois, séquentiel.** Ne distribue jamais un prompt dont
   l'entrée dépend d'un rapport que tu n'as pas encore reçu.
-- **Nomme la conversation destinataire en tête de ton message.** Le routage a
+- **Nomme ET NUMÉROTE la conversation destinataire en tête de ton message**,
+  sous la forme `Conv' <n> <RÔLE-LOT>` — par exemple `Conv' 1 LOT-0B`,
+  `Conv' 2 AUDIT-0B`. Le numéro est obligatoire et ne se réutilise **jamais**,
+  même pour le même lot : le lot 0b a consommé cinq conversations, dont deux
+  audits et deux réparations, et un nom seul les aurait confondues. Le routage a
   déraillé plusieurs fois ; des prompts sont arrivés au mauvais endroit. Sois
   brutalement explicite : « ceci va à X, rien d'autre à envoyer ».
 - **Chaque prompt se termine par l'obligation d'écrire `TÂCHE TERMINÉE` en
@@ -808,173 +924,334 @@ chiffre. Relis le code avant d'affirmer ce qu'il fait.
 
 ---
 
-# Annexe A — Prompt prêt à distribuer : le lot 0b
+# Annexe A — Prompt prêt à distribuer : le lot 1
 
-> **Routage : ceci va à une conversation NEUVE, à nommer `LOT-0B`. Rien
-> d'autre à envoyer, à personne.**
+> **Routage : ceci va à une conversation NEUVE, à nommer `Conv' <n> LOT-1`.
+> Rien d'autre à envoyer, à personne.**
 >
-> Le prompt de l'audit du lot 0 a été consommé le 29 août 2026 ; il n'est pas
-> conservé ici. Ce qu'il a produit vit au registre §8 et au §5.3 ci-dessus.
+> Les prompts du lot 0 et du lot 0b ont été consommés ; ils ne sont pas
+> conservés ici. Ce qu'ils ont produit vit au registre §8 et aux §5.1 bis, 5.2
+> et 5.3 ci-dessus.
+>
+> **Relis cette annexe contre `git` avant de la coller.** Elle a périmé deux
+> fois en trois jours : la pointe de `main`, le chemin du dépôt et la présence
+> de `make` sont des faits de poste, pas des faits du chantier.
 
 ```
-Tu es le développeur du LOT 0b sur le dépôt rag-ingestion-pipeline.
+Tu es le développeur du LOT 1 sur le dépôt rag-ingestion-pipeline.
 
-C'est le lot le plus court du plan, et celui dont l'absence coûte le plus
-cher : « les gardes qu'on croit avoir ». Le dépôt déclare des garde-fous
-dans .pre-commit-config.yaml — ruff, ruff-format, detect-secrets,
-check-yaml — et RIEN NE LES EXÉCUTE. detect-secrets n'a donc jamais tourné
-sur un dépôt dont le .env porte les mots de passe MinIO et PostgreSQL.
+LE LOT 1 OBSERVE ET NE CORRIGE RIEN. C'est sa raison d'être : trancher par la
+mesure si le lot 2 existe. Tu vas trouver des choses à corriger — tu les
+écris dans ton rapport, tu ne les mets pas au diff. Si tu corriges, tu
+détruis la mesure que le chantier attend.
 
-Dépôt : /home/florian/mes_projets/rag-ingestion-pipeline
-Base : main (le lot 0 y a été fusionné le 29 août 2026).
-Tu travailles sur une branche `lot-0b` partie de `main`.
+Dépôt : mesure-le, ne le lis pas — `git rev-parse --show-toplevel`. Sur le
+poste vérifié le 31 août 2026 : /home/ubuntu/RAG/rag-ingestion-pipeline.
+Base : main. Mesure sa pointe : `git rev-parse --short main`. Elle était à
+`e998e7d` le 31 août 2026, après la fusion du lot 0b.
+Tu travailles sur une branche `lot-1` partie de `main`.
 Une branche par lot en vol, jamais plus : n'en crée pas d'autre.
 
 LIS D'ABORD, EN ENTIER :
   documentation/pilotage_du_chantier.md   (le mandat, l'état, les règles)
   documentation/axes_amelioration.md      (le registre : le contrat en tête)
 
-Installe le hook d'identité AVANT ton premier commit :
-  cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
-  chmod +x .git/hooks/pre-commit
-  git config user.name "floSa" && git config user.email "florian.horellou@gmail.com"
-
-AVERTISSEMENT SUR CE POSTE : les stores ne sont pas vides et le corpus n'est
-pas celui du mandat §2.2 (voir §4 et registre §2). Rien de ce lot n'en
-dépend. N'y touche pas.
-
 ═══════════════════════════════════════════════════════════════
-TROIS POINTS — ET RIEN D'AUTRE
+LES GARDE-FOUS, EN PREMIER — UN SEUL GESTE
 ═══════════════════════════════════════════════════════════════
 
-── 1. Installer réellement les hooks du framework pre-commit (§5.5)
+  make install
 
-L'arbitrage est OUVERT et il est à toi : .git/hooks/pre-commit est déjà
-occupé par le contrôle d'identité d'auteur, et `pre-commit install`
-l'écraserait. Perdre ce contrôle est hors de question — sept commits sont
-partis avec une adresse professionnelle sur un dépôt personnel, il a fallu
-réécrire 165 commits PUIS détruire et recréer le dépôt GitHub.
+Il fait `uv sync` PUIS arme les hooks git — le contrôle d'identité d'auteur
+et les hooks de .pre-commit-config.yaml — et il VÉRIFIE qu'ils sont armés.
+S'il sort en erreur, ne commite pas avant d'avoir corrigé : c'est le
+garde-fou dont l'oubli a coûté un dépôt entier. Sept commits sont partis
+avec une adresse professionnelle @aosis.net sur un dépôt personnel, il a
+fallu réécrire 165 commits PUIS détruire et recréer le dépôt GitHub — la
+liste des contributeurs, une fois constituée, ne se défait pas.
 
-Une piste existe et n'est PAS une consigne : faire du contrôle d'identité un
-hook `repo: local` dans .pre-commit-config.yaml, ce qui rend le fichier au
-framework sans rien perdre. Juge, tranche, argumente.
+Puis l'identité, UNE FOIS par clone (`.git/config` est partagé entre le
+dépôt et tous ses arbres de travail) :
+  git config user.name "floSa"
+  git config user.email "florian.horellou@gmail.com"
 
-PREUVE EXIGÉE, PAR MUTATION : un commit portant une adresse hors liste
-blanche doit être refusé APRÈS comme il l'est aujourd'hui. Démontre-le, ne
-l'affirme pas. Vérifie aussi que detect-secrets tourne réellement — et dis
-ce qu'il trouve, s'il trouve quelque chose.
+Adresses autorisées, et elles seules : florian.horellou@gmail.com,
+florian_horellou@laposte.net. Jamais de --no-verify.
 
-Le hook versionné doit rester versionné : quelqu'un qui clone doit pouvoir
-l'installer, et le mandat §2.1 doit rester vrai après ton lot. S'il cesse
-de l'être, c'est à toi de le corriger dans le même commit.
+Si `make` manque sur ton poste — c'est un fait de POSTE, mesure-le par
+`command -v make` — lis les recettes du Makefile VERSIONNÉ et exécute-les
+dans l'ordre, avec arrêt au premier échec. Attention : `install` arme les
+garde-fous, et `format-check` (qui CONSTATE) vient en dernier dans `all`.
 
-── 2. `make all` cesse d'écrire dans le dépôt qu'il contrôle (§5.4)
+`make all` SORT EN 2 SUR MAIN, ET C'EST NORMAL. Quatre fichiers ne sont pas
+format-propres — trois réservés au lot 2, plus tests/unit/test_wipe_stores.py
+(registre §5.4). Ne les reformate pas. Vérifie que `lint`, `typecheck` et
+`test` rendent 0 avant l'arrêt : c'est ça, ton vert.
 
-Aujourd'hui `all: format lint typecheck test`, et `format` est
-`ruff format src/` : la porte RÉÉCRIT trois fichiers avant de les contrôler.
-Chaque développeur doit se souvenir de révoquer extraction.py, language.py
-et matter.py avant chaque commit. Celui de la réparation du lot 0 l'a fait
-six fois parce qu'il le savait ; le suivant ne le saura pas et livrera du
-reformatage sans rapport.
+═══════════════════════════════════════════════════════════════
+DEUX PRÉALABLES DE POSTE — MESURE, NE LIS PAS
+═══════════════════════════════════════════════════════════════
 
-La correction tient en une ligne : dans la cible `all`, `ruff format --check
-src/`. La cible `format` reste, pour l'écriture volontaire.
+Le corpus, lui, EST versionné depuis le 31 août 2026 (mandat §2.2) : 25
+fichiers sous Datas/htms/ et Datas/pdfs/, ils arrivent avec le clone. Ne le
+transporte pas, ne le renomme pas — `source_path` entre dans le calcul
+d'`element_id`, un caractère de différence rend toute mesure incomparable
+sans qu'aucune erreur ne le signale.
 
-CONSÉQUENCE ASSUMÉE : `make all` devient ROUGE sur main. C'est VRAI, le
-registre §5.4 le dit déjà, et c'est le but. Ne corrige PAS les trois
-fichiers : ils touchent extraction.py, que le lot 2 réécrit. Écris cette
-conséquence là où le prochain développeur la lira, et dis-lui quoi en faire.
+── 1. Le `.env` (mandat §2.3)
 
-── 3. Les sensors d'ingestion sont livrables à l'arrêt (§4.18)
+Il est dans le .gitignore. Sur le poste vérifié le 31 août 2026, il était
+ABSENT. Recrée-le depuis .env.example, et vérifie EN PRIORITÉ
+`EMBEDDING_MODEL_NAME` : il doit valoir exactement
+`paraphrase-multilingual-MiniLM-L12-v2`.
 
-factory.py:335 déclare default_status=RUNNING sur CHAQUE sensor de source.
-La réparation du lot 0 a gardé cette ligne pour le seul sensor de
-réindexation. Les trois sensors d'ingestion — pdfs, livres_html, markdown —
-restent livrables à l'arrêt sans qu'un test bronche : tout le pipeline
-serait inerte au déploiement, en silence.
+C'EST LA PANNE LA PLUS COÛTEUSE DU SYSTÈME, ET ELLE EST SILENCIEUSE. Les
+deux modèles candidats rendent 384 dimensions, donc ChromaDB accepte sans
+broncher, aucune sonde ne voit rien, et la recherche rend des passages
+plausibles et faux. Un .env de juin portait `all-MiniLM-L6-v2`, un modèle
+anglais, face à un agent multilingue. Vérifier la dimension ne protège de
+rien : c'est le NOM qui discrimine. Contrat, exigence 1.
 
-Le test existe déjà à côté, dans tests/unit/test_reindex_job.py : va le
-lire, décline-le. Il comporte un troisième test qui tient les deux autres
-honnêtes — un sensor témoin déclaré SANS le champ ne doit pas être armé —
-sans quoi ils resteraient vrais si Dagster changeait sa valeur par défaut.
-Reprends cette idée.
+── 2. La pile Docker (mandat §4)
+
+Sur le poste vérifié le 31 août 2026 : AUCUN conteneur du projet, AUCUN
+réseau `rag_network`, AUCUN volume. Mesure d'abord — `docker ps -a`,
+`docker network ls`, `docker volume ls` — puis monte ce qu'il faut.
+
+Et LES STORES S'INTERROGENT, ILS NE SE MESURENT PAS EN TAILLE DE DOSSIER :
+un ChromaDB vide pèse quand même 250 Mo. Demande à ChromaDB son
+`collection.count()`, à MinIO la liste de son bucket, à Nebula son compte de
+sommets. Sur un autre poste, les stores portaient 137 854 vecteurs et un
+corpus qui n'était pas celui-ci — un lot qui a ingéré là-dessus aurait
+mélangé deux corpus sans qu'aucune erreur ne paraisse.
+
+L'IMAGE DOCLING EST À RECONSTRUIRE, et la panne est identifiée
+précisément : `GET /health` rend 503 avec `graph_ready: true`,
+`objects_ready: true`, `models_ready: false`, et le journal donne la cause en
+clair — `PermissionError: [Errno 13] Permission denied:
+'/tmp/.cache/huggingface'`, levée par `_warm_up` au chargement de
+l'embedder. Le conteneur tournait en Python 3.10.17 alors que
+Dockerfile.docling déclare python:3.12-slim : l'image précède le fichier. Or
+ce Dockerfile CORRIGE DÉJÀ la panne (`mkdir -p /tmp/.cache && chown -R
+docling:docling /tmp/.cache`). Un `docker compose up -d --build
+docling-service` doit suffire. AUCUN GPU N'EST REQUIS : l'ingestion tourne
+sur processeur, et la réservation nvidia vit dans un docker-compose.gpu.yml
+superposable.
+
+Si un préalable te bloque durablement, dis-le et arrête-toi : mieux vaut
+`TÂCHE BLOQUÉE — <raison>` qu'une mesure faite sur une pile bancale.
+
+═══════════════════════════════════════════════════════════════
+CE QUE TU INGÈRES — UN ÉCHANTILLON, ET C'EST VOULU
+═══════════════════════════════════════════════════════════════
+
+UN chapitre par ouvrage, plus environ CINQ pages du PDF. Pas plus.
+
+C'est le seul endroit du chantier où échantillonner est permis, parce qu'on
+observe un MÉCANISME. On n'échantillonne JAMAIS l'ingestion pour construire
+le jeu de questions (registre §1) : ce serait rendre le rappel trivial et la
+mesure creuse. Le lot 6 ingérera tout.
+
+Pourquoi si peu : un seul chapitre suffit à voir si Docling imbrique les
+titres, et coûte quelques minutes. Ingérer tout d'abord, puis découvrir que
+le graphe est plat, coûterait deux heures d'ingestion, une purge du space et
+une campagne d'ablation à rejouer.
+
+DIS QUELS FICHIERS TU AS CHOISIS, ET POURQUOI. Un chapitre de milieu
+d'ouvrage, avec des sous-sections et des images, dit plus qu'une préface.
+Note que `Index.html` est écarté par le capteur (matter.py) mais que
+`Preface.html` ne l'est PAS — « preface » n'est pas dans
+FRONT_BACK_MATTER_TITLES — et qu'il existe dans les DEUX ouvrages : c'est le
+cas d'école de l'exigence 3 du contrat, `source_path` comme identité.
+
+═══════════════════════════════════════════════════════════════
+LES TROIS QUESTIONS — ET RIEN D'AUTRE
+═══════════════════════════════════════════════════════════════
+
+── 1. LA PROFONDEUR RÉELLE DU GRAPHE (§3.2) — la question qui décide du lot 2
+
+`ranking.docling_parent_rank` rend 0, et non None, dès que le premier parent
+rencontré est `#/body`. `extraction._flat_rank` ne bascule sur
+`docling_level_rank` que si le premier signal rend None. DONC si Docling
+n'imbrique pas les titres d'une capture SingleFile, tous les titres
+reçoivent le rang 0, deviennent frères sous le document, et le graphe est
+plat.
+
+CE N'EST PAS PROUVÉ. C'est un raisonnement sur le comportement du backend
+HTML de Docling, étiqueté `supposé` au registre, et ce code n'a JAMAIS
+tourné sur ce corpus. Deux chiffres s'opposent et aucun n'est daté :
+documentation/CHANGEMENTS.md annonce 759 arêtes SectionHeader→SectionHeader
+sur « le corpus de référence » — un corpus qui n'existe plus ; le contrat
+côté agent annonce 0 et 0 sur le graphe de production.
+
+Ce qu'on attend de toi : la profondeur MESURÉE, dans NebulaGraph, sur ce que
+tu viens d'ingérer. Compte des arêtes PARENT_OF, distribution des
+profondeurs, longueur des chemins, et un exemple lisible — un vrai fil
+d'Ariane du type `Chapitre 3 > 3.2 > 3.2.1`, ou la preuve qu'il n'y en a pas.
+
+SI DOCLING IMBRIQUE BIEN LES TITRES, LE CONSTAT §3.2 TOMBE ET LE LOT 2
+DISPARAÎT. C'est un excellent résultat. Ne cherche pas à confirmer le
+constat : cherche à savoir.
+
+Regarde aussi, tant que tu y es et sans corriger : la propriété `sequence`
+des arêtes PARENT_OF est-elle présente, et MONOTONE ? C'est l'exigence 4 du
+contrat, et son absence casse la reconstruction sans erreur visible. Le
+garde appartient au lot 3 ; l'observation est gratuite ici.
+
+── 2. `minio_url` SUR LES IMAGES HTML (§3.5)
+
+`cleaning.py` réécrit `img src` avec l'URL MinIO ; `extraction.py` ne
+propage cette URL que si `item.image.uri` commence par `http`. Que le
+backend HTML de Docling renseigne `image.uri` depuis l'attribut `src` n'est
+vérifié par AUCUN test ni aucune mesure.
+
+Si c'est faux, aucune image de capture HTML ne porte de `minio_url` — donc
+aucune n'est servie par l'agent, qui ne sert que ce que le graphe référence
+(RESTRICT_MEDIA_TO_GRAPH=true). `supposé`, à prouver sur ton chapitre.
+
+Mesure : combien d'images dans le chapitre, combien de sommets porteurs d'un
+`minio_url` non vide, et l'URL pointe-t-elle un objet qui EXISTE dans MinIO.
+Les trois, séparément — une URL présente et morte est un faux vert.
+
+── 3. LA TRONCATURE RÉELLE À L'EMBEDDING (§3.4)
+
+`index_report.py` tokenise `documents`, c'est-à-dire le texte STOCKÉ. Or
+`vectors.py` encode `contextualize(texte, section_title)`, c'est-à-dire le
+texte PRÉFIXÉ du titre de section. Le rapport annoncera donc 0 % de
+troncature alors que le texte réellement embarqué peut dépasser la fenêtre.
+
+Aggravant : `HybridChunker` compte ses tokens sur SA PROPRE sérialisation
+contextualisée, titres compris. Préfixer un second titre par-dessus peut
+refranchir la fenêtre de 128 tokens — exactement la troncature silencieuse
+que le passage à `HybridChunker` prétendait supprimer. `supposé`, à mesurer.
+
+Mesure la troncature sur le texte RÉELLEMENT ENCODÉ, pas sur le texte
+stocké. Donne la distribution des longueurs en tokens, le maximum, et le
+nombre de chunks au-dessus de la fenêtre. Et dis ce que l'instrument
+`index_report` annonce à côté : l'écart entre les deux EST le résultat.
 
 ═══════════════════════════════════════════════════════════════
 CE QUI EST HORS PÉRIMÈTRE
 ═══════════════════════════════════════════════════════════════
 
-Tout le reste du registre. En particulier : ne reformate pas les trois
-fichiers, ne touche pas à `make audit` (§4.20), ne corrige pas la famine
-des sensors (§4.15, elle se ferme par le run monitoring de dagster.yaml, au
-lot 4), ne touche pas au code mort (§5.1, §5.2, §5.7).
+TOUT LE RESTE DU REGISTRE. Tu ne corriges ni §3.2, ni §3.4, ni §3.5 — les
+corriger appartient aux lots 2 et 3, et les corriger MAINTENANT détruirait
+la mesure qu'on te demande.
 
-Si tu penses qu'un de ces points DOIT entrer, dis-le et argumente. Ne le
-fais pas de ton propre chef. Ce qui est trouvé et non traité va au RAPPORT
-et au REGISTRE, jamais au diff.
+En particulier : ne touche pas à la hiérarchie (§3.2, §3.3, §4.11, §4.12),
+ni aux instruments (§3.4, §4.4, §4.14), ni à la perte silencieuse (§4.1 à
+§4.10, §4.15 à §4.19), ni au code mort (§5.1 à §5.3, §5.7), ni aux quatre
+fichiers non format-propres (§5.4), ni à `make audit` (§4.20), ni au run
+monitoring de dagster.yaml (§4.15).
+
+Tu peux avoir besoin d'écrire un script de MESURE. S'il est jetable, il ne
+va pas au diff : sa sortie va au rapport. S'il mérite de rester, dis-le,
+argumente, et donne-lui des tests — mais le défaut par défaut est de ne rien
+livrer d'autre que des mesures.
+
+Si tu penses qu'une correction DOIT entrer, dis-le et argumente. Ne le fais
+pas de ton propre chef. Ce qui est trouvé et non traité va au RAPPORT et au
+REGISTRE, jamais au diff.
 
 ═══════════════════════════════════════════════════════════════
 LES RÈGLES DU DÉPÔT
 ═══════════════════════════════════════════════════════════════
 
 Commits atomiques en français, dans le style de `git log`. Documentation
-dans le MÊME commit que son code.
+dans le MÊME commit que son code : une même affirmation fausse vivant dans
+le code et dans un document se corrige dans UN SEUL commit.
 
 Aucune mention de Claude, Claude Code, Anthropic, Copilot ou ChatGPT nulle
-part. Aucun trailer Co-Authored-By. Le hook refuse une adresse hors liste
-blanche ; ne le contourne jamais, pas de --no-verify.
-
-TEST ROUGE D'ABORD. Chaque garde prouvé par MUTATION du code livré : tu
-casses la ligne, le test devient rouge, tu remets, il redevient vert. Nomme
-chaque mutation dans ton rapport.
+part — code, documentation, messages de commit. Aucun trailer
+Co-Authored-By.
 
 Aucun test désactivé, aucun skip, xfail, type: ignore, aucune règle ruff ou
 mypy relâchée, aucun except élargi sans justification écrite AU SITE.
 
-`make all` vert sur CHACUN de tes commits pris individuellement — et
-attention, tu es précisément le lot qui change ce que « vert » veut dire :
-dis explicitement, pour chaque commit, ce que tu as mesuré et avec quelle
-version de la cible. Plus le balayage de graines : la graine 0 (qui
-désactive la randomisation, cas distinct) plus au moins 25 graines
-PYTHONHASHSEED aléatoires.
+Si tu livres du code, TEST ROUGE D'ABORD, et chaque garde prouvé par
+MUTATION du code livré : tu casses la ligne, le test devient rouge, tu
+remets, il redevient vert. Nomme chaque mutation dans ton rapport.
 
-Le compte de tests a UN site canonique, README.md section Tests. Remesure,
-mets-le à jour là, dans chaque commit qui le change. Ne le recopie ailleurs
-nulle part.
+`make all` vert sur CHACUN de tes commits pris individuellement — au sens
+défini plus haut : rc=2 attendu, `lint`/`typecheck`/`test` à 0. Plus le
+balayage de graines : la graine 0 (qui désactive la randomisation, cas
+distinct) plus au moins 25 graines PYTHONHASHSEED aléatoires.
 
-Aucun chiffre inventé : étiquette mesuré / calculé / supposé, et donne la
-commande. Pousse au fil de l'eau.
+Le compte de tests a UN site canonique, README.md section Tests. Il est à
+552 (`mesuré`, 31 août 2026). Remesure et mets-le à jour là, dans chaque
+commit qui le change. Ne le recopie nulle part ailleurs.
+
+AUCUN CHIFFRE INVENTÉ. Étiquette `mesuré` / `calculé` / `supposé`, et donne
+la COMMANDE qui l'a produit. Et vérifie la PROVENANCE de chaque chiffre que
+tu cites : sur le lot 0b, un chiffre juste a été cité pour le mauvais arbre,
+trois fois. Un chiffre mesuré avant ton changement n'est pas un chiffre
+mesuré.
+
+MESURE `rc` SANS PIPE : `cmd 2>&1 | tail` rend le code de retour de `tail`.
+Quatre personnes s'y sont fait prendre sur le lot 0b, dont le pilote.
+
+Les noms de fichiers du corpus contiennent des ESPACES et un deux-points
+PLEINE CHASSE (« 4. Model Serving： … »). Ne boucle jamais sur une liste non
+protégée : un développeur du lot 0b s'est fabriqué un faux vert avec
+`tr '\n' ' '`.
+
+Pousse au fil de l'eau.
 
 ═══════════════════════════════════════════════════════════════
 LES LEÇONS — APPLIQUE-LES
 ═══════════════════════════════════════════════════════════════
 
-- Un test « ça marche » est vert DES DEUX CÔTÉS du défaut.
-- Asserte depuis le côté qui PRODUIT le comportement.
-- Un défaut peut être une ligne qui manque au TEST, pas au code.
-- Ce qu'un test n'importe pas, il ne teste pas : lis la ligne d'import
-  avant de croire une couverture.
-- Un harnais de test peut effacer ce qu'il doit observer. Vérifie ton
-  harnais avant de croire ton rouge-d'abord.
-- Une phrase d'exhaustivité est un défaut en attente.
-- Tester un point d'entrée demande un SOUS-PROCESSUS, pas un import.
-- Lis le code avec `git show <branche>:<fichier>`, pas avec `cat`.
-- Traite tes propres affirmations comme des hypothèses.
+- La question la plus productive des deux dépôts : QU'EST-CE QUE LA
+  DOCUMENTATION AFFIRME QUE LE CODE NE FAIT PAS ? Tes trois questions sont
+  exactement de cette forme.
+- Un test « ça marche » est vert DES DEUX CÔTÉS du défaut. Un test « ça
+  tient » est vert des deux côtés d'un défaut de dimensionnement ; seul un
+  test de SERRAGE le voit.
+- Asserte depuis le côté qui PRODUIT le comportement, pas depuis celui qui
+  le consomme.
+- Une PHRASE D'EXHAUSTIVITÉ est un défaut en attente : elle clôt une
+  énumération que personne ne rouvre. N'en écris pas dans ton rapport.
+- UN TEST QUI CHOISIT LUI-MÊME SON CAS DOIT PROUVER QU'IL L'A ATTEINT. Vaut
+  pour une mesure : si tu mesures un chapitre, prouve que c'est bien celui
+  que tu crois, et qu'il a bien été ingéré.
+- Une généralisation tirée d'UNE branche d'une fonction qui en a plusieurs
+  est fausse jusqu'à preuve du contraire. Vaut pour Docling : ce que fait le
+  backend HTML ne dit rien du backend PDF, et l'inverse non plus. MESURE LES
+  DEUX.
+- Deux erreurs qui se compensent se cachent mutuellement.
+- Un montage de test qui bouchonne trop haut rend intestable ce qu'il
+  prétend vérifier. Mute le producteur, pas le consommateur.
+- Un harnais peut effacer ce qu'il doit observer. Vérifie ton harnais avant
+  de croire ton rouge — ou ton vert.
+- Lis le code avec `git show <réf>:<fichier>`, pas avec `cat` : sur ce
+  dépôt, un arbre de travail a longtemps porté le contenu de juin sur un
+  HEAD d'août.
+- Traite tes propres affirmations comme des hypothèses. Vérifie avant
+  d'écrire un chiffre.
 
 ═══════════════════════════════════════════════════════════════
 CE QUE TU RENDS
 ═══════════════════════════════════════════════════════════════
 
-1. Point par point, ce que tu as fait, et le commit qui le porte.
-2. Pour le point 1 : l'arbitrage que tu as retenu, ce que tu as écarté, et
-   POURQUOI. C'est ce que le pilote lira le plus attentivement.
-3. Ta table de mutations : la ligne cassée, le test devenu rouge, fichier
-   et ligne. Dont OBLIGATOIREMENT la preuve que le contrôle d'identité
-   refuse toujours une adresse hors liste blanche.
-4. Tes mesures avec leurs commandes.
-5. Tout écart au mandat, DÉCLARÉ COMME TEL au moment où tu le prends.
-6. Ce que tu as trouvé et NON traité, pour le registre.
-7. Tes désaccords avec le pilote. Ils sont attendus, pas tolérés : le
-   pilote a été renversé trois fois sur le lot 0, chaque fois à raison.
+1. L'ÉTAT DU POSTE que tu as mesuré : `.env`, stores INTERROGÉS (pas leur
+   taille), pile Docker, image Docling. Avec les commandes.
+2. Ce que tu as ingéré : quels fichiers, pourquoi ceux-là, et la preuve que
+   l'ingestion a réussi.
+3. RÉPONSE À LA QUESTION 1 — la profondeur réelle du graphe, avec ses
+   chiffres et un exemple lisible. Puis ta conclusion EXPLICITE : le constat
+   §3.2 tient-il, ou tombe-t-il ? Le lot 2 existe-t-il ?
+4. RÉPONSE À LA QUESTION 2 — images, `minio_url`, et objets réellement
+   présents dans MinIO.
+5. RÉPONSE À LA QUESTION 3 — troncature sur le texte réellement encodé,
+   contre ce qu'annonce `index_report`.
+6. Tes mesures avec leurs commandes et leurs étiquettes.
+7. Tout écart au mandat, DÉCLARÉ COMME TEL au moment où tu le prends.
+8. Ce que tu as trouvé et NON traité, pour le registre. Ce sera long, et
+   c'est normal : c'est la première fois que ce code tourne sur ce corpus.
+9. Tes désaccords avec le pilote. Ils sont attendus, pas tolérés : sur le
+   lot 0b, le développeur a renversé le pilote, l'audit a renversé le
+   développeur ET le pilote, et le réparateur a renversé l'audit. Chaque
+   fois à raison.
 
 Ta dernière ligne est exactement `TÂCHE TERMINÉE`, ou
 `TÂCHE BLOQUÉE — <raison>`.

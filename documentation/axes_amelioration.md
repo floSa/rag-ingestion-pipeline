@@ -174,6 +174,26 @@ le pilote avant de pousser : **535 verts**, `ruff` propre, `mypy` « no issues
 found in 36 source files » (`mesure`, 29 aout 2026). Le compte canonique reste
 dans `README.md`, section Tests.
 
+**Apres la fusion du lot 0b** (fusion `--no-ff` `e998e7d`, 31 aout 2026 :
+les 3 commits de livraison, 5 de premiere reparation, 10 de seconde). Verifie
+par le pilote **sur le commit de fusion lui-meme** (`mesure`, 31 aout 2026) :
+**552 tests verts**, `ruff` propre, `mypy` « no issues found in 36 source
+files », `make all` en **2** — le rouge attendu de `format-check` sur les quatre
+fichiers plies a la main (§5.4) — et l'arbre **non sali**. La porte sur chacun
+des 18 commits pris individuellement, et le balayage de graines, sont aux
+rapports des developpeurs ; le pilote a rejoue la porte sur cinq commits et un
+sondage de graines, plus la mesure de fusion ci-dessus. Le compte canonique
+reste dans `README.md`, section Tests.
+
+**L'etat non versionne a change de perimetre le 31 aout 2026.** Le corpus
+**est desormais versionne** (`a005172`, 25 fichiers, 57 381 999 octets
+`mesure`) : il voyage avec le clone. Ne restent hors du depot que le `.env`, les
+stores et la pile Docker. Sur le poste verifie le 31 aout 2026, **aucun** des
+trois n'etait present : ni `.env`, ni conteneur du projet, ni reseau
+`rag_network`, ni volume — et le hook d'identite n'etait pas installe. Le poste
+avait ete annonce comme le poste d'origine du chantier. **Mesure le poste,
+jamais ce paragraphe.**
+
 **508 est un volume, pas une garantie.** Le fichier
 `tests/unit/test_hierarchie_bout_en_bout.py` fabrique l'arbre imbriqué qu'il
 prétend vérifier et reste vert des deux côtés de son défaut (§3.3) ; il compte
