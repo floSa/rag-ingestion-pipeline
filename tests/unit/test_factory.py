@@ -218,17 +218,23 @@ class TestLesSensorsDIngestionSontLivresArmes:
     # automatiquement par les boucles ci-dessous, tandis que la disparition
     # silencieuse de l'une de ces trois doit rougir. Une egalite serait une
     # phrase d'exhaustivite, donc un defaut en attente.
+    #
+    # Chacun des deux tests ci-dessous porte SA PROPRE borne, en ligne, sur la
+    # collection qu'il parcourt : `sources` pour le premier, `livres` pour le
+    # second. C'est la seule place ou une borne garde quelque chose — un test de
+    # borne separe reconstruit son propre harnais et reste vert quoi qu'il arrive
+    # a celui des autres.
     SOURCES_ATTENDUES = {"pdfs", "livres_html", "markdown"}
-
-    def test_le_harnais_atteint_bien_les_trois_sources_declarees(self):
-        # Sans cette borne, les deux tests suivants seraient verts sur une liste
-        # vide : ils n'assertteraient rien tout en comptant pour deux tests.
-        declarees = {source.name for source in load_sources()}
-        assert declarees >= self.SOURCES_ATTENDUES
 
     def test_chaque_source_declaree_est_livree_armee(self):
         sources = load_sources()
-        assert len(sources) >= len(self.SOURCES_ATTENDUES)
+        # La borne est EN LIGNE, et elle porte sur la liste que la boucle
+        # ci-dessous parcourt reellement. Un test de borne separe, qui appelait
+        # `load_sources()` de son cote, ne gardait rien : forcer `sources` a une
+        # liste vide ici et retirer cette ligne laissait 551 tests VERTS
+        # (`mesure`, 31 aout 2026). Il etait vert des deux cotes du defaut, parce
+        # qu'il n'observait jamais ce harnais-ci.
+        assert {source.name for source in sources} >= self.SOURCES_ATTENDUES
         for source in sources:
             built = build_source(source)
             assert built.sensor.default_status is DefaultSensorStatus.RUNNING, (

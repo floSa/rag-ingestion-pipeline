@@ -1082,12 +1082,30 @@ avec les trois précautions qui le rendent non creux :
 - il asserte sur l'objet **produit** — `build_source(...).sensor` — et sur celui
   que `definitions.py` **livre** réellement, jamais sur la présence du mot dans
   la source ;
-- il boucle sur **toutes** les sources de `sources.yaml`, et un test de borne
-  inférieure prouve que le harnais atteint bien les trois (`pdfs`,
-  `livres_html`, `markdown`). C'est la leçon de `3603492` : un harnais qui
-  n'appelle la fabrique qu'avec une source laisse les autres sans garde. La
-  borne est **inférieure** et non une égalité, pour qu'une quatrième source soit
-  couverte d'office sans qu'une phrase d'exhaustivité ne l'interdise ;
+- il boucle sur **toutes** les sources de `sources.yaml`, et **chacun des deux
+  tests qui bouclent porte sa propre borne, EN LIGNE**, sur la collection qu'il
+  parcourt. C'est la leçon de `3603492` : un harnais qui n'appelle la fabrique
+  qu'avec une source laisse les autres sans garde. La borne est **inférieure** et
+  non une égalité, pour qu'une quatrième source soit couverte d'office sans
+  qu'une phrase d'exhaustivité ne l'interdise ;
+
+  **La livraison initiale avait mis cette borne dans un test à part, et ce test
+  ne gardait rien.** Il appelait `load_sources()` de son côté, donc il
+  n'observait jamais le harnais des deux autres : `mesuré` le 31 août 2026,
+  forcer ce harnais à une liste vide **et** retirer l'assertion en ligne laissait
+  **551 tests VERTS**. Il était vert des deux côtés du défaut. Sa couverture
+  marginale est de surcroît **nulle** — `mesuré` : `load_sources()` rendu vide
+  globalement rougit 10 tests, dont
+  `test_sources.py::TestDefaultSourcesFile::test_loads_and_validates`, qui
+  asserte exactement les mêmes trois noms. Le test a donc été **retiré** par la
+  réparation, et l'assertion en ligne renforcée d'un compte
+  (`len(sources) >= 3`) vers un ensemble de **noms**
+  (`{s.name for s in sources} >= SOURCES_ATTENDUES`), strictement plus fort : un
+  compte reste vert si une source est renommée pendant qu'une autre est ajoutée.
+  C'est la leçon « un test qui choisit lui-même son cas doit prouver qu'il l'a
+  atteint », et cette preuve doit vivre **là où le cas est choisi**. Le garde du
+  lot tient après retrait : la mutation de `default_status` dans `factory.py`
+  rougit toujours les deux tests qui bouclent (`mesuré`) ;
 - un sensor témoin déclaré **sans** le champ ne doit pas être armé, sans quoi
   les assertions resteraient vraies si Dagster changeait sa valeur par défaut.
   Dagster livre bien `STOPPED` par défaut (`mesuré` sous mutation).
