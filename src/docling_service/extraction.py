@@ -393,9 +393,7 @@ def _extract_pdf(
         # leur vitesse puisqu'ils n'empruntent jamais cette branche.
         logger.warning("[%s] aucune couche texte : conversion avec OCR", stem)
 
-    logger.info(
-        "[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped)
-    )
+    logger.info("[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped))
     report(
         pages_total=total_pages,
         pages_done=0,
@@ -424,7 +422,6 @@ def _extract_pdf(
     # ouvrage ne change pas en cours de route, et les lots suivants ecrivent
     # le meme noeud Document.
     langue = ""
-
 
     # Le PDF est ouvert UNE fois pour tous les crops du document.
     with fitz.open(pdf_path) as document:
@@ -463,9 +460,7 @@ def _extract_pdf(
                     )
                     # L'ecriture, elle, est bloquante : si un store refuse le lot,
                     # continuer n'aurait aucun sens.
-                    total_chunks += storage.persist(
-                        batch_elements, identity, facts, batch_document
-                    )
+                    total_chunks += storage.persist(batch_elements, identity, facts, batch_document)
 
                 report(
                     pages_done=end_page,
