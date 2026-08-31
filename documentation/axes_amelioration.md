@@ -483,14 +483,72 @@ l'image finit le lot précédent perd son arête `LINKED_TO`.
 `failed_batches` : dans l'interface Dagster, un document écarté ressemble à un
 document ingéré vide.
 
-### 4.11 Le niveau du titre n'est pas stocké dans le graphe
+### 4.11 → traité par le lot 3 — `depth` est écrit sur le sommet, et la migration se constate
 
-`nebula.py:49` : `VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")`.
-Ni `depth`, ni `section_title`, ni `reference_id` ne sont écrits sur les
-sommets ; `depth` n'existe que dans les métadonnées ChromaDB
-(`schemas.py:94-95`). La correction demandée côté agent — « stocker le niveau du
-titre sur le tag `SectionHeader` » — n'est pas faite. L'agent peut remonter les
-`PARENT_OF`, mais ne peut pas lire un niveau.
+**Le constat, tel qu'il était ouvert.** `nebula.py:49` portait
+`VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")`. Ni `depth`, ni
+`section_title`, ni `reference_id` n'étaient écrits sur les sommets ; `depth`
+n'existait que dans les métadonnées ChromaDB. L'agent pouvait remonter les
+`PARENT_OF`, mais ne pouvait lire aucun niveau déclaré.
+
+**Ce qui est écrit, et ce qui a été écarté.** Une seule propriété est ajoutée :
+`depth`. Les deux autres ont été écartées, et pour la même raison — elles
+seraient une **seconde source de vérité** pour une information que le graphe
+porte déjà exactement :
+
+- `reference_id` **est** l'extrémité source de l'arête `PARENT_OF`. L'écrire sur
+  le sommet crée deux versions du même lien, qui peuvent diverger ; aucune
+  requête n'en a besoin, puisque l'arête se traverse ;
+- `section_title` **est** le `text` du sommet parent, atteignable en une arête.
+  L'écrire dupliquerait le texte de chaque titre sur chacun de ses descendants.
+
+`depth`, lui, n'est déductible qu'en **parcourant** la chaîne jusqu'à la racine :
+c'est la seule des trois qui apporte quelque chose. Elle est écrite sur **tous**
+les tags d'élément et non sur le seul `SectionHeader` — ils partagent un schéma
+unique, et `depth` est déjà calculée pour tout élément.
+
+**La migration retenue, et l'affirmation du plan qu'elle corrige.** Le plan
+disait « cela change le schéma Nebula, et le schéma n'évolue pas en place ;
+toute correction impose une réingestion ». **L'antécédent est faux, et c'est
+mesuré** : `ALTER TAG <tag> ADD (depth int)` réussit sur `rag_space` peuplé de
+2 288 puis de 15 196 sommets, sans purge ni recréation. Ce qui n'évolue pas en
+place est le `vid_type` du space (`ngql.py`, `FIXED_STRING`), pas une propriété
+de tag.
+
+**La conclusion d'ordre du plan tient quand même, pour une autre raison.** Le
+schéma migre ; les **données** non. Les sommets déjà écrits portent `NULL`
+(`mesuré` : 188 sur 188 après l'ALTER), et seule une réécriture du document les
+renseigne. §4.11 doit donc bien précéder le lot 6 — non parce que le schéma
+serait figé, mais parce que peupler la colonne coûte une réingestion complète.
+*Un raisonnement juste sur un antécédent faux se relit comme une preuve.*
+
+Le mécanisme est celui qui existait déjà pour le tag `Document` :
+`CREATE TAG IF NOT EXISTS` pour un space neuf, puis un `ALTER TAG ... ADD` par
+colonne, dont l'échec « Existed! » est toléré. Un `ALTER` par colonne et non
+pour la seule colonne du jour : il n'y a aucune liste à tenir à jour.
+
+**Et le lot a découvert le garde qui manquait, en le subissant.** `mesuré` le
+31 août 2026 : sur un space où un `ALTER ... DROP` avait été joué,
+`init_schema()` a rendu **`True`** alors que **onze tags sur douze** seulement
+avaient migré. Nebula avait refusé le douzième avec **« Schema exisited
+before! »** — il conserve l'historique de schéma d'un tag et **n'autorise jamais
+une colonne supprimée à revenir sous le même nom**. L'échec d'un `ALTER` étant
+toléré par construction, rien ne l'a signalé : le défaut ne se serait vu qu'à la
+**première écriture**, sur un rejet du graphd, document à moitié écrit.
+
+`NebulaWriter._verifier_les_tags` constate donc désormais le résultat au lieu de
+le supposer : elle relit `DESCRIBE TAG` et lève si une colonne manque, en
+nommant le tag, la colonne et le geste de réparation. `init_schema()` rend
+`False`, et le service refuse de se déclarer prêt — un service mort se voit.
+
+**Deux conséquences à connaître, écrites ici parce qu'elles ne sont écrites
+nulle part ailleurs :**
+
+1. **une migration n'est pas réversible.** `ALTER ... DROP` condamne le tag
+   jusqu'à la recréation du space. Ne l'utiliser jamais comme retour arrière ;
+2. **un space existant qui a subi un `DROP` doit être recréé.** C'est le cas du
+   `rag_space` de ce poste au 31 août 2026, et c'est le lot 3 qui l'a mis dans
+   cet état en éprouvant la réversibilité — le dire plutôt que le taire.
 
 ### 4.12 Échelles de rang mélangées
 
@@ -772,11 +830,25 @@ remplacé `build_blocks`. `documentation/base_vectorielle.md:20` affirme quant �
 lui que les fragments isolés « sont absorbés dans leur paragraphe d'origine ».
 Les deux ne peuvent pas être vrais.
 
-### 5.3 `ngql.py:130-131` redéfinit un schéma faux
+### 5.3 → traité par le lot 3, et c'était devenu une condition, pas un choix
 
-`VERTEX_PROPERTIES` et `DOCUMENT_PROPERTIES` y sont déclarés sans jamais être
-importés, et `DOCUMENT_PROPERTIES` y compte **3** champs contre **7** dans
-`nebula.py:50-58`. Un lecteur qui ouvre `ngql.py` lit un schéma périmé.
+`VERTEX_PROPERTIES` et `DOCUMENT_PROPERTIES` étaient déclarés dans `ngql.py`
+sans jamais être importés, et `DOCUMENT_PROPERTIES` y comptait **3** champs
+contre **7** dans `nebula.py`. Un lecteur qui ouvrait `ngql.py` lisait un schéma
+périmé.
+
+**Ce constat était rangé au lot 5, et le lot 3 l'a pris — voici l'argument.**
+Ajouter `depth` au schéma (§4.11) sans toucher au doublon aurait porté à **deux**
+le nombre de définitions fausses dans le fichier même où l'on vient de changer
+le schéma. Une constante morte qui décrit faussement ce qu'on vient de modifier
+n'est pas du code mort : c'est un piège, et c'est exactement la famille de
+défaut que le lot 3 existe pour fermer.
+
+Le sens de la déduplication est **l'inverse** de celui qu'on attendrait : c'est
+la définition de `nebula.py` qui disparaît, et celle de `ngql.py` qui devient
+canonique. `ngql.py` est le seul des deux modules « sans dépendance externe »,
+donc le seul testable sans graphd — et c'est ce qui permet aux gardes de §4.11
+d'exister comme tests unitaires plutôt que comme intentions.
 
 ### 5.4 `main` n'est pas format-propre — quatre fichiers, dont trois réservés au lot 2
 
@@ -918,6 +990,25 @@ Trois réserves qu'aucun document ne porte, et dont l'agent peut se tromper :
 parent**, et non l'ordre exigé : une numérotation aléatoire distincte par parent
 passerait ce test. Le garde à écrire est le second : `page_no` ne décroît pas
 dans l'ordre des `sequence`. À traiter avec §4.4.
+
+### 6.18 Les deux blocs de schéma documentés portent d'autres erreurs — relevé par le lot 3, NON traité
+
+Le lot 3 a mis à jour `documentation/services/nebulagraph.md` et
+`documentation/llm_integration_plan.md` sur le seul point que son code rendait
+faux — les tags d'élément gagnent `depth`. **Il a laissé les erreurs
+préexistantes du même bloc**, périmètre strict, et les voici pour le lot 5
+(`mesuré` le 31 août 2026 par `DESCRIBE TAG Document;` et `DESC SPACE rag_space;`
+sur `rag_space`) :
+
+| Site | Ce qu'il dit | Mesuré |
+|---|---|---|
+| `services/nebulagraph.md:24` | `vid_type=FIXED_STRING(64)` | **256** — `ngql.py` porte `VID_MAX_BYTES = 256`, et le commentaire y explique pourquoi 64 ne suffisait pas |
+| `services/nebulagraph.md:26` | `CREATE TAG Document(filename string, type_file string)` | **7** propriétés : `filename`, `type_file`, `total_pages`, `collection`, `source_path`, `language`, `content_hash` |
+| `llm_integration_plan.md:298` | `Document \| filename: string, type_file: string` | les mêmes 7 |
+
+C'est la même famille que §6.3 : une énumération close que personne n'a
+rouverte. `source_path` y manque des deux côtés, et c'est **l'exigence 3 du
+contrat** — l'identité d'un document.
 
 ### 6.17 Chiffres et renvois faux, relevés le 31 août 2026
 

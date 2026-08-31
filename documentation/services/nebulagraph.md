@@ -22,11 +22,22 @@ CREATE SPACE rag_space(partition_num=10, replica_factor=1, vid_type=FIXED_STRING
 
 -- Tags (types de noeuds)
 CREATE TAG Document(filename string, type_file string);
-CREATE TAG SectionHeader(label string, page_no int, text string, minio_url string);
-CREATE TAG Paragraph(label string, page_no int, text string, minio_url string);
-CREATE TAG Table(label string, page_no int, text string, minio_url string);
-CREATE TAG Picture(label string, page_no int, text string, minio_url string);
+CREATE TAG SectionHeader(label string, page_no int, text string, minio_url string, depth int);
+CREATE TAG Paragraph(label string, page_no int, text string, minio_url string, depth int);
+CREATE TAG Table(label string, page_no int, text string, minio_url string, depth int);
+CREATE TAG Picture(label string, page_no int, text string, minio_url string, depth int);
 -- ... (ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter)
+
+-- `depth` est arrivee au lot 3 : l'agent pouvait remonter les PARENT_OF mais ne
+-- pouvait lire aucun niveau declare sur un titre. Sur un space DEJA PEUPLE, le
+-- CREATE ci-dessus ne fait rien : c'est l'ALTER qui migre, et le service le
+-- joue a chaque demarrage puis CONSTATE le resultat.
+ALTER TAG SectionHeader ADD (depth int);   -- « Existed! » si deja la : tolere
+
+-- Une colonne SUPPRIMEE ne revient jamais. Nebula garde l'historique de schema
+-- d'un tag et refuse le ré-ajout avec « Schema exisited before! » (`mesure`,
+-- 31 aout 2026). Un ALTER ... DROP condamne donc le tag jusqu'a la recreation
+-- du space : ne l'utilise pas comme rollback.
 
 -- Edges (relations)
 CREATE EDGE PARENT_OF(sequence int);

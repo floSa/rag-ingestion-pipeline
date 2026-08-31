@@ -296,17 +296,23 @@ une evolution du pipeline.
 | Tag            | Proprietes                                      |
 |----------------|-------------------------------------------------|
 | Document       | filename: string, type_file: string             |
-| SectionHeader  | label: string, page_no: int, text: string, minio_url: string |
-| Paragraph      | label: string, page_no: int, text: string, minio_url: string |
-| Table          | label: string, page_no: int, text: string, minio_url: string |
-| Picture        | label: string, page_no: int, text: string, minio_url: string |
-| ListItem       | label: string, page_no: int, text: string, minio_url: string |
-| Caption        | label: string, page_no: int, text: string, minio_url: string |
-| Code           | label: string, page_no: int, text: string, minio_url: string |
-| Formula        | label: string, page_no: int, text: string, minio_url: string |
-| Footnote       | label: string, page_no: int, text: string, minio_url: string |
-| PageHeader     | label: string, page_no: int, text: string, minio_url: string |
-| PageFooter     | label: string, page_no: int, text: string, minio_url: string |
+| SectionHeader  | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Paragraph      | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Table          | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Picture        | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| ListItem       | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Caption        | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Code           | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Formula        | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Footnote       | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| PageHeader     | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| PageFooter     | label: string, page_no: int, text: string, minio_url: string, depth: int |
+
+`depth` est le nombre d'aretes `PARENT_OF` qui separent le noeud de la racine
+de son document. C'est le **seul niveau declare** lisible sur un titre : aucun
+`section_header` n'est jamais un chunk, donc la metadonnee `depth` de ChromaDB
+n'en decrit jamais un (registre 4.24). Un noeud ecrit avant le lot 3 porte
+`NULL` : le schema migre en place, les donnees non.
 
 **Edges (relations)** :
 

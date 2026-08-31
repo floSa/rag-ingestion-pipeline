@@ -32,12 +32,17 @@ from src.docling_service.elements import (
     tag_for_label,
 )
 from src.docling_service.ngql import (
+    DOCUMENT_PROPERTIES,
+    VERTEX_PROPERTIES,
     VID_MAX_BYTES,
     document_vid,
     edge_value,
+    element_vertex_value,
     insert_edge_statements,
     insert_vertex_statements,
+    missing_vertex_columns,
     quote,
+    tag_schema_statements,
     vertex_value,
 )
 from src.docling_service.settings import get_settings
@@ -46,16 +51,9 @@ logger = logging.getLogger(__name__)
 
 SPACE = "rag_space"
 
-VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")
-DOCUMENT_PROPERTIES = (
-    "filename",
-    "type_file",
-    "total_pages",
-    "collection",
-    "source_path",
-    "language",
-    "content_hash",
-)
+# VERTEX_PROPERTIES et DOCUMENT_PROPERTIES vivaient ici ET dans ngql.py, avec
+# des valeurs differentes, celle d'ici etant la vraie. Elles n'ont plus qu'un
+# site, ngql.py, qui est aussi le seul des deux modules testable sans graphd.
 
 
 class NebulaError(RuntimeError):
@@ -162,17 +160,7 @@ class NebulaWriter:
         for element in elements:
             label = str(element["label"])
             tag = tag_for_label(label)
-            vertices_by_tag.setdefault(tag, []).append(
-                vertex_value(
-                    str(element["id"]),
-                    (
-                        label,
-                        int(element["page_no"]),
-                        str(element.get("text") or "")[:max_chars],
-                        str(element.get("minio_url") or ""),
-                    ),
-                )
-            )
+            vertices_by_tag.setdefault(tag, []).append(element_vertex_value(element, max_chars))
 
             reference_id = str(element.get("reference_id") or ROOT_REFERENCE)
             parent_vid = doc_vid if reference_id == ROOT_REFERENCE else reference_id
@@ -334,12 +322,12 @@ class NebulaWriter:
             ):
                 execute(session, f"ALTER TAG Document ADD ({ajout});", required=False)
 
-            for tag in sorted(set(TAG_MAP.values())):
-                execute(
-                    session,
-                    f"CREATE TAG IF NOT EXISTS {tag}"
-                    "(label string, page_no int, text string, minio_url string);",
-                )
+            # Les CREATE puis les ALTER : le second est ce qui fait migrer un
+            # space DEJA PEUPLE, ou CREATE TAG IF NOT EXISTS ne fait rien. Un
+            # ALTER dont la colonne existe deja echoue en « Existed! » : c'est
+            # attendu, d'ou required=False, exactement comme pour Document.
+            for statement in tag_schema_statements(sorted(set(TAG_MAP.values()))):
+                execute(session, statement, required=statement.startswith("CREATE"))
 
             execute(session, "CREATE EDGE IF NOT EXISTS PARENT_OF(sequence int);")
             execute(session, "CREATE EDGE IF NOT EXISTS LINKED_TO(relation string);")
@@ -349,7 +337,39 @@ class NebulaWriter:
         # ecrire immediatement apres un CREATE/ALTER expose a un rejet pour tag
         # inconnu. On laisse passer quelques heartbeats.
         time.sleep(10)
+        self._verifier_les_tags(sorted(set(TAG_MAP.values())))
         logger.info("Schema semantique NebulaGraph pret.")
+
+    def _verifier_les_tags(self, tags: Sequence[str]) -> None:
+        """Constate que la migration a eu lieu, au lieu de la supposer.
+
+        Un ALTER est tolere en echec — « la colonne existe deja » est son cas
+        nominal — donc une migration REELLEMENT refusee ne dit rien. `mesure` le
+        31 aout 2026 : onze tags sur douze avaient migre, le douzieme avait ete
+        refuse avec « Schema exisited before! », et cette methode rendait la
+        main au vert. Le defaut ne se serait vu qu'a la premiere ecriture, sur
+        un rejet du graphd pour colonne inconnue — un document a moitie ecrit.
+
+        Raises:
+            NebulaError: Si un tag ne porte pas toutes les colonnes du schema.
+                L'appelant journalise et rend ``False`` : le service refuse
+                alors de se declarer pret, ce qui se voit.
+        """
+        with self.session() as session:
+            for tag in tags:
+                result = session.execute(f"DESCRIBE TAG {tag};")
+                if not result.is_succeeded():
+                    raise NebulaError(f"DESCRIBE TAG {tag} rejete : {result.error_msg()}")
+                lues = [
+                    result.row_values(ligne)[0].as_string() for ligne in range(result.row_size())
+                ]
+                manquantes = missing_vertex_columns(lues)
+                if manquantes:
+                    raise NebulaError(
+                        f"le tag {tag} ne porte pas {list(manquantes)} apres migration "
+                        f"(colonnes lues : {lues}). Nebula n'autorise pas une colonne "
+                        "supprimee a revenir : ce space doit etre recree."
+                    )
 
 
 def execute(session: Any, nql: str, required: bool = True) -> bool:
