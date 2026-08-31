@@ -356,6 +356,44 @@ class TestLeScriptConstateSonPropreResultat:
         assert "identite" in mute.stderr, f"le message ne nomme pas ce qui manque :\n{mute.stderr}"
         assert not (depot / ".git" / "hooks" / "pre-commit.legacy").exists()
 
+    def test_un_installeur_dont_la_liste_de_types_est_vide_est_refuse(self, tmp_path: Path):
+        """Une boucle sur une liste VIDE verifie zero chose, et elle est vraie.
+
+        C'est la forme exacte du defaut que ce lot traque, dans le garde-fou de
+        ce lot. La boucle de VERIFICATION du script itere la meme variable
+        `TYPES` que la boucle d'ARMEMENT : videe, la premiere ne pose aucun
+        `<type>.legacy`, la seconde n'a rien a verifier, et le script sort en 0
+        en annoncant « Garde-fous armes dans ... » suivi d'une liste vide.
+
+        `mesure` le 31 aout 2026, sur le script tel qu'il etait livre : `rc=0`,
+        message de succes, et ZERO `.legacy` — donc la couche independante de
+        l'arbre de travail, celle qui a coute au lot 0b sa fusion au premier
+        tour, disparait EN SILENCE. Le framework, lui, reste installe : sans
+        `--hook-type`, `pre-commit install` retombe sur
+        `default_install_hook_types` de la configuration. Le montage a donc
+        exactement l'air du bon, et c'est le pire des etats.
+
+        Ce test asserte depuis le cote qui PRODUIT le defaut : on vide la liste
+        dans le script LIVRE, et on exige que le script s'en apercoive.
+        """
+        source = INSTALLEUR.read_text()
+        mutee = source.replace('TYPES="pre-commit pre-merge-commit"', 'TYPES=""')
+        # Un test qui choisit lui-meme son cas doit prouver qu'il l'a atteint :
+        # si la ligne `TYPES` change de forme, cette mutation ne mute plus rien
+        # et le test resterait vert sans rien garder.
+        assert mutee != source, "la ligne TYPES a change de forme : la mutation ne mute plus rien"
+
+        depot = tmp_path / "depot-types-vides"
+        mute = _monte_un_depot_jetable(depot, mutee)
+
+        assert mute.returncode != 0, (
+            "un installeur dont la liste de types est vide a rendu 0 : il "
+            "annonce un montage qu'il n'a pas fait.\n"
+            f"{mute.stdout}\n{mute.stderr}"
+        )
+        assert not (depot / ".git" / "hooks" / "pre-commit.legacy").exists()
+        assert not (depot / ".git" / "hooks" / "pre-merge-commit.legacy").exists()
+
     def test_le_script_livre_passe_sur_le_meme_harnais(self, tmp_path: Path):
         # Le temoin du test precedent : sans lui, un `rc != 0` obtenu pour une
         # raison etrangere au -f (un chemin faux, un interpreteur absent) le

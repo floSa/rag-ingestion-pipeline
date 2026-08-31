@@ -67,6 +67,21 @@ identite="$racine/scripts/git-hooks/pre-commit"
 # part ailleurs.
 TYPES="pre-commit pre-merge-commit"
 
+# UNE BOUCLE SUR UNE LISTE VIDE VERIFIE ZERO CHOSE, ET ELLE EST VRAIE.
+#
+# La boucle de verification, plus bas, itere CETTE MEME variable. Vide, elle
+# n'arme rien, ne verifie rien, et ce script sort en 0 en annoncant « Garde-fous
+# armes dans ... » suivi d'une liste vide (`mesure` : rc=0, zero `.legacy`). Le
+# framework, lui, resterait installe — sans `--hook-type`, `pre-commit install`
+# retombe sur `default_install_hook_types` — donc le montage aurait exactement
+# l'air du bon, sans la seule couche independante de l'arbre de travail. C'est
+# la forme exacte du defaut que ce lot traque, dans le garde-fou de ce lot.
+# Garde : tests/unit/test_installation_des_garde_fous.py.
+if [ -z "$TYPES" ]; then
+    echo "ECHEC : aucun type de hook a armer (TYPES est vide)." >&2
+    exit 1
+fi
+
 if [ ! -f "$identite" ]; then
     echo "ECHEC : $identite est introuvable." >&2
     exit 1

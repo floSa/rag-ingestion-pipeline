@@ -1305,6 +1305,60 @@ Consigné au passage, parce que c'est ce qu'un lecteur verra : dans ce cas préc
 le message de refus **énumère l'ancienne liste**, donc il paraît contredire le
 fichier qu'on vient d'éditer. C'est le seul cas où cela se produit.
 
+#### F8 → l'installeur pouvait annoncer un montage qu'il n'avait pas fait
+
+**C'est la forme exacte du défaut que ce lot traque, dans le garde-fou de ce
+lot.** La boucle de **vérification** de `scripts/installer-les-garde-fous.sh`
+itérait la **même** variable `TYPES` que la boucle d'**armement**. Une boucle sur
+une liste vide vérifie zéro chose, et la vérification est vraie.
+
+`mesuré` le 31 août 2026, sur le script tel qu'il était livré, avec `TYPES=""` :
+`rc=0`, le message « `Garde-fous armes dans …/.git/hooks :` » suivi d'une liste
+**vide**, et **zéro** fichier `.legacy` créé. Le framework, lui, restait
+installé : sans `--hook-type`, `pre-commit install` retombe sur
+`default_install_hook_types` de la configuration. Le montage avait donc
+**exactement l'air du bon**, amputé de la seule couche indépendante de l'arbre de
+travail — celle dont la perte a coûté au lot 0b sa fusion au premier tour (R1).
+
+**Fermé par quatre lignes de shell** — un refus si `TYPES` est vide, avant tout
+armement — **et gardé par un test**, `TestLeScriptConstateSonPropreResultat::
+test_un_installeur_dont_la_liste_de_types_est_vide_est_refuse`, qui mute le
+script **livré**. Avant ce test, la propriété n'était attrapée que **par effet de
+bord** : la suite rougissait parce que les commits d'essai passaient, pas parce
+que quoi que ce soit observait le montage.
+
+Le test porte sa propre borne, en ligne : il asserte que la substitution a
+**changé** le texte du script. Sans elle, une réécriture de la ligne `TYPES`
+rendrait la mutation inopérante et le test resterait vert sans rien garder — la
+leçon « un test qui choisit lui-même son cas doit prouver qu'il l'a atteint ».
+
+##### La même forme, dans le hook d'identité — consignée, NON corrigée
+
+`scripts/git-hooks/pre-commit` porte `for adresse in $email $committer`, non
+protégé. Si les deux variables sont vides, la boucle ne tourne pas, et le hook
+est vert. `mesuré` le 31 août 2026, clone armé par le script livré :
+
+```bash
+env GIT_AUTHOR_EMAIL= GIT_COMMITTER_EMAIL= EMAIL= git commit -m "essai adresse vide"
+```
+
+→ `rc=0`, **commit créé**, `auteur=<>` et `committer=<>`, les deux couches du
+contrôle affichant « Passed ».
+
+**Non corrigé, délibérément**, et c'est la décision du pilote : vider
+`GIT_AUTHOR_EMAIL` est un geste volontaire, au même rang que `--no-verify`, que
+le hook documente lui-même comme la sortie de secours. La réserve à garder, pour
+que la ligne ne soit pas lue plus grave qu'elle n'est : une adresse **vide** n'est
+pas une adresse **professionnelle**, donc ce chemin ne rejoue pas le sinistre
+d'origine — il produit un commit que GitHub n'attribue à personne. C'est la
+**forme** qui est la leçon, pas la conséquence.
+
+**La leçon, écrite ici pour être relue :** en `sh`, `for x in $liste` sur une
+liste vide est un no-op silencieux, et tout compteur d'erreurs initialisé à `0`
+en sort inchangé. Chaque fois qu'une boucle **vérifie**, il faut se demander ce
+qu'elle rend quand elle ne tourne pas — et le rendre impossible, pas le
+documenter.
+
 ### Trouvé par la réparation du lot 0b, et NON traité
 
 - **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun
