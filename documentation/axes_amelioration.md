@@ -211,8 +211,13 @@ collection `rag_documents` avec **137 854** vecteurs, MinIO un bucket
 `Datas/mds/`, l'ancien corpus mixte francais/anglais que le §1 declare mort.
 **Avant tout lot qui ingere, verifier le poste plutot que ce paragraphe.**
 
-Corpus en place sur le poste de reference : 24 fichiers HTML (2 ouvrages × 12)
-+ 1 PDF de 73 pages (`mesuré`). Parmi les 12 fichiers de chaque ouvrage, `Index.html` est écarté par
+Corpus en place : 24 fichiers HTML (2 ouvrages × 12) + 1 PDF de **71** pages
+(`mesuré` le 31 août 2026 par trois voies concordantes — `/Count` de l'arbre de
+pages lu dans les octets bruts, `fitz.open()` et `Document.total_pages` écrit à
+l'ingestion. **Le chiffre 73 qui vivait ici sous l'étiquette `mesuré` était
+faux** : c'est le pire cas, un chiffre erroné sous la plus forte des trois
+étiquettes. Un comptage régex brut de `/Type /Page` rend 72 — il compte des
+objets, pas des pages, et ne tranche rien.) Parmi les 12 fichiers de chaque ouvrage, `Index.html` est écarté par
 le capteur (`matter.py:40`) ; **`Preface.html` ne l'est pas** — « preface » n'est
 pas dans `FRONT_BACK_MATTER_TITLES`. Il sera donc ingéré depuis les deux
 ouvrages, ce qui est le cas d'école de l'exigence 3.
@@ -223,60 +228,127 @@ ouvrages, ce qui est le cas d'école de l'exigence 3.
 
 Un défaut qui bloque une mesure passe devant un défaut plus grave mais inerte.
 
-### 3.2 Le graphe est peut-être toujours plat — contrainte 6
+### 3.2 → MESURÉ par le lot 1 et son audit — le graphe n'est PAS plat, et la correction proposée était un no-op
 
-`ranking.docling_parent_rank` (`ranking.py:56-71`) rend **`0`**, et non `None`,
-dès que le premier parent rencontré est `#/body`. `extraction._flat_rank`
-(`extraction.py:370-373` ; `ranking.flat_rank` sur la branche) ne bascule sur
-`docling_level_rank` que si le premier signal rend `None`. **Donc si Docling
-n'imbrique pas les titres d'une capture SingleFile, tous les titres reçoivent
-le rang 0, deviennent frères sous le document, et le graphe est plat** — les
-901 / 0 / 0 mesurés côté agent. L'attribut `level` (h1..h6), signal fiable du
-HTML, est écrasé par un signal moins fiable qui ne s'avoue jamais absent.
+**Fermé le 31 août 2026.** Deux conversations indépendantes ont mesuré, la
+seconde sur les **22** chapitres retenus par le capteur et non sur deux.
 
-Ce n'est **pas prouvé** : ce code n'a jamais tourné sur ce corpus.
+**Ce que le constat annonçait.** `ranking.docling_parent_rank` (`ranking.py:56-71`)
+rend `0`, et non `None`, dès que le premier parent est `#/body` ;
+`ranking.flat_rank` (`ranking.py:130-148` — l'ancien renvoi
+`extraction.py:370-373` était **périmé**) ne bascule sur `docling_level_rank`
+que si le premier signal rend `None`. Donc, *si* Docling n'imbriquait pas les
+titres d'une capture SingleFile, tous les titres seraient frères sous le
+document. L'antécédent était `supposé`. **Il est faux, sauf sur un chapitre.**
 
-Deux chiffres s'opposent et aucun n'est daté :
-`documentation/CHANGEMENTS.md:78-83` annonce **759** arêtes
-`SectionHeader → SectionHeader` et 13 220 chemins de longueur 3, « mesuré sur le
-corpus de référence » — un corpus qui n'existe plus ; le contrat côté agent
-annonce **0** et **0** sur le graphe de production. Seule une ingestion tranche.
+**Mesuré, sur les 22 chapitres HTML, en mémoire et sans écrire dans aucun
+store** : **659 titres**, dont **146 de rang 0** et **513 imbriqués** ;
+`docling_parent_rank` répond sur **659 sur 659**, et le signal `level` n'est
+donc **jamais** consulté. **21 chapitres imbriquent, 1 est plat.**
 
-**Coût de l'attente** : une campagne d'ablation d'une demi-heure à rejouer, plus
-une réingestion complète, puisque le schéma Nebula n'évolue pas en place.
+**Le périmètre exact, à ne pas élargir.** Le chapitre plat est
+`Datas/htms/Practical MLflow for Generative AI on Databricks/10. Unifying GenAI Systems with MLflow.html`
+— 8 titres, tous `label=title`, tous `parent.cref == "#/body"`, tous `level`
+absent, tous de rang 0. **La cause est dans la capture, pas dans le code** :
+c'est le seul chapitre retenu qui n'a **aucune balise `<h2>`** (`h1=8`, `h6=1`,
+rien entre). Le pilote l'a recompté sur le corpus versionné : le nombre de
+titres de rang 0 **égale le nombre de `<h1>`** dans **22 chapitres sur 22**.
 
-### 3.3 Le test phare de la hiérarchie est vert des deux côtés du défaut
+**Deux réserves de lecture, mesurées.** Les deux `Preface.html` n'imbriquent
+que par des libellés d'admonition (`Tip`, `Note`, `Warning` — des `<h6>`) et
+n'ont aucun `<h2>` : leur hiérarchie n'est pas éditoriale. Sur tout le corpus
+HTML, **55 des 513 titres imbriqués (10,7 %) sont des admonitions**.
 
-`tests/unit/test_hierarchie_bout_en_bout.py` (branche) **fabrique** l'arbre
-imbriqué qu'il prétend vérifier : `enchaine()` (l.59-62) pose
-`item.parent = Ref("#/texts/0", parent)` où `parent` est un titre. Le test
-prouve que *si* Docling imbrique, *alors* le rang remonte — il ne peut pas
-prouver que Docling imbrique. Pire, `test_un_titre_racine_a_le_rang_zero`
-(l.81) exerce exactement le cas de production (parent `#/body`) et asserte
-`== 0`, lisant le symptôme comme un succès.
+**Le graphe réellement écrit** (3 documents ingérés par le lot 1, `mesuré`,
+rejoué par le pilote) : 2 288 sommets, 2 285 arêtes `PARENT_OF`, **159 arêtes
+`SectionHeader → SectionHeader` contre 29 `Document → SectionHeader`**, des
+chaînes jusqu'à **5 sauts**, et des fils d'Ariane réels — `Getting from Raw
+Data to Chunks > Chunking > Embedding window considerations`. L'audit a prouvé
+en plus ce que le compte ne disait pas : **0 sommet à deux parents, graphe
+acyclique, exactement 3 racines toutes `Document`** — donc aucun sous-arbre
+flottant, et l'arbre est bien un arbre.
 
-**Nuance apportée par l'audit indépendant du lot 0, et retenue par le pilote.**
-Le constat ci-dessus est exact sur les faits, mais il ne doit pas se lire
-« ce fichier n'apporte rien ». L'auditeur a mesuré sa valeur **marginale** —
-suite complète contre suite privée de ce fichier — et trouvé **3 mutations sur
-7 que lui seul voit** : `flat_rank` qui ne retombe plus sur `level`, un
-paragraphe qui reçoit un rang, un faux titre PDF qui reprend le rang 0. La
-couverture est réelle ; c'est la **prétention** du docstring (« des items tels
-que Docling les rend ») qui est fausse, pas le fichier entier.
+**Et la correction que ce constat proposait est un NO-OP.** Faire rendre `None`
+à `#/body` fait retomber `flat_rank` sur `docling_level_rank`, qui rend `None`
+puisque `level` est absent sur **tous** les `label=title` concernés ; puis
+`elements.py:272` fait `place(element_id, heading_rank or 0)` → **rang 0, à
+l'identique**. Vérifié dans le code par le pilote. La correction n'aurait rien
+changé, et l'avertissement de §3.3 demandait de casser deux tests justes pour
+l'appliquer.
 
-**Avertissement pour le lot 2.** Appliquer la correction §3.2 (`#/body` rend
-`None` au lieu de `0`) fait tomber **deux** tests, pas un :
-`test_hierarchie_bout_en_bout.py::test_un_titre_racine_a_le_rang_zero` (livré
-par le lot 0) et `test_ranking.py::test_a_title_attached_to_the_body_has_rank_zero`
-(**antérieur**, déjà sur `main` en `77d4f5b`). Le lot 0 ne crée pas ce verrou,
-il le double. Les deux sites sont à amender ensemble.
+**Le signal `level` aurait produit un arbre PIRE**, et la phrase d'origine
+— « l'attribut `level`, signal fiable du HTML, est écrasé par un signal moins
+fiable » — est **inversée** : le signal parent répond sur 100 % des titres et
+reproduit exactement l'imbrication des balises `h`, tandis que `level` est
+absent sur les 146 titres de tête et vaut **5** sur les 55 admonitions, qui
+seraient enfoncées à cinq niveaux.
 
-### 3.4 L'instrument de mesure de la troncature tokenise le mauvais texte
+**Les deux chiffres qui s'opposaient.** `CHANGEMENTS.md:78-83` annonce 759
+arêtes titre → titre « sur le corpus de référence », qui n'existe plus ; le
+contrat côté agent annonce 0 et 0. Sur 3 documents d'ici : **159**. Aucun des
+deux n'est réfuté — ils portent sur d'autres corpus — mais **le 0/0 côté agent
+mesure un graphe produit par autre chose que ce code.**
+
+**Conséquence de plan : le lot 2 disparaît.** Pas parce que « le graphe est
+imbriqué » — il l'est à 21/22 — mais parce que **sa correction ne fait rien**.
+Ce qui en sort vivant est §4.11, qui n'a jamais dépendu de la platitude.
+
+**Projection au corpus complet** (`calculé` — somme des 22 chapitres mesurés en
+mémoire et du PDF mesuré dans le graphe, ce n'est **pas** un état du graphe) :
+**163** arêtes `Document → SectionHeader` contre **583** titre → titre.
+
+### 3.3 → RETOURNÉ par le lot 1 et son audit — les deux tests assertent le comportement JUSTE
+
+**Fermé le 31 août 2026, dans l'autre sens que celui où il avait été ouvert.**
+
+Ce constat reprochait à `test_hierarchie_bout_en_bout.py::test_un_titre_racine_a_le_rang_zero`
+d'« exercer exactement le cas de production (parent `#/body`) et d'asserter
+`== 0`, lisant le symptôme comme un succès ». **`== 0` est le comportement
+juste** : mesuré, **146 titres sur 659** ont `parent.cref == "#/body"` dans les
+22 chapitres, et leur compte égale le nombre de `<h1>` dans 22 chapitres sur 22.
+Un titre accroché à `#/body` **est** un titre racine.
+
+L'« avertissement pour le lot 2 » — « appliquer la correction fait tomber
+**deux** tests, les deux sites sont à amender ensemble » — instruisait donc de
+casser deux tests corrects, **et pour rien**, la correction étant un no-op
+(§3.2). Il est **retiré**.
+
+**Ce qui reste vrai, et qui ne se referme pas.** Le fichier **fabrique** bien
+l'arbre qu'il prétend vérifier (`enchaine()` pose `item.parent = Ref("#/texts/0", parent)`),
+donc son docstring — « des items tels que Docling les rend » — est **faux** :
+c'est une prétention à corriger, pas une couverture absente. L'audit du lot 0
+avait mesuré sa valeur marginale à **3 mutations sur 7 que lui seul voit**.
+
+### 3.4 L'instrument de troncature tokenise le mauvais texte — mesuré, il sous-compte de moitié
 
 `index_report.py:75-84` tokenise `documents`, c'est-à-dire le texte **stocké**.
-Or `vectors.py:199-203` encode `contextualize(texte, section_title)`, c'est-à-dire
-le texte **préfixé du titre de section**. Le rapport annoncera donc 0 %
-de troncature alors que le texte réellement embarqué peut dépasser la fenêtre.
+Or `vectors.py:186-192` encode `contextualize(texte, section_title)` (l'ancien
+renvoi `vectors.py:199-203` désignait la boucle d'`upsert` : **périmé**),
+c'est-à-dire le texte **préfixé du titre de section**.
+
+**MESURÉ le 31 août 2026, par le lot 1 puis rejoué par son audit et par le
+pilote — trois fois les mêmes chiffres**, sur 773 chunks, fenêtre 128 :
+
+| | médiane | maximum | au-dessus de 128 |
+|---|---|---|---|
+| texte **stocké**, ce que l'instrument tokenise | 87 | **140** | **8 (1,0 %)** |
+| texte **encodé**, ce que le modèle reçoit | 93 | **149** | **16 (2,1 %)** |
+
+**L'instrument sous-compte d'un facteur 2 exactement : 8 annoncés, 16 réels.**
+**8 chunks franchissent la fenêtre par le seul préfixe de titre** — l'aggravant
+annoncé ci-dessous, désormais mesuré.
+
+**Le registre se trompait en écrivant « 0 % ».** L'instrument annonce **1,0 %**,
+et ce 1,0 % est ce qui cachait le défaut : un lecteur y voit un bruit d'arrondi
+autour de zéro. Le défaut n'est pas qu'il annonce zéro, c'est qu'il annonce **la
+moitié**. Le prompt du lot 1 reprenait ce « 0 % » et affaiblissait la mesure
+qu'il commandait — leçon de pilotage, §11 du mandat.
+
+**La mesure porte bien sur le PRODUCTEUR**, et l'audit l'a prouvé depuis le
+code : `vectors.py:203-209` écrit dans ChromaDB **le même** `texts` et **les
+mêmes** `metadatas` que ceux passés à `contextualize`, et
+`settings.embed_section_context` vaut `True` (`mesuré`). Relire `documents` et
+`metadatas.section_title` reconstruit donc la chaîne encodée au caractère près.
 
 Aggravant : `HybridChunker` compte ses tokens sur **sa propre** sérialisation
 contextualisée (titres compris). Préfixer un second titre par-dessus peut
@@ -286,15 +358,39 @@ le passage à `HybridChunker` prétendait supprimer. `supposé`, à mesurer.
 **Coût de l'attente** : on croirait avoir supprimé la troncature sans l'avoir
 vérifiée, sur l'instrument même censé la voir.
 
-### 3.5 La chaîne d'images HTML n'est prouvée nulle part
+### 3.5 La chaîne d'images HTML est ROMPUE — mesuré, 199 images sans `minio_url`
+
+**CONFIRMÉ le 31 août 2026, et la cause est plus radicale que ce constat ne
+l'écrivait.**
 
 `cleaning.py:422-423` réécrit `img src` avec l'URL MinIO ;
 `extraction.py:335-337` ne propage cette URL que si `item.image.uri` commence
-par `http`. Que le backend HTML de Docling renseigne `image.uri` depuis
-l'attribut `src` n'est vérifié par aucun test ni aucune mesure. Si c'est faux,
-**aucune image de capture HTML ne porte de `minio_url`** — donc aucune n'est
-servie par l'agent, qui ne sert que ce que le graphe référence
-(`RESTRICT_MEDIA_TO_GRAPH=true`). `supposé`, à prouver sur un chapitre.
+par `http`. **Cette description du code est exacte et trompeuse comme cause** :
+le test du préfixe n'est **jamais atteint**, parce que `item.image` vaut `None`.
+
+Mesuré sur le **producteur**, sur les **22** chapitres retenus, en convertissant
+en mémoire sans écrire dans aucun store :
+
+| | |
+|---|---|
+| `<img src="http…">` dans le HTML nettoyé | **199** |
+| items `label=picture` rendus par Docling | **199** |
+| dont `item.image` non `None` | **0 / 199** |
+| dont `item.image.uri` commençant par `http` | **0 / 199** |
+
+`item.source`, `item.references` et `item.meta` sont vides aussi : **l'URL
+n'atterrit nulle part d'exploitable**. Seul `captions` est renseigné.
+
+Dans le graphe réellement écrit (3 documents) : **26 images de capture HTML sur
+26 sans `minio_url`**, et **26 objets MinIO orphelins sur 39** — téléversés,
+payés en place et en temps, et **inatteignables par l'agent**, qui ne sert que
+ce que le graphe référence (`RESTRICT_MEDIA_TO_GRAPH=true`). Les 13 seuls
+sommets porteurs d'une URL sont **10 `Picture` et 3 `Table`** issus du **PDF**,
+produits par un tout autre chemin (`images.py`) : la chaîne PDF fonctionne, la
+chaîne HTML non.
+
+**Le périmètre réel est 199 images, pas 26** : 26 est ce que le lot 1 a ingéré,
+199 est ce que le corpus porte.
 
 ---
 
@@ -401,8 +497,23 @@ titre sur le tag `SectionHeader` » — n'est pas faite. L'agent peut remonter l
 `docling_parent_rank` compte à partir de 0 ; `docling_level_rank`
 (`ranking.py:83-84`) rend le `level` de Docling, qui part à 1. Un document
 offrant les deux signaux sur des titres différents produirait un arbre faux.
-Inerte tant que 3.2 tient — le premier signal gagne toujours — et le devient au
-moment même où 3.2 est corrigé. À traiter dans le même lot.
+**Inerte, et sa condition d'activation annoncée était fausse — mesuré le
+31 août 2026.** Le registre disait « le devient au moment même où 3.2 est
+corrigé. À traiter dans le même lot ». Faux : sur ce corpus, le signal 1 répond
+sur **659 titres sur 659**, le signal 2 n'est **jamais** consulté, et il est
+indisponible (`level` absent) **précisément** sur les 146 titres où le signal 1
+rend 0. Corriger §3.2 n'active donc rien — et §3.2 est de toute façon un no-op.
+
+**Le vrai déclencheur, à surveiller** : le jour où un document **Markdown**
+entre dans le corpus. `sources.yaml` déclare une source `markdown`
+(`glob: mds/**/*.md`), `Datas/mds/` est vide et ignoré, et c'est sur le Markdown
+que `docling_level_rank` est le signal annoncé. Reste ouvert, inerte, avec cette
+condition — pas avec l'ancienne.
+
+**Une seconde protection, non consignée jusqu'ici** : `HeadingStack.place`
+dérive la profondeur du **parent** et jamais du rang brut, ce qui absorbe le
+mélange d'échelles. Un rang trop **grand** est donc inoffensif ; un rang trop
+**petit** dépilerait des ancêtres, et ce cas n'a pas été observé.
 
 ### 4.13 `LINKED_TO(relation="describes")` là où le contrat annonce `DESCRIBES`
 
@@ -481,6 +592,131 @@ Deux choses distinctes, toutes deux antérieures au lot 0 (`mesuré`, 29 août
 
 `make audit` ne fait pas partie de `make all` : la porte est verte, l'audit est
 rouge, et rien ne le rappelle.
+
+### 4.21 PDF : 46 % des titres reçoivent un rang de REPLI, pas un rang mesuré
+
+`mesuré` le 31 août 2026, sur le seul PDF du corpus, 86 des 87 titres du graphe
+retrouvés par leur taille de police réelle :
+
+| taille | rang | origine | titres |
+|---|---|---|---|
+| 27,5 pt | 0 | rang **mesuré** | 17 |
+| 21,2 pt | 1 | rang **mesuré** | 21 |
+| 16,9 pt | 2 | rang **mesuré** | 8 |
+| 15,0 pt (= corps) | 3 | **repli `inclassable`** | 39 |
+| 11,2 pt (< corps) | 3 | **repli `inclassable`** | 1 |
+
+**40 titres sur 86 (46 %) tombent sur le repli.** Le PDF ne mesure donc que
+**trois** niveaux (17 / 21 / 8), et les profondeurs `17/34/30/6` relevées dans le
+graphe mélangent trois niveaux mesurés et un niveau d'empilement par défaut :
+22 des 30 titres de profondeur 3 et **les 6** de profondeur 4 viennent du repli.
+Aucun compteur ne dit combien de titres sont tombés au repli.
+
+Le garde-fou `exceeds_body_size` **fonctionne** — il empêche « OceanofPDF.com »,
+à 15,0 pt, de remettre l'arbre à zéro, ce que `ranking.py:192-194` promet — et
+son effet de bord est que presque la moitié de l'arbre PDF est un empilement par
+défaut, invisible dans le chiffre de profondeur.
+
+**Et le mécanisme n'est pas robuste, argumenté depuis le code.** Ce PDF est une
+re-fabrication `calibre 7.4.0` depuis un EPUB : ses tailles sont des multiples
+CSS exacts d'un `em` de 15 pt, donc *un niveau = une valeur*. Un PDF composé à
+la main rend 16,94 / 16,96 / 17,02 pour un seul niveau logique — trois rangs.
+`_pdf_font_profile` (`extraction.py:565-598`) prend **toute** taille arrondie
+supérieure au corps comme un niveau, quel que soit ce qui la porte : numéros de
+chapitre, lettrines, titres courants, en-têtes de tableau, formules. Chaque
+taille parasite consomme un rang et décale tous les vrais niveaux en dessous
+d'elle, en silence. `pdf_heading_rank` ne borne jamais le rang ; seul `MAX_DEPTH`
+borne la **profondeur**, pas le **rattachement**.
+
+Corollaire éditorial : `27,5 pt` porte à la fois la couverture, la « Revision
+History », le « Brief Table of Contents », les titres de chapitre **et** des
+sections de premier rang. Le niveau 0 du PDF est mélangé.
+
+### 4.22 Six pages du PDF n'ont aucun élément — leur texte est attribué à la page précédente
+
+`mesuré` : les pages **8, 18, 19, 25, 68, 69** sur 71 n'ont **aucun** élément
+dans le graphe, alors que PyMuPDF y lit 1 181 à 1 472 caractères. **Le texte
+n'est pas perdu** — 72 316 caractères écrits sur 72 326, soit 100,0 % — il est
+**attribué à la page précédente** : le début de la page 8 se retrouve dans un
+élément de la page 7, celui de la page 18 dans la 17, 25 → 24, 68 et 69 → 67.
+
+Cause : `page_no` vient de la **première** provenance de l'item, et Docling
+fusionne un paragraphe qui enjambe une page. Conséquence : toute citation « page
+7 » couvre en réalité 7 **et** 8. Run vert, aucun compteur, aucun signal.
+
+### 4.23 `graph_text_max_chars = 2000` coupe quatre éléments sans le dire
+
+`mesuré` : 4 éléments `text` du PDF font **exactement** 2 000 caractères dans le
+graphe. Aucun journal, aucune métrique. ChromaDB n'est pas touché — le découpeur
+repart du document Docling — donc **graphe et vecteurs divergent en silence** sur
+ces quatre éléments.
+
+### 4.24 `depth` mélange deux échelles, et ne décrit jamais un titre
+
+`mesuré`. `HeadingStack.place` (`hierarchy.py:91`) plafonne la profondeur d'un
+**titre** à `MAX_DEPTH = 3`, mais **`parent_id` n'est pas plafonné** : l'arête
+`PARENT_OF` pointe le vrai parent, donc la chaîne est plus longue que `depth`.
+`add_item` donne aux **non-titres** `depth = profondeur_du_titre + 1`, sans
+plafond. Résultat dans ChromaDB : `depth ∈ {1: 92, 2: 238, 3: 345, 4: 98}` — il
+ne vaut **jamais 0**, et **`depth = 4` recouvre les vraies profondeurs 4 ET 5**
+(1 chunk sur 773 aujourd'hui, davantage avec le corpus).
+
+Aggravant décisif : **aucun `section_header` n'est jamais un chunk** — labels
+ChromaDB mesurés : `text` 502, `code` 157, `list_item` 79, `table` 25,
+`caption` 10, **`section_header` 0**. L'agent ne peut donc **jamais** lire le
+niveau d'un titre par cette voie. À traiter avec §4.11, dont c'est la charge
+utile.
+
+**Ce que l'agent doit lire : la chaîne `PARENT_OF`, et rien d'autre.** C'est le
+seul signal exact — 0 double parent, acyclique, 3 racines `Document`, tout
+`SectionHeader` atteignable (`mesuré`).
+
+### 4.25 Les URL du graphe rendent 403 en GET anonyme
+
+`mesuré` : les 13 URL portées par le graphe existent bien comme objets
+(`stat_object` avec un client S3 authentifié — 0 URL morte sur 13), et rendent
+**`403` en `GET` anonyme**. La forme stockée est `http://minio:9000/documents/…` :
+inutilisable sans identifiants et **hors du réseau Docker**. « 0 URL morte »
+dépend donc entièrement de la méthode de lecture. À trancher avec l'agent, qui
+« ne sert que ce que le graphe référence ».
+
+### 4.26 La pile entière et le seul `.env` du poste vivent dans un arbre de travail — À TRAITER AVANT TOUT
+
+**`mesuré` le 31 août 2026, et c'est un piège armé par le geste que le mandat
+prescrit.** Le lot 1 a monté la pile depuis son arbre de travail. Tous les
+stores sont des **bind mounts** de cet arbre :
+
+```
+projet compose : lot-1-observation-b12761
+graphd / metad / storaged  -> <arbre>/Datas/database/nebula/{meta,storage}
+chromadb                   -> <arbre>/Datas/database/chromadb
+minio                      -> <arbre>/Datas/database/minio
+postgres-dagster           -> <arbre>/Datas/database/postgres
+docling-service            -> <arbre>/src  et  <arbre>/Datas
+.env                       -> n'existe QUE dans cet arbre
+```
+
+**Supprimer cet arbre de travail — l'étape 5 du §7 du mandat — détruirait le
+graphe, les vecteurs, les objets et le Postgres de Dagster**, et
+`Datas/database/` étant dans le `.gitignore`, **aucun garde-fou git ne s'y
+oppose**. `git worktree remove` n'y verrait rien à protéger.
+
+Second effet, mesuré : **`docker compose ps` depuis le clone principal ne voit
+rien** — 20 avertissements de variables vides et aucune ligne de service. Un
+pilote qui interroge la pile depuis le dépôt principal la croit éteinte.
+
+**Le §7 du mandat gagne donc une étape avant toute suppression d'arbre** :
+vérifier qu'aucun projet Compose ni bind mount ne l'ancre. Et le §4 doit dire
+qu'une pile montée depuis un arbre de travail est invisible depuis le clone
+principal.
+
+### 4.27 Piège de mesure : `SHOW STATS` rend 0 sur un space peuplé
+
+`mesuré` : `SHOW STATS` rend 0 partout sur `rag_space`, faute de
+`SUBMIT JOB STATS`. Un space qui porte **2 288 sommets** y ressemble à un space
+vide. À ranger avec les autres pièges de mesure : les stores s'interrogent par
+`MATCH`, `collection.count()` et `list_objects`, jamais par une statistique
+qu'aucun job n'a calculée — ni par une taille de dossier.
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
@@ -623,13 +859,58 @@ le redécouvre comme un défaut.
 | 6.6 | `llm_integration_plan.md:401` et `:543` prescrivent `cross-encoder/ms-marco-MiniLM-L6-v2` | reranker **anglais** face à un embedder multilingue — la faute exacte que l'agent a mesurée (étendue de scores 0,0 % sur 20 candidats en français) | haute |
 | 6.7 | `docling.md:129` : « Ressources : GPU NVIDIA (CUDA 12.1) » | l'ingestion tourne sur processeur ; la réservation en dur (`docker-compose.yml:196-201`) rendait le service **incréable** sans runtime nvidia | haute |
 | 6.8 | `docling.md:95-96` énumère les modules « sans dépendance externe » | oublie `blocks.py`, `anchoring.py`, `hierarchy.py`, `ranking.py`, `language.py`, `matter.py` | basse |
-| 6.9 | `README.md:317` : volumétrie « mesurée » sur 42 documents (1 PDF de 280 pages, 35 HTML, 6 Markdown) | ce corpus n'existe plus ; l'actuel est 24 HTML + 1 PDF de 73 pages, 0 Markdown | moyenne |
+| 6.9 | `README.md:365` (l'ancien renvoi `:317` était **périmé**) : volumétrie « mesurée » sur 42 documents (1 PDF de 280 pages, 35 HTML, 6 Markdown) | ce corpus n'existe plus ; l'actuel est 24 HTML + 1 PDF de **71** pages, 0 Markdown | moyenne |
 | 6.10 | `extraction_donnees.md:276-280`, `CHANGEMENTS.md:107-113` : chiffres de découpage et de bruit | mesurés sur le corpus disparu, sans réserve ni date | moyenne |
 | 6.11 | `CHANGEMENTS.md:78-83` : 759 arêtes `SectionHeader → SectionHeader`, 13 220 chemins de longueur 3 | contredit par le 0 / 0 mesuré côté agent ; cf. §3.2 | haute |
 | 6.12 | `Dockerfile.docling:14-18` installe torch depuis l'index CUDA 12.1 | chaîne prévue pour le processeur ; image inutilement lourde | moyenne |
 | 6.13 | `docker-compose.yml:167,207` monte `docling_models` | ni `rag_hf_cache` ni `rag_models_cache` — divergence de nommage à consigner, sans conséquence fonctionnelle | basse |
 | 6.14 | `README.md:231` : « le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais » | faux depuis `7b72854` ; c'est le **vestige d'`all-MiniLM-L6-v2`** contre lequel le contrat met explicitement en garde. Le lien qui suit pointe de surcroît vers une ancre disparue (`#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`) | haute |
 | 6.15 | `src/pipeline/schemas.py:87-88` : « le modèle d'embedding actuel n'étant entraîné que sur de l'anglais » | même vestige, **dans le fichier qui est le contrat de référence** | haute |
+
+---
+
+### 6.16 `sequence` : trois réserves à écrire au contrat
+
+L'exigence 4 est **tenue** sur l'échantillon du lot 1 : `sequence` est présente
+sur **2 285 arêtes sur 2 285**, et l'ordre de lecture est prouvé — trié par
+`sequence`, `page_no` ne décroît **jamais**, 0 inversion sur les trois documents
+(`mesuré`). C'est un compteur global au document (`DocumentAccumulator._global_order`),
+et il **survit aux lots de pages** du PDF.
+
+Trois réserves qu'aucun document ne porte, et dont l'agent peut se tromper :
+
+1. **`sequence` repart à 0 dans chaque document.** Elle n'est donc pas
+   globalement monotone : tout « avant / après » doit être **borné au document**.
+2. **Elle n'est pas contiguë sous un parent, par construction.** Mesuré : 44 des
+   185 parents ont des `sequence` non contiguës, et **44 sur 44** sont exactement
+   expliqués par la taille du sous-arbre du frère précédent. Ce n'est pas un
+   défaut — c'est un ordre de lecture global, pas un rang sous le parent.
+3. **Le plus grand trou entre deux enfants consécutifs d'un même parent vaut
+   993.** Un agent qui implémente « la fenêtre d'éléments » comme « les enfants
+   de P dont `sequence ∈ [s−k, s+k]` » rendra **silencieusement moins**
+   d'éléments que demandé ; un agent qui lit la contiguïté comme un indice
+   d'intégrité conclura à une perte.
+
+**Le garde manque aussi.** La propriété que le lot 1 avait d'abord conclue —
+« aucun parent ne porte deux fois la même valeur » — est l'**unicité sous un
+parent**, et non l'ordre exigé : une numérotation aléatoire distincte par parent
+passerait ce test. Le garde à écrire est le second : `page_no` ne décroît pas
+dans l'ordre des `sequence`. À traiter avec §4.4.
+
+### 6.17 Chiffres et renvois faux, relevés le 31 août 2026
+
+| Site | Ce qu'il dit | Mesuré |
+|---|---|---|
+| §2 de ce registre | « 1 PDF de 73 pages » sous l'étiquette **`mesuré`** | **71** — corrigé |
+| §6.9 de ce registre | renvoi `README.md:317` | ligne réelle **365** — corrigé |
+| §3.2 (avant fermeture) | renvoi `extraction.py:370-373` | c'est la fin de `_detect_document_language` ; le vrai site est `extraction.py:320` + `ranking.py:130-148` — corrigé |
+| §3.4 | renvoi `vectors.py:199-203` | c'est la boucle d'`upsert` ; le vrai site est `vectors.py:186-192` — corrigé |
+| `pilotage_du_chantier.md` §2.2 | « 73 pages », deux sites | **71** |
+| `pilotage_du_chantier.md` §5.1 | `main = 528748d` | la pointe bouge à chaque commit : le SHA a été retiré au profit de la commande qui la mesure |
+
+Vérifiés **justes** et laissés tels quels : `ranking.py:56-71`,
+`extraction.py:335-337`, `index_report.py:75-84`, `nebula.py:49`,
+`nebula.py:160`, `schemas.py:94-95`, `ranking.py:83-84`.
 
 ---
 
