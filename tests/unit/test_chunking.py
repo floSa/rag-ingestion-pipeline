@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.docling_service.chunking import chunk_ids, chunk_text, contextualize
+from src.docling_service.chunking import (
+    chunk_ids,
+    chunk_text,
+    contextualize,
+    embedding_inputs,
+)
 
 
 class TestChunkText:
@@ -112,3 +117,40 @@ class TestChunkIds:
     def test_ids_are_unique(self):
         ids = chunk_ids("abc1234567", 10)
         assert len(set(ids)) == 10
+
+
+class TestEmbeddingInputs:
+    """Ce que le MODELE recoit — et le seul site qui en decide.
+
+    L'instrument de troncature tokenisait le texte STOCKE quand le modele
+    encode le texte PREFIXE du titre : il annoncait 65 chunks au-dela de la
+    fenetre la ou il y en avait 137 (registre 3.4, `mesure` sur 4 365 chunks).
+    Ce n'etait pas une erreur de calcul mais une DIVERGENCE : deux endroits
+    decidaient du meme texte. Il n'y en a plus qu'un, et ces tests le gardent.
+    """
+
+    TEXTES = ["la moyenne y est sensible", "Chunking\n\ndeja prefixe"]
+    METAS = [{"section_title": "Outliers"}, {"section_title": "Chunking"}]
+
+    def test_the_title_is_prefixed_when_the_setting_is_on(self):
+        assert embedding_inputs(self.TEXTES, self.METAS, True)[0] == (
+            "Outliers\n\nla moyenne y est sensible"
+        )
+
+    def test_nothing_is_prefixed_when_the_setting_is_off(self):
+        """Le reglage a deux positions, et l'instrument doit dire vrai des deux."""
+        assert embedding_inputs(self.TEXTES, self.METAS, False) == self.TEXTES
+
+    def test_a_chunk_that_already_opens_on_its_title_is_left_alone(self):
+        assert embedding_inputs(self.TEXTES, self.METAS, True)[1] == self.TEXTES[1]
+
+    def test_a_missing_section_title_leaves_the_text_untouched(self):
+        assert embedding_inputs(["texte"], [{}], True) == ["texte"]
+
+    def test_texts_and_metadatas_must_align(self):
+        """Un decalage d'un rang prefixerait chaque chunk du titre du suivant."""
+        with pytest.raises(ValueError):
+            embedding_inputs(["a", "b"], [{"section_title": "T"}], True)
+
+    def test_the_result_stays_aligned_with_the_input(self):
+        assert len(embedding_inputs(self.TEXTES, self.METAS, True)) == len(self.TEXTES)

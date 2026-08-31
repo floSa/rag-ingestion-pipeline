@@ -14,17 +14,75 @@ from __future__ import annotations
 
 import statistics
 from collections import Counter
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
-import chromadb
-
 from src.docling_service.blocks import has_content
-from src.docling_service.embedding import get_embedding_model
+from src.docling_service.chunking import embedding_inputs
 from src.docling_service.settings import get_settings
-from src.docling_service.vectors import COLLECTION_NAME
+
+# `chromadb`, le modele d'embedding et `vectors` sont importes DANS ``main`` :
+# ce module doit rester importable sans eux, sinon la mesure de fenetre
+# ci-dessous ne serait testable nulle part — et c'est precisement elle qui
+# etait fausse.
 
 # En deca, un chunk ne porte pas assez de matiere pour etre retrouve utilement.
 FAIBLE_CONTENU_CARACTERES = 40
+
+
+@dataclass(frozen=True)
+class FenetreMesuree:
+    """Ce que le modele d'embedding tronque reellement."""
+
+    mediane: int
+    maximum: int
+    depassements: int
+    total: int
+    prefixe_du_titre: bool
+
+
+def mesurer_la_fenetre(
+    documents: Sequence[str],
+    metadatas: Sequence[Mapping[str, Any]],
+    tokeniser: Callable[[str], int],
+    limite: int,
+    embed_section_context: bool,
+) -> FenetreMesuree:
+    """Compte les chunks que le modele tronque, sur le texte QU'IL RECOIT.
+
+    Cette fonction tokenisait ``documents``, c'est-a-dire le texte **stocke**,
+    alors que ``vectors.write_elements`` encode le texte **prefixe du titre de
+    section**. Elle sous-comptait donc, et pas d'un peu : `mesure` le 31 aout
+    2026 sur les 4 365 chunks du corpus, **65 (1,5 %)** annonces contre
+    **137 (3,1 %)** reels, maximum **140** annonce contre **149** reel. Un
+    lecteur voyait 1,5 % et lisait un bruit d'arrondi.
+
+    Le texte encode n'est plus reconstruit ici : il vient de
+    :func:`~src.docling_service.chunking.embedding_inputs`, le meme site que
+    celui qui le produit. Un instrument qui recalcule ce qu'il mesure finit par
+    mesurer autre chose.
+
+    Args:
+        documents: Textes stockes, lus dans ChromaDB.
+        metadatas: Metadonnees alignees, dont ``section_title``.
+        tokeniser: Rend le nombre de tokens d'un texte. Injecte pour que la
+            mesure se verifie sans charger le modele.
+        limite: Fenetre du modele, en tokens.
+        embed_section_context: Reglage ``settings.embed_section_context``.
+
+    Returns:
+        Les chiffres, et laquelle des deux positions du reglage ils decrivent.
+    """
+    encodes = embedding_inputs(documents, metadatas, embed_section_context)
+    tokens = [tokeniser(texte) for texte in encodes]
+    return FenetreMesuree(
+        mediane=int(statistics.median(tokens)),
+        maximum=max(tokens),
+        depassements=sum(1 for valeur in tokens if valeur > limite),
+        total=len(tokens),
+        prefixe_du_titre=embed_section_context,
+    )
 
 
 def _pourcentage(part: int, total: int) -> str:
@@ -33,6 +91,11 @@ def _pourcentage(part: int, total: int) -> str:
 
 def main() -> None:
     """Affiche le rapport."""
+    import chromadb
+
+    from src.docling_service.embedding import get_embedding_model
+    from src.docling_service.vectors import COLLECTION_NAME
+
     settings = get_settings()
     client = chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
     collection = client.get_or_create_collection(name=COLLECTION_NAME)
@@ -76,14 +139,26 @@ def main() -> None:
     model = get_embedding_model()
     limite = int(model.max_seq_length)
     tokenizer = model.tokenizer
-    tokens = [len(tokenizer.encode(d, add_special_tokens=True)) for d in documents]
-    depassements = sum(1 for t in tokens if t > limite)
+    fenetre = mesurer_la_fenetre(
+        documents,
+        metadatas,
+        lambda texte: int(len(tokenizer.encode(texte, add_special_tokens=True))),
+        limite,
+        settings.embed_section_context,
+    )
+    mesure = (
+        "texte encode, titre de section compris"
+        if fenetre.prefixe_du_titre
+        else "texte encode (EMBED_SECTION_CONTEXT est a faux : pas de prefixe)"
+    )
     print(f"modele                    : {settings.embedding_model_name}")
     print(f"limite                    : {limite} tokens")
+    print(f"mesure sur                : {mesure}")
     print(
-        f"chunks tronques par le modele : {depassements:>6}  ({_pourcentage(depassements, total)})"
+        f"chunks tronques par le modele : {fenetre.depassements:>6}  "
+        f"({_pourcentage(fenetre.depassements, total)})"
     )
-    print(f"tokens : mediane {int(statistics.median(tokens))}, maximum {max(tokens)}")
+    print(f"tokens : mediane {fenetre.mediane}, maximum {fenetre.maximum}")
 
     print("\n=== Profondeur de hierarchie ===")
     par_doc: dict[str, int] = {}

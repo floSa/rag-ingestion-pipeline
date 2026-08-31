@@ -2,9 +2,13 @@
 
 Deux corrections par rapport a la version initiale :
 
-- **plus de troncature** : les textes longs sont decoupes en fenetres
-  recouvrantes au lieu d'etre coupes a 1000 caracteres, dans l'embedding comme
-  dans le document stocke ;
+- **plus de troncature a 1000 caracteres** : les textes longs sont decoupes en
+  fenetres recouvrantes au lieu d'etre coupes, dans l'embedding comme dans le
+  document stocke. Cette ligne disait « plus de troncature », sans borne : une
+  phrase d'exhaustivite, et elle est fausse. `mesure` le 31 aout 2026 sur
+  4 365 chunks : **137 (3,1 %) depassent la fenetre de 128 tokens** du modele,
+  qui les tronque lui-meme. Voir :func:`get_chunker` pour la cause, qui est
+  structurelle et non un reglage ;
 - **encodage par lots** : ``SentenceTransformer.encode`` recoit toute la liste
   d'un coup au lieu d'un appel par element, ce qui exploite reellement le GPU.
 
@@ -23,9 +27,9 @@ from typing import Any
 
 import chromadb
 
+from src.docling_service import chunking
 from src.docling_service.anchoring import block_size, resolve_anchors
 from src.docling_service.blocks import has_content
-from src.docling_service.chunking import contextualize
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
 from src.docling_service.embedding import get_embedding_model
 from src.docling_service.settings import get_settings
@@ -60,8 +64,26 @@ def get_chunker() -> Any:
 
     ``HybridChunker`` decoupe en respectant la structure du document *et* la
     fenetre du modele d'embedding. Il recoit le tokenizer du modele lui-meme,
-    pas une approximation : c'est ce qui garantit qu'aucun chunk ne sera
-    tronque a l'encodage.
+    et non une approximation.
+
+    Ce docstring affirmait que « c'est ce qui garantit qu'aucun chunk ne sera
+    tronque a l'encodage ». **C'est faux, et de deux facons distinctes**, toutes
+    deux mesurees le 31 aout 2026 sur les 4 365 chunks du corpus :
+
+    1. **Le decoupeur ne peut pas fractionner une table.** Une table serialisee
+       en Markdown est un bloc indivisible pour lui : il la rend telle quelle,
+       plus longue que la fenetre. Les **65** chunks qui depassent deja sur le
+       texte stocke sont **65 sur 65 des tables** — aucun autre label. Ce n'est
+       pas un reglage a corriger ici : reduire la fenetre ne fractionne pas
+       davantage, et refaire le decoupage des tables est un chantier a part
+       (registre 7.1). Ce qui manquait etait de le MESURER et de l'ecrire ;
+    2. **le titre de section est prefixe APRES le decoupage.** ``HybridChunker``
+       compte ses tokens sur sa propre serialisation ; ``write_elements``
+       prepose ensuite le titre pour l'encodage. **72** chunks franchissent la
+       fenetre par ce seul prefixe, et le decoupeur ne pouvait pas le prevoir.
+
+    Le nombre reel de chunks tronques par le modele est donc **137 (3,1 %)**, et
+    ``index_report`` le dit desormais — il en annoncait 65.
     """
     from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
     from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
@@ -183,13 +205,12 @@ def write_elements(
     settings = get_settings()
     # Le vecteur est calcule sur le texte contextualise, le document stocke
     # reste le texte brut : le passage s'affiche tel quel cote agent.
-    if settings.embed_section_context:
-        embed_texts = [
-            contextualize(text, str(meta.get("section_title") or ""))
-            for text, meta in zip(texts, metadatas, strict=True)
-        ]
-    else:
-        embed_texts = texts
+    #
+    # La construction vit dans chunking.embedding_inputs et non ici, parce que
+    # index_report doit tokeniser EXACTEMENT le meme texte pour compter les
+    # troncatures. Quand les deux decidaient chacun de leur cote, l'instrument
+    # en annoncait la moitie (registre 3.4).
+    embed_texts = chunking.embedding_inputs(texts, metadatas, settings.embed_section_context)
 
     vectors = get_embedding_model().encode(
         embed_texts,

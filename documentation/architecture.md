@@ -41,8 +41,10 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 6. **Flush NebulaGraph** : nœuds et hiérarchie `Document → SectionHeader → Éléments`
    (chaque élément rattaché au dernier en-tête rencontré), écrits par INSERT groupés ;
    tout échec nGQL fait échouer le job — pas de perte silencieuse
-7. **Flush ChromaDB** : le découpage est confié à `HybridChunker` de Docling, qui respecte la structure du document et la fenêtre du modèle d'embedding (aucune
-   troncature), encodés par lots avec `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), et upsertés avec les
+7. **Flush ChromaDB** : le découpage est confié à `HybridChunker` de Docling, qui respecte la structure du document et la fenêtre du modèle d'embedding — **mais pas
+   « aucune troncature »** : `mesuré` le 31 août 2026, **137 chunks sur 4 365 (3,1 %)** dépassent la fenêtre de 128 tokens et sont tronqués par le modèle. Deux causes distinctes,
+   toutes deux structurelles : une table sérialisée en Markdown est indivisible pour le découpeur (les 65 chunks trop longs *avant* préfixe sont 65 tables sur 65), et le titre de section est préposé **après** le découpage, ce que le découpeur ne pouvait pas prévoir (72 chunks de plus). Voir `vectors.get_chunker` et le registre §3.4. Les chunks sont
+   encodés par lots avec `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), et upsertés avec les
    métadonnées du contrat d'interface : `element_id`, `graph_node_id`, `filename`,
    `label`, `page_no`, `minio_url`, `reference_id`, `page_position`, `ref_position`
 

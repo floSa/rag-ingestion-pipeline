@@ -319,44 +319,69 @@ donc son docstring — « des items tels que Docling les rend » — est **faux*
 c'est une prétention à corriger, pas une couverture absente. L'audit du lot 0
 avait mesuré sa valeur marginale à **3 mutations sur 7 que lui seul voit**.
 
-### 3.4 L'instrument de troncature tokenise le mauvais texte — mesuré, il sous-compte de moitié
+### 3.4 → traité par le lot 3 — l'instrument tokenise ce que le modèle reçoit
 
-`index_report.py:75-84` tokenise `documents`, c'est-à-dire le texte **stocké**.
-Or `vectors.py:186-192` encode `contextualize(texte, section_title)` (l'ancien
-renvoi `vectors.py:199-203` désignait la boucle d'`upsert` : **périmé**),
-c'est-à-dire le texte **préfixé du titre de section**.
+**Le constat, tel qu'il était ouvert.** `index_report.py` tokenisait
+`documents`, c'est-à-dire le texte **stocké**, quand `vectors.py` encode
+`contextualize(texte, section_title)`, le texte **préfixé du titre de section**.
 
-**MESURÉ le 31 août 2026, par le lot 1 puis rejoué par son audit et par le
-pilote — trois fois les mêmes chiffres**, sur 773 chunks, fenêtre 128 :
+**Remesuré par le lot 3 sur le CORPUS COMPLET** — 4 365 chunks, 23 documents,
+fenêtre 128, index produit par le code de `main` avant toute correction
+(`mesuré` le 31 août 2026 ; le lot 1 mesurait 773 chunks sur 3 documents) :
 
 | | médiane | maximum | au-dessus de 128 |
 |---|---|---|---|
-| texte **stocké**, ce que l'instrument tokenise | 87 | **140** | **8 (1,0 %)** |
-| texte **encodé**, ce que le modèle reçoit | 93 | **149** | **16 (2,1 %)** |
+| texte **stocké**, ce que l'instrument tokenisait | 88 | **140** | **65 (1,5 %)** |
+| texte **encodé**, ce que le modèle reçoit | 95 | **149** | **137 (3,1 %)** |
 
-**L'instrument sous-compte d'un facteur 2 exactement : 8 annoncés, 16 réels.**
-**8 chunks franchissent la fenêtre par le seul préfixe de titre** — l'aggravant
-annoncé ci-dessous, désormais mesuré.
+**72 chunks franchissent la fenêtre par le seul préfixe de titre.** Le facteur
+de sous-comptage vaut **2,1** ici ; le lot 1 avait mesuré « exactement 2 » sur
+son échantillon de 773 — la conclusion tenait, le facteur exact était propre à
+l'échantillon.
 
-**Le registre se trompait en écrivant « 0 % ».** L'instrument annonce **1,0 %**,
-et ce 1,0 % est ce qui cachait le défaut : un lecteur y voit un bruit d'arrondi
-autour de zéro. Le défaut n'est pas qu'il annonce zéro, c'est qu'il annonce **la
-moitié**. Le prompt du lot 1 reprenait ce « 0 % » et affaiblissait la mesure
-qu'il commandait — leçon de pilotage, §11 du mandat.
+**Ce qui a été corrigé n'est pas le calcul, c'est la DIVERGENCE.** Deux endroits
+décidaient du même texte. Corriger l'instrument aurait fermé l'écart du jour et
+laissé les deux sites libres de diverger à nouveau. La construction du texte
+encodé vit désormais à un seul endroit, `chunking.embedding_inputs`, et les deux
+appelants la partagent. Elle refuse une entrée désalignée : un décalage d'un
+rang préfixerait chaque chunk du titre de son voisin, sans que rien ne le
+signale.
 
-**La mesure porte bien sur le PRODUCTEUR**, et l'audit l'a prouvé depuis le
-code : `vectors.py:203-209` écrit dans ChromaDB **le même** `texts` et **les
-mêmes** `metadatas` que ceux passés à `contextualize`, et
-`settings.embed_section_context` vaut `True` (`mesuré`). Relire `documents` et
-`metadatas.section_title` reconstruit donc la chaîne encodée au caractère près.
+Le rapport dit désormais **sur quel texte il compte**, et le réglage
+`embed_section_context` a deux positions : à faux, il n'y a pas de préfixe, et
+l'instrument le dit plutôt que de laisser croire qu'il en tient compte.
 
-Aggravant : `HybridChunker` compte ses tokens sur **sa propre** sérialisation
-contextualisée (titres compris). Préfixer un second titre par-dessus peut
-refranchir la fenêtre de 128 tokens — exactement la troncature silencieuse que
-le passage à `HybridChunker` prétendait supprimer. `supposé`, à mesurer.
+**Et l'instrument n'était gardé par aucun test, pour une raison mécanique** :
+`index_report` importait `chromadb` et le modèle d'embedding au niveau du
+module, donc aucun test ne pouvait l'importer sans l'image d'extraction (10,4 Go).
+Ces imports sont passés dans `main`, la mesure est devenue une fonction pure à
+tokeniseur injecté, et un sous-processus garde la propriété. *Ce qu'un test
+n'importe pas, il ne teste pas.*
 
-**Coût de l'attente** : on croirait avoir supprimé la troncature sans l'avoir
-vérifiée, sur l'instrument même censé la voir.
+### 3.4 bis → traité par le lot 3 — les deux phrases d'exhaustivité de `vectors.py`
+
+`vectors.py` affirmait en en-tête « **plus de troncature** », et dans
+`get_chunker` que recevoir le tokenizer du modèle « est ce qui **garantit
+qu'aucun chunk ne sera tronqué** à l'encodage ». Deux phrases d'exhaustivité,
+dans le fichier qui produit les vecteurs, et **toutes deux fausses**.
+
+Elles le sont de deux façons distinctes, mesurées :
+
+1. **`HybridChunker` ne peut pas fractionner une table.** Une table sérialisée
+   en Markdown est un bloc indivisible : il la rend telle quelle, plus longue
+   que la fenêtre. Les **65** chunks qui dépassent déjà sur le texte stocké sont
+   **65 tables sur 65** — aucun autre label (le lot 1 mesurait 8 sur 8 sur son
+   échantillon). Ce n'est pas un réglage : réduire la fenêtre ne fractionne pas
+   davantage. **Ce qui manquait était de le mesurer et de l'écrire** ; refaire
+   le découpage des tables est un chantier à part, §7.1 ;
+2. **le titre est préposé APRÈS le découpage.** Le découpeur compte ses tokens
+   sur sa propre sérialisation ; `write_elements` préfixe ensuite. **72** chunks
+   franchissent par ce seul geste, et le découpeur ne pouvait pas le prévoir.
+   L'aggravant que §3.4 étiquetait `supposé` est donc **mesuré**, et confirmé.
+
+Les deux docstrings portent désormais le chiffre et la cause. `architecture.md`
+portait la même affirmation — « (aucune troncature) » — et est corrigé dans le
+même commit.
 
 ### 3.5 La chaîne d'images HTML est ROMPUE — mesuré, 199 images sans `minio_url`
 
