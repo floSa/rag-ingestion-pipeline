@@ -110,6 +110,13 @@ def _monte_un_depot_jetable(
     # qui fait tourner ce test — le meme que celui de `uv run`, puisque c'est
     # lui qui a lance pytest.
     environnement = dict(os.environ)
+    # Comme `_git()`, et pour la meme raison — mais ici elle mord plus fort :
+    # c'est le SEUL sous-processus de ce fichier qui ECRIT des hooks. Un
+    # `GIT_DIR` herite deporterait l'armement vers le depot qu'il designe, et ce
+    # depot est peut-etre celui que ce lot protege (`mesure` : quatre fichiers y
+    # partent).
+    environnement.pop("GIT_DIR", None)
+    environnement.pop("GIT_WORK_TREE", None)
     environnement["PRE_COMMIT"] = f"{sys.executable} -m pre_commit"
     return subprocess.run(
         ["sh", str(installeur)],
@@ -324,6 +331,54 @@ class TestLesCommitsDeFusionSontCouverts:
         assert resultat.returncode == 0, f"{resultat.stdout}\n{resultat.stderr}"
         assert apres != avant, "aucun commit de fusion n'a ete cree"
         _git(depot_arme, "reset", "--hard", avant)
+
+
+class TestLeHarnaisResteDansSonBacASable:
+    """Ce fichier ecrit des hooks. Il ne doit les ecrire QUE dans son bac a sable.
+
+    `_git()` purge explicitement `GIT_DIR` et `GIT_WORK_TREE` de
+    l'environnement, pour que les commits d'essai aillent bien au depot jetable.
+    Mais le seul sous-processus qui ECRIT des hooks — celui qui execute
+    l'installeur — ne les purgeait pas.
+
+    `mesure` le 31 aout 2026, avec un `GIT_DIR` dans l'environnement de pytest :
+    l'installeur resout `--git-common-dir` sur le depot DESIGNE, et quatre
+    fichiers y partent — `pre-commit`, `pre-commit.legacy`, `pre-merge-commit`,
+    `pre-merge-commit.legacy`. Les tests rougissent, donc ce n'etait pas un faux
+    vert ; mais le harnais ecrivait dans la ressource meme que ce lot protege,
+    et il aurait pu la trouver deja armee.
+
+    Ce test asserte depuis le cote qui produit le degat : on DESIGNE un depot par
+    `GIT_DIR`, on lance le harnais, et on exige que ce depot ressorte intact.
+    """
+
+    def test_git_dir_dans_l_environnement_ne_deporte_pas_les_hooks(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        designe = tmp_path / "depot-designe"
+        designe.mkdir()
+        assert _git(designe, "init", "-q", "-b", "principale", ".").returncode == 0
+        hooks_designes = designe / ".git" / "hooks"
+        monkeypatch.setenv("GIT_DIR", str(designe / ".git"))
+
+        depot = tmp_path / "depot-sous-git-dir"
+        execution = _monte_un_depot_jetable(depot, INSTALLEUR.read_text())
+
+        poses = sorted(
+            fichier.name
+            for fichier in hooks_designes.iterdir()
+            if not fichier.name.endswith(".sample")
+        )
+        assert not poses, (
+            f"le harnais a arme le depot designe par GIT_DIR au lieu du sien : {poses}"
+        )
+        # Le temoin. Sans lui, l'assertion ci-dessus serait vraie d'un harnais
+        # qui n'installe RIEN nulle part — un chemin faux, un interpreteur
+        # absent — et ce test serait vert sur le defaut.
+        assert execution.returncode == 0, f"{execution.stdout}\n{execution.stderr}"
+        assert (depot / ".git" / "hooks" / "pre-commit.legacy").exists(), (
+            "le harnais n'a arme aucun hook dans son propre bac a sable"
+        )
 
 
 class TestLeScriptConstateSonPropreResultat:

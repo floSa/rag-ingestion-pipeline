@@ -1400,6 +1400,37 @@ révèle être aussi ce qui met le contrôle d'identité hors de portée d'un `f
 mal posé. Ce n'est pas une raison de relâcher le témoin : les sept autres hooks,
 eux, tombent.
 
+#### F5 → le harnais de test écrivait des hooks hors de son bac à sable
+
+`tests/unit/test_installation_des_garde_fous.py` purge explicitement `GIT_DIR` et
+`GIT_WORK_TREE` dans `_git()`, pour que les commits d'essai aillent bien au dépôt
+jetable. Mais le **seul** sous-processus du fichier qui **écrit** des hooks —
+celui qui exécute l'installeur — ne les purgeait pas.
+
+`mesuré` le 31 août 2026, avec un `GIT_DIR` dans l'environnement de `pytest` :
+l'installeur résout `--git-common-dir` sur le dépôt **désigné**, et **quatre**
+fichiers y partent — `pre-commit`, `pre-commit.legacy`, `pre-merge-commit`,
+`pre-merge-commit.legacy`. Les tests **rougissent** (6 échecs sur 9) : ce n'était
+donc pas un faux vert, et c'est la seule raison pour laquelle ce défaut n'a rien
+cassé. Mais le harnais écrivait dans **la ressource même que ce lot protège**, et
+il l'aurait trouvée déjà armée.
+
+**Fermé par deux `pop`**, les mêmes que `_git()` — et **gardé** par
+`TestLeHarnaisResteDansSonBacASable::
+test_git_dir_dans_l_environnement_ne_deporte_pas_les_hooks`, qui **désigne** un
+dépôt par `GIT_DIR`, lance le harnais, et exige que ce dépôt ressorte intact. Il
+porte son témoin — le harnais doit avoir armé **son** bac à sable — sans quoi il
+serait vert d'un harnais qui n'installe rien nulle part.
+
+Contrôle d'après-correction, `mesuré` : la même suite, relancée sous `GIT_DIR`,
+passe **11/11** et le dépôt désigné ne reçoit **aucun** hook. Avant, elle rendait
+6 échecs et 4 fichiers.
+
+**La leçon, et elle est déjà au mandat sous une autre forme :** un harnais de test
+peut effacer ce qu'il doit observer — celui-ci pouvait *armer* ce qu'il doit
+observer. Quand un fichier de test purge une variable d'environnement à un
+endroit, la question n'est pas « pourquoi ici », c'est « **où encore** ».
+
 ### Trouvé par la réparation du lot 0b, et NON traité
 
 - **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun
