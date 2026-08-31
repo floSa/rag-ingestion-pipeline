@@ -1443,8 +1443,14 @@ posent pas. Elle est **fausse d'un facteur 6**. `mesuré` le 31 août 2026 **sur
 résultat de la fusion d'essai `--no-ff` avec `a005172`** :
 
 ```bash
-git ls-files -z -- Datas | xargs -0 -I{} stat -c '%s %n'
+git ls-files -z -- Datas | xargs -0 stat -c '%s %n'
 ```
+
+*(Pas de `-I{}` : `xargs -I` change le découpage et n'insère rien si le motif
+n'est pas répété en argument — cette commande, écrite d'abord avec `-I{}` sans
+`"{}"` derrière, rendait « `stat: missing operand` » vingt-cinq fois. Le `-0`
+seul suffit, et il est ce qui compte : les noms du corpus portent des espaces et
+un deux-points pleine chasse.)*
 
 | Mesure | Valeur |
 |---|---|

@@ -763,7 +763,7 @@ seuil à relever, aucune exception à ajouter. Deux choses seulement :
   **pas « de loin » comme ce paragraphe l'a affirmé**. Il disait « le plus gros
   fichier du corpus pèse aujourd'hui moins de 1 Mo » : c'est **faux**, et de
   presque un ordre de grandeur. `mesuré` le 31 août 2026 **sur le résultat de la
-  fusion d'essai**, `git ls-files -z -- Datas | xargs -0 -I{} stat -c '%s %n'` :
+  fusion d'essai**, `git ls-files -z -- Datas | xargs -0 stat -c '%s %n'` :
   le plus gros pèse **6 362 475 o** — `Datas/htms/Practical MLflow for
   Generative AI on Databricks/8. Deploying a GenAI Application with
   MLflow.html` — le plus petit **671 707 o**, et **19 des 25** dépassent 1 Mo.
