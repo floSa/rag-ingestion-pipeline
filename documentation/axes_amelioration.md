@@ -676,14 +676,36 @@ sommets visuels sur 264 n'ont aucune URL**.
 
 **Ce qui a été ajouté**, et pour chacun l'exigence qu'il garde :
 
-| Contrôle | Exigence | Sur l'index du 31 août 2026 |
+| Contrôle | Exigence | Sur l'index vivant, `mesuré` sur la pointe de la réparation |
 |---|---|---|
-| `page_no` ne décroît pas dans l'ordre des `sequence`, par document | 4 | **0 inversion sur 15 173 arêtes** — l'exigence est tenue, et c'est désormais prouvé sur tout le graphe |
+| `page_no` ne décroît pas dans l'ordre des `sequence`, par document | 4 | **0 inversion sur 15 173 arêtes** |
 | `source_path` non vide | 3 | 0 chunk fautif |
 | `0 ≤ chunk_index < chunk_count` | — | 0 chunk fautif |
 | présence d'arêtes `PARENT_OF` | 4 | 15 173 |
 | `minio_url` sur les sommets visuels | — | **251 sur 264 sans URL → anomalie** |
-| modèle inscrit sur la collection | **1** | **non tracé → anomalie** |
+| modèle inscrit sur la collection | **1** | `paraphrase-multilingual-MiniLM-L12-v2` — **tracé, aucune anomalie** |
+| **l'index n'est pas vide** *(neuf)* | toutes | 4 365 chunks |
+| **`sequence` présente sur chaque arête** *(neuf)* | **4** | 0 arête sans `sequence` |
+| **le jeu `{chunk_index}` est complet par élément** *(neuf)* | — | **2 éléments sur 3 750 troués → anomalie** |
+| **`depth` non nul sur les sommets** *(neuf)* | — | 0 sur 15 173 |
+| **le tag `Document` porte ses 7 colonnes** *(neuf)* | **3** | 7, aucune manquante |
+| ancres présentes dans le graphe | 2 | **3 750 / 3 750** — la totalité, plus un échantillon |
+
+**Deux affirmations de cette section étaient fausses, et la mesure les dément.**
+Elle écrivait « modèle **non tracé** → anomalie » et, plus bas, « il redeviendra
+vert quand le lot 4 aura réparé la chaîne d'images **et qu'une réingestion aura
+inscrit le modèle** ». La collection **porte déjà** `embedding_model` — le lot 3
+a réingéré le corpus complet avec son propre code, donc `_inscrire_le_modele` a
+tourné. `verify_contract` affiche le modèle et ne lève **aucune** anomalie de
+modèle. C'est la question la plus productive du chantier — *qu'est-ce que la
+documentation affirme que le code ne fait pas ?* — appliquée au lot qui l'a
+posée.
+
+**Et un piège de provenance s'y cachait.** Le service Docling monte `/app/src`
+depuis le **clone principal**, donc `docker compose exec docling-service python
+-m src.verify_contract` exécute le code de `main` : il rend `rc=0` et « Contrat
+respecté », c'est-à-dire exactement le défaut que ce constat ferme. Toute mesure
+du code d'une branche doit monter le `src` de cette branche (voir §4.27).
 
 **Le garde de `sequence` est celui du §6.16, et pas un autre.** La propriété
 « aucun parent ne porte deux fois la même valeur » est l'**unicité sous un
@@ -694,11 +716,72 @@ sont écrites à son site : `sequence` repart à 0 par document — d'où un con
 inversions fausses — elle n'est pas contiguë sous un parent, et le plus grand
 trou vaut 993, donc **exiger la contiguïté rougirait sur un graphe sain**.
 
-**La phrase d'exhaustivité est corrigée, et l'échantillon borné à ce qu'elle
-justifie.** « Une rupture de contrat est systématique » est vraie d'un FORMAT et
-fausse d'un ORDRE. L'échantillon de 400 ne sert donc plus que la présence des
-ancres — le seul contrôle dont le coût croît vraiment avec le corpus — et les
-propriétés d'ordre portent sur la **totalité** des arêtes.
+**La phrase d'exhaustivité est corrigée, et l'échantillon est SUPPRIMÉ.** « Une
+rupture de contrat est systématique » est vraie d'un FORMAT et fausse d'un ORDRE.
+Le lot 3 avait borné l'échantillon de 400 à la seule présence des ancres, « le
+seul contrôle dont le coût croît vraiment avec le corpus ».
+
+**Cette dernière justification est démolie par la mesure.** L'échantillon valait
+400 sur 3 750 avec `random.seed(0)` : **les mêmes 89 % n'étaient jamais
+vérifiés**, exécution après exécution. Une graine fixe ne fait pas d'un
+échantillon une couverture — elle fait d'un angle mort un angle mort **stable**.
+Et le contrôle complet tient en **une** requête nGQL : `mesuré` le 31 août 2026
+sur l'index complet, chronométré autour du seul `session.execute`, **0,053 s**
+pour les 3 750 identifiants contre **0,008 s** pour 400. Soit 6,6 fois le coût
+pour 9,4 fois la couverture. Il n'y avait rien à échantillonner.
+
+**Et l'absence d'échantillon est GARDÉE**, ce qui n'allait pas de soi : `mesuré`,
+remettre `identifiants[:400]` laissait la suite **entièrement verte**. Retirer un
+échantillonnage sans garder son absence, c'est le laisser revenir au premier lot
+qui trouvera le contrôle lent — et il le trouvera lent, puisque personne ne
+remesure. Le garde asserte les identifiants **un par un** dans la requête, et son
+témoin asserte le dénominateur : un échantillonnage qui réduirait les deux côtés
+resterait vert sur une simple égalité.
+
+#### Les cinq trous que l'audit a trouvés, et ce que chacun laissait passer
+
+1. **`rc=0` SUR UN INDEX VIDE**, et c'est le pire des cinq parce que **tous** les
+   contrôles vivent derrière ce garde. `if not metadatas: print("Index vide…");
+   return` — donc une purge, une ingestion en échec ou un nom de collection
+   erroné passaient pour « Contrat respecté », dans un outil dont le docstring
+   dit « pour un usage en pré-déploiement ». Le défaut préexistait sur
+   `main:52-54` ; sa portée s'était élargie à tout ce que le lot 3 avait ajouté
+   derrière lui. Il sort désormais en **1** en nommant les causes usuelles ;
+2. **il LEVAIT au lieu de rapporter quand `sequence` est NULL.**
+   `int(ligne[2].as_int())` sans garde `is_null()`, alors que `page_no` en avait
+   un à la ligne suivante. L'exigence 4 est « absente **OU** non monotone » : sur
+   la moitié « absente », le rapport avortait sur une
+   `InvalidValueTypeException`. Un outil de pré-déploiement qui plante ne dit pas
+   « non conforme », il ne dit **rien**. Les arêtes sans `sequence` sont
+   désormais comptées et nommées — et **écartées** du contrôle d'ordre plutôt que
+   comptées à zéro, ce qui fabriquerait une fausse inversion ;
+3. **`chunks_incoherents` ne voyait pas la panne que son docstring nomme.** Un
+   morceau qui MANQUE est invisible depuis un chunk isolé : chaque chunk présent
+   satisfait `0 ≤ index < count` même quand un frère a disparu. `mesuré` :
+   **2 éléments sur 3 750** annoncent 7 et 4 chunks alors que 6 et 3 existent —
+   `aa3de10738` (index 4 manquant) et `eb52c4ec8f` (index 3 manquant) — et le
+   contrôle rendait « 0 chunk fautif ». `jeux_de_chunks_incomplets` vérifie le
+   **jeu** complet. La **cause** n'est pas réparée ici et va au lot 4 (voir
+   ci-dessous) ;
+4. **`depth` n'était pas vérifié non nul sur les sommets** — la charge utile du
+   §4.11. Le schéma migre en place, les **données** non : un `ALTER TAG … ADD`
+   laisse à NULL tous les sommets déjà écrits. Un index à moitié migré était donc
+   possible, et l'agent aurait lu `depth` sur les sommets récents et `NULL` sur
+   les anciens sans qu'aucune erreur ne distingue « profondeur 0 » de
+   « profondeur inconnue ». Le garde porte son témoin : **`depth = 0` est une
+   profondeur, pas une absence** — un compteur écrit `if not profondeur`, la
+   faute naturelle, rougirait sur un graphe sain, et c'est précisément le piège
+   que `depth` tend depuis que le plafond est retiré (§4.24) ;
+5. **le tag `Document` n'était pas couvert** — le défaut que
+   `_verifier_les_tags` venait de fermer restait ouvert **d'un tag**. Elle reçoit
+   `sorted(set(TAG_MAP.values()))`, c'est-à-dire les **11 tags d'élément** ; le
+   tag `Document` n'en fait pas partie, son schéma lui étant propre. Or ses
+   quatre `ALTER TAG Document ADD` (`nebula.py:333-340`) sont `required=False`
+   par construction — « la colonne existe déjà » est leur cas nominal — donc une
+   migration **réellement** refusée ne disait rien. Et parmi ces colonnes,
+   `source_path` **est l'exigence 3 du contrat**. Un `DESCRIBE` en échec est
+   désormais une anomalie et non une liste vide lue comme « aucune manquante » :
+   *ne pas savoir n'est pas savoir que c'est bon.*
 
 **Le contrôle du modèle a deux moitiés, et la seconde ferme la panne.** Rien
 n'enregistrait quel modèle avait écrit l'index : un `.env` changé entre deux
