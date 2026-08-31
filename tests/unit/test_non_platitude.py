@@ -10,10 +10,22 @@ Il couvre les DEUX cas, et c'est le point :
 
 - un chapitre imbrique rend une distribution de rangs NON degeneree ;
 - le chapitre `Practical MLflow .../10. Unifying GenAI Systems with MLflow.html`
-  rend 8 titres TOUS de rang 0 — c'est le seul chapitre retenu du corpus sans
-  aucune balise <h2> (`mesure` par l'audit du lot 1 sur les 22), et son graphe
-  est REELLEMENT plat. Un test qui ne couvrirait que le premier lirait cette
-  platitude-la comme un defaut.
+  rend 8 titres TOUS de rang 0, et son graphe est REELLEMENT plat. Un test qui ne
+  couvrirait que le premier lirait cette platitude-la comme un defaut.
+
+ET LA CAUSE DE CETTE PLATITUDE N'EST PAS CELLE QUI AVAIT ETE ECRITE. Ce fichier
+portait un test nomme `test_the_flatness_comes_from_the_source_which_has_no_h2`,
+recopie du registre §3.2, qui affirmait que ce chapitre etait « le seul chapitre
+retenu sans aucune balise <h2> ». **C'est faux : ils sont trois** (`mesure` sur
+les 22 chapitres retenus). Les deux `Preface.html` n'ont aucun <h2> non plus et
+S'IMBRIQUENT quand meme — `{0: 9, 1: 4}` et `{0: 8, 1: 4}` sur le graphe vivant.
+« Sans aucun <h2> » n'est donc PAS la propriete discriminante, et ce test
+assertait une causalite que la mesure dement.
+
+Ce qui discrimine, et ce que ce fichier asserte desormais : AUCUN TITRE N'EST
+RENDU SOUS LE NIVEAU DE TETE — titres rendus = <h1>. La cause mesuree, sur ce
+chapitre-ci, est que sa seule balise de titre sous <h1> est la legende de sa
+figure, que Docling classe `caption` et non titre.
 
 CE QU'IL PROUVE ET CE QU'IL NE PROUVE PAS. Il rejoue le code de rang sur des
 arbres Docling captures depuis les captures reelles et versionnees, et non sur
@@ -46,6 +58,7 @@ import yaml
 from bs4 import BeautifulSoup
 
 from src.docling_service import ranking
+from src.docling_service.matter import is_front_back_matter
 from src.pipeline.cleaning import clean_html
 from src.pipeline.sources import CleaningOptions
 
@@ -274,17 +287,99 @@ class TestLeChapitrePlatEstReellementPlat:
         assert len(rangs) == 8
         assert set(rangs) == {0}
 
-    def test_the_flatness_comes_from_the_source_which_has_no_h2(self, capture):
-        """La cause est dans la capture HTML, pas dans le code de rang.
+    def test_nothing_survives_below_the_top_level(self, capture):
+        """LA PROPRIETE QUI DISCRIMINE, et ce n'est pas « aucun <h2> ».
 
-        Sans cette assertion, le test ci-dessus se lirait comme la preuve que le
-        code echoue a imbriquer — c'est l'inverse : il n'y a rien a imbriquer.
+        Sans cette assertion, `test_every_heading_sits_at_rank_zero` se lirait
+        comme la preuve que le code echoue a imbriquer — c'est l'inverse : il n'y
+        a rien a imbriquer.
+
+        Ce test s'appelait `test_the_flatness_comes_from_the_source_which_has_no_h2`
+        et assertait `len(find_all("h2")) == 0` comme la CAUSE. C'etait une
+        causalite fausse : trois des 22 chapitres retenus n'ont aucun <h2>, et
+        deux s'imbriquent (voir le test suivant). La propriete partagee par les
+        trois ne peut pas expliquer ce qui n'arrive qu'a un seul.
+
+        La propriete qui discrimine se lit des deux cotes a la fois : le nombre de
+        titres RENDUS egale le nombre de <h1>, donc rien ne survit sous le niveau
+        de tete. Le chapitre imbrique, lui, rend 41 titres pour 5 <h1>.
         """
         brut = _fichier(capture["plat"]).read_text(encoding="utf-8", errors="ignore")
+        h1 = len(BeautifulSoup(brut, "lxml").find_all("h1"))
+        assert len(_rangs(capture["plat"])) == h1 == 8
+        # Et le contraste, dans la meme assertion : c'est lui qui empeche de lire
+        # « titres == h1 » comme une propriete de Docling plutot que du chapitre.
+        assert len(_rangs(capture["imbrique"])) == 41
+        assert Counter(_rangs(capture["imbrique"]))[0] == 5
+
+    def test_the_absence_of_h2_is_shared_by_three_chapters_so_it_explains_nothing(self, capture):
+        """LE CONTRE-EXEMPLE QUI TUE LA CAUSALITE FAUSSE, a pleine portee du corpus.
+
+        Le chantier a recopie « le SEUL chapitre retenu sans aucun <h2> » trois
+        fois — registre §3.2, mandat §5.1 ter, et le test de ce fichier — sans
+        jamais le remesurer. Ce test le mesure, sur les 22 chapitres que le
+        capteur retient reellement, et non sur une liste ecrite a la main.
+
+        Il n'asserte PAS que les deux Prefaces s'imbriquent : cela demanderait la
+        conversion Docling, qui ne peut pas entrer dans `make test` (voir le
+        docstring du module). Cette mesure-la vit au registre §3.2, avec sa
+        commande et sa provenance. Ce que ce test etablit suffit a l'argument :
+        la propriete « aucun <h2> » est PARTAGEE, donc elle ne discrimine rien.
+
+        Cout `mesure` : +0,86 s, la lecture des balises des 22 chapitres. C'est
+        paye volontairement — il convertit une mesure ecrite dans un document,
+        recopiee trois fois sans verification, en un garde qui rougit.
+        """
+        racine = RACINE / "Datas" / "htms"
+        retenus = [f for f in sorted(racine.rglob("*.html")) if not is_front_back_matter(f.stem)]
+        assert len(retenus) == 22, (
+            f"{len(retenus)} chapitres retenus au lieu de 22 : le corpus ou le "
+            "capteur a change, et la mesure ci-dessous ne porte plus"
+        )
+        sans_h2 = [
+            f
+            for f in retenus
+            if not BeautifulSoup(f.read_text(encoding="utf-8", errors="ignore"), "lxml").find_all(
+                "h2"
+            )
+        ]
+        assert len(sans_h2) == 3, (
+            f"{len(sans_h2)} chapitres retenus sans <h2> au lieu de 3 : {[f.name for f in sans_h2]}"
+        )
+        plat = _fichier(capture["plat"])
+        assert plat in sans_h2, (
+            "le chapitre plat doit faire partie des trois : c'est ce qui rend le "
+            "contre-exemple pertinent"
+        )
+        # Les deux autres NE SONT PAS le chapitre plat, et c'est tout l'argument.
+        assert len([f for f in sans_h2 if f != plat]) == 2
+
+    def test_the_only_heading_tag_below_h1_is_a_figure_caption(self, capture):
+        """LA CAUSE MESUREE, sur ce chapitre-ci et sans generaliser.
+
+        Le chapitre porte une seule balise de titre sous <h1>, un <h6>, et c'est
+        la legende de sa figure. Docling la classe `caption` et la rattache a
+        l'image : elle ne devient donc jamais un titre. Les deux Prefaces, elles,
+        portent quatre <h6> qui sont des libelles d'admonition — Tip, Note,
+        Warning, Note — que Docling rend comme des titres.
+
+        Ce test asserte ce qui est MESURE dans la capture : 1 picture, 1 caption,
+        8 items a label de titre pour 8 <h1>. Que toute legende de figure en <h6>
+        devienne un `caption` serait une generalisation a partir d'un cas, et
+        elle n'est pas assertee ici.
+        """
+        items = capture["plat"]["items"]
+        labels = Counter(info["label"] for info in items.values())
+        assert labels["caption"] == 1
+        assert labels["picture"] == 1
+        assert len(_titres(capture["plat"])) == 8
+
+        brut = _fichier(capture["plat"]).read_text(encoding="utf-8", errors="ignore")
         soup = BeautifulSoup(brut, "lxml")
-        assert len(soup.find_all("h2")) == 0
-        assert len(soup.find_all("h1")) == 8
-        assert len(_rangs(capture["plat"])) == len(soup.find_all("h1"))
+        # Une seule balise de titre sous <h1>, et c'est la legende de la figure.
+        sous_h1 = [t for n in range(2, 7) for t in soup.find_all(f"h{n}")]
+        assert len(sous_h1) == 1
+        assert sous_h1[0].get_text(strip=True).startswith("Figure 10-1.")
 
     def test_the_two_chapters_do_not_behave_the_same(self, capture):
         """La comparaison EST le resultat : « Docling imbrique » serait faux ici,

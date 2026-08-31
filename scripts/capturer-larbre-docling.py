@@ -71,10 +71,16 @@ ENTETE = """# Arbres de titres rendus par Docling sur deux chapitres reels du co
 RACINE_CORPUS = Path("Datas/htms")
 FIXTURE = Path("tests/fixtures/arbres_docling.yaml")
 
-# Les deux chapitres, et le pourquoi de chacun. Le second est le SEUL chapitre
-# retenu du corpus sans aucune balise <h2> (`mesure` par l'audit du lot 1 sur
-# les 22) : son graphe est reellement plat, et un test qui ne couvrirait que le
-# premier lirait la platitude comme un defaut.
+# Les deux chapitres, et le pourquoi de chacun. Le second a un graphe REELLEMENT
+# plat, et un test qui ne couvrirait que le premier lirait cette platitude comme
+# un defaut.
+#
+# CE COMMENTAIRE DISAIT « le SEUL chapitre retenu du corpus sans aucune balise
+# <h2> ». C'est FAUX : ils sont trois (`mesure` sur les 22 chapitres retenus par
+# `matter.is_front_back_matter`), et les deux `Preface.html` s'imbriquent quand
+# meme — {0: 9, 1: 4} et {0: 8, 1: 4} sur le graphe vivant. « Sans aucun <h2> »
+# n'est pas la propriete discriminante ; celle qui l'est est « aucun titre rendu
+# sous le niveau de tete ». Registre §3.2.
 CHAPITRES = {
     "imbrique": "MLOps with Databricks/7. Foundation Models and Context Engineering.html",
     "plat": (

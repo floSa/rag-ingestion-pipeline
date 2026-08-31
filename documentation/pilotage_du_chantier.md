@@ -601,8 +601,13 @@ Ce que le pilote a vérifié **de ses mains**, sur la pile laissée debout
   réels à trois niveaux ;
 - **la cause du chapitre plat, recomptée sur le corpus versionné** : le nombre de
   titres de rang 0 égale le nombre de balises `<h1>` dans **22 chapitres sur
-  22**, et `Practical/…/10. Unifying GenAI Systems with MLflow.html` est le seul
-  chapitre retenu **sans aucun `<h2>`** ;
+  22**. *(Le pilote avait ajouté ici que `Practical/…/10. Unifying GenAI Systems
+  with MLflow.html` était « le seul chapitre retenu sans aucun `<h2>` ». **C'est
+  faux : ils sont trois**, et le tableau des balises était sous ses yeux. Les deux
+  `Preface.html` n'ont aucun `<h2>` non plus et **s'imbriquent quand même** —
+  `{0: 9, 1: 4}` et `{0: 8, 1: 4}` sur le graphe vivant. « Sans aucun `<h2>` »
+  n'est donc pas la propriété discriminante ; la vraie est au registre §3.2, et
+  elle est désormais assertée par `test_non_platitude.py` à pleine portée.)* ;
 - **le no-op**, dans le code : `elements.py:272` fait
   `place(element_id, heading_rank or 0)` et `docling_level_rank` rend `None`
   quand `level` est absent. La correction §3.2 ne pouvait rien changer ;

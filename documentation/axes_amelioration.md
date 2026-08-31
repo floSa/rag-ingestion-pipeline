@@ -251,15 +251,56 @@ donc **jamais** consulté. **21 chapitres imbriquent, 1 est plat.**
 **Le périmètre exact, à ne pas élargir.** Le chapitre plat est
 `Datas/htms/Practical MLflow for Generative AI on Databricks/10. Unifying GenAI Systems with MLflow.html`
 — 8 titres, tous `label=title`, tous `parent.cref == "#/body"`, tous `level`
-absent, tous de rang 0. **La cause est dans la capture, pas dans le code** :
-c'est le seul chapitre retenu qui n'a **aucune balise `<h2>`** (`h1=8`, `h6=1`,
-rien entre). Le pilote l'a recompté sur le corpus versionné : le nombre de
-titres de rang 0 **égale le nombre de `<h1>`** dans **22 chapitres sur 22**.
+absent, tous de rang 0. **La cause est dans la capture, pas dans le code.** Le
+pilote l'a recompté sur le corpus versionné : le nombre de titres de rang 0
+**égale le nombre de `<h1>`** dans **22 chapitres sur 22**.
 
-**Deux réserves de lecture, mesurées.** Les deux `Preface.html` n'imbriquent
-que par des libellés d'admonition (`Tip`, `Note`, `Warning` — des `<h6>`) et
-n'ont aucun `<h2>` : leur hiérarchie n'est pas éditoriale. Sur tout le corpus
-HTML, **55 des 513 titres imbriqués (10,7 %) sont des admonitions**.
+#### « Le seul chapitre retenu sans aucun `<h2>` » était FAUX — ils sont trois
+
+Ce constat écrivait, et le mandat §5.1 ter avec lui, que ce chapitre était « le
+seul chapitre retenu sans aucune balise `<h2>` ». **C'est faux, et le tableau des
+balises était sous les yeux de qui l'a écrit.** Remesuré par la réparation du lot
+3 sur les **22** chapitres retenus par le capteur (`matter.is_front_back_matter`
+écarte les deux `Index.html`) :
+
+```bash
+# comptage des <h2> sur les 22 chapitres retenus, sur le corpus versionné
+uv run python -c "…BeautifulSoup(f).find_all('h2')…"   # voir tests/unit/test_non_platitude.py
+```
+
+| chapitre retenu sans aucun `<h2>` | `<h1>` | `<h6>` | son graphe |
+|---|---|---|---|
+| `MLOps with Databricks/Preface.html` | 9 | 4 | **`{0: 9, 1: 4}` — il s'imbrique** |
+| `Practical MLflow…/Preface.html` | 8 | 4 | **`{0: 8, 1: 4}` — il s'imbrique** |
+| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | 1 | `{0: 8}` — **plat** |
+
+*(Distributions `mesuré`es le 31 août 2026 sur le graphe vivant des 23 documents,
+produit par le code du lot 3 : `MATCH (v:SectionHeader) RETURN
+v.SectionHeader.depth`, regroupé par racine de la chaîne `PARENT_OF`. Comptes de
+balises `mesuré`s sur le corpus versionné.)*
+
+**« Sans aucun `<h2>` » n'est donc PAS la propriété discriminante.** Deux
+chapitres sur trois la portent et s'imbriquent quand même.
+
+**Ce qui discrimine, mesuré :** le chapitre plat est le seul dont **aucune balise
+de titre sous `<h1>` ne devient un titre pour Docling**. Il n'en porte qu'une, et
+c'est la légende de sa figure — `<h6>Figure 10-1. MLflow as an integration plane
+for traces, assistants…</h6>` — que Docling classe **`caption`**, rattachée à
+l'image. Sa capture porte exactement 1 `picture` et 1 `caption`, et 8 items à
+label de titre pour 8 `<h1>`. Les deux Prefaces, elles, portent quatre `<h6>` qui
+sont des **libellés d'admonition** — `Tip`, `Note`, `Warning`, `Note` — et Docling
+les rend comme des titres, imbriqués sous le `<h1>` qui précède.
+
+**Et la formulation prudente s'arrête là.** Que « toute légende de figure en
+`<h6>` devienne un `caption` » est une généralisation à partir d'**un** cas : ce
+qui est mesuré, c'est ce chapitre-ci. La propriété qui se teste sans extrapoler
+est celle-ci, et c'est elle que `test_non_platitude.py` asserte : **le graphe d'un
+chapitre est plat quand son nombre de titres rendus égale son nombre de `<h1>`**,
+c'est-à-dire quand rien ne survit sous le niveau de tête.
+
+**Une réserve de lecture, mesurée.** Les deux `Preface.html` n'imbriquent que par
+des libellés d'admonition : leur hiérarchie n'est pas éditoriale. Sur tout le
+corpus HTML, **55 des 513 titres imbriqués (10,7 %) sont des admonitions**.
 
 **Le graphe réellement écrit** (3 documents ingérés par le lot 1, `mesuré`,
 rejoué par le pilote) : 2 288 sommets, 2 285 arêtes `PARENT_OF`, **159 arêtes
@@ -399,7 +440,7 @@ les parents qu'il vérifie (§3.3). Il couvre les deux cas (`mesuré`) :
 | chapitre | titres | distribution des rangs | `<h1>` du source |
 |---|---|---|---|
 | `MLOps with Databricks/7. Foundation Models…` | **41** | **{0: 5, 1: 10, 2: 21, 3: 5}**, 36 imbriqués | 5 |
-| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | **{0: 8}** — réellement plat | 8 |
+| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | **{0: 8}** — réellement plat | 8, et **aucun titre rendu sous le niveau de tête** |
 
 *(Ces deux lignes portaient **39 titres** et **{0: 5, 1: 10, 2: 21, 3: 3}** sous
 l'étiquette `mesuré`. **C'était faux**, et le paragraphe qui suit dit pourquoi.
@@ -478,6 +519,25 @@ plat restent vertes, puisqu'il rend 0 dans les deux cas. C'est exactement
 pourquoi il fallait les deux, et pourquoi un test à un seul cas n'aurait rien
 prouvé.
 
+**Et il asserte la bonne cause de la platitude, pas celle qui avait été
+écrite.** Le lot 3 avait recopié du §3.2 « c'est le seul chapitre retenu sans
+aucune balise `<h2>` », et son test portait une assertion nommée
+`test_the_flatness_comes_from_the_source_which_has_no_h2` : **une causalité que la
+mesure démentait.** Trois des 22 chapitres retenus n'ont aucun `<h2>`, et deux
+s'imbriquent (§3.2). Le test asserte désormais, **à pleine portée du corpus** :
+
+- que ces trois chapitres existent, et que le chapitre plat en est un — donc que
+  « sans `<h2>` » ne peut pas être la cause, puisque la propriété est partagée ;
+- que la propriété qui discrimine est **« aucun titre rendu sous le niveau de
+  tête »** : titres rendus = `<h1>` = 8 pour le plat, 41 contre 5 pour l'autre ;
+- que la cause mesurée de ce chapitre-ci est que sa seule balise de titre sous
+  `<h1>` est une **légende de figure**, que Docling classe `caption`.
+
+Coût de cette assertion à pleine portée : **+0,86 s** (`mesuré`) — la lecture des
+balises `<h2>` des 22 chapitres. C'est payé volontairement : elle convertit une
+mesure écrite dans un document, que le chantier a recopiée trois fois sans la
+vérifier, en un garde qui rougit.
+
 **Il prouve qu'il a atteint le chapitre qu'il croit**, par l'empreinte SHA-256 du
 HTML brut versionné **et** par celle du HTML nettoyé, que le test recalcule en
 faisant tourner le vrai nettoyage. Deux développeurs de ce chantier s'étaient
@@ -513,11 +573,25 @@ dont le `pyproject.toml` dit que « les deps lourdes d'extraction vivent dans
 `Dockerfile.docling` », faire porter cela à `make install` n'était pas
 défendable.
 
-**Coût sur `make test`** : **+1,26 s** (10,31 s contre 9,05 s sans lui, `mesuré`),
-soit +14 %. Le nettoyage réel des deux chapitres en est l'essentiel — 0,90 s et
-0,05 s. **Aucun marquage** : ni `slow`, ni `skip`, ni `xfail`. Un marqueur
-sortirait le test de la porte par défaut, et un garde qu'on n'exécute pas n'est
-pas un garde ; 1,26 s ne le justifie pas.
+**Coût, remesuré après la réparation** (`mesuré`,
+`pytest tests/unit/test_non_platitude.py --durations=5`) : le fichier entier
+tient en **2,57 s**, dont deux postes qui font tout le reste —
+
+| poste | coût |
+|---|---|
+| `test_the_real_cleaning_still_produces_what_was_captured` (le nettoyage réel des deux chapitres) | **0,99 s** |
+| `test_the_absence_of_h2_is_shared_by_three_chapters_so_it_explains_nothing` (les balises des 22 chapitres) | **0,90 s** |
+| tout le reste, 12 tests | < 0,3 s |
+
+La livraison du lot 3 mesurait **+1,26 s** sur `make test` ; la réparation ajoute
+la seconde du contre-exemple à pleine portée. **C'est payé volontairement** : ce
+poste-là convertit en garde une mesure qui vivait dans un document et que le
+chantier a recopiée trois fois sans la vérifier — c'est précisément comme cela
+que « le seul chapitre sans `<h2>` » a survécu du lot 1 au lot 3.
+
+**Aucun marquage** : ni `slow`, ni `skip`, ni `xfail`. Un marqueur sortirait le
+test de la porte par défaut, et un garde qu'on n'exécute pas n'est pas un garde ;
+deux secondes et demie sur une suite de 11 s ne le justifient pas.
 
 ### 3.5 La chaîne d'images HTML est ROMPUE — mesuré, 199 images sans `minio_url`
 
