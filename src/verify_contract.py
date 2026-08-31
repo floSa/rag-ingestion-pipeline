@@ -121,6 +121,35 @@ def racine_de_chaque_element(peres: Mapping[str, str]) -> dict[str, str]:
     return racines
 
 
+def rattacher_au_document(
+    peres: Mapping[str, str], aretes: Sequence[tuple[str, int, int]]
+) -> list[tuple[str, int, int]]:
+    """Remplace l'extremite fille de chaque arete par le document qui la porte.
+
+    C'EST LA COMPOSITION, ET C'EST ELLE QUI PORTE LE DEFAUT. Prise seule,
+    :func:`racine_de_chaque_element` a l'air d'une commodite ; c'est en la
+    composant avec :func:`inversions_de_page` qu'on voit ce qu'elle garde.
+    Neutraliser sa remontee rend chaque element a lui-meme, donc chaque
+    « document » du groupement ne porte plus qu'UNE arete, donc plus aucune
+    inversion n'est possible : **le seul controle d'ordre du contrat (exigence 4)
+    devient inerte, en rendant zero anomalie.** `mesure` : sur un graphe portant
+    une vraie inversion, le code livre rapporte ``[('doc', 2, 9, 2)]`` et la
+    mutation rapporte ``[]``.
+
+    Cette fonction existe donc pour que la composition soit testable sans graphd,
+    et non pour factoriser une ligne.
+
+    Args:
+        peres: Le parent de chaque element, tel que le rendent les aretes.
+        aretes: Triplets ``(element, sequence, page_no)``.
+
+    Returns:
+        Les memes triplets, l'element remplace par la racine de sa chaine.
+    """
+    racines = racine_de_chaque_element(peres)
+    return [(racines.get(element, element), sequence, page) for element, sequence, page in aretes]
+
+
 def sources_sans_chemin(metadatas: Sequence[Mapping[str, Any]]) -> int:
     """Compte les chunks dont ``source_path`` est vide (exigence 3).
 
@@ -340,8 +369,7 @@ def _lire_les_aretes(session: Any) -> list[tuple[str, int, int]]:
         page = 0 if ligne[3].is_null() else int(ligne[3].as_int())
         brut.append((fils, int(ligne[2].as_int()), page))
 
-    racines = racine_de_chaque_element(peres)
-    return [(racines.get(fils, fils), sequence, page) for fils, sequence, page in brut]
+    return rattacher_au_document(peres, brut)
 
 
 def _lire_les_urls_visuelles(session: Any) -> list[str | None]:

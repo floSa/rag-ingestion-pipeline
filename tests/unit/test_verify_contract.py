@@ -20,6 +20,8 @@ from src.verify_contract import (
     chunks_incoherents,
     images_sans_url,
     inversions_de_page,
+    racine_de_chaque_element,
+    rattacher_au_document,
     sources_sans_chemin,
 )
 
@@ -67,6 +69,95 @@ class TestInversionsDePage:
 
     def test_no_edge_no_inversion(self):
         assert inversions_de_page([]) == []
+
+
+class TestRacineDeChaqueElement:
+    """Le rattachement au document, et RIEN NE LE GARDAIT.
+
+    `mesure` : neutraliser la remontee de `racine_de_chaque_element` laissait 639
+    tests verts, et `test_verify_contract.py` n'IMPORTAIT MEME PAS cette
+    fonction. *Ce qu'un test n'importe pas, il ne teste pas.*
+
+    Ce qu'elle garde n'est pas visible sur elle seule : c'est la classe suivante,
+    la COMPOSITION, qui montre que sa neutralisation rend le seul controle
+    d'ordre du contrat inerte — en rendant zero anomalie, ce qui se lit comme un
+    succes.
+    """
+
+    def test_a_direct_child_is_attached_to_its_document(self):
+        assert racine_de_chaque_element({"a": "doc"}) == {"a": "doc"}
+
+    def test_a_deep_chain_walks_all_the_way_up(self):
+        """Le graphe reel va jusqu'a 5 sauts (registre §3.2)."""
+        peres = {"e": "d", "d": "c", "c": "b", "b": "a", "a": "doc"}
+        racines = racine_de_chaque_element(peres)
+        assert racines == dict.fromkeys("abcde", "doc")
+
+    def test_two_documents_do_not_bleed_into_each_other(self):
+        """La raison d'etre de la fonction : `sequence` repart a 0 par document."""
+        peres = {"a1": "doc1", "b1": "a1", "a2": "doc2", "b2": "a2"}
+        racines = racine_de_chaque_element(peres)
+        assert racines == {"a1": "doc1", "b1": "doc1", "a2": "doc2", "b2": "doc2"}
+
+    def test_a_cycle_is_returned_to_itself_instead_of_looping_forever(self):
+        """Le graphe est acyclique aujourd'hui ; un controle ne doit pas en dependre."""
+        racines = racine_de_chaque_element({"a": "b", "b": "a"})
+        assert set(racines) == {"a", "b"}
+
+    def test_an_element_with_no_parent_is_absent_from_the_result(self):
+        assert racine_de_chaque_element({}) == {}
+
+
+class TestLaCompositionQuiPorteLOrdre:
+    """LE GARDE DE M12. Le controle d'ordre passe par le rattachement.
+
+    `inversions_de_page` groupe par document. Si le rattachement rend chaque
+    element a lui-meme, chaque groupe ne porte plus qu'UNE arete, et une seule
+    arete ne peut pas etre en desordre : le controle rend zero anomalie sur un
+    graphe reellement casse.
+
+    C'est la leçon « asserte depuis le cote qui PRODUIT le comportement » : un
+    test de `racine_de_chaque_element` seule aurait pu passer sans que le
+    controle d'ordre soit garde.
+    """
+
+    # Deux documents, chacun a deux niveaux, et une VRAIE inversion de page dans
+    # le premier : l'element vu en sequence 2 est en page 2 alors que la
+    # sequence 1 etait en page 9.
+    PERES = {"t1": "docA", "p1": "t1", "p2": "t1", "t2": "docB", "p3": "t2"}
+    ARETES = [
+        ("t1", 0, 1),
+        ("p1", 1, 9),
+        ("p2", 2, 2),  # <- l'inversion
+        ("t2", 0, 1),
+        ("p3", 1, 3),
+    ]
+
+    def test_the_inversion_is_reported_once_attached_to_its_document(self):
+        rattachees = rattacher_au_document(self.PERES, self.ARETES)
+        assert inversions_de_page(rattachees) == [("docA", 2, 9, 2)]
+
+    def test_without_the_attachment_the_very_same_graph_looks_clean(self):
+        """LE TEMOIN, et c'est lui le resultat.
+
+        Sans rattachement, chaque element est son propre groupe : la meme
+        inversion devient invisible. C'est ce que la mutation produit, et c'est
+        pourquoi ce garde asserte la composition et non la fonction seule.
+        """
+        non_rattachees = [(element, sequence, page) for element, sequence, page in self.ARETES]
+        assert inversions_de_page(non_rattachees) == []
+
+    def test_the_second_document_is_not_polluted_by_the_first(self):
+        """Un document sain reste sain : le garde ne rougit pas au hasard."""
+        rattachees = rattacher_au_document(self.PERES, self.ARETES)
+        assert [
+            anomalie for anomalie in inversions_de_page(rattachees) if anomalie[0] == "docB"
+        ] == []
+
+    def test_a_clean_two_document_graph_reports_nothing(self):
+        peres = {"t1": "docA", "p1": "t1", "t2": "docB", "p2": "t2"}
+        aretes = [("t1", 0, 1), ("p1", 1, 2), ("t2", 0, 1), ("p2", 1, 2)]
+        assert inversions_de_page(rattacher_au_document(peres, aretes)) == []
 
 
 class TestSourcesSansChemin:

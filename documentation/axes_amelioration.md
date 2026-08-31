@@ -705,10 +705,54 @@ n'enregistrait quel modèle avait écrit l'index : un `.env` changé entre deux
 ingestions laissait une collection portant des vecteurs de **deux** modèles,
 tous deux en 384 dimensions. `vectors._inscrire_le_modele` inscrit le modèle sur
 la collection à l'ouverture, et **lève** si elle en porte un autre — le job
-échoue plutôt que d'écrire un index mixte (`mesuré` : la levée se produit).
-`verify_contract` lit la même inscription après coup. Un index écrit avant ce
-garde n'est pas déclaré bon : il est déclaré **non traçable**, ce qui n'est pas
-la même chose.
+échoue plutôt que d'écrire un index mixte. `verify_contract` lit la même
+inscription après coup. Un index écrit avant ce garde n'est pas déclaré bon : il
+est déclaré **non traçable**, ce qui n'est pas la même chose.
+
+#### La levée n'était gardée par RIEN, et c'est le garde le plus important du lot
+
+Cette section écrivait « (`mesuré` : la levée se produit) ». **C'est une
+observation faite à la main une fois, pas un garde**, et la distinction est
+exactement celle que ce chantier traque. `mesuré` par l'audit du lot 3 :
+remplacer le `raise` de `vectors.py` par un `logger.warning` laissait **639 tests
+verts**. Le garde contre la panne la plus coûteuse du système — exigence 1 du
+contrat — reposait sur une relecture.
+
+**Et il n'existait aucun `tests/unit/test_vectors.py`, pour une raison
+mécanique.** `vectors.py` importait `chromadb` au niveau du module, et `chromadb`
+n'est pas dans le venv du dépôt : aucun test ne pouvait importer le module.
+C'est **le même défaut** que `index_report` (§3.4), `verify_contract` (ci-dessus)
+et `verify_data` (§4.5) — le lot 3 l'avait fermé sur trois modules et manqué le
+quatrième, **le seul des quatre dont le contrat est un `raise`**. L'import est
+différé dans `get_collection`, et `tests/unit/test_vectors.py` existe.
+
+Il porte ses deux témoins, sans lesquels il serait creux : le **même** modèle
+écrit sous son nom préfixé `sentence-transformers/` ne doit **pas** lever — sinon
+un garde qui lève sur tout passerait —, et la panne est assertée **dans les deux
+sens**, la collection portant le bon modèle et l'ingestion tournant avec le
+mauvais étant la même panne renversée.
+
+#### Le seul contrôle d'ordre du contrat était neutralisable en silence
+
+`mesuré` par l'audit : neutraliser la remontée de
+`verify_contract.racine_de_chaque_element` laissait **639 tests verts**, et
+`test_verify_contract.py` **n'importait même pas cette fonction** — *ce qu'un
+test n'importe pas, il ne teste pas.*
+
+**La conséquence n'est pas une anomalie manquée, c'est un succès faux.**
+`inversions_de_page` groupe par document ; si le rattachement rend chaque élément
+à lui-même, chaque groupe ne porte plus qu'**une** arête, et une seule arête ne
+peut pas être en désordre. Le contrôle rend donc **zéro anomalie** sur un graphe
+réellement cassé. Mesuré sur un graphe portant une vraie inversion de page : le
+code livré rapporte `[('doc', 2, 9, 2)]`, la mutation rapporte `[]`.
+
+**Le garde asserte la COMPOSITION, et pas la fonction seule.** Prise isolément,
+`racine_de_chaque_element` a l'air d'une commodité, et un test de son seul
+contrat aurait pu passer sans que l'ordre soit gardé. La composition vit
+désormais dans `verify_contract.rattacher_au_document`, fonction pure — elle
+existe pour être testable sans graphd, non pour factoriser une ligne — et le
+garde porte son **témoin** : les mêmes arêtes **sans** rattachement rendent zéro
+inversion. C'est ce témoin qui est le résultat.
 
 **Ces contrôles n'étaient testables par rien**, le module faisant ses imports de
 `chromadb` et `nebula3` au niveau du module. Ils sont différés dans `main`, les
@@ -742,6 +786,28 @@ ceux de la première.
 Le garde passe par un **sous-processus** : un `import` de plus dans
 l'interpréteur courant ne rejouerait pas un module déjà chargé, donc le test
 serait vert des deux côtés du défaut.
+
+**Mais le lot 3 avait gardé l'import et LAISSÉ LE CODE DE SORTIE.** `mesuré` par
+son audit : remplacer le `sys.exit(1)` de `main()` par `sys.exit(0)` laissait
+**639 tests verts**. C'est **mot pour mot** la leçon que le lot 0 a payée sur
+`wipe_stores` — « un code de sortie documenté et justifié n'était asserté nulle
+part » — et l'équivalent y est gardé par cinq tests depuis `1c002f2`. Le même
+défaut, dans le même dépôt, sur le module d'à côté, quatre lots plus tard.
+
+Le garde est **décliné de celui de `wipe_stores`**, et pour la même raison : le
+code de sortie **est** le comportement, pas son témoin. C'est ce qu'un
+`docker compose exec` remonte et ce qu'un `&&` lit dans une procédure
+d'avant-vol. Un `import` laisserait attraper `SystemExit` — prouver qu'un objet a
+été levé, pas que la commande échoue. Les trois clients de stores sont bouchonnés
+comme de vrais paquets en tête de `PYTHONPATH`, et non dans `sys.modules` : sinon
+les bouchons survivraient au test et l'ordre des tests deviendrait significatif.
+
+Quatre chemins d'échec sont couverts, et le quatrième est celui qu'on oublie :
+ChromaDB injoignable, MinIO injoignable, `pool.init` qui rend **`False`** — une
+branche distincte de l'exception —, et une **requête nGQL rejetée** alors que les
+trois stores répondent. Sans ce dernier, un garde qui n'observerait que les
+connexions serait vert sur un graphd debout dont le space n'existe pas. Plus le
+témoin : les trois stores debout sortent en **0**.
 
 ### 4.6 Un nettoyage peut jeter 95 % du texte sans que rien ne le dise
 

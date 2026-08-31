@@ -13,6 +13,7 @@ serait vert des deux cotes du defaut.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +21,133 @@ from pathlib import Path
 from src.verify_data import report
 
 RACINE = Path(__file__).resolve().parents[2]
+
+# Bouchons des trois clients de stores, ecrits sur disque et places en tete de
+# PYTHONPATH. Le meme montage que `test_wipe_stores.py`, et pour les memes deux
+# raisons : `chromadb` et `nebula3` ne sont pas dans le venv du depot, et
+# bouchonner `sys.modules` dans l'interpreteur courant laisserait les bouchons
+# derriere soi — l'ordre des tests deviendrait significatif.
+#
+# `VD_ECHECS` nomme les stores qui doivent tomber en panne.
+_COMMUN = """
+import os
+
+
+def doit_echouer(store):
+    return store in os.environ.get("VD_ECHECS", "").split(",")
+"""
+
+BOUCHONS = {
+    "_bouchon_vd.py": _COMMUN,
+    "chromadb/__init__.py": """
+from _bouchon_vd import doit_echouer
+
+
+class _Collection:
+    def count(self):
+        return 4365
+
+
+class HttpClient:
+    def __init__(self, host=None, port=None):
+        if doit_echouer("chroma"):
+            raise RuntimeError("chromadb injoignable")
+
+    def get_collection(self, nom):
+        return _Collection()
+""",
+    "minio/__init__.py": """
+from _bouchon_vd import doit_echouer
+
+
+class Minio:
+    def __init__(self, endpoint, access_key=None, secret_key=None, secure=False):
+        if doit_echouer("minio"):
+            raise RuntimeError("minio injoignable")
+
+    def list_objects(self, bucket, recursive=False):
+        return [object(), object()]
+""",
+    "nebula3/__init__.py": "",
+    "nebula3/Config.py": """
+class Config:
+    pass
+""",
+    "nebula3/gclient/__init__.py": "",
+    "nebula3/gclient/net.py": """
+from _bouchon_vd import doit_echouer
+
+
+class _Valeur:
+    def get_iVal(self):
+        return 15196
+
+
+class _Ligne:
+    values = [_Valeur()]
+
+
+class _Reponse:
+    def is_succeeded(self):
+        return not doit_echouer("nebula_requete")
+
+    def error_msg(self):
+        return "requete rejetee"
+
+    def rows(self):
+        return [_Ligne()]
+
+
+class _Session:
+    def execute(self, requete):
+        return _Reponse()
+
+    def release(self):
+        pass
+
+
+class ConnectionPool:
+    def init(self, adresses, config):
+        return not doit_echouer("nebula")
+
+    def get_session(self, utilisateur, mot_de_passe):
+        return _Session()
+
+    def close(self):
+        pass
+""",
+}
+
+
+def _controler(tmp_path: Path, echecs: str = ""):
+    """Lance `python -m src.verify_data` pour de bon, stores bouchonnes.
+
+    Args:
+        tmp_path: Repertoire de travail du sous-processus. Pas de `.env` dedans,
+            donc les reglages sont ceux du code et non ceux du poste.
+        echecs: Stores qui doivent echouer, separes par des virgules, parmi
+            `chroma`, `minio`, `nebula` et `nebula_requete`.
+
+    Returns:
+        Le processus termine.
+    """
+    bouchons = tmp_path / "bouchons"
+    for chemin, source in BOUCHONS.items():
+        cible = bouchons / chemin
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.write_text(source, encoding="utf-8")
+
+    environnement = dict(os.environ)
+    environnement["PYTHONPATH"] = os.pathsep.join([str(bouchons), str(RACINE)])
+    environnement["VD_ECHECS"] = echecs
+    return subprocess.run(
+        [sys.executable, "-m", "src.verify_data"],
+        cwd=tmp_path,
+        env=environnement,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
 
 
 class TestLImportNeFaitRien:
@@ -73,3 +201,67 @@ class TestReport:
         second: list[str] = []
         report("chunks", "0", second)
         assert second == []
+
+
+class TestLesBouchonsFonctionnent:
+    """Sans ceci, « les trois stores repondent » serait vrai pour la mauvaise raison."""
+
+    def test_le_sous_processus_a_bien_charge_les_bouchons(self, tmp_path):
+        acheve = _controler(tmp_path)
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert "--- ChromaDB ---" in acheve.stdout
+        assert "--- MinIO ---" in acheve.stdout
+        assert "--- NebulaGraph ---" in acheve.stdout
+        # Les valeurs viennent bien des bouchons, donc les controles ont TOURNE.
+        assert "4365" in acheve.stdout
+        assert "15196" in acheve.stdout
+
+
+class TestLeCodeDeSortieEstLeComportement:
+    """M20 : `sys.exit(1)` de `main()` n'etait asserte NULLE PART.
+
+    `mesure` : le remplacer par `sys.exit(0)` laissait 639 tests verts. C'est mot
+    pour mot la leçon que le lot 0 a payee sur `wipe_stores` — « un code de sortie
+    documente et justifie n'etait asserte nulle part » — et l'equivalent y est
+    garde par cinq tests depuis `1c002f2`.
+
+    Le code de sortie EST le comportement, pas son temoin : c'est ce qu'un
+    `docker compose exec` remonte et ce qu'un `&&` lit dans une procedure
+    d'avant-vol. Un `import` laisserait attraper `SystemExit` — prouver qu'un
+    objet a ete leve, pas que la commande echoue. D'ou le sous-processus.
+    """
+
+    def test_les_trois_stores_debout_sortent_en_zero(self, tmp_path):
+        acheve = _controler(tmp_path)
+        assert acheve.returncode == 0
+        assert "Les trois stores repondent." in acheve.stdout
+
+    def test_un_chromadb_injoignable_fait_sortir_en_un(self, tmp_path):
+        acheve = _controler(tmp_path, echecs="chroma")
+        assert acheve.returncode == 1
+        assert "controle(s) en echec" in acheve.stdout
+
+    def test_un_minio_injoignable_fait_sortir_en_un(self, tmp_path):
+        acheve = _controler(tmp_path, echecs="minio")
+        assert acheve.returncode == 1
+
+    def test_un_graphd_injoignable_fait_sortir_en_un(self, tmp_path):
+        """Le `pool.init` qui rend False, et non une exception : l'autre branche."""
+        acheve = _controler(tmp_path, echecs="nebula")
+        assert acheve.returncode == 1
+
+    def test_une_requete_ngql_rejetee_fait_sortir_en_un(self, tmp_path):
+        """Les stores repondent, mais le graphe refuse : un cas distinct des trois.
+
+        Sans lui, un garde qui n'observerait que les connexions serait vert sur
+        un graphd debout dont le space n'existe pas.
+        """
+        acheve = _controler(tmp_path, echecs="nebula_requete")
+        assert acheve.returncode == 1
+
+    def test_le_bilan_nomme_les_controles_en_echec(self, tmp_path):
+        """Le code de sortie dit QU'il y a un probleme ; le bilan dit lequel."""
+        acheve = _controler(tmp_path, echecs="chroma,minio")
+        assert acheve.returncode == 1
+        assert "2 controle(s) en echec" in acheve.stdout
+        assert "connexion" in acheve.stdout

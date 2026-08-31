@@ -25,8 +25,6 @@ from collections.abc import Sequence
 from functools import lru_cache
 from typing import Any
 
-import chromadb
-
 from src.docling_service import chunking
 from src.docling_service.anchoring import block_size, resolve_anchors
 from src.docling_service.blocks import has_content
@@ -52,7 +50,18 @@ def get_collection() -> Any:
 
     Le client est conserve : en ouvrir un par lot d'ecriture rouvrait une
     connexion HTTP toutes les quelques pages.
+
+    `chromadb` est importe ICI et non au niveau du module, et ce n'est pas un
+    detail de style. Il n'est pas dans le venv du depot — les deps lourdes
+    d'extraction vivent dans ``Dockerfile.docling`` — donc un import de module
+    rendait ``src.docling_service.vectors`` INIMPORTABLE cote hote, et
+    ``_inscrire_le_modele`` intestable. C'est le meme defaut mecanique que
+    ``index_report``, ``verify_contract`` et ``verify_data`` (registre §3.4,
+    §4.4, §4.5), sur le quatrieme module — et le seul des quatre dont le contrat
+    est un `raise`. *Ce qu'un test n'importe pas, il ne teste pas.*
     """
+    import chromadb
+
     global _collection
     with _collection_lock:
         if _collection is None:
