@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from src.index_report import FenetreMesuree, mesurer_la_fenetre
+from src.index_report import FenetreMesuree, compter_les_documents, mesurer_la_fenetre
 
 
 def compter_les_mots(texte: str) -> int:
@@ -102,3 +102,70 @@ class TestLeModuleResteImportableSansModele:
             text=True,
         )
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+
+
+class TestCompterLesDocuments:
+    """L'IDENTITE D'UN DOCUMENT EST `source_path`, JAMAIS `filename` SEUL.
+
+    `index_report:116` comptait `{m.get("filename")}` et rendait **22** alors que
+    le graphe porte **23** documents. `mesure` le 31 aout 2026 sur l'index
+    complet : 22 `filename` distincts contre 23 `source_path`, et la seule
+    collision est `Preface` — le corpus contient deux `Preface.html`, un par
+    ouvrage.
+
+    C'est EXACTEMENT le cas d'ecole que l'exigence 3 du contrat cite comme sa
+    preuve, dans un fichier que le lot 3 a reecrit. Et deux lignes plus bas, le
+    bloc « Profondeur de hierarchie » du meme fichier utilisait correctement
+    `source_path` : les deux identites cohabitaient dans la meme fonction.
+    """
+
+    # Le cas reel, reduit a l'essentiel : deux ouvrages, un `Preface` chacun.
+    LES_DEUX_PREFACES = [
+        {
+            "filename": "Preface",
+            "source_path": ".cleaned/htms/MLOps with Databricks/Preface.html",
+        },
+        {
+            "filename": "Preface",
+            "source_path": (
+                ".cleaned/htms/Practical MLflow for Generative AI on Databricks/Preface.html"
+            ),
+        },
+    ]
+
+    def test_two_prefaces_from_two_books_count_as_two_documents(self):
+        assert compter_les_documents(self.LES_DEUX_PREFACES) == 2
+
+    def test_counting_by_filename_would_have_said_one(self):
+        """LE TEMOIN, et c'est lui le resultat.
+
+        Sans lui, le test ci-dessus se lirait comme un truisme. Il montre que les
+        deux comptes DIVERGENT sur ce cas precis, et de combien.
+        """
+        assert len({m["filename"] for m in self.LES_DEUX_PREFACES}) == 1
+
+    def test_two_chunks_of_the_same_document_count_once(self):
+        metas = [{"filename": "a", "source_path": "livre/a.html"}] * 5
+        assert compter_les_documents(metas) == 1
+
+    def test_a_missing_source_path_does_not_crash_and_counts_as_one_unknown(self):
+        """Un chunk sans chemin est deja une anomalie de `verify_contract`.
+
+        Ce compteur ne doit ni lever ni compter chaque inconnu separement : il
+        rendrait un nombre de documents superieur au reel, ce qui est le defaut
+        inverse et tout aussi silencieux.
+        """
+        metas = [{"filename": "a"}, {"filename": "b"}, {"source_path": "livre/c.html"}]
+        assert compter_les_documents(metas) == 2
+
+    def test_an_empty_index_counts_zero(self):
+        assert compter_les_documents([]) == 0
+
+    def test_the_same_stem_in_two_books_is_the_general_case_not_just_preface(self):
+        """`Index.html` est ecarte par le capteur, `Preface.html` non — mais la
+        propriete ne depend pas du nom : elle vaut pour tout fichier homonyme."""
+        metas = [
+            {"filename": "1. Introduction", "source_path": "htms/livre A/1. Introduction.html"},
+            {"filename": "1. Introduction", "source_path": "htms/livre B/1. Introduction.html"},
+        ]
+        assert compter_les_documents(metas) == 2

@@ -123,7 +123,7 @@ class TestExceedsBodySize:
 class TestFallbackRank:
     """Le rang de REPLI, et le compteur qui manquait.
 
-    `mesure` sur le seul PDF du corpus : 40 titres sur 86 (46 %) recoivent ce
+    `mesure` sur le seul PDF du corpus : 39 titres sur 87 (45 %) recoivent ce
     rang, et non un rang mesure — le PDF ne classe que trois niveaux. Les
     profondeurs relevees dans le graphe melangeaient donc trois niveaux mesures
     et un empilement par defaut, et RIEN ne le comptait (registre 4.21).

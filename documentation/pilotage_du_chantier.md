@@ -484,6 +484,32 @@ au [§1 du registre](axes_amelioration.md).
   principal**, ou sache ce que tu ancres.
 - **Un chapitre était capturé deux fois**, texte identique au caractère près :
   le doublon a été retiré avant le chantier.
+- **SUR UN POSTGRES DAGSTER VIERGE, `docker compose up -d` DÉCLENCHE L'INGESTION
+  COMPLÈTE DU CORPUS, EN SILENCE, 15 s APRÈS LE DÉMARRAGE** (`mesuré`, 31 août
+  2026). Ce n'est **pas** un défaut : c'est `default_status=RUNNING` sur les
+  sensors d'ingestion (§4.18, fermé par le lot 0b) plus des curseurs vides. C'est
+  le comportement voulu. **Mais ce n'était écrit nulle part**, et il n'y a aucun
+  avertissement au démarrage.
+
+  Corollaire, et c'est lui qu'il faut retenir : **la copie de
+  `Datas/database/postgres` est le maillon qui l'empêche**, et c'est précisément
+  celui qui a échoué au lot 3 — le répertoire appartient à `root` dans le
+  conteneur, `Permission denied`.
+
+  **Le geste, avant le premier `up` sur un poste dont tu veux garder les
+  mesures** : soit copier le Postgres en `sudo`, soit
+  `docker compose up -d && docker compose stop dagster-daemon` — ou mieux,
+  arrêter le daemon **avant** que les sensors n'aient un tick. Sinon les stores
+  sont réécrits par une ingestion que personne n'a demandée, et l'antécédent de
+  toute mesure en cours est perdu.
+- **Le service Docling monte `/app/src` depuis le CLONE PRINCIPAL, pas depuis ton
+  arbre de travail.** Donc `docker compose exec docling-service python -m
+  src.<module>` exécute le code de `main`, quelle que soit la branche que tu as
+  sortie. `mesuré` : la même commande rend `rc=0` « Contrat respecté » avec le
+  code de `main` et `rc=1` avec deux anomalies avec celui de la réparation du
+  lot 3. Et un `rc=1` peut venir d'un `ImportError` plutôt que d'un garde. **Le
+  pilote s'y est fait prendre.** Le geste — monter son propre `src` — est au
+  registre §4.27.
 
 ---
 
@@ -627,6 +653,46 @@ l'était pas — le `.venv` existait, son `python` étant un lien vers
 l'interpréteur partagé d'`uv`. Le piège était **armé, pas déclenché**. Mesure
 l'état, ne déduis pas la conséquence.
 
+### 5.1 quater Le lot 3 : livré, audité, réparé
+
+Onze commits de livraison, puis six de réparation. Le détail vit au registre.
+
+**Ce que l'audit a établi, et qui est à son crédit** : aucune régression, les six
+points du mandat livrés plus §4.5 et §4.14, et **tous ses chiffres reproduits** —
+sur le graphe comme sur ChromaDB — par l'audit et par le pilote. Le lot était bon.
+
+**Les cinq bloquants, et le premier est le plus instructif :**
+
+1. **la fixture assertait ce que la production ne produit pas.**
+   `document.iterate_items()` ne rend jamais les nœuds de groupe, la capture en
+   omettait 262, et deux titres perdaient leur rang **en silence** dans le filtre
+   des `None`. Le test assertait 39 titres là où le graphe en porte **41**. Et le
+   coût dépassait deux titres : **le test bâti sur du réel était aveugle au
+   mécanisme même qu'il existe pour éprouver sur du réel** — la mutation
+   « conteneurs anonymes comptés comme des titres » le laissait vert, et seul
+   l'arbre fabriqué à la main la voyait. Registre §3.6 bis ;
+2. **« le seul chapitre sans `<h2>` »** : ils sont **trois**, et deux s'imbriquent.
+   Le faux est né au lot 1, le pilote l'a recopié deux fois en ayant le tableau des
+   balises sous les yeux, et le lot 3 l'a recopié de lui, jusque dans le nom d'un
+   test. Registre §3.2 ;
+3. **trois gardes neufs que rien ne gardait** — M15 (la levée contre le mélange de
+   deux modèles d'embedding), M12 (le seul contrôle d'ordre du contrat), M20 (le
+   code de sortie de `verify_data`). Registre §4.4 et §4.5 ;
+4. **`verify_contract` avait cinq trous**, dont `rc=0` sur un index vide — et tous
+   ses contrôles vivent derrière ce garde. Registre §4.4 ;
+5. **`index_report` comptait les documents par `filename`** et rendait 22 pour 23,
+   les deux `Preface.html` se confondant. Le cas d'école que l'exigence 3 cite
+   comme sa preuve, dans un fichier que le lot venait de réécrire.
+
+**La leçon de pilotage, et elle est nouvelle.** Le lot 3 a fait exactement ce
+qu'on lui demandait — bâtir le test sur des captures réelles plutôt que sur un
+arbre fabriqué — et **c'est cette bonne décision qui a produit le défaut** : une
+capture est une donnée, et une donnée peut être incomplète sans que rien ne le
+dise. Le test rejouait un algorithme de **remontée** sur une fixture qui ne
+portait que les nœuds de contenu. **Quand un test rejoue un parcours, sa fixture
+doit porter le graphe complet, pas seulement les nœuds qui l'intéressent** — et
+la seule façon de le savoir est de compter ce qu'on jette.
+
 ### 5.2 Le lot 0 : livré, audité, réparé, fusionné
 
 Le détail complet — les six points de réparation, la conception retenue pour
@@ -717,7 +783,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné en garde-fou. *(La justification d'origine ajoutait « sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres ». C'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**, et `.env` est ignoré par git, donc jamais indexé — l'installer ne le fera jamais scanner. Le gain réel est prospectif, et il est réel : empêcher qu'un secret parte un jour dans un fichier **versionné**. Registre §5.5.)* Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | ✅ **fusionné le 31 août 2026** (`e998e7d`) — et ce ne fut pas court : cinq conversations, dix commits, **deux** tours d'audit indépendant. Il a livré en plus un contrôle d'identité **inconditionnel**, les commits de **fusion** couverts, le corpus versionné **soustrait aux hooks**, et une installation en **un geste** — `make install` — qui vérifie son propre résultat |
 | **1** | **Observer sans corriger.** Monter la pile, reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + le PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** | ✅ **mesuré le 31 août 2026**, sans aucun commit — et son audit indépendant a élargi la mesure de 2 chapitres à **22**. Résultats au registre §3.2, §3.4, §3.5 et §4.21 à §4.27 |
 | **2** | ~~La hiérarchie des titres~~ | — | ❌ **SUPPRIMÉ le 31 août 2026.** Pas parce que le graphe est imbriqué — il l'est à 21/22 — mais parce que **la correction qu'il portait est un no-op** : `level` est absent sur les titres concernés et `elements.py:272` fait `heading_rank or 0`, donc le rang reste 0 (registre §3.2). §3.3 est **retourné** : les deux tests qu'il fallait « amender ensemble » assertent le comportement juste. §4.11 en sort vivant et monte au lot 3 ; §4.12 reste consigné inerte avec sa vraie condition d'activation — l'entrée d'un Markdown au corpus |
-| **3** | **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — dix commits, **639 tests** (contre 552), **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24, §5.3 et §6.16, et corrigé **trois affirmations fausses du plan lui-même**. **À auditer**
+| **3** | **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — **onze** commits, **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24 et §5.3. **Audité, puis RÉPARÉ** : l'audit n'a trouvé aucune régression et a reproduit tous ses chiffres, mais cinq bloquants — dont la fixture du test de non-platitude, qui assertait 39 titres là où la production en produit 41. Voir §5.1 quater. *(Cette case portait « dix commits » : un compte ne peut pas s'inclure lui-même, et le lot 0b s'était fait prendre pareil. Elle portait aussi « il a fermé §6.16 » : le registre le garde **ouvert**, et le registre a raison — la moitié « écrire au contrat côté agent » n'est pas faite. Le compte de tests a été retiré : son site canonique est `README.md`, section Tests.)*
 | **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme) | la certitude que le corpus ingéré est le corpus complet | à faire |
 | **5** | Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre | la lisibilité, et l'arrêt des faux réglages | à faire |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | à faire |
@@ -1052,6 +1118,16 @@ chiffre. Relis le code avant d'affirmer ce qu'il fait.
 >
 > **Relis cette annexe contre `git` avant de la coller.** La pointe de `main`,
 > le chemin du dépôt et l'état de la pile sont des faits de poste.
+>
+> ⚠️ **CETTE ANNEXE EST PÉRIMÉE, ET ELLE N'A PAS ÉTÉ TOUCHÉE À DESSEIN.** C'est le
+> prompt du lot 3, **consommé**. Il porte au moins trois chiffres et une consigne
+> qui ne valent plus : « quatre fichiers ne sont pas format-propres » (il n'y en a
+> plus aucun), « `make all` SORT EN 2 SUR MAIN, ET C'EST LE VERT ATTENDU » (il
+> rend **0** — §2.4), « 552 tests » (site canonique : `README.md`), et l'état de
+> la pile décrit au §4.26, désormais traité. La réparation du lot 3 ne l'a pas
+> réécrite parce que **le pilote la remplacera après fusion** par le prompt du lot
+> 4 : réécrire un prompt consommé en produirait un troisième état à tenir à jour.
+> **Ne la colle pas.**
 
 ```
 Tu es le developpeur du LOT 3 sur le depot rag-ingestion-pipeline.

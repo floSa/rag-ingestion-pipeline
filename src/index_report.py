@@ -85,6 +85,31 @@ def mesurer_la_fenetre(
     )
 
 
+def compter_les_documents(metadatas: Sequence[Mapping[str, Any]]) -> int:
+    """Compte les documents distincts par ``source_path``, jamais par ``filename``.
+
+    C'EST L'EXIGENCE 3 DU CONTRAT, ET SON CAS D'ECOLE EST DANS CE CORPUS.
+    Cette ligne comptait ``{m.get("filename")}`` et rendait **22** alors que le
+    graphe porte **23** documents : le corpus contient deux ``Preface.html``, un
+    par ouvrage, et ``filename`` vaut ``Preface`` pour les deux (`mesure` le
+    31 aout 2026 sur l'index complet — 22 ``filename`` distincts contre 23
+    ``source_path``, la seule collision etant ``Preface``).
+
+    Un rapport qui sous-compte les documents ne le dit pas : il annonce un
+    nombre plausible. Et c'est le contrat lui-meme qui cite ce cas comme sa
+    preuve — « ``source_path`` est l'identite d'un document, jamais ``filename``
+    seul. Le corpus actuel le prouve : ``Index.html`` et ``Preface.html``
+    existent dans les deux ouvrages. »
+
+    Args:
+        metadatas: Metadonnees des chunks.
+
+    Returns:
+        Le nombre de documents distincts.
+    """
+    return len({str(meta.get("source_path") or "") for meta in metadatas})
+
+
 def _pourcentage(part: int, total: int) -> str:
     return f"{100 * part / total:.1f} %" if total else "—"
 
@@ -113,7 +138,7 @@ def main() -> None:
 
     print("=== Volume ===")
     print(f"chunks indexes            : {total}")
-    print(f"documents distincts       : {len({m.get('filename') for m in metadatas})}")
+    print(f"documents distincts       : {compter_les_documents(metadatas)}")
 
     print("\n=== Qualite du contenu ===")
     bruit = sum(1 for d in documents if not has_content(d))

@@ -282,7 +282,7 @@ DOCUMENT_PROPERTIES = (
 )
 
 
-def document_vid(filename: str) -> str:
+def document_vid(cle_du_document: str) -> str:
     """Construit l'identifiant du noeud Document, borne a la longueur admise.
 
     L'identifiant reste lisible — ``doc_mon_livre`` — ce qui rend les requetes
@@ -290,17 +290,30 @@ def document_vid(filename: str) -> str:
     tronque sur une frontiere de caractere et suffixe d'une empreinte, pour que
     deux titres partageant leur debut ne se confondent pas.
 
+    LE PARAMETRE S'APPELAIT `filename` ET SON DOCSTRING DISAIT « Nom du
+    document », ALORS QUE SES TROIS APPELANTS PASSENT `identity.key` — le chemin
+    relatif complet. Le code est juste : `mesure` le 31 aout 2026, les 23 sommets
+    `Document` du graphe ont bien 23 identifiants distincts, dont
+    ``doc_htms/MLOps with Databricks/Preface`` et
+    ``doc_htms/Practical MLflow .../Preface``. C'est le NOM du parametre qui
+    etait un piege : il invitait le prochain appelant a passer
+    `identity.filename`, ce qui ferait collisionner les deux ``Preface.html`` du
+    corpus sur UN SEUL sommet — perte silencieuse d'un document entier, et
+    violation directe de l'exigence 3.
+
     Args:
-        filename: Nom du document, sans extension.
+        cle_du_document: ``identity.key``, le chemin relatif du document — et non
+            son nom seul. ``source_path`` est l'identite d'un document (contrat,
+            exigence 3) : le corpus porte deux ``Preface.html``.
 
     Returns:
         Un identifiant tenant dans ``VID_MAX_BYTES`` octets.
     """
-    lisible = f"doc_{filename}"
+    lisible = f"doc_{cle_du_document}"
     encode = lisible.encode()
     if len(encode) <= VID_MAX_BYTES:
         return lisible
 
-    empreinte = hashlib.sha256(filename.encode()).hexdigest()[:10]
+    empreinte = hashlib.sha256(cle_du_document.encode()).hexdigest()[:10]
     garde = VID_MAX_BYTES - len(empreinte) - 1
     return f"{encode[:garde].decode(errors='ignore')}_{empreinte}"

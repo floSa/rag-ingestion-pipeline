@@ -156,11 +156,15 @@ def fallback_rank(size_ranks: dict[float, int]) -> int | None:
     faisait « Then: », faux titre detecte en pleine page.
 
     Cette fonction existe pour que la DECISION et le COMPTEUR lisent la meme
-    valeur. `mesure` le 31 aout 2026 sur le seul PDF du corpus : **40 titres sur
-    86 (46 %)** recoivent ce rang, et non un rang mesure — le PDF ne classe que
-    trois niveaux. Les profondeurs relevees dans le graphe melangent donc trois
-    niveaux mesures et un empilement par defaut, et rien ne le comptait
-    (registre 4.21).
+    valeur. `mesure` le 31 aout 2026, par le compteur livre, a la source : **39
+    titres sur 87, soit 45 %** recoivent ce rang et non un rang mesure — le PDF
+    ne classe que trois niveaux. Les profondeurs relevees dans le graphe
+    melangent donc trois niveaux mesures et un empilement par defaut, et rien ne
+    le comptait (registre 4.21, site canonique de ce chiffre).
+
+    Le lot 1 annonçait 40 sur 86, en retrouvant les tailles APRES coup. Ce n'est
+    pas « un ecart d'une unite » : 46 mesures + 40 replis d'un cote, 48 + 39 de
+    l'autre — DEUX titres changent de classe, et un titre de plus est vu.
 
     Args:
         size_ranks: Rang de chaque taille de titre du document.
