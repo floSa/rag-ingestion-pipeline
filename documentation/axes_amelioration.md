@@ -454,15 +454,61 @@ dans `.env.example:15-16` et ne sont exposés par **aucun** settings :
 `verify_contract.py:104` et `verify_data.py`. Le `.env` ment donc sur ce qui est
 réellement lu.
 
-### 4.4 `verify_contract` ne vérifie pas ce qui casse en silence
+### 4.4 → traité par le lot 3 — le contrat est vérifié là où il casse en silence
 
-`src/verify_contract.py` ne teste ni l'existence des arêtes `PARENT_OF`, ni la
-**monotonie de `sequence`** (exigence 4), ni que `source_path` est non vide, ni
-la cohérence `chunk_index` / `chunk_count`, ni le modèle qui a produit les
-vecteurs. L'échantillon de 400 (`verify_contract.py:38-40`) est justifié par
-« une rupture de contrat est systématique » : c'est vrai d'un format, faux
-d'une monotonie qui se casserait sur un document sur vingt. Phrase
-d'exhaustivité (l.12-16) qui clôt une énumération que personne ne rouvre.
+**Le constat, tel qu'il était ouvert.** `verify_contract.py` ne testait ni
+l'existence des arêtes `PARENT_OF`, ni l'ordre de `sequence` (exigence 4), ni
+que `source_path` est non vide (exigence 3), ni la cohérence
+`chunk_index` / `chunk_count`, ni le modèle qui a produit les vecteurs
+(exigence 1). Il rendait donc **rc=0 et « Contrat respecté »** sur l'index
+complet du 31 août 2026 (`mesuré`, 4 365 chunks) — le même index où **251
+sommets visuels sur 264 n'ont aucune URL**.
+
+**Ce qui a été ajouté**, et pour chacun l'exigence qu'il garde :
+
+| Contrôle | Exigence | Sur l'index du 31 août 2026 |
+|---|---|---|
+| `page_no` ne décroît pas dans l'ordre des `sequence`, par document | 4 | **0 inversion sur 15 173 arêtes** — l'exigence est tenue, et c'est désormais prouvé sur tout le graphe |
+| `source_path` non vide | 3 | 0 chunk fautif |
+| `0 ≤ chunk_index < chunk_count` | — | 0 chunk fautif |
+| présence d'arêtes `PARENT_OF` | 4 | 15 173 |
+| `minio_url` sur les sommets visuels | — | **251 sur 264 sans URL → anomalie** |
+| modèle inscrit sur la collection | **1** | **non tracé → anomalie** |
+
+**Le garde de `sequence` est celui du §6.16, et pas un autre.** La propriété
+« aucun parent ne porte deux fois la même valeur » est l'**unicité sous un
+parent** : une numérotation aléatoire distincte par parent la satisferait sans
+porter aucun ordre. Les trois réserves mesurées dictent la forme du contrôle et
+sont écrites à son site : `sequence` repart à 0 par document — d'où un contrôle
+**borné au document**, sans quoi deux documents entrelacés rendraient des
+inversions fausses — elle n'est pas contiguë sous un parent, et le plus grand
+trou vaut 993, donc **exiger la contiguïté rougirait sur un graphe sain**.
+
+**La phrase d'exhaustivité est corrigée, et l'échantillon borné à ce qu'elle
+justifie.** « Une rupture de contrat est systématique » est vraie d'un FORMAT et
+fausse d'un ORDRE. L'échantillon de 400 ne sert donc plus que la présence des
+ancres — le seul contrôle dont le coût croît vraiment avec le corpus — et les
+propriétés d'ordre portent sur la **totalité** des arêtes.
+
+**Le contrôle du modèle a deux moitiés, et la seconde ferme la panne.** Rien
+n'enregistrait quel modèle avait écrit l'index : un `.env` changé entre deux
+ingestions laissait une collection portant des vecteurs de **deux** modèles,
+tous deux en 384 dimensions. `vectors._inscrire_le_modele` inscrit le modèle sur
+la collection à l'ouverture, et **lève** si elle en porte un autre — le job
+échoue plutôt que d'écrire un index mixte (`mesuré` : la levée se produit).
+`verify_contract` lit la même inscription après coup. Un index écrit avant ce
+garde n'est pas déclaré bon : il est déclaré **non traçable**, ce qui n'est pas
+la même chose.
+
+**Ces contrôles n'étaient testables par rien**, le module faisant ses imports de
+`chromadb` et `nebula3` au niveau du module. Ils sont différés dans `main`, les
+décisions sont des fonctions pures, et un sous-processus garde la propriété.
+
+**Conséquence à connaître : `verify_contract` sort désormais en 1 sur l'index de
+ce poste**, et c'est le verdict juste. Il redeviendra vert quand le lot 4 aura
+réparé la chaîne d'images (§3.5) et qu'une réingestion aura inscrit le modèle.
+Un outil qui ne peut pas être vert aujourd'hui vaut mieux qu'un outil vert sur
+un index cassé.
 
 ### 4.5 `verify_data.py` s'exécute à l'import
 
@@ -1010,11 +1056,19 @@ Trois réserves qu'aucun document ne porte, et dont l'agent peut se tromper :
    d'éléments que demandé ; un agent qui lit la contiguïté comme un indice
    d'intégrité conclura à une perte.
 
-**Le garde manque aussi.** La propriété que le lot 1 avait d'abord conclue —
-« aucun parent ne porte deux fois la même valeur » — est l'**unicité sous un
-parent**, et non l'ordre exigé : une numérotation aléatoire distincte par parent
-passerait ce test. Le garde à écrire est le second : `page_no` ne décroît pas
-dans l'ordre des `sequence`. À traiter avec §4.4.
+**Le garde existe désormais — écrit par le lot 3 avec §4.4.** La propriété que
+le lot 1 avait d'abord conclue — « aucun parent ne porte deux fois la même
+valeur » — est l'**unicité sous un parent**, et non l'ordre exigé : une
+numérotation aléatoire distincte par parent passerait ce test. Le garde écrit
+est le second : `page_no` ne décroît pas dans l'ordre des `sequence`, borné au
+document. `verify_contract.inversions_de_page` le vérifie sur la **totalité** des
+arêtes — **0 inversion sur 15 173**, corpus complet, `mesuré` le 31 août 2026 —
+et les trois réserves ci-dessus sont écrites à son site, parce que deux d'entre
+elles interdisent des contrôles qu'on serait tenté d'écrire à la place.
+
+**Restent à écrire au contrat côté agent**, ce que le lot 3 ne peut pas faire
+d'ici : les réserves 1 à 3 concernent la façon dont l'agent LIT `sequence`, et
+sa documentation vit dans l'autre dépôt.
 
 ### 6.18 Les deux blocs de schéma documentés portent d'autres erreurs — relevé par le lot 3, NON traité
 

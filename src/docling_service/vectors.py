@@ -31,7 +31,11 @@ from src.docling_service import chunking
 from src.docling_service.anchoring import block_size, resolve_anchors
 from src.docling_service.blocks import has_content
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
-from src.docling_service.embedding import get_embedding_model
+from src.docling_service.embedding import (
+    EmbeddingContractError,
+    canonical_name,
+    get_embedding_model,
+)
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
 
@@ -55,7 +59,47 @@ def get_collection() -> Any:
             settings = get_settings()
             client = chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
             _collection = client.get_or_create_collection(name=COLLECTION_NAME)
+            _inscrire_le_modele(_collection, settings.embedding_model_name)
         return _collection
+
+
+def _inscrire_le_modele(collection: Any, modele: str) -> None:
+    """Inscrit sur la collection le modele qui produit ses vecteurs, et refuse d'en melanger deux.
+
+    L'exigence 1 du contrat n'etait verifiable par personne apres coup : rien
+    n'enregistrait quel modele avait ecrit l'index. Un ``.env`` change entre
+    deux ingestions laissait une collection qui portait des vecteurs de deux
+    modeles, tous deux en 384 dimensions, sans qu'aucune erreur ne le signale.
+
+    Trois cas, et un seul refuse :
+
+    - la collection ne porte rien : on l'inscrit. C'est le cas de tout index
+      ecrit avant ce garde ;
+    - elle porte le meme modele : rien a faire ;
+    - **elle porte un AUTRE modele : on leve.** Ecrire par-dessus melangerait
+      deux espaces vectoriels dans une meme collection, et c'est la panne la
+      plus couteuse du systeme.
+
+    Args:
+        collection: Collection ChromaDB ouverte.
+        modele: ``settings.embedding_model_name``.
+
+    Raises:
+        EmbeddingContractError: Si la collection a ete produite par un autre
+            modele. Le job echoue plutot que d'ecrire un index mixte.
+    """
+    enregistre = (getattr(collection, "metadata", None) or {}).get("embedding_model")
+    if enregistre and canonical_name(str(enregistre)) != canonical_name(modele):
+        raise EmbeddingContractError(
+            f"la collection {COLLECTION_NAME} a ete produite par "
+            f"« {enregistre} » et l'ingestion tourne avec « {modele} ». Ecrire "
+            "par-dessus melangerait deux espaces vectoriels dans une meme "
+            "collection, sans qu'aucune erreur ne le signale a l'usage. Purger "
+            "et reingerer, ou corriger EMBEDDING_MODEL_NAME."
+        )
+    if not enregistre:
+        collection.modify(metadata={"embedding_model": canonical_name(modele)})
+        logger.info("ChromaDB: collection tracee au modele %s", canonical_name(modele))
 
 
 @lru_cache(maxsize=1)
