@@ -134,9 +134,7 @@ def is_front_back_matter(title: str, titles: frozenset[str] | None = None) -> bo
     return normalize_title(title) in (titles or FRONT_BACK_MATTER_TITLES)
 
 
-def _section_spans(
-    toc: list[tuple[int, str, int]], total_pages: int
-) -> list[tuple[str, int, int]]:
+def _section_spans(toc: list[tuple[int, str, int]], total_pages: int) -> list[tuple[str, int, int]]:
     """Convertit les signets en sections (titre, premiere page, derniere page).
 
     Une section court jusqu'au signet suivant de niveau equivalent ou superieur.
