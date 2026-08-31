@@ -158,6 +158,20 @@ plus coûteuse du système est déjà arrivée une fois (contrat, exigence 1).
 make install && make all
 ```
 
+**`make` n'est pas installé sur le poste de développement, et il n'y a pas les
+droits pour l'y mettre** (`mesuré`, 31 août 2026). Chaque conversation le
+redécouvre ; ce n'est pas un incident, c'est l'environnement. Exécute alors les
+recettes du `Makefile` **versionné**, lues depuis le fichier, dans l'ordre et
+avec arrêt au premier échec :
+
+```bash
+uv sync && uv run ruff format src/ && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/
+```
+
+La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas de
+motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
+que de laisser croire que `make` a tourné.
+
 Attendu au 29 août 2026, sur `main` (`mesuré`) : `ruff` propre,
 `mypy --strict` sans erreur, **535 tests verts**. Le compte canonique de tests
 vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
