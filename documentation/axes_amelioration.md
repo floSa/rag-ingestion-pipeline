@@ -566,12 +566,28 @@ réparé la chaîne d'images (§3.5) et qu'une réingestion aura inscrit le mod�
 Un outil qui ne peut pas être vert aujourd'hui vaut mieux qu'un outil vert sur
 un index cassé.
 
-### 4.5 `verify_data.py` s'exécute à l'import
+### 4.5 → traité par le lot 3 — `verify_data.py` ne fait plus rien à l'import
 
-Pas de `main()` : le module fait ses entrées-sorties au niveau du module
-(`settings = get_settings()`, `failures = []`, puis les contrôles). Intestable,
-et un `import` accidentel déclenche les contrôles. `wipe_stores.py` avait le
-même défaut sur `main` — la branche le corrige, mais pas `verify_data.py`.
+Le module n'avait pas de `main()` : `settings = get_settings()`, `failures = []`
+puis les trois contrôles étaient des instructions de **niveau module**. Un
+`import` accidentel — un outil qui parcourt le paquet, une complétion, un
+`pytest --collect-only` — ouvrait une connexion ChromaDB, listait un bucket
+MinIO, interrogeait NebulaGraph, et pouvait appeler `sys.exit(1)`.
+
+**Et rien n'était testable** : un test qui importe le module aurait exigé les
+trois stores debout. C'est le troisième module du lot dans ce cas, après
+`index_report` et `verify_contract` — *ce qu'un test n'importe pas, il ne teste
+pas*, et un module qu'on ne peut pas importer, personne ne le teste.
+
+Les contrôles sont trois fonctions, les clients de stores sont importés dans
+`main`, et la liste des échecs est **passée en argument** au lieu d'être un état
+de module : un état de module survit à l'appel, donc deux exécutions dans un
+même processus cumuleraient leurs échecs et la seconde sortirait en erreur pour
+ceux de la première.
+
+Le garde passe par un **sous-processus** : un `import` de plus dans
+l'interpréteur courant ne rejouerait pas un module déjà chargé, donc le test
+serait vert des deux côtés du défaut.
 
 ### 4.6 Un nettoyage peut jeter 95 % du texte sans que rien ne le dise
 
