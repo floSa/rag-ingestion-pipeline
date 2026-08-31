@@ -463,8 +463,45 @@ make install && make all
 **et** le groupe `dev` déclaré dans `pyproject.toml` : `pytest`, `ruff`, `mypy`
 et les stubs de typage. La porte qualité est donc reproductible depuis la seule
 source de vérité du dépôt, sans liste annexe à se rappeler. `make all` enchaîne
-`format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
-aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
+`lint`, `typecheck`, `test` et `format-check` — chaque outil derrière `uv run`,
+donc aux versions épinglées par `uv.lock` — et s'arrête à la première étape
+rouge.
+
+### La porte ne réécrit plus le dépôt qu'elle contrôle
+
+`make all` appelait `format`, c'est-à-dire `ruff format src/`, qui **écrit**. La
+porte réécrivait donc trois fichiers avant de les contrôler, et chaque
+développeur devait se souvenir de révoquer `git checkout -- src/` avant chaque
+commit, sous peine de livrer du reformatage sans rapport avec son sujet. Un
+garde-fou qui repose sur la mémoire du suivant n'est pas un garde-fou.
+
+Les deux gestes sont désormais séparés :
+
+| Cible | Ce qu'elle fait | Où elle vit |
+|---|---|---|
+| `make format` | **écrit** — `ruff format src/` | geste volontaire, dans aucune porte |
+| `make format-check` | **constate** — `ruff format --check src/` | dernière étape de `make all` |
+
+**Conséquence assumée : `make all` est ROUGE sur `main`, et c'est voulu.**
+`format-check` signale trois fichiers —
+`src/docling_service/extraction.py`, `language.py`, `matter.py` (`mesuré` le
+31 août 2026 : « 3 files would be reformatted, 33 files already formatted ») :
+des lignes qui tiennent dans les 100 colonnes mais ont été pliées à la main.
+
+**Ce que le prochain développeur doit en faire : rien.** Ne lance pas
+`make format` pour éteindre ce rouge. Ces trois fichiers sont réservés au lot de
+la hiérarchie, qui réécrit `extraction.py` : les reformater maintenant
+mélangerait un reformatage massif à un diff qui n'a rien à voir, et rendrait
+illisible la relecture du lot qui compte. Le rouge est un constat exact sur
+l'état du dépôt, consigné au registre §5.4, et il tombera avec ce lot-là.
+
+En attendant, la porte est utile telle quelle : `format-check` passe **en
+dernier**, donc `lint`, `typecheck` et `test` rendent leur verdict complet avant
+qu'elle ne s'arrête. Pour lire ce verdict seul :
+
+```bash
+make lint typecheck test
+```
 
 **539 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site

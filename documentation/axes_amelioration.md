@@ -500,37 +500,27 @@ Les deux ne peuvent pas être vrais.
 importés, et `DOCUMENT_PROPERTIES` y compte **3** champs contre **7** dans
 `nebula.py:50-58`. Un lecteur qui ouvre `ngql.py` lit un schéma périmé.
 
-### 5.4 `make format` écrit dans le dépôt, et `main` n'est pas format-propre
+### 5.4 `main` n'est pas format-propre — trois fichiers, réservés au lot 2
 
-`ruff format src/` reformate **3 fichiers** à chaque exécution sur `main` comme
-sur toute la branche : `extraction.py:412`, `:442`, `:479` ; `language.py:136-140` ;
-`matter.py:134-137` (`mesuré` avec `ruff` 0.11.8 — la version du hook — et
-0.16.5, même résultat). Ce sont des lignes tenant dans les 100 colonnes mais
+`ruff format --check src/` signale **3 fichiers** sur `main` :
+`extraction.py:412`, `:442`, `:479` ; `language.py:136-140` ;
+`matter.py:134-137` (`mesuré` avec `ruff` 0.11.8 — la version épinglée par
+`pyproject.toml` **et** par `.pre-commit-config.yaml` — et 0.16.5, même
+résultat ; reconfirmé le 31 août 2026 : « 3 files would be reformatted, 33 files
+already formatted »). Ce sont des lignes tenant dans les 100 colonnes mais
 pliées à la main.
 
-Conséquence : `make all` **mute l'arbre de travail** avant de le contrôler.
-Une porte qualité qui écrit dans le dépôt ne peut pas servir de contrôle — un
-`ruff format --check src/` en intégration continue serait rouge sur `main`. La
-correction est cosmétique et sans risque, mais elle touche `extraction.py`, que
-le chantier de la hiérarchie réécrit : à faire dans ce lot-là, pas avant.
+La correction est cosmétique et sans risque, mais elle touche `extraction.py`,
+que le chantier de la hiérarchie réécrit : **à faire dans le lot 2, pas avant.**
+Les reformater plus tôt noierait le diff du lot qui compte dans un reformatage
+massif.
 
-**Tranché autrement, sur l'argument du développeur de la réparation du lot 0,
-et le pilote se range.** Ce paragraphe mélangeait deux choses. *Reformater* les
-trois fichiers touche `extraction.py` : cela peut attendre le lot 2. Mais *une
-porte qualité qui écrit dans le dépôt qu'elle contrôle* ne peut pas attendre,
-et c'est indépendant.
-
-Aujourd'hui, `make all` oblige chaque développeur de chaque lot à se souvenir
-de révoquer trois fichiers avant chaque commit. Celui de la réparation l'a fait
-six fois, parce qu'il le savait ; le suivant ne le saura pas, livrera du
-reformatage sans rapport dans un commit, et personne ne le verra passer. C'est
-exactement la famille de défauts que ce chantier traque.
-
-La correction tient en **une ligne** du `Makefile` : dans la cible `all`,
-`ruff format src/` devient `ruff format --check src/`, la cible `format`
-restant pour l'écriture volontaire. La porte devient alors rouge sur `main` —
-ce qui est **vrai**, et ce que ce paragraphe dit déjà. **Affecté au lot 0b**,
-avec §5.5 : c'est le même sujet, les gardes qu'on croit avoir.
+**Conséquence, assumée et voulue : `make all` est ROUGE sur `main`.** C'est la
+moitié de ce constat qui a été fermée par le lot 0b (voir §8) : la porte
+**constate** désormais au lieu d'écrire, donc elle dit la vérité sur l'état du
+dépôt, et cette vérité est « trois fichiers ne sont pas format-propres ». Ne pas
+éteindre ce rouge avec `make format` — la marche à suivre est écrite au
+`README.md`, section Tests.
 
 ### 5.5 Les hooks `pre-commit` ne sont installés nulle part
 
@@ -731,6 +721,34 @@ Neuf mutations déclarées ; le pilote en a rejoué **huit de ses mains, toutes
 rouges**.
 
 **Les commits cités ci-dessous** sont ceux de la livraison initiale du lot.
+
+### 5.4, première moitié → traitée par le lot 0b — la porte constate au lieu d'écrire
+
+`make all` avait `format` pour première cible, c'est-à-dire `ruff format src/`,
+qui **écrit** : la porte réécrivait trois fichiers avant de les contrôler. Une
+porte qualité qui écrit dans le dépôt qu'elle contrôle ne contrôle rien — elle
+rend vrai ce qu'elle allait vérifier.
+
+Le coût réel n'était pas le reformatage, c'était la **manipulation à se
+rappeler** : révoquer `git checkout -- src/` avant chaque commit. Le développeur
+de la réparation du lot 0 l'a fait six fois parce qu'il le savait ; le suivant ne
+l'aurait pas su et aurait livré du reformatage sans rapport avec son sujet, dans
+un commit que personne n'aurait relu pour ça.
+
+`format` (écrit, geste volontaire) et `format-check` (constate) sont désormais
+deux cibles distinctes, et c'est `format-check` qui entre dans `all`. Vérifié par
+mutation : avec `format` dans `all`, `make all` laisse trois fichiers modifiés
+dans l'arbre ; avec `format-check`, l'arbre est intact après la porte
+(`mesuré`, 31 août 2026).
+
+`format-check` passe **en dernier** dans `all`. L'ordre ne change pas le verdict
+de la porte — elle est rouge dans les deux cas — seulement ce qu'un humain
+apprend avant qu'elle ne s'arrête. Placé en premier, il aurait privé tous les
+lots à venir du signal de `lint`, `typecheck` et `test` sur `main`, pour les
+mois où le rouge de formatage reste ouvert. C'est un écart au « une ligne » que
+le registre annonçait, et il est assumé.
+
+Reste ouvert, et détaché : les trois fichiers eux-mêmes (§5.4 ci-dessus, lot 2).
 
 ### 4.18 → traité par le lot 0b — les sensors d'ingestion sont livrés armés
 

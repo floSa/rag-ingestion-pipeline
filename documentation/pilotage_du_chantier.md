@@ -158,28 +158,48 @@ plus coûteuse du système est déjà arrivée une fois (contrat, exigence 1).
 make install && make all
 ```
 
-**`make` n'est pas installé sur le poste de développement, et il n'y a pas les
-droits pour l'y mettre** (`mesuré`, 31 août 2026). Chaque conversation le
-redécouvre ; ce n'est pas un incident, c'est l'environnement. Exécute alors les
-recettes du `Makefile` **versionné**, lues depuis le fichier, dans l'ordre et
-avec arrêt au premier échec :
+**La présence de `make` est un fait de POSTE : mesure-la, ne la lis pas ici.**
+`command -v make`. Sur un poste elle a manqué, sans droits pour l'y mettre
+(`mesuré`, 31 août 2026) ; sur un autre, `make` était bien là — GNU Make 4.4.1,
+`/usr/bin/make` (`mesuré`, 31 août 2026, même jour). Ce paragraphe a longtemps
+affirmé l'absence comme un fait du chantier : c'était une mesure de poste
+présentée comme universelle, et chaque conversation la reprenait sans la
+vérifier. Le corpus, le `.env` et les stores relèvent de la même famille (§2.2,
+§2.3, §4).
+
+Si `make` manque, exécute les recettes du `Makefile` **versionné**, lues depuis
+le fichier, dans l'ordre et avec arrêt au premier échec — et note que l'ordre a
+changé, `format-check` venant en dernier :
 
 ```bash
-uv sync && uv run ruff format src/ && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/
+uv sync && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/ && uv run ruff format --check src/
 ```
 
 La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas de
 motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
 que de laisser croire que `make` a tourné.
 
-Attendu au 29 août 2026, sur `main` (`mesuré`) : `ruff` propre,
-`mypy --strict` sans erreur, **535 tests verts**. Le compte canonique de tests
-vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
+Attendu sur `main` (`mesuré`, 31 août 2026) : `ruff` propre, `mypy --strict`
+« no issues found in 36 source files », et la suite verte. Le compte canonique
+de tests vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
 
-**`make all` mute l'arbre avant de le contrôler** : sa première cible est
-`ruff format src/`, qui réécrit trois fichiers à chaque exécution (registre
-§5.4). Révoque-les — `git checkout -- src/` — avant tout commit, sinon tu
-livres du reformatage sans rapport. C'est le sujet du lot 0b.
+**`make all` ne mute plus l'arbre : il le constate, et il est ROUGE sur `main`.**
+Le lot 0b a séparé `format` — qui écrit, geste volontaire — de `format-check` —
+qui constate, et qui est la dernière étape de `make all`. Il n'y a donc plus
+rien à révoquer avant un commit, et c'est le point : le garde-fou ne repose plus
+sur la mémoire du développeur.
+
+En échange, `make all` sort en erreur sur `main` : `ruff format --check src/`
+signale trois fichiers pliés à la main — `extraction.py`, `language.py`,
+`matter.py`. **C'est un constat exact, et il ne faut pas l'éteindre.** Ne lance
+pas `make format` : ces trois fichiers sont réservés au lot 2, qui réécrit
+`extraction.py`, et les reformater maintenant noierait ce lot-là dans un
+reformatage massif. Le détail et la marche à suivre vivent au `README.md`,
+section Tests ; le constat au registre §5.4.
+
+`format-check` passe **en dernier**, donc `lint`, `typecheck` et `test` rendent
+leur verdict complet avant l'arrêt. Pour lire ce verdict seul, sans le rouge
+connu : `make lint typecheck test`.
 
 Si le compte diffère, ne suppose rien : c'est le dépôt qui a bougé, et il faut
 comprendre pourquoi avant de continuer.
