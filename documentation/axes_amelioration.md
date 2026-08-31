@@ -434,15 +434,6 @@ Aggravant : le docstring écrit « les trois **seuls** états dont un run Dagste
 ne revient pas » — une phrase d'exhaustivité, qu'une montée de version de
 Dagster peut rendre fausse en silence.
 
-### 4.18 Les sensors d'ingestion sont livrés armés, et rien ne le garde
-
-`factory.py:335` déclare `default_status=RUNNING` sur **chaque** sensor de
-source. La réparation du lot 0 a gardé cette ligne pour le seul sensor de
-réindexation (§8). Les trois sensors d'ingestion — `pdfs`, `livres_html`,
-`markdown` — restent livrables à l'arrêt sans qu'un test bronche : tout le
-pipeline serait inerte au déploiement, en silence. Le test existe déjà à côté ;
-il suffit de le décliner.
-
 ### 4.19 Le refus de démarrer hors contrat n'est prouvé par aucun test
 
 `main.py:93` place le contrôle du modèle d'embedding **hors** du `try` du
@@ -740,6 +731,31 @@ Neuf mutations déclarées ; le pilote en a rejoué **huit de ses mains, toutes
 rouges**.
 
 **Les commits cités ci-dessous** sont ceux de la livraison initiale du lot.
+
+### 4.18 → traité par le lot 0b — les sensors d'ingestion sont livrés armés
+
+`factory.py:335` déclare `default_status=DefaultSensorStatus.RUNNING` sur
+**chaque** sensor de source, et rien ne le gardait : retirer la ligne laissait
+**535 tests verts** (`mesuré`, 31 août 2026 — suite entière moins la nouvelle
+classe, sous mutation). Tout le pipeline était donc livrable à l'arrêt en
+silence.
+
+Le garde est décliné de celui du sensor de réindexation
+(`bb74750`) dans `tests/unit/test_factory.py::TestLesSensorsDIngestionSontLivresArmes`,
+avec les trois précautions qui le rendent non creux :
+
+- il asserte sur l'objet **produit** — `build_source(...).sensor` — et sur celui
+  que `definitions.py` **livre** réellement, jamais sur la présence du mot dans
+  la source ;
+- il boucle sur **toutes** les sources de `sources.yaml`, et un test de borne
+  inférieure prouve que le harnais atteint bien les trois (`pdfs`,
+  `livres_html`, `markdown`). C'est la leçon de `3603492` : un harnais qui
+  n'appelle la fabrique qu'avec une source laisse les autres sans garde. La
+  borne est **inférieure** et non une égalité, pour qu'une quatrième source soit
+  couverte d'office sans qu'une phrase d'exhaustivité ne l'interdise ;
+- un sensor témoin déclaré **sans** le champ ne doit pas être armé, sans quoi
+  les assertions resteraient vraies si Dagster changeait sa valeur par défaut.
+  Dagster livre bien `STOPPED` par défaut (`mesuré` sous mutation).
 
 ### 3.6 → traité par `eaa8a8e` — la porte qualité est reproductible
 

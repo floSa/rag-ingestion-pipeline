@@ -466,7 +466,7 @@ source de vérité du dépôt, sans liste annexe à se rappeler. `make all` ench
 `format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
 aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
 
-**535 tests verts** (`mesuré` le 28 août 2026 par `make test` sur cette
+**539 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
