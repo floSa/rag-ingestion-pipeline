@@ -90,24 +90,152 @@ se défait pas.
 Deux identités portent le même **nom**, « Florian Horellou ». **Ne vérifie
 jamais une identité sur le nom, toujours sur l'adresse.**
 
-Le hook vit sous `scripts/git-hooks/pre-commit` (versionné, donc il arrive avec
-le clone) mais **il n'est pas actif tant qu'il n'est pas installé** :
+**Un seul geste, et il vérifie son propre résultat :**
 
 ```bash
-cp scripts/git-hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+make install
 ```
 
-Puis l'identité, dans chaque arbre de travail :
+`make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`,
+qui arme les hooks git **et sort en erreur si le montage n'est pas celui qu'il
+annonce**. Il n'y a rien à faire dans un ordre : c'est le script qui tient
+l'ordre, et il constate son résultat.
+
+**`uv` est requis, et ce paragraphe a affirmé le contraire.** Il disait « si
+`uv` manque sur le poste, le script s'exécute seul ». C'est **faux** : `mesuré`
+le 31 août 2026 dans un clone frais,
+`env PATH=/usr/bin:/bin sh scripts/installer-les-garde-fous.sh` rend **`rc=1`**,
+et il ne pose que les **deux copies du contrôle d'identité** — aucun hook du
+framework, aucun `.legacy`. Le script, lui, est honnête : il l'écrit sur sa
+sortie d'erreur (« `uv: not found` », puis « le contrôle d'identité est copié et
+actif ; les hooks du framework ne le sont pas »). C'était la phrase qui mentait,
+pas le code. Un montage à moitié armé est le pire des trois états, parce qu'il
+ressemble au bon.
+
+**Et il y a trois choses à se rappeler.** Ce paragraphe disait « rien à se
+rappeler » : c'est une phrase d'exhaustivité, et c'est la famille de phrase qui
+a caché la régression R1 pendant tout le lot 0b. Les voici — les deux dernières
+`mesuré`es, la première étant une consigne de cette section :
+
+1. **`git config user.email`** — deux paragraphes plus bas, dans cette même
+   section. Le script n'y touche pas ;
+2. **relancer `make install` après toute édition de `ADRESSES_AUTORISEES`** —
+   voir « la liste blanche a DEUX sites au runtime » ci-dessous ;
+3. **relancer `make install` depuis le clone principal si le `.venv` visé par le
+   hook disparaît** — voir « Le hook fige aussi un chemin absolu » ci-dessous.
+
+Cette liste-ci n'est pas fermée non plus. Si tu en trouves une quatrième,
+écris-la ici plutôt que de la garder.
+
+**Ce que le script monte, et pourquoi l'ordre compte.** Le contrôle d'identité
+vit sous `scripts/git-hooks/pre-commit`, versionné, donc il arrive avec le clone
+— mais **inactif tant qu'il n'est pas installé**, git n'exécutant jamais ce qui
+arrive avec un dépôt. Le script le copie d'abord dans le répertoire des hooks,
+**puis** lance `pre-commit install`, qui déplace cette copie en
+`pre-commit.legacy`, continue de l'exécuter **avant** ses propres hooks, et
+s'installe par-dessus. Les deux voies exécutent donc les mêmes octets **au
+moment de l'installation**.
+
+**Mais la liste blanche a DEUX sites au runtime, et ils peuvent diverger.** Ce
+paragraphe affirmait « la liste blanche d'adresses n'a qu'un site » : c'est vrai
+du dépôt versionné, **faux du montage armé**. `<type>.legacy` est une **copie
+figée à l'installation** ; le hook `repo: local`, lui, relit le script versionné
+à chaque commit. `mesuré` le 31 août 2026 dans un clone frais armé par le script
+livré, dans les deux sens :
+
+| Édition de `ADRESSES_AUTORISEES`, **commitée** | Effet au commit suivant |
+|---|---|
+| **ajouter** une adresse | **sans effet** : la couche `repo: local` l'accepte (« Passed »), puis `pre-commit.legacy` refuse, `rc=1`, en affichant l'**ancienne** liste. HEAD ne bouge pas |
+| **retirer** une adresse | **appliqué** : la couche `repo: local` refuse, `rc=1`, HEAD ne bouge pas |
+
+C'est donc **fail-closed dans les deux sens** — de la friction, jamais une
+exposition — et c'est pour cela que le montage n'est pas changé : la copie figée
+**est** la propriété qui rend le contrôle indépendant de l'arbre de travail.
+**Le geste :** après toute édition de `ADRESSES_AUTORISEES`, relancer
+`make install`, qui réécrit la copie.
+
+Le message de refus est trompeur dans ce cas précis, et il faut le savoir : il
+énumère la liste de la copie figée, pas celle du fichier qu'on vient d'éditer.
+Si une adresse fraîchement ajoutée est refusée en n'apparaissant pas dans la
+liste affichée, c'est ce cas-là, et rien d'autre.
+
+**Le hook fige aussi un chemin absolu, et personne ne le savait.**
+`pre-commit install` écrit dans `.git/hooks/<type>` une ligne
+`INSTALL_PYTHON=<interpréteur de l'arbre qui a lancé l'installation>`. Un
+`make install` lancé depuis un **arbre de travail temporaire** y grave donc le
+`.venv` de cet arbre-là — et `.git/hooks` est **partagé par tout le clone**.
+`mesuré` le 31 août 2026 : quand ce chemin disparaît et qu'aucun `pre-commit`
+n'est au PATH (`which pre-commit` → `rc=1` sur ce poste), **tout commit du dépôt
+et de tous ses arbres de travail** est refusé — `rc=1`, HEAD inchangé, sur le
+seul message « `` `pre-commit` not found.  Did you forget to activate your
+virtualenv? `` », qui ne nomme ni la cause ni `make install`.
+
+C'est **fail-closed**, donc sans danger pour l'historique. Mais le §7 prescrit de
+supprimer une branche fusionnée, donc son arbre de travail : **relance
+`make install` depuis le clone principal après avoir supprimé un arbre de
+travail**, et fais-le de préférence depuis lui dès le départ. Une piste pour ne
+plus avoir à s'en souvenir est au registre, non retenue dans ce lot.
+
+**`pre-commit.legacy` n'est pas un doublon : c'est la protection.** Ce point a
+coûté au lot 0b sa fusion au premier tour, et il faut le lire en entier. Le hook
+généré par le framework ouvre sa configuration en chemin **relatif**
+(`--config=.pre-commit-config.yaml`) : un contrôle déclaré dans ce fichier — donc
+dans l'**arbre de travail** — ne vaut que pour les arbres dont la configuration
+le porte. Sur les 111 commits de `main`, **aucun** ne la porte (`mesuré`,
+31 août 2026, `a005172`). Mesuré dans un clone frais monté par
+`pre-commit install` seul, arbre sorti à `298c77e` : un commit portant
+`@aosis.net` en auteur **et** en committer est **accepté**, `rc=0`. Le hook du
+framework tourne, son rapport ne contient aucune ligne d'identité, et le commit
+part. `pre-commit.legacy` vit **hors** de l'arbre de travail : c'est la seule
+couche qui vaille pour tout commit, toute branche, tout `git bisect`, tout HEAD
+détaché.
+
+**Ne passe jamais `-f`.** `pre-commit install` le suggère lui-même dans sa
+sortie — « `Use -f to use only pre-commit.` » — et c'est exactement le geste qui
+supprime cette couche. Le script ne le passe pas, et sa vérification finale
+rougit si la couche a disparu. Un test la garde :
+`tests/unit/test_installation_des_garde_fous.py` monte un dépôt jetable dont la
+configuration ne déclare **pas** le contrôle d'identité, y exécute le script
+livré, et prouve que le refus tient quand même.
+
+**Ce qui est par clone, et ce qui suit la branche.** À distinguer, parce que la
+conclusion n'est pas la même pour les deux :
+
+| Objet | Portée | Conséquence |
+|---|---|---|
+| l'**installation** des hooks | **une fois par clone** — `.git/hooks` est partagé entre le dépôt et tous ses arbres de travail, `core.hooksPath` n'étant pas positionné | rien à refaire par worktree — mais l'installation grave l'interpréteur de l'arbre **d'où on la lance**, donc lance-la depuis le clone principal |
+| la **liste blanche** d'adresses | **un site versionné, deux sites armés** : `<type>.legacy` est une copie figée à l'installation | relancer `make install` après toute édition de `ADRESSES_AUTORISEES` |
+| l'**identité** `user.email` | **une fois par clone** — `extensions.worktreeConfig` n'est pas activé, donc `git config` écrit dans `.git/config`, partagé (`mesuré`, 31 août 2026 : les quatre arbres de travail lisent le même fichier) | rien à refaire par worktree |
+| la **protection d'identité** | **toute branche**, grâce à `pre-commit.legacy` | inconditionnelle, comme avant le lot 0b |
+| la **configuration** des hooks du framework | **suit l'arbre de travail** : le hook lit `.pre-commit-config.yaml` en chemin relatif | un arbre sorti à un commit ancien exécute les hooks *de ce commit-là*. Ce n'est pas un défaut, c'est un fait à connaître |
+
+Puis l'identité, une fois :
 
 ```bash
 git config user.name "floSa" && git config user.email "florian.horellou@gmail.com"
 ```
 
 Adresses autorisées, et elles seules : `florian.horellou@gmail.com`,
-`florian_horellou@laposte.net`. Le hook ne se contourne jamais : pas de
-`--no-verify`.
+`florian_horellou@laposte.net`. Elles n'ont **qu'un site**,
+`ADRESSES_AUTORISEES` dans `scripts/git-hooks/pre-commit`. Le hook ne se
+contourne jamais : pas de `--no-verify`.
 
-Le distant est **personnel** : `git@github.com-perso:floSa/rag-ingestion-pipeline.git`.
+**Ce que le contrôle couvre, et ce qu'il ne couvre pas.** `mesuré` le 31 août
+2026, mouchards posés sur chaque hook de `.git/hooks` :
+
+| Geste | Couvert | Pourquoi |
+|---|---|---|
+| `git commit` | **oui** | hook `pre-commit` |
+| `git commit --amend` | **oui** | hook `pre-commit` |
+| `git merge --no-ff` | **oui** | hook `pre-merge-commit`, installé par le script et posé aussi en `pre-merge-commit.legacy` |
+| `git revert`, `git cherry-pick` | **non** | git n'y déclenche ni `pre-commit` ni `commit-msg`. Le seul point d'accroche restant, `prepare-commit-msg`, y voit l'identité **locale** et non celle du commit produit (`mesuré`) : un contrôle posé là serait vert sur le défaut |
+| `git rebase` | **non** | aucun hook de la famille ; le rebase réécrit le committer |
+
+Les deux dernières lignes sont **ouvertes**, au registre. Elles ne sont pas des
+gestes de ce chantier — le mandat interdit le rebase et prescrit `--no-ff` — et
+leur fermeture honnête est un hook `pre-push`, qui reste à trancher.
+
+Le distant est **personnel** : `floSa/rag-ingestion-pipeline`.
 
 ### 2.2 Le corpus
 
@@ -158,28 +286,77 @@ plus coûteuse du système est déjà arrivée une fois (contrat, exigence 1).
 make install && make all
 ```
 
-**`make` n'est pas installé sur le poste de développement, et il n'y a pas les
-droits pour l'y mettre** (`mesuré`, 31 août 2026). Chaque conversation le
-redécouvre ; ce n'est pas un incident, c'est l'environnement. Exécute alors les
-recettes du `Makefile` **versionné**, lues depuis le fichier, dans l'ordre et
-avec arrêt au premier échec :
+**La présence de `make` est un fait de POSTE : mesure-la, ne la lis pas ici.**
+`command -v make`. Sur un poste elle a manqué, sans droits pour l'y mettre
+(`mesuré`, 31 août 2026) ; sur un autre, `make` était bien là — GNU Make 4.4.1,
+`/usr/bin/make` (`mesuré`, 31 août 2026, même jour). Ce paragraphe a longtemps
+affirmé l'absence comme un fait du chantier : c'était une mesure de poste
+présentée comme universelle, et chaque conversation la reprenait sans la
+vérifier. Le corpus, le `.env` et les stores relèvent de la même famille (§2.2,
+§2.3, §4).
+
+Si `make` manque, exécute les recettes du `Makefile` **versionné**, lues depuis
+le fichier, dans l'ordre et avec arrêt au premier échec — et note **deux**
+changements : `install` arme désormais les garde-fous, et `format-check` vient en
+dernier.
 
 ```bash
-uv sync && uv run ruff format src/ && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/
+uv sync && sh scripts/installer-les-garde-fous.sh \
+  && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/ \
+  && uv run ruff format --check src/
 ```
+
+**Le `sh scripts/installer-les-garde-fous.sh` de la deuxième position n'était pas
+là, et son absence était le trou.** Ce repli prétend remplacer
+`make install && make all` ; il ne portait que `uv sync`, c'est-à-dire la
+**première** ligne de la cible `install` — celle qui installe les dépendances —
+et pas la **seconde**, celle qui arme les hooks. Un poste sans `make` suivant
+cette recette n'avait donc **aucun garde-fou** : ni contrôle d'identité, ni
+`detect-secrets`, exactement l'état que ce lot ferme. `mesuré` le 31 août 2026,
+clone frais : après le repli tel qu'il était écrit, `.git/hooks` ne porte **aucun**
+hook ; après celui-ci, les quatre attendus, et la suite rend `lint=0`,
+`typecheck=0`, `test=0`, `format-check=1` — le rouge connu.
 
 La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas de
 motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
 que de laisser croire que `make` a tourné.
 
-Attendu au 29 août 2026, sur `main` (`mesuré`) : `ruff` propre,
-`mypy --strict` sans erreur, **535 tests verts**. Le compte canonique de tests
-vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
+Attendu sur `main` (`mesuré`, 31 août 2026) : `ruff` propre, `mypy --strict`
+« no issues found in 36 source files », et la suite verte. Le compte canonique
+de tests vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
 
-**`make all` mute l'arbre avant de le contrôler** : sa première cible est
-`ruff format src/`, qui réécrit trois fichiers à chaque exécution (registre
-§5.4). Révoque-les — `git checkout -- src/` — avant tout commit, sinon tu
-livres du reformatage sans rapport. C'est le sujet du lot 0b.
+**`make all` ne mute plus l'arbre : il le constate, et il est ROUGE sur `main`.**
+Le lot 0b a séparé `format` — qui écrit, geste volontaire — de `format-check` —
+qui constate, et qui est la dernière étape de `make all`. Il n'y a donc plus
+rien à révoquer avant un commit, et c'est le point : le garde-fou ne repose plus
+sur la mémoire du développeur.
+
+En échange, `make all` sort en erreur sur `main` : `ruff format --check src/`
+signale trois fichiers pliés à la main — `extraction.py`, `language.py`,
+`matter.py`. **C'est un constat exact, et il ne faut pas l'éteindre.**
+
+**Mais le dépôt en porte QUATRE, et ce quatrième est dans un angle mort.**
+`tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré`,
+31 août 2026, remesuré sur cette révision : `uv run ruff format --check src/
+tests/` → « 4 files would be reformatted, 58 files already formatted »). `make format-check` est borné à
+`src/` et ne le voit jamais ; `make format` ne le répare pas ; le hook
+`ruff-format --check` **bloque** tout commit qui le touche. Toute phrase qui dit
+« trois fichiers » parle donc de la **portée de `make format-check`**, jamais de
+l'état du dépôt — l'énumération avait été close sur une portée qui n'est plus
+celle du garde installé.
+
+Ne lance pas `make format` : les trois fichiers de `src/` sont réservés au lot 2,
+qui réécrit `extraction.py`. **Le motif est la lisibilité de ce lot-là, pas un
+volume** : le reformatage coûte **16 lignes** de diff sur **1 221**, à cinq
+endroits — quatre replis de ligne et un doublon de ligne vide (`mesuré`,
+`git diff --numstat` après `uv run ruff format src/`). Le récit d'un « reformatage massif » était
+surdimensionné, et il instruisait chaque conversation à venir de l'accepter sans
+remesurer. Le détail et la marche à suivre vivent au `README.md`, section Tests ;
+le constat au registre §5.4.
+
+`format-check` passe **en dernier**, donc `lint`, `typecheck` et `test` rendent
+leur verdict complet avant l'arrêt. Pour lire ce verdict seul, sans le rouge
+connu : `make lint typecheck test`.
 
 Si le compte diffère, ne suppose rien : c'est le dépôt qui a bougé, et il faut
 comprendre pourquoi avant de continuer.
@@ -370,7 +547,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | Lot | Contenu | Débloque | État |
 |---|---|---|---|
 | **0** | Porte qualité reproductible, `mypy`, `/reindex` déplacé **et sa reprise réparée** | démarrage de la stack, exigences **1** et **5** | ✅ **fusionné le 29 août 2026** (`b59bf38`) |
-| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres. Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | **à faire, court — c'est l'action suivante** |
+| **0b** | **Les gardes qu'on croit avoir.** §5.5 : les hooks du framework `pre-commit` ne sont installés nulle part — `detect-secrets` n'a **jamais** tourné en garde-fou. *(La justification d'origine ajoutait « sur un dépôt dont le `.env` porte les mots de passe MinIO et Postgres ». C'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**, et `.env` est ignoré par git, donc jamais indexé — l'installer ne le fera jamais scanner. Le gain réel est prospectif, et il est réel : empêcher qu'un secret parte un jour dans un fichier **versionné**. Registre §5.5.)* Plus §5.4 : `make all` cesse d'écrire dans le dépôt qu'il contrôle (`ruff format --check` dans la cible `all`). Plus §4.18, une ligne : les sensors d'ingestion sont livrables à l'arrêt sans qu'un test bronche | un garde-fou de secrets qui existe vraiment, un `make all` qui contrôle au lieu de muter, et un pipeline qui ne se déploie pas éteint | **à faire, court — c'est l'action suivante** |
 | **1** | **Observer sans corriger.** Reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + 5 pages du PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` présent sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** — la décision « corriger la hiérarchie avant ou après l'ingestion complète » | à faire |
 | **2** | La hiérarchie des titres, **si et seulement si** le lot 1 la montre plate : §3.2, §3.3, §4.11, §4.12. Impose une purge du space | contrainte **6**, donc toute l'ablation | conditionnel |
 | **3** | Instruments et gardes : §3.4, §4.4 (dont la **monotonie de `sequence`**, exigence 4), §4.14, §4.5 | la confiance dans tout chiffre produit après l'ingestion | à faire **avant** l'ingestion complète |
@@ -400,8 +577,17 @@ le coller tel quel dans une conversation neuve nommée `LOT-0B`.
 
 C'est le lot le plus court du plan et celui dont
 l'absence coûte le plus cher : `detect-secrets` est déclaré dans
-`.pre-commit-config.yaml` et n'a **jamais** tourné, sur un dépôt dont le `.env`
-porte les mots de passe MinIO et PostgreSQL.
+`.pre-commit-config.yaml` et n'a **jamais** tourné.
+
+**Ne reprends pas la justification qui suivait cette phrase.** Elle disait
+« sur un dépôt dont le `.env` porte les mots de passe MinIO et PostgreSQL », et
+c'était une survente : un hook `pre-commit` ne voit que les fichiers **indexés**,
+`.env` est ignoré par git (`git check-ignore -v .env` → `.gitignore:2`) et non
+suivi, donc **installer le hook ne le fera jamais scanner** (`mesuré`, registre
+§5.5). Le gain est ailleurs, et il est réel : empêcher qu'un secret parte un jour
+dans un fichier **versionné**. Le lot 0b avait corrigé cette survente au
+`README.md` et à `SECURITY.md` — pas ici, dans le texte le plus copié du
+chantier.
 
 Trois choses dedans, et pas une de plus :
 

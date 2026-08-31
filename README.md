@@ -463,10 +463,320 @@ make install && make all
 **et** le groupe `dev` déclaré dans `pyproject.toml` : `pytest`, `ruff`, `mypy`
 et les stubs de typage. La porte qualité est donc reproductible depuis la seule
 source de vérité du dépôt, sans liste annexe à se rappeler. `make all` enchaîne
-`format`, `lint`, `typecheck` et `test` — chaque outil derrière `uv run`, donc
-aux versions épinglées par `uv.lock` — et s'arrête à la première étape rouge.
+`lint`, `typecheck`, `test` et `format-check` — chaque outil derrière `uv run`,
+donc aux versions épinglées par `uv.lock` — et s'arrête à la première étape
+rouge.
 
-**535 tests verts** (`mesuré` le 28 août 2026 par `make test` sur cette
+### La porte ne réécrit plus le dépôt qu'elle contrôle
+
+`make all` appelait `format`, c'est-à-dire `ruff format src/`, qui **écrit**. La
+porte réécrivait donc trois fichiers avant de les contrôler, et chaque
+développeur devait se souvenir de révoquer `git checkout -- src/` avant chaque
+commit, sous peine de livrer du reformatage sans rapport avec son sujet. Un
+garde-fou qui repose sur la mémoire du suivant n'est pas un garde-fou.
+
+Les deux gestes sont désormais séparés :
+
+| Cible | Ce qu'elle fait | Où elle vit |
+|---|---|---|
+| `make format` | **écrit** — `ruff format src/` | geste volontaire, dans aucune porte |
+| `make format-check` | **constate** — `ruff format --check src/` | dernière étape de `make all` |
+
+**Conséquence assumée : `make all` est ROUGE sur `main`, et c'est voulu.**
+`format-check` signale trois fichiers —
+`src/docling_service/extraction.py`, `language.py`, `matter.py` (`mesuré` le
+31 août 2026 : « 3 files would be reformatted, 33 files already formatted ») :
+des lignes qui tiennent dans les 100 colonnes mais ont été pliées à la main.
+
+**Il y en a un QUATRIÈME, et `make format-check` ne le voit pas.**
+`tests/unit/test_wipe_stores.py` n'est pas format-propre non plus (`mesuré` :
+`uv run ruff format --check src/ tests/` → « 4 files would be reformatted, 58
+files already formatted »). Il préexiste sur `main`, il n'a rien à voir avec le
+lot 2, et il tombe dans un angle mort : `make format-check` est borné à `src/` et
+ne le signale jamais, `make format` ne le répare pas — mais le hook
+`ruff-format --check`, lui, **bloque** tout commit qui le touche. Le geste, quand
+ce jour viendra : `uv run ruff format tests/unit/test_wipe_stores.py`, dans le
+commit qui touche ce fichier et nulle part ailleurs. Toute phrase de ce dépôt qui
+dit « trois fichiers » parle de la portée de `make format-check`, jamais de
+l'état du dépôt.
+
+**Ce que le prochain développeur doit en faire : rien.** Ne lance pas
+`make format` pour éteindre ce rouge. Les trois fichiers de `src/` sont réservés
+au lot de la hiérarchie, qui réécrit `extraction.py`.
+
+**Et la raison tient à la lisibilité du lot 2, pas à un volume.** Le coût du
+reformatage est **mesuré** : `uv run ruff format src/` produit **16 lignes** de
+diff — 4 ajoutées, 12 supprimées, `git diff --numstat` — sur **1 221** lignes
+dans les trois fichiers, à **cinq** endroits, dont **quatre** replis de ligne
+faits à la main et un doublon de ligne vide. Ce n'est pas un « reformatage
+massif » : la phrase qui l'affirmait était surdimensionnée, et elle instruisait
+chaque lot à venir de l'accepter sans remesurer. La décision reste la bonne pour
+une autre raison — trois de ces cinq
+endroits sont dans `extraction.py`, que le lot 2 réécrit, et un diff de
+formatage mêlé à cette réécriture se relit mal. Le rouge est un constat exact sur
+l'état du dépôt, consigné au registre §5.4, et il tombera avec ce lot-là.
+
+En attendant, la porte est utile telle quelle : `format-check` passe **en
+dernier**, donc `lint`, `typecheck` et `test` rendent leur verdict complet avant
+qu'elle ne s'arrête. Pour lire ce verdict seul :
+
+```bash
+make lint typecheck test
+```
+
+### Les garde-fous du dépôt — une seule installation
+
+```bash
+make install
+```
+
+Ce geste, et lui seul, arme les hooks déclarés dans `.pre-commit-config.yaml`
+**et** le contrôle d'identité d'auteur. **Il n'était fait nulle part avant le
+lot 0b** : les garde-fous étaient déclarés et rien ne les exécutait
+(registre §5.5). Un garde-fou déclaré et non installé est pire qu'absent — on
+croit l'avoir.
+
+`make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`.
+Ce script monte les deux couches **dans l'ordre**, ne passe **jamais** `-f`, et
+**vérifie son propre résultat** : il sort en erreur si le montage n'est pas
+celui qu'il annonce.
+
+**`uv` est requis.** Cette phrase disait « si `uv` manque, il s'exécute seul » :
+c'est faux, et `mesuré` — `env PATH=/usr/bin:/bin sh
+scripts/installer-les-garde-fous.sh` rend **`rc=1`** et ne pose que les deux
+copies du contrôle d'identité, sans aucun hook du framework ni `.legacy`. Le
+script le dit sur sa sortie d'erreur ; c'était la documentation qui mentait.
+
+**Lance-le depuis le clone principal.** `pre-commit install` grave dans le hook
+généré une ligne `INSTALL_PYTHON=<interpréteur de l'arbre d'où on l'a lancé>`, et
+`.git/hooks` est partagé par tout le clone. Si cet arbre disparaît — un
+`git worktree remove` après fusion, par exemple — et qu'aucun `pre-commit` n'est
+au PATH, **tout commit du dépôt et de tous ses arbres de travail** est refusé,
+sur le seul message « `` `pre-commit` not found. `` », qui ne nomme pas la cause
+(`mesuré`, 31 août 2026 : `rc=1`, HEAD inchangé). C'est fail-closed, donc sans
+danger pour l'historique. **Le geste de sortie :** relancer `make install` depuis
+le clone principal.
+
+L'ordre n'est pas cosmétique, et il ne pouvait pas rester une consigne écrite.
+Le lot 0b, tel qu'il avait été livré, demandait deux gestes dans un sens précis ;
+l'inversion ne produit aucune erreur, seulement l'absence d'une protection. Un
+garde-fou qui repose sur la mémoire du suivant n'est pas un garde-fou — c'est la
+phrase que ce même lot a fait respecter à `make all`, et elle valait aussi ici.
+
+| Hook | Ce qu'il fait | Écrit ? |
+|---|---|---|
+| `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche — voir la réserve ci-dessous, tous les chemins qui créent un commit ne sont pas couverts | non |
+| `trailing-whitespace`, `end-of-file-fixer` | hygiène de fin de ligne et de fin de fichier | oui, sur les fichiers **indexés** |
+| `check-yaml` | YAML valide | non |
+| `check-added-large-files` | refuse un fichier **nouvellement ajouté** de plus de 500 ko. Ne voit **pas** un fichier déjà suivi qu'on modifie, quelle que soit sa taille | non |
+| `ruff` | `--fix` sur les violations de lint | oui, sur les fichiers **indexés** |
+| `ruff-format` | `--check` — **constate**, ne reformate pas | non |
+| `detect-secrets` | refuse un secret dans un fichier **indexé** | non |
+
+#### Le contrôle d'identité tient sur `pre-commit.legacy`, et c'est essentiel
+
+Il est déclaré **deux fois**, et ce n'est pas une redondance décorative :
+
+- comme hook `repo: local` dans `.pre-commit-config.yaml` — donc dans l'**arbre
+  de travail** ;
+- comme `.git/hooks/pre-commit.legacy`, la copie manuelle que
+  `pre-commit install` déplace et continue d'exécuter — donc **hors** de l'arbre
+  de travail.
+
+Les deux pointent le même script versionné, `scripts/git-hooks/pre-commit` : la
+liste blanche d'adresses n'a **qu'un site versionné**.
+
+**Elle en a deux une fois armée, et il faut le savoir.** Cette phrase disait
+« un seul site, et il ne peut pas diverger » : c'est vrai du dépôt, faux du
+montage. `pre-commit.legacy` est une **copie figée à l'installation** ; le hook
+`repo: local`, lui, relit le script versionné à chaque commit. `mesuré` le
+31 août 2026, dans un clone frais armé par le script livré, une édition
+**commitée** de `ADRESSES_AUTORISEES` :
+
+| Édition | Effet au commit suivant |
+|---|---|
+| **ajouter** une adresse | **sans effet** — la couche `repo: local` l'accepte, puis `pre-commit.legacy` refuse (`rc=1`, HEAD inchangé) en affichant l'**ancienne** liste |
+| **retirer** une adresse | **appliqué** — la couche `repo: local` refuse (`rc=1`, HEAD inchangé) |
+
+C'est **fail-closed dans les deux sens** : de la friction, jamais une exposition.
+Et le montage n'est pas changé pour autant — la copie figée **est** la propriété
+qui rend le contrôle indépendant de l'arbre de travail (section ci-dessous).
+**Le geste : après toute édition de `ADRESSES_AUTORISEES`, relancer
+`make install`**, qui réécrit la copie. Le message de refus énumère alors
+l'ancienne liste : une adresse fraîchement ajoutée qui n'y figure pas est ce
+cas-là, et rien d'autre.
+
+**Seule la seconde couche est inconditionnelle.** Le hook généré par le
+framework ouvre sa configuration en chemin **relatif** : un arbre de travail
+dont `.pre-commit-config.yaml` ne déclare pas le contrôle est désarmé, en
+silence. Sur les 111 commits de `main`, aucun ne le déclare (`mesuré` le 31 août
+2026 sur `a005172`) — donc tout `git checkout` d'un commit ancien, tout
+`git bisect`, tout HEAD détaché. C'est pour cela que
+`scripts/installer-les-garde-fous.sh` copie le script **avant** d'appeler
+`pre-commit install`, et que **`-f` ne doit jamais être passé** : `-f` supprime
+`pre-commit.legacy`, et `pre-commit install` le suggère lui-même dans sa sortie.
+
+Un test garde cette propriété plutôt que de la documenter :
+`tests/unit/test_installation_des_garde_fous.py` monte un dépôt jetable dont la
+configuration ne porte **pas** le contrôle, y exécute le script livré, et prouve
+que le refus tient.
+
+Les hooks qui écrivent ne touchent que ce qui est **déjà indexé**, refusent le
+commit, et **nomment chaque fichier qu'ils ont corrigé** — sans montrer le diff.
+Cette phrase disait « et montrent leur diff » : c'était faux. `mesuré` le 31 août
+2026, la sortie se limite à `- files were modified by this hook` puis
+`Fixing <fichier>`. Le diff s'obtient avec `--show-diff-on-failure`, un drapeau
+de la **ligne de commande** que le hook généré ne porte pas et qu'aucune clé de
+`.pre-commit-config.yaml` ne peut activer. Pour le lire :
+
+```bash
+git diff                                   # ce que le hook vient d'écrire
+uv run pre-commit run --show-diff-on-failure --all-files
+```
+
+On relit, on réindexe. C'est la différence de fond avec le défaut que le lot 0b
+vient de corriger dans `make all` (section précédente), qui réécrivait tout
+`src/` — y compris des fichiers qu'on n'avait pas touchés — et sortait **vert**.
+
+#### Ce que le contrôle d'identité couvre, et ce qu'il ne couvre pas
+
+**Cette réserve remplace une phrase sans réserve, et elle est mesurée.** Le
+README affirmait que le hook « refuse un commit dont l'adresse d'auteur ou de
+committer n'est pas dans la liste blanche », sans dire *quels commits*. Or
+`git commit` n'est pas le seul chemin qui en crée un, et git ne déclenche pas les
+mêmes hooks sur tous. `mesuré` le 31 août 2026, mouchards posés sur chaque hook
+de `.git/hooks` :
+
+| Geste | Couvert | Par quoi |
+|---|---|---|
+| `git commit` | **oui** | `pre-commit` |
+| `git commit --amend` | **oui** | `pre-commit` |
+| `git merge --no-ff` | **oui** | `pre-merge-commit` |
+| `git revert` | **non** | git n'y déclenche ni `pre-commit` ni `commit-msg` |
+| `git cherry-pick` | **non** | idem |
+| `git rebase` | **non** | aucun hook de la famille ; le rebase réécrit le committer |
+| `git commit --no-verify` | **non** | par construction. Ne l'utilise jamais |
+
+Les fusions ont été fermées par la réparation du lot 0b : `pre-commit install`
+n'installe que le type `pre-commit`, et un commit de fusion portant `@aosis.net`
+partait sans rencontrer quoi que ce soit (`mesuré`).
+
+**`git revert` et `git cherry-pick` restent ouverts, et ce n'est pas un oubli.**
+Le seul point d'accroche que git y déclenche est `prepare-commit-msg` — et un
+contrôle posé là serait **vert sur le défaut** : `mesuré`, lors d'un
+`cherry-pick`, `git var GIT_AUTHOR_IDENT` y rend l'identité **locale**, pas celle
+du commit produit. Un commit d'auteur `@aosis.net` cueilli depuis un arbre
+configuré en `@gmail.com` se présente au hook comme `@gmail.com`, et passe.
+La fermeture honnête est un hook `pre-push` ; elle est ouverte au registre.
+
+#### Ce que `detect-secrets` protège, et ce qu'il ne protège pas
+
+À ne pas survendre. `.env` porte les mots de passe MinIO et PostgreSQL, mais
+**un hook `pre-commit` ne voit que les fichiers indexés, et `.env` est dans
+`.gitignore` : il n'est donc jamais indexé, et installer ce hook ne le fera
+jamais scanner.** Le gain est ailleurs, et il est réel : empêcher qu'un secret
+parte un jour dans un fichier **versionné**. Aujourd'hui `docker-compose.yml`
+passe par `${MINIO_ROOT_PASSWORD}` et ne porte aucun secret en clair (`mesuré`,
+31 août 2026).
+
+Il n'y a **pas de baseline**. Le dépôt en portait une, `.secrets.baseline`,
+générée le 30 avril 2026 et jamais regénérée ; le lot 0b l'a supprimée après
+avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
+désormais **au site**, avec sa justification, par un commentaire
+`# pragma: allowlist secret`.
+
+Le dépôt en porte **3** au 31 août 2026 (`mesuré` :
+`grep -rn 'pragma: allowlist secret' --include='*.py' .`, trois lignes
+*porteuses* — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et
+`:92`, les autres occurrences étant les commentaires qui les justifient). Dans les
+deux fichiers, le scanner lit un **nom** de variable — `API_KEY` — sans regarder
+sa valeur. Le compte était annoncé à 2 : la troisième ligne était née du piège de
+déduplication décrit au registre, et n'avait pas été recomptée. Ne recopie pas ce
+compte : le scan complet du dépôt versionné se relance en une commande, et c'est
+lui qui fait foi.
+
+```bash
+git ls-files -z -- ':!Datas/' | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
+```
+
+**Le `:!Datas/` n'est pas un détail de confort, et il n'était pas là.** Sans lui,
+cette commande contredit la section suivante : `detect-secrets` est appelé
+**directement**, donc l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` — que
+seul le framework applique — ne le filtre pas, et le scan bute sur les deux faux
+positifs du corpus. `mesuré` le 31 août 2026 **sur le résultat d'une fusion
+d'essai `--no-ff` avec `a005172`**, sans le `:!Datas/` : deux
+`Hex High Entropy String`, aux deux emplacements que la section suivante nomme.
+Avec le `:!Datas/` : aucune sortie, `rc=0`, 99 fichiers scannés. La commande
+**ne doit rien rendre** — c'est cela, son verdict.
+
+Deux réserves à connaître avant de lire son code de retour :
+
+- **le défaut ne se voit pas sur la branche seule.** Tant que `Datas/` n'est pas
+  versionné, `git ls-files` ne le nomme pas et la commande est verte pour une
+  raison qui disparaît le jour de la fusion. Mesure-la sur le résultat de la
+  fusion, jamais sur la branche ;
+- **le code de retour est celui de `xargs`, pas celui de `detect-secrets`** :
+  `xargs` traduit un échec du programme appelé en **123**, jamais en 1. Ne teste
+  donc pas `rc = 1`, teste `rc ≠ 0` — et prends-le sans pipe supplémentaire, un
+  `| tail` rendrait le code de `tail`.
+
+Ce `:!Datas/` et l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` disent la
+même chose à deux endroits : si l'un bouge, l'autre doit suivre. Le second est
+gardé par `tests/unit/test_hooks_contre_le_corpus.py` ; le premier ne l'est pas,
+et c'est consigné au registre.
+
+#### Le corpus est hors de portée des hooks, et voici comment l'étendre
+
+`Datas/htms/` et `Datas/pdfs/` sont **versionnés** — 25 fichiers, 55 Mo. Ce sont
+des données d'entrée, pas du code, et `.pre-commit-config.yaml` les soustrait à
+**tous** les hooks par un `exclude: '^Datas/'` au niveau racine.
+
+**Ce n'est pas de la commodité.** Sans cette exclusion, mesuré sur le résultat
+d'une fusion d'essai :
+
+| Hook | Ce qu'il faisait au corpus |
+|---|---|
+| `detect-secrets` | **refusait** le commit — deux `Hex High Entropy String`, faux positifs. Et un `# pragma` est impossible ici : le **contenu** entre dans le calcul de `element_id` (contrat, exigences 2 et 3) |
+| `trailing-whitespace`, `end-of-file-fixer` | **écrivaient** — 24 fichiers sur 25, 240 lignes. Au commit, `git add` puis recommit faisait entrer le fichier **altéré**, sans erreur |
+| `check-added-large-files` | **refusait** tout fichier **nouveau** de plus de 500 ko : le corpus ne pouvait plus grandir |
+
+La deuxième ligne est la plus grave. Le corpus est une donnée de mesure : deux
+postes dont les fichiers diffèrent d'un caractère produisent des `element_id`
+différents, donc des campagnes que rien ne permet de comparer, **sans qu'aucune
+erreur ne le signale** (mandat §2.2). Un hook qui « corrige » une fin de ligne
+dans un HTML capturé fait exactement ce dégât.
+
+**Le geste pour étendre le corpus, aujourd'hui :**
+
+```bash
+git add "Datas/htms/<ouvrage>/<chapitre>.html" && git commit
+```
+
+Rien de particulier — c'est le point de l'exclusion. Aucun `--no-verify`, aucun
+seuil à relever, aucune exception à ajouter. Deux choses seulement :
+
+- **ne renomme rien, jamais**, et surtout pas pour « ranger » : `source_path`
+  entre dans `element_id`. Les noms doivent être identiques au caractère près
+  d'un poste à l'autre (mandat §2.2) ;
+- au-delà de **50 Mo par fichier**, GitHub avertit ; au-delà de **100 Mo**, il
+  refuse. Aucun fichier du corpus n'approche ces bornes aujourd'hui — mais
+  **pas « de loin » comme ce paragraphe l'a affirmé**. Il disait « le plus gros
+  fichier du corpus pèse aujourd'hui moins de 1 Mo » : c'est **faux**, et de
+  presque un ordre de grandeur. `mesuré` le 31 août 2026 **sur le résultat de la
+  fusion d'essai**, `git ls-files -z -- Datas | xargs -0 stat -c '%s %n'` :
+  le plus gros pèse **6 362 475 o** — `Datas/htms/Practical MLflow for
+  Generative AI on Databricks/8. Deploying a GenAI Application with
+  MLflow.html` — le plus petit **671 707 o**, et **19 des 25** dépassent 1 Mo.
+  La conclusion tient, la marge est de **8×** et non de 50× : une capture plus
+  lourde, ou un PDF d'images, la rapprocherait vite.
+
+**Ce que l'exclusion coûte**, écrit pour que personne ne le découvre : un secret
+réel déposé sous `Datas/` ne serait pas vu par `detect-secrets`. C'est accepté —
+le corpus est une capture de documentation publique, et l'alternative consiste à
+altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
+et lui seul.
+
+**552 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre

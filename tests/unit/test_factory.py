@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from dagster import AssetKey, DagsterInstance, Definitions, build_sensor_context
+from dagster import (
+    AssetKey,
+    DagsterInstance,
+    DefaultSensorStatus,
+    Definitions,
+    SensorEvaluationContext,
+    SkipReason,
+    build_sensor_context,
+    sensor,
+)
 
 from src.pipeline.factory import build_source
 from src.pipeline.settings import get_settings
@@ -181,3 +190,77 @@ class TestPolitiqueDeReprise:
             built = build_source(source)
             extraction = next(a for a in built.assets if a.key.path[-1] == "extracted_document")
             assert extraction.op.retry_policy is not None
+
+
+class TestLesSensorsDIngestionSontLivresArmes:
+    """Tout le pipeline est inerte au deploiement si ces sensors arrivent a l'arret.
+
+    Un sensor sans ``default_status`` est livre STOPPED : Dagster le charge, il
+    apparait dans l'interface, et il ne tourne jamais. Aucun fichier depose n'est
+    alors ingere, et rien ne rougit — la panne est parfaitement muette.
+
+    ``factory.py`` porte la ligne ``default_status=DefaultSensorStatus.RUNNING``
+    et rien ne la gardait : la retirer laissait toute la suite verte. Le meme
+    garde existait pour le seul sensor de reindexation
+    (``test_reindex_job.py::TestLeSensorEstLivreArme``) ; il est ici decline aux
+    sensors de source.
+
+    Les assertions portent sur l'objet PRODUIT par ``build_source`` et sur celui
+    que ``definitions.py`` livre reellement, jamais sur la presence du mot dans
+    la source. Et elles portent sur TOUTES les sources declarees, pas sur une :
+    un harnais qui n'appelle la fabrique qu'avec une source laisserait les deux
+    autres sans garde — c'est le defaut que ``3603492`` a du corriger sur le
+    ``max()`` multi-sources.
+    """
+
+    # Les sources declarees aujourd'hui dans ``sources.yaml``. Borne INFERIEURE,
+    # jamais une egalite : une quatrieme source doit etre couverte
+    # automatiquement par les boucles ci-dessous, tandis que la disparition
+    # silencieuse de l'une de ces trois doit rougir. Une egalite serait une
+    # phrase d'exhaustivite, donc un defaut en attente.
+    #
+    # Chacun des deux tests ci-dessous porte SA PROPRE borne, en ligne, sur la
+    # collection qu'il parcourt : `sources` pour le premier, `livres` pour le
+    # second. C'est la seule place ou une borne garde quelque chose — un test de
+    # borne separe reconstruit son propre harnais et reste vert quoi qu'il arrive
+    # a celui des autres.
+    SOURCES_ATTENDUES = {"pdfs", "livres_html", "markdown"}
+
+    def test_chaque_source_declaree_est_livree_armee(self):
+        sources = load_sources()
+        # La borne est EN LIGNE, et elle porte sur la liste que la boucle
+        # ci-dessous parcourt reellement. Un test de borne separe, qui appelait
+        # `load_sources()` de son cote, ne gardait rien : forcer `sources` a une
+        # liste vide ici et retirer cette ligne laissait 551 tests VERTS
+        # (`mesure`, 31 aout 2026). Il etait vert des deux cotes du defaut, parce
+        # qu'il n'observait jamais ce harnais-ci.
+        assert {source.name for source in sources} >= self.SOURCES_ATTENDUES
+        for source in sources:
+            built = build_source(source)
+            assert built.sensor.default_status is DefaultSensorStatus.RUNNING, (
+                f"le sensor de la source « {source.name} » est livre a l'arret"
+            )
+
+    def test_les_sensors_livres_par_les_definitions_sont_armes(self):
+        # C'est l'objet reellement charge par Dagster au demarrage : la fabrique
+        # peut etre juste et le cablage oublier une source.
+        from src.pipeline.definitions import defs
+
+        attendus = {f"{nom}_sensor" for nom in self.SOURCES_ATTENDUES}
+        livres = {capteur.name: capteur for capteur in defs.sensors}
+        assert set(livres) >= attendus
+        for nom in sorted(attendus):
+            assert livres[nom].default_status is DefaultSensorStatus.RUNNING, (
+                f"le sensor « {nom} » est livre a l'arret par definitions.py"
+            )
+
+    def test_l_arme_ne_vient_pas_du_defaut_de_dagster(self):
+        # Sinon les assertions ci-dessus seraient vraies sans que la ligne
+        # existe, et elles resteraient vertes si Dagster changeait sa valeur par
+        # defaut : elles seraient vertes des deux cotes du defaut. Dagster livre
+        # bien STOPPED par defaut — c'est ce que ce temoin constate.
+        @sensor(name="temoin_sans_default_status", job_name="pdfs_job")
+        def temoin(context: SensorEvaluationContext) -> SkipReason:
+            return SkipReason("temoin")
+
+        assert temoin.default_status is not DefaultSensorStatus.RUNNING

@@ -1,4 +1,87 @@
+# Les hooks de ce fichier sont INSTALLES par `pre-commit install`, et c'est le
+# seul geste : voir README, section « Les garde-fous du depot ».
+#
+# Ce fichier a longtemps declare des garde-fous que rien n'executait — le
+# framework n'etait installe nulle part, donc `detect-secrets` n'avait jamais
+# tourne en garde-fou (registre §5.5). Un garde-fou declare et non installe est
+# pire qu'absent : on croit l'avoir.
+# Les types de hook a installer. Cette cle ne sert que si quelqu'un appelle
+# `pre-commit install` a la main : `scripts/installer-les-garde-fous.sh`, que
+# `make install` lance, passe les types EXPLICITEMENT — l'installation ne doit
+# rien devoir a la branche sortie au moment ou on l'execute, et cette cle vit
+# dans l'arbre de travail.
+#
+# `pre-merge-commit` n'est pas decoratif : `pre-commit` seul ne voit pas les
+# commits de fusion.
+default_install_hook_types: [pre-commit, pre-merge-commit]
+
+# LE CORPUS EST HORS DE PORTEE DE TOUS LES HOOKS, ET IL DOIT LE RESTER.
+#
+# Depuis `a005172`, `Datas/htms/` et `Datas/pdfs/` sont VERSIONNES : 25 fichiers,
+# 55 Mo de HTML capture et un PDF. Trois familles de hooks s'y cassaient les
+# dents, et deux d'entre elles y ecrivaient (`mesure` sur le resultat d'une
+# fusion d'essai `--no-ff` avec `a005172`, 0 conflit) :
+#
+#   - `detect-secrets` REFUSAIT un commit touchant deux fichiers du corpus, deux
+#     « Hex High Entropy String » qui sont des faux positifs. Et on ne peut pas y
+#     poser de pragma : le CONTENU du fichier entre dans le calcul de
+#     `element_id` (contrat, exigences 2 et 3), donc y ajouter un commentaire
+#     change les identifiants de tout ce qui en sort ;
+#   - `trailing-whitespace` et `end-of-file-fixer` ECRIVAIENT dedans : 24 fichiers
+#     sur 25, 240 lignes. Au commit, le geste naturel — `git add` puis recommit —
+#     faisait entrer le fichier ALTERE au-dela de ce que l'humain avait ecrit,
+#     sans aucune erreur. C'est le plus grave des trois : le corpus est une
+#     donnee d'entree, pas du code, et sa moindre alteration deplace les
+#     identifiants ;
+#   - `check-added-large-files --maxkb=500` laissait passer un fichier du corpus
+#     deja suivi qu'on modifie, et REFUSAIT un fichier NOUVEAU. Le corpus ne
+#     pouvait donc plus etre ETENDU, ni d'un chapitre ni d'un PDF.
+#
+# `exclude` a la RACINE et non par hook : `pre-commit` applique les motifs de la
+# racine a la liste de fichiers AVANT de la distribuer, donc un seul site couvre
+# les quatre hooks fautifs ET tous ceux qu'on ajoutera. Un `exclude` par hook
+# aurait demande de se souvenir de le reporter sur le suivant.
+#
+# CE QUE CETTE EXCLUSION COUTE, ecrit pour que personne ne le decouvre : un
+# secret reel depose sous `Datas/` ne serait PAS vu par `detect-secrets`. C'est
+# accepte parce que le corpus est une capture de documentation publique, et parce
+# que l'alternative — alterer le corpus — casse la comparabilite de toute mesure
+# du chantier. La borne est etroite : ce chemin-la, et lui seul.
+#
+# La barre oblique finale et l'ancre ne sont pas cosmetiques. `^Datas` sans barre
+# emporterait un futur `Datastore/` ; `Datas/` sans ancre emporterait
+# `src/Datas/`. Un test le garde : tests/unit/test_hooks_contre_le_corpus.py.
+exclude: '^Datas/'
+
 repos:
+  # Le controle d'identite d'auteur passe par le framework, et non par un
+  # `.git/hooks/pre-commit` ecrit a la main. Raison : ce fichier ne peut heberger
+  # QU'UN script, et `pre-commit install` l'ecrase. Le declarer ici rend
+  # `.git/hooks/pre-commit` au framework sans rien perdre, et rend l'installation
+  # unique : `pre-commit install`.
+  #
+  # `entry` pointe le script VERSIONNE, celui-la meme que le mandat §2.1 fait
+  # copier a la main : les deux voies d'installation executent donc les MEMES
+  # octets, et la liste blanche d'adresses n'a qu'un seul site.
+  #
+  # `always_run` est indispensable : sans lui, un hook dont aucun fichier
+  # indexe ne matche est SAUTE, et le controle d'identite ne depend d'aucun
+  # fichier. `pass_filenames` est faux pour la meme raison — le script ne lit
+  # pas d'arguments, il lit `git var GIT_AUTHOR_IDENT`.
+  - repo: local
+    hooks:
+      - id: identite-auteur
+        name: "Identite d'auteur autorisee"
+        entry: scripts/git-hooks/pre-commit
+        language: script
+        # `pre-merge-commit` en plus de `pre-commit` : sans lui, le hook
+        # declare ici ne tournerait pas sur un `git merge --no-ff`, meme le
+        # type installe. Les deux couches — celle-ci et `<type>.legacy` —
+        # couvrent donc les memes gestes.
+        stages: [pre-commit, pre-merge-commit]
+        always_run: true
+        pass_filenames: false
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -13,10 +96,35 @@ repos:
     hooks:
       - id: ruff
         args: [--fix]
+      # `--check` : ce hook CONSTATE, il ne reformate pas. C'est la meme decision
+      # que pour la cible `all` du Makefile, et pour la meme raison — mais elle
+      # est ici plus mordante. Sans `--check`, le premier developpeur a toucher
+      # une ligne de `extraction.py` verrait le hook reformater le fichier
+      # ENTIER et emporterait dans son commit les trois plis reserves au lot 2
+      # (registre §5.4). Le reformatage reste un geste volontaire :
+      # `uv run ruff format <fichier>`, jamais `make format`, qui ecrit dans
+      # tout `src/`.
       - id: ruff-format
+        args: [--check]
 
+  # Pas de `--baseline`. Le depot en portait un, `.secrets.baseline`, genere le
+  # 30 avril 2026 et jamais regenere : sa seule entree pointait
+  # `tests/unit/test_settings.py:44`, une ligne SUPPRIMEE le 11 juin 2026 par
+  # `b157e84`. (Le commentaire d'origine ajoutait « et elle etait
+  # `is_verified: false` » comme signe de pourrissement : c'etait faux. En
+  # semantique detect-secrets, `is_verified` veut dire « verifie contre le
+  # SERVICE reel » ; le champ d'audit humain est `is_secret`. La preuve du
+  # fantome tient a la ligne 44 disparue, et elle tenait seule.)
+  # Une baseline est un
+  # etat que rien ne reconcilie avec le code : elle avait donc silencieusement
+  # pourri pendant deux mois et demi, et le hook refusait le premier commit
+  # touchant ce fichier en sortant en 3 pour se faire reindexer (`mesure`).
+  #
+  # Les faux positifs se declarent desormais AU SITE, avec leur justification,
+  # par un commentaire `# pragma: allowlist secret`. Un pragma est relu dans le
+  # diff et meurt avec la ligne qu'il annote ; une entree de baseline survit a
+  # sa ligne. C'est la lecon « ne rien ecrire est plus robuste que bien ecrire ».
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
