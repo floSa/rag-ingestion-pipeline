@@ -91,13 +91,54 @@ def capture() -> dict[str, Any]:
     return contenu
 
 
+def _titres(cas: dict[str, Any]) -> list[str]:
+    """References des items que Docling a etiquetes comme des titres."""
+    return [r for r in cas["ordre"] if cas["items"][r]["label"] in ranking.HEADING_LABELS]
+
+
 def _rangs(cas: dict[str, Any]) -> list[int]:
-    """Rejoue le code de rang de production sur l'arbre capture."""
+    """Rejoue le code de rang de production sur l'arbre capture.
+
+    LE FILTRE DES ``None`` EST UN SILENCE, ET IL A CACHE UN DEFAUT REEL. Cette
+    fonction jetait les ``None`` sans jamais dire combien elle en jetait. Or
+    ``flat_rank`` rend ``None`` pour deux raisons qui n'ont rien a voir :
+
+    - l'item n'est pas un titre — c'est le cas nominal, et il y en a des
+      milliers ;
+    - **l'item EST un titre et aucun signal n'a repondu** — c'est un defaut, et
+      il tombait dans le meme filtre.
+
+    C'est exactement ce qui est arrive. La capture omettait les noeuds de groupe,
+    deux titres du chapitre imbrique avaient un groupe pour parent direct, leur
+    chaine de parents ne se remontait plus, et ils disparaissaient ici. Le test
+    assertait **39** titres la ou le graphe reel en porte **41**, et le chiffre
+    faux avait ete recopie au registre sous l'etiquette `mesure`.
+
+    D'ou l'assertion ci-dessous : **autant de rangs que de titres**. Elle vaut
+    pour tous les appelants a la fois, parce que c'est le silence qui etait
+    structurel, pas l'oubli d'un test.
+
+    Args:
+        cas: Un des deux cas de la capture.
+
+    Returns:
+        Le rang de chaque titre, dans l'ordre de la capture.
+    """
     items: dict[str, Any] = {}
     for reference, info in cas["items"].items():
         items[reference] = _Item(info["label"], info["parent"], items)
-    rangs = (ranking.flat_rank(items[reference], None) for reference in cas["ordre"])
-    return [rang for rang in rangs if rang is not None]
+    rangs = [ranking.flat_rank(items[reference], None) for reference in cas["ordre"]]
+    classes = [rang for rang in rangs if rang is not None]
+    titres = _titres(cas)
+    assert len(classes) == len(titres), (
+        f"{len(titres) - len(classes)} titre(s) sur {len(titres)} n'ont recu AUCUN "
+        f"rang et seraient jetes en silence. Les references concernees : "
+        f"{[r for r in titres if ranking.flat_rank(items[r], None) is None]}. "
+        "Cause la plus probable : la capture ne porte pas les noeuds de groupe "
+        "qui sont sur leur chaine de parents — rejouer "
+        "scripts/capturer-larbre-docling.py, qui passe with_groups=True."
+    )
+    return classes
 
 
 def _fichier(cas: dict[str, Any]) -> Path:
@@ -140,18 +181,76 @@ class TestLaCaptureDecritBienCeChapitreLa:
         sources = {capture[nom]["source"] for nom in CAS_ATTENDUS}
         assert len(sources) == 2
 
+    def test_no_parent_reference_points_outside_the_capture(self, capture):
+        """LA CAPTURE EST UN ARBRE COMPLET, ET C'EST CE QUI LUI MANQUAIT.
+
+        ``ranking.docling_parent_rank`` REMONTE la chaine des parents. Une
+        reference qui pointe un noeud absent de la capture casse la remontee : la
+        resolution rend ``None``, la boucle sort, et le titre perd son rang.
+
+        C'est ce qui s'etait produit. ``document.iterate_items()`` ne rend jamais
+        les noeuds de groupe, et la capture en omettait **262** — 257 sur le
+        chapitre imbrique, 5 sur le plat. Elle portait alors **1 175**
+        references de parent pointant dans le vide, dont celles de deux titres.
+
+        Cette assertion est structurelle : elle rougit pour toute famille de
+        noeud oubliee, pas seulement pour les groupes. C'est ce qui la rend utile
+        au prochain changement de version de Docling.
+        """
+        for nom in sorted(CAS_ATTENDUS):
+            items = capture[nom]["items"]
+            perdues = {
+                reference: info["parent"]
+                for reference, info in items.items()
+                if info["parent"] and info["parent"] != "#/body" and info["parent"] not in items
+            }
+            assert not perdues, (
+                f"{nom} : {len(perdues)} reference(s) de parent pointent un noeud "
+                f"absent de la capture (ex. {sorted(perdues.items())[:3]}). "
+                "Rejouer scripts/capturer-larbre-docling.py."
+            )
+
+    def test_the_capture_carries_the_anonymous_containers(self, capture):
+        """Les groupes sont dans la capture, et ils portent bien un label non-titre.
+
+        Deux proprietes distinctes, et il faut les deux :
+
+        - les noeuds de groupe SONT la — sans eux, la mutation « compter les
+          conteneurs anonymes comme des titres » n'a rien a mordre, et le test
+          bati sur du reel devient aveugle au mecanisme qu'il existe pour
+          eprouver. C'etait le defaut central de cette fixture ;
+        - **aucun** d'eux ne porte un label de titre. Si Docling se mettait a
+          etiqueter un groupe ``section_header``, la remontee le compterait, et
+          tous les rangs sous ce groupe augmenteraient d'un.
+
+        `mesure` : 257 groupes sur le chapitre imbrique, 5 sur le plat, et leurs
+        labels sont ``inline``, ``list``, ``section`` et ``unspecified``.
+        """
+        for nom, attendus in (("imbrique", 257), ("plat", 5)):
+            items = capture[nom]["items"]
+            groupes = {r: i["label"] for r, i in items.items() if r.startswith("#/groups/")}
+            assert len(groupes) == attendus, (
+                f"{nom} : {len(groupes)} noeuds de groupe au lieu de {attendus}. "
+                "La capture doit passer with_groups=True."
+            )
+            titres_deguises = {r: l for r, l in groupes.items() if l in ranking.HEADING_LABELS}
+            assert not titres_deguises, (
+                f"{nom} : des conteneurs anonymes portent un label de titre "
+                f"({titres_deguises}) : la remontee les compterait comme des niveaux"
+            )
+
 
 class TestUnChapitreImbriqueNEstPasPlat:
     def test_the_rank_distribution_is_not_degenerate(self, capture):
         """Un graphe plat rendrait un seul rang. Celui-ci en rend quatre."""
         distribution = Counter(_rangs(capture["imbrique"]))
         assert len(distribution) > 1, f"distribution degeneree : {dict(distribution)}"
-        assert dict(sorted(distribution.items())) == {0: 5, 1: 10, 2: 21, 3: 3}
+        assert dict(sorted(distribution.items())) == {0: 5, 1: 10, 2: 21, 3: 5}
 
     def test_most_headings_are_nested_under_another_heading(self, capture):
         rangs = _rangs(capture["imbrique"])
         imbriques = sum(1 for rang in rangs if rang > 0)
-        assert imbriques == 34
+        assert imbriques == 36
         assert imbriques > len(rangs) - imbriques
 
     def test_the_root_headings_match_the_h1_tags_of_the_source(self, capture):

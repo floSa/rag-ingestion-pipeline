@@ -9,6 +9,780 @@
 # versionne — si le HTML bouge, tests/unit/test_non_platitude.py rougit.
 imbrique:
   items:
+    '#/body':
+      label: unspecified
+      parent: ''
+    '#/groups/0':
+      label: inline
+      parent: '#/texts/0'
+    '#/groups/1':
+      label: inline
+      parent: '#/texts/0'
+    '#/groups/10':
+      label: list
+      parent: '#/texts/36'
+    '#/groups/100':
+      label: list
+      parent: '#/texts/523'
+    '#/groups/101':
+      label: list
+      parent: '#/texts/525'
+    '#/groups/102':
+      label: list
+      parent: '#/texts/527'
+    '#/groups/103':
+      label: list
+      parent: '#/texts/529'
+    '#/groups/104':
+      label: list
+      parent: '#/texts/531'
+    '#/groups/105':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/106':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/107':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/108':
+      label: inline
+      parent: '#/texts/544'
+    '#/groups/109':
+      label: inline
+      parent: '#/texts/553'
+    '#/groups/11':
+      label: list
+      parent: '#/texts/38'
+    '#/groups/110':
+      label: inline
+      parent: '#/texts/566'
+    '#/groups/111':
+      label: inline
+      parent: '#/texts/566'
+    '#/groups/112':
+      label: inline
+      parent: '#/texts/566'
+    '#/groups/113':
+      label: inline
+      parent: '#/texts/566'
+    '#/groups/114':
+      label: inline
+      parent: '#/texts/566'
+    '#/groups/115':
+      label: inline
+      parent: '#/texts/566'
+    '#/groups/116':
+      label: inline
+      parent: '#/texts/626'
+    '#/groups/117':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/118':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/119':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/12':
+      label: list
+      parent: '#/texts/40'
+    '#/groups/120':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/121':
+      label: list
+      parent: '#/texts/631'
+    '#/groups/122':
+      label: list
+      parent: '#/texts/658'
+    '#/groups/123':
+      label: list
+      parent: '#/texts/660'
+    '#/groups/124':
+      label: list
+      parent: '#/texts/662'
+    '#/groups/125':
+      label: list
+      parent: '#/texts/664'
+    '#/groups/126':
+      label: list
+      parent: '#/texts/666'
+    '#/groups/127':
+      label: list
+      parent: '#/texts/668'
+    '#/groups/128':
+      label: list
+      parent: '#/texts/670'
+    '#/groups/129':
+      label: list
+      parent: '#/texts/672'
+    '#/groups/13':
+      label: inline
+      parent: '#/texts/28'
+    '#/groups/130':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/131':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/132':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/133':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/134':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/135':
+      label: inline
+      parent: '#/texts/631'
+    '#/groups/136':
+      label: inline
+      parent: '#/texts/704'
+    '#/groups/137':
+      label: list
+      parent: '#/texts/704'
+    '#/groups/138':
+      label: list
+      parent: '#/texts/708'
+    '#/groups/139':
+      label: list
+      parent: '#/texts/710'
+    '#/groups/14':
+      label: inline
+      parent: '#/texts/28'
+    '#/groups/140':
+      label: list
+      parent: '#/texts/712'
+    '#/groups/141':
+      label: inline
+      parent: '#/texts/713'
+    '#/groups/142':
+      label: list
+      parent: '#/texts/730'
+    '#/groups/143':
+      label: list
+      parent: '#/texts/732'
+    '#/groups/144':
+      label: inline
+      parent: '#/texts/733'
+    '#/groups/145':
+      label: list
+      parent: '#/texts/737'
+    '#/groups/146':
+      label: inline
+      parent: '#/texts/738'
+    '#/groups/147':
+      label: list
+      parent: '#/texts/742'
+    '#/groups/148':
+      label: inline
+      parent: '#/texts/743'
+    '#/groups/149':
+      label: inline
+      parent: '#/texts/704'
+    '#/groups/15':
+      label: list
+      parent: '#/texts/28'
+    '#/groups/150':
+      label: inline
+      parent: '#/texts/704'
+    '#/groups/151':
+      label: list
+      parent: '#/texts/757'
+    '#/groups/152':
+      label: list
+      parent: '#/texts/762'
+    '#/groups/153':
+      label: list
+      parent: '#/texts/764'
+    '#/groups/154':
+      label: list
+      parent: '#/texts/766'
+    '#/groups/155':
+      label: inline
+      parent: '#/texts/757'
+    '#/groups/156':
+      label: list
+      parent: '#/texts/757'
+    '#/groups/157':
+      label: inline
+      parent: '#/texts/770'
+    '#/groups/158':
+      label: inline
+      parent: '#/texts/773'
+    '#/groups/159':
+      label: inline
+      parent: '#/texts/776'
+    '#/groups/16':
+      label: inline
+      parent: '#/texts/55'
+    '#/groups/160':
+      label: inline
+      parent: '#/texts/779'
+    '#/groups/161':
+      label: inline
+      parent: '#/texts/782'
+    '#/groups/162':
+      label: inline
+      parent: '#/texts/785'
+    '#/groups/163':
+      label: inline
+      parent: '#/texts/788'
+    '#/groups/164':
+      label: inline
+      parent: '#/texts/791'
+    '#/groups/165':
+      label: inline
+      parent: '#/texts/796'
+    '#/groups/166':
+      label: list
+      parent: '#/texts/796'
+    '#/groups/167':
+      label: list
+      parent: '#/texts/801'
+    '#/groups/168':
+      label: list
+      parent: '#/texts/803'
+    '#/groups/169':
+      label: list
+      parent: '#/texts/805'
+    '#/groups/17':
+      label: inline
+      parent: '#/texts/59'
+    '#/groups/170':
+      label: list
+      parent: '#/texts/808'
+    '#/groups/171':
+      label: list
+      parent: '#/texts/810'
+    '#/groups/172':
+      label: list
+      parent: '#/texts/812'
+    '#/groups/173':
+      label: list
+      parent: '#/texts/814'
+    '#/groups/174':
+      label: inline
+      parent: '#/texts/817'
+    '#/groups/175':
+      label: inline
+      parent: '#/texts/817'
+    '#/groups/176':
+      label: inline
+      parent: '#/texts/835'
+    '#/groups/177':
+      label: inline
+      parent: '#/texts/835'
+    '#/groups/178':
+      label: inline
+      parent: '#/texts/835'
+    '#/groups/179':
+      label: inline
+      parent: '#/texts/835'
+    '#/groups/18':
+      label: inline
+      parent: '#/texts/28'
+    '#/groups/180':
+      label: inline
+      parent: '#/texts/864'
+    '#/groups/181':
+      label: inline
+      parent: '#/texts/864'
+    '#/groups/182':
+      label: inline
+      parent: '#/texts/864'
+    '#/groups/183':
+      label: inline
+      parent: '#/texts/881'
+    '#/groups/184':
+      label: inline
+      parent: '#/texts/881'
+    '#/groups/185':
+      label: inline
+      parent: '#/texts/891'
+    '#/groups/186':
+      label: inline
+      parent: '#/texts/891'
+    '#/groups/187':
+      label: inline
+      parent: '#/groups/188'
+    '#/groups/188':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/189':
+      label: inline
+      parent: '#/groups/190'
+    '#/groups/19':
+      label: list
+      parent: '#/texts/68'
+    '#/groups/190':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/191':
+      label: inline
+      parent: '#/groups/192'
+    '#/groups/192':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/193':
+      label: inline
+      parent: '#/groups/194'
+    '#/groups/194':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/195':
+      label: inline
+      parent: '#/groups/196'
+    '#/groups/196':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/197':
+      label: inline
+      parent: '#/groups/198'
+    '#/groups/198':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/199':
+      label: inline
+      parent: '#/groups/200'
+    '#/groups/2':
+      label: inline
+      parent: '#/texts/0'
+    '#/groups/20':
+      label: inline
+      parent: '#/texts/71'
+    '#/groups/200':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/201':
+      label: inline
+      parent: '#/groups/202'
+    '#/groups/202':
+      label: unspecified
+      parent: '#/tables/0'
+    '#/groups/203':
+      label: inline
+      parent: '#/texts/891'
+    '#/groups/204':
+      label: inline
+      parent: '#/texts/915'
+    '#/groups/205':
+      label: inline
+      parent: '#/texts/915'
+    '#/groups/206':
+      label: inline
+      parent: '#/texts/915'
+    '#/groups/207':
+      label: inline
+      parent: '#/texts/915'
+    '#/groups/208':
+      label: inline
+      parent: '#/texts/915'
+    '#/groups/209':
+      label: inline
+      parent: '#/texts/915'
+    '#/groups/21':
+      label: list
+      parent: '#/texts/71'
+    '#/groups/210':
+      label: inline
+      parent: '#/texts/962'
+    '#/groups/211':
+      label: inline
+      parent: '#/texts/962'
+    '#/groups/212':
+      label: inline
+      parent: '#/texts/962'
+    '#/groups/213':
+      label: inline
+      parent: '#/texts/973'
+    '#/groups/214':
+      label: list
+      parent: '#/texts/973'
+    '#/groups/215':
+      label: list
+      parent: '#/texts/980'
+    '#/groups/216':
+      label: list
+      parent: '#/texts/982'
+    '#/groups/217':
+      label: list
+      parent: '#/texts/984'
+    '#/groups/218':
+      label: list
+      parent: '#/texts/986'
+    '#/groups/219':
+      label: list
+      parent: '#/texts/988'
+    '#/groups/22':
+      label: inline
+      parent: '#/texts/76'
+    '#/groups/220':
+      label: inline
+      parent: '#/texts/990'
+    '#/groups/221':
+      label: inline
+      parent: '#/texts/990'
+    '#/groups/222':
+      label: inline
+      parent: '#/texts/999'
+    '#/groups/223':
+      label: inline
+      parent: '#/texts/1034'
+    '#/groups/224':
+      label: inline
+      parent: '#/texts/1034'
+    '#/groups/225':
+      label: inline
+      parent: '#/texts/1034'
+    '#/groups/226':
+      label: inline
+      parent: '#/texts/1034'
+    '#/groups/227':
+      label: inline
+      parent: '#/texts/1034'
+    '#/groups/228':
+      label: inline
+      parent: '#/texts/1034'
+    '#/groups/229':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/23':
+      label: list
+      parent: '#/texts/76'
+    '#/groups/230':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/231':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/232':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/233':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/234':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/235':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/236':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/237':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/238':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/239':
+      label: inline
+      parent: '#/texts/1098'
+    '#/groups/24':
+      label: list
+      parent: '#/texts/80'
+    '#/groups/240':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/241':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/242':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/243':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/244':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/245':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/246':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/247':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/248':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/249':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/25':
+      label: list
+      parent: '#/texts/82'
+    '#/groups/250':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/251':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/252':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/253':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/254':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/255':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/256':
+      label: inline
+      parent: '#/texts/1186'
+    '#/groups/26':
+      label: list
+      parent: '#/texts/84'
+    '#/groups/27':
+      label: list
+      parent: '#/texts/68'
+    '#/groups/28':
+      label: inline
+      parent: '#/texts/86'
+    '#/groups/29':
+      label: list
+      parent: '#/texts/86'
+    '#/groups/3':
+      label: inline
+      parent: '#/texts/13'
+    '#/groups/30':
+      label: list
+      parent: '#/texts/90'
+    '#/groups/31':
+      label: list
+      parent: '#/texts/92'
+    '#/groups/32':
+      label: list
+      parent: '#/texts/94'
+    '#/groups/33':
+      label: list
+      parent: '#/texts/68'
+    '#/groups/34':
+      label: inline
+      parent: '#/texts/96'
+    '#/groups/35':
+      label: list
+      parent: '#/texts/96'
+    '#/groups/36':
+      label: inline
+      parent: '#/texts/101'
+    '#/groups/37':
+      label: list
+      parent: '#/texts/101'
+    '#/groups/38':
+      label: inline
+      parent: '#/texts/68'
+    '#/groups/39':
+      label: list
+      parent: '#/texts/112'
+    '#/groups/4':
+      label: inline
+      parent: '#/texts/13'
+    '#/groups/40':
+      label: list
+      parent: '#/texts/115'
+    '#/groups/41':
+      label: list
+      parent: '#/texts/117'
+    '#/groups/42':
+      label: list
+      parent: '#/texts/119'
+    '#/groups/43':
+      label: inline
+      parent: '#/texts/112'
+    '#/groups/44':
+      label: inline
+      parent: '#/texts/112'
+    '#/groups/45':
+      label: inline
+      parent: '#/texts/112'
+    '#/groups/46':
+      label: inline
+      parent: '#/texts/112'
+    '#/groups/47':
+      label: inline
+      parent: '#/texts/154'
+    '#/groups/48':
+      label: inline
+      parent: '#/texts/158'
+    '#/groups/49':
+      label: inline
+      parent: '#/texts/158'
+    '#/groups/5':
+      label: inline
+      parent: '#/texts/13'
+    '#/groups/50':
+      label: inline
+      parent: '#/texts/158'
+    '#/groups/51':
+      label: inline
+      parent: '#/texts/158'
+    '#/groups/52':
+      label: inline
+      parent: '#/texts/158'
+    '#/groups/53':
+      label: inline
+      parent: '#/texts/175'
+    '#/groups/54':
+      label: inline
+      parent: '#/texts/175'
+    '#/groups/55':
+      label: list
+      parent: '#/texts/183'
+    '#/groups/56':
+      label: list
+      parent: '#/texts/185'
+    '#/groups/57':
+      label: inline
+      parent: '#/texts/186'
+    '#/groups/58':
+      label: list
+      parent: '#/texts/189'
+    '#/groups/59':
+      label: list
+      parent: '#/texts/191'
+    '#/groups/6':
+      label: inline
+      parent: '#/texts/13'
+    '#/groups/60':
+      label: list
+      parent: '#/texts/193'
+    '#/groups/61':
+      label: inline
+      parent: '#/texts/183'
+    '#/groups/62':
+      label: inline
+      parent: '#/texts/201'
+    '#/groups/63':
+      label: inline
+      parent: '#/texts/201'
+    '#/groups/64':
+      label: list
+      parent: '#/texts/201'
+    '#/groups/65':
+      label: list
+      parent: '#/texts/222'
+    '#/groups/66':
+      label: list
+      parent: '#/texts/224'
+    '#/groups/67':
+      label: list
+      parent: '#/texts/226'
+    '#/groups/68':
+      label: list
+      parent: '#/texts/228'
+    '#/groups/69':
+      label: inline
+      parent: '#/texts/228'
+    '#/groups/7':
+      label: inline
+      parent: '#/texts/28'
+    '#/groups/70':
+      label: inline
+      parent: '#/texts/242'
+    '#/groups/71':
+      label: inline
+      parent: '#/texts/242'
+    '#/groups/72':
+      label: inline
+      parent: '#/texts/242'
+    '#/groups/73':
+      label: inline
+      parent: '#/texts/242'
+    '#/groups/74':
+      label: inline
+      parent: '#/texts/242'
+    '#/groups/75':
+      label: inline
+      parent: '#/texts/242'
+    '#/groups/76':
+      label: inline
+      parent: '#/texts/372'
+    '#/groups/77':
+      label: inline
+      parent: '#/texts/372'
+    '#/groups/78':
+      label: section
+      parent: '#/texts/372'
+    '#/groups/79':
+      label: section
+      parent: '#/groups/78'
+    '#/groups/8':
+      label: inline
+      parent: '#/texts/28'
+    '#/groups/80':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/81':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/82':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/83':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/84':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/85':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/86':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/87':
+      label: inline
+      parent: '#/texts/389'
+    '#/groups/88':
+      label: inline
+      parent: '#/texts/457'
+    '#/groups/89':
+      label: inline
+      parent: '#/texts/457'
+    '#/groups/9':
+      label: list
+      parent: '#/texts/28'
+    '#/groups/90':
+      label: section
+      parent: '#/texts/457'
+    '#/groups/91':
+      label: section
+      parent: '#/groups/90'
+    '#/groups/92':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/93':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/94':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/95':
+      label: inline
+      parent: '#/texts/468'
+    '#/groups/96':
+      label: list
+      parent: '#/texts/468'
+    '#/groups/97':
+      label: list
+      parent: '#/texts/517'
+    '#/groups/98':
+      label: list
+      parent: '#/texts/519'
+    '#/groups/99':
+      label: list
+      parent: '#/texts/521'
     '#/pictures/0':
       label: picture
       parent: '#/texts/68'
@@ -3820,49 +4594,64 @@ imbrique:
       label: section_header
       parent: '#/texts/962'
   ordre:
+  - '#/body'
   - '#/texts/0'
   - '#/texts/1'
+  - '#/groups/0'
   - '#/texts/2'
   - '#/texts/3'
   - '#/texts/4'
+  - '#/groups/1'
   - '#/texts/5'
   - '#/texts/6'
   - '#/texts/7'
+  - '#/groups/2'
   - '#/texts/8'
   - '#/texts/9'
   - '#/texts/10'
   - '#/texts/11'
   - '#/texts/12'
   - '#/texts/13'
+  - '#/groups/3'
   - '#/texts/14'
   - '#/texts/15'
   - '#/texts/16'
   - '#/texts/17'
   - '#/texts/18'
+  - '#/groups/4'
   - '#/texts/19'
   - '#/texts/20'
   - '#/texts/21'
+  - '#/groups/5'
   - '#/texts/22'
   - '#/texts/23'
   - '#/texts/24'
+  - '#/groups/6'
   - '#/texts/25'
   - '#/texts/26'
   - '#/texts/27'
   - '#/texts/28'
+  - '#/groups/7'
   - '#/texts/29'
   - '#/texts/30'
   - '#/texts/31'
+  - '#/groups/8'
   - '#/texts/32'
   - '#/texts/33'
   - '#/texts/34'
   - '#/texts/35'
+  - '#/groups/9'
   - '#/texts/36'
+  - '#/groups/10'
   - '#/texts/37'
   - '#/texts/38'
+  - '#/groups/11'
   - '#/texts/39'
   - '#/texts/40'
+  - '#/groups/12'
   - '#/texts/41'
   - '#/texts/42'
+  - '#/groups/13'
   - '#/texts/43'
   - '#/texts/44'
   - '#/texts/45'
@@ -3871,19 +4660,24 @@ imbrique:
   - '#/texts/48'
   - '#/texts/49'
   - '#/texts/50'
+  - '#/groups/14'
   - '#/texts/51'
   - '#/texts/52'
   - '#/texts/53'
   - '#/texts/54'
+  - '#/groups/15'
   - '#/texts/55'
+  - '#/groups/16'
   - '#/texts/56'
   - '#/texts/57'
   - '#/texts/58'
   - '#/texts/59'
+  - '#/groups/17'
   - '#/texts/60'
   - '#/texts/61'
   - '#/texts/62'
   - '#/texts/63'
+  - '#/groups/18'
   - '#/texts/64'
   - '#/texts/65'
   - '#/texts/66'
@@ -3891,41 +4685,61 @@ imbrique:
   - '#/texts/68'
   - '#/texts/69'
   - '#/texts/70'
+  - '#/groups/19'
   - '#/texts/71'
+  - '#/groups/20'
   - '#/texts/72'
   - '#/texts/73'
   - '#/texts/74'
+  - '#/groups/21'
   - '#/texts/75'
   - '#/texts/76'
+  - '#/groups/22'
   - '#/texts/77'
   - '#/texts/78'
   - '#/texts/79'
+  - '#/groups/23'
   - '#/texts/80'
+  - '#/groups/24'
   - '#/texts/81'
   - '#/texts/82'
+  - '#/groups/25'
   - '#/texts/83'
   - '#/texts/84'
+  - '#/groups/26'
   - '#/texts/85'
+  - '#/groups/27'
   - '#/texts/86'
+  - '#/groups/28'
   - '#/texts/87'
   - '#/texts/88'
   - '#/texts/89'
+  - '#/groups/29'
   - '#/texts/90'
+  - '#/groups/30'
   - '#/texts/91'
   - '#/texts/92'
+  - '#/groups/31'
   - '#/texts/93'
   - '#/texts/94'
+  - '#/groups/32'
   - '#/texts/95'
+  - '#/groups/33'
   - '#/texts/96'
+  - '#/groups/34'
   - '#/texts/97'
   - '#/texts/98'
   - '#/texts/99'
+  - '#/groups/35'
   - '#/texts/100'
   - '#/texts/101'
+  - '#/groups/36'
   - '#/texts/102'
   - '#/texts/103'
   - '#/texts/104'
+  - '#/groups/37'
   - '#/texts/105'
+  - '#/groups/38'
   - '#/texts/106'
   - '#/texts/107'
   - '#/pictures/0'
@@ -3936,16 +4750,22 @@ imbrique:
   - '#/texts/112'
   - '#/texts/113'
   - '#/texts/114'
+  - '#/groups/39'
   - '#/texts/115'
+  - '#/groups/40'
   - '#/texts/116'
   - '#/texts/117'
+  - '#/groups/41'
   - '#/texts/118'
   - '#/texts/119'
+  - '#/groups/42'
   - '#/texts/120'
   - '#/texts/121'
+  - '#/groups/43'
   - '#/texts/122'
   - '#/texts/123'
   - '#/texts/124'
+  - '#/groups/44'
   - '#/texts/125'
   - '#/texts/126'
   - '#/texts/127'
@@ -3963,10 +4783,12 @@ imbrique:
   - '#/texts/139'
   - '#/texts/140'
   - '#/texts/141'
+  - '#/groups/45'
   - '#/texts/142'
   - '#/texts/143'
   - '#/texts/144'
   - '#/pictures/1'
+  - '#/groups/46'
   - '#/texts/146'
   - '#/texts/147'
   - '#/texts/148'
@@ -3976,46 +4798,61 @@ imbrique:
   - '#/texts/152'
   - '#/texts/153'
   - '#/texts/154'
+  - '#/groups/47'
   - '#/texts/155'
   - '#/texts/156'
   - '#/texts/157'
   - '#/texts/158'
+  - '#/groups/48'
   - '#/texts/159'
   - '#/texts/160'
   - '#/texts/161'
+  - '#/groups/49'
   - '#/texts/162'
   - '#/texts/163'
   - '#/texts/164'
   - '#/texts/165'
+  - '#/groups/50'
   - '#/texts/166'
   - '#/texts/167'
   - '#/texts/168'
+  - '#/groups/51'
   - '#/texts/169'
   - '#/texts/170'
   - '#/texts/171'
+  - '#/groups/52'
   - '#/texts/172'
   - '#/texts/173'
   - '#/texts/174'
   - '#/texts/175'
+  - '#/groups/53'
   - '#/texts/176'
   - '#/texts/177'
   - '#/texts/178'
   - '#/texts/179'
   - '#/texts/180'
+  - '#/groups/54'
   - '#/texts/181'
   - '#/texts/182'
   - '#/texts/183'
   - '#/texts/184'
+  - '#/groups/55'
   - '#/texts/185'
+  - '#/groups/56'
   - '#/texts/186'
+  - '#/groups/57'
   - '#/texts/187'
   - '#/texts/188'
   - '#/texts/189'
+  - '#/groups/58'
   - '#/texts/190'
   - '#/texts/191'
+  - '#/groups/59'
   - '#/texts/192'
   - '#/texts/193'
+  - '#/groups/60'
   - '#/texts/194'
+  - '#/groups/61'
   - '#/texts/195'
   - '#/texts/196'
   - '#/texts/197'
@@ -4024,12 +4861,14 @@ imbrique:
   - '#/texts/200'
   - '#/texts/145'
   - '#/texts/201'
+  - '#/groups/62'
   - '#/texts/202'
   - '#/texts/203'
   - '#/texts/204'
   - '#/texts/205'
   - '#/texts/206'
   - '#/pictures/2'
+  - '#/groups/63'
   - '#/texts/208'
   - '#/texts/209'
   - '#/texts/210'
@@ -4044,20 +4883,26 @@ imbrique:
   - '#/texts/219'
   - '#/texts/220'
   - '#/texts/221'
+  - '#/groups/64'
   - '#/texts/222'
+  - '#/groups/65'
   - '#/texts/223'
   - '#/texts/224'
+  - '#/groups/66'
   - '#/texts/225'
   - '#/texts/226'
+  - '#/groups/67'
   - '#/texts/227'
   - '#/texts/228'
   - '#/texts/229'
+  - '#/groups/68'
   - '#/texts/230'
   - '#/texts/231'
   - '#/texts/232'
   - '#/texts/233'
   - '#/texts/234'
   - '#/texts/235'
+  - '#/groups/69'
   - '#/texts/236'
   - '#/texts/237'
   - '#/texts/238'
@@ -4065,14 +4910,17 @@ imbrique:
   - '#/texts/240'
   - '#/texts/241'
   - '#/texts/242'
+  - '#/groups/70'
   - '#/texts/243'
   - '#/texts/244'
   - '#/texts/245'
   - '#/texts/246'
   - '#/texts/247'
+  - '#/groups/71'
   - '#/texts/248'
   - '#/texts/249'
   - '#/texts/250'
+  - '#/groups/72'
   - '#/texts/251'
   - '#/texts/252'
   - '#/texts/253'
@@ -4160,6 +5008,7 @@ imbrique:
   - '#/texts/335'
   - '#/texts/336'
   - '#/texts/337'
+  - '#/groups/73'
   - '#/texts/338'
   - '#/texts/339'
   - '#/texts/340'
@@ -4171,9 +5020,11 @@ imbrique:
   - '#/texts/346'
   - '#/pictures/3'
   - '#/texts/348'
+  - '#/groups/74'
   - '#/texts/349'
   - '#/texts/350'
   - '#/texts/351'
+  - '#/groups/75'
   - '#/texts/352'
   - '#/texts/353'
   - '#/texts/354'
@@ -4195,6 +5046,7 @@ imbrique:
   - '#/texts/370'
   - '#/texts/371'
   - '#/texts/372'
+  - '#/groups/76'
   - '#/texts/373'
   - '#/texts/374'
   - '#/texts/375'
@@ -4208,12 +5060,16 @@ imbrique:
   - '#/texts/383'
   - '#/texts/384'
   - '#/texts/385'
+  - '#/groups/77'
   - '#/texts/386'
   - '#/texts/387'
   - '#/texts/388'
+  - '#/groups/78'
+  - '#/groups/79'
   - '#/texts/389'
   - '#/texts/390'
   - '#/texts/391'
+  - '#/groups/80'
   - '#/texts/392'
   - '#/texts/393'
   - '#/texts/394'
@@ -4230,12 +5086,15 @@ imbrique:
   - '#/texts/405'
   - '#/texts/406'
   - '#/texts/407'
+  - '#/groups/81'
   - '#/texts/408'
   - '#/texts/409'
   - '#/texts/410'
+  - '#/groups/82'
   - '#/texts/411'
   - '#/texts/412'
   - '#/texts/413'
+  - '#/groups/83'
   - '#/texts/414'
   - '#/texts/415'
   - '#/texts/416'
@@ -4259,8 +5118,10 @@ imbrique:
   - '#/texts/434'
   - '#/texts/435'
   - '#/texts/436'
+  - '#/groups/84'
   - '#/texts/437'
   - '#/texts/438'
+  - '#/groups/85'
   - '#/texts/439'
   - '#/texts/440'
   - '#/texts/441'
@@ -4270,9 +5131,11 @@ imbrique:
   - '#/texts/445'
   - '#/texts/446'
   - '#/texts/447'
+  - '#/groups/86'
   - '#/texts/448'
   - '#/texts/449'
   - '#/texts/450'
+  - '#/groups/87'
   - '#/texts/451'
   - '#/texts/452'
   - '#/texts/453'
@@ -4282,23 +5145,30 @@ imbrique:
   - '#/texts/457'
   - '#/texts/458'
   - '#/texts/459'
+  - '#/groups/88'
   - '#/texts/460'
   - '#/texts/461'
   - '#/texts/462'
+  - '#/groups/89'
   - '#/texts/463'
   - '#/texts/464'
   - '#/texts/465'
   - '#/texts/466'
   - '#/texts/467'
+  - '#/groups/90'
+  - '#/groups/91'
   - '#/texts/468'
+  - '#/groups/92'
   - '#/texts/469'
   - '#/texts/470'
   - '#/texts/471'
+  - '#/groups/93'
   - '#/texts/472'
   - '#/texts/473'
   - '#/texts/474'
   - '#/texts/475'
   - '#/texts/476'
+  - '#/groups/94'
   - '#/texts/477'
   - '#/texts/478'
   - '#/texts/479'
@@ -4336,37 +5206,51 @@ imbrique:
   - '#/texts/511'
   - '#/texts/512'
   - '#/texts/513'
+  - '#/groups/95'
   - '#/texts/514'
   - '#/texts/515'
   - '#/texts/516'
+  - '#/groups/96'
   - '#/texts/517'
+  - '#/groups/97'
   - '#/texts/518'
   - '#/texts/519'
+  - '#/groups/98'
   - '#/texts/520'
   - '#/texts/521'
+  - '#/groups/99'
   - '#/texts/522'
   - '#/texts/523'
+  - '#/groups/100'
   - '#/texts/524'
   - '#/texts/525'
+  - '#/groups/101'
   - '#/texts/526'
   - '#/texts/527'
+  - '#/groups/102'
   - '#/texts/528'
   - '#/texts/529'
+  - '#/groups/103'
   - '#/texts/530'
   - '#/texts/531'
+  - '#/groups/104'
   - '#/texts/532'
+  - '#/groups/105'
   - '#/texts/533'
   - '#/texts/534'
+  - '#/groups/106'
   - '#/texts/535'
   - '#/texts/536'
   - '#/texts/537'
   - '#/texts/538'
   - '#/texts/539'
+  - '#/groups/107'
   - '#/texts/540'
   - '#/texts/541'
   - '#/texts/542'
   - '#/pictures/4'
   - '#/texts/544'
+  - '#/groups/108'
   - '#/texts/545'
   - '#/texts/546'
   - '#/texts/547'
@@ -4377,6 +5261,7 @@ imbrique:
   - '#/texts/552'
   - '#/texts/553'
   - '#/texts/554'
+  - '#/groups/109'
   - '#/texts/555'
   - '#/texts/556'
   - '#/texts/557'
@@ -4389,9 +5274,11 @@ imbrique:
   - '#/texts/564'
   - '#/texts/565'
   - '#/texts/566'
+  - '#/groups/110'
   - '#/texts/567'
   - '#/texts/568'
   - '#/texts/569'
+  - '#/groups/111'
   - '#/texts/570'
   - '#/texts/571'
   - '#/texts/572'
@@ -4408,6 +5295,7 @@ imbrique:
   - '#/texts/583'
   - '#/texts/584'
   - '#/texts/585'
+  - '#/groups/112'
   - '#/texts/586'
   - '#/texts/587'
   - '#/texts/588'
@@ -4415,11 +5303,13 @@ imbrique:
   - '#/texts/590'
   - '#/texts/591'
   - '#/texts/592'
+  - '#/groups/113'
   - '#/texts/593'
   - '#/texts/594'
   - '#/texts/595'
   - '#/texts/596'
   - '#/texts/597'
+  - '#/groups/114'
   - '#/texts/598'
   - '#/texts/599'
   - '#/texts/600'
@@ -4445,20 +5335,25 @@ imbrique:
   - '#/texts/620'
   - '#/texts/621'
   - '#/texts/622'
+  - '#/groups/115'
   - '#/texts/623'
   - '#/texts/624'
   - '#/texts/625'
   - '#/texts/626'
+  - '#/groups/116'
   - '#/texts/627'
   - '#/texts/628'
   - '#/texts/629'
   - '#/texts/630'
   - '#/texts/631'
+  - '#/groups/117'
   - '#/texts/632'
   - '#/texts/633'
+  - '#/groups/118'
   - '#/texts/634'
   - '#/texts/635'
   - '#/texts/636'
+  - '#/groups/119'
   - '#/texts/637'
   - '#/texts/638'
   - '#/texts/639'
@@ -4474,29 +5369,40 @@ imbrique:
   - '#/texts/649'
   - '#/texts/650'
   - '#/texts/651'
+  - '#/groups/120'
   - '#/texts/652'
   - '#/texts/653'
   - '#/texts/654'
   - '#/texts/655'
   - '#/texts/656'
   - '#/texts/657'
+  - '#/groups/121'
   - '#/texts/658'
+  - '#/groups/122'
   - '#/texts/659'
   - '#/texts/660'
+  - '#/groups/123'
   - '#/texts/661'
   - '#/texts/662'
+  - '#/groups/124'
   - '#/texts/663'
   - '#/texts/664'
+  - '#/groups/125'
   - '#/texts/665'
   - '#/texts/666'
+  - '#/groups/126'
   - '#/texts/667'
   - '#/texts/668'
+  - '#/groups/127'
   - '#/texts/669'
   - '#/texts/670'
+  - '#/groups/128'
   - '#/texts/671'
   - '#/texts/672'
+  - '#/groups/129'
   - '#/texts/673'
   - '#/texts/674'
+  - '#/groups/130'
   - '#/texts/675'
   - '#/texts/676'
   - '#/texts/677'
@@ -4507,35 +5413,46 @@ imbrique:
   - '#/texts/682'
   - '#/texts/683'
   - '#/texts/684'
+  - '#/groups/131'
   - '#/texts/685'
   - '#/texts/686'
   - '#/texts/687'
+  - '#/groups/132'
   - '#/texts/688'
   - '#/texts/689'
   - '#/texts/690'
   - '#/texts/691'
   - '#/texts/692'
+  - '#/groups/133'
   - '#/texts/693'
   - '#/texts/694'
   - '#/texts/695'
   - '#/pictures/5'
+  - '#/groups/134'
   - '#/texts/697'
   - '#/texts/698'
   - '#/texts/699'
+  - '#/groups/135'
   - '#/texts/700'
   - '#/texts/701'
   - '#/texts/702'
   - '#/pictures/6'
   - '#/texts/704'
+  - '#/groups/136'
   - '#/texts/705'
   - '#/texts/706'
   - '#/texts/707'
+  - '#/groups/137'
   - '#/texts/708'
+  - '#/groups/138'
   - '#/texts/709'
   - '#/texts/710'
+  - '#/groups/139'
   - '#/texts/711'
   - '#/texts/712'
+  - '#/groups/140'
   - '#/texts/713'
+  - '#/groups/141'
   - '#/texts/714'
   - '#/texts/715'
   - '#/texts/716'
@@ -4553,19 +5470,26 @@ imbrique:
   - '#/texts/728'
   - '#/texts/729'
   - '#/texts/730'
+  - '#/groups/142'
   - '#/texts/731'
   - '#/texts/732'
+  - '#/groups/143'
   - '#/texts/733'
+  - '#/groups/144'
   - '#/texts/734'
   - '#/texts/735'
   - '#/texts/736'
   - '#/texts/737'
+  - '#/groups/145'
   - '#/texts/738'
+  - '#/groups/146'
   - '#/texts/739'
   - '#/texts/740'
   - '#/texts/741'
   - '#/texts/742'
+  - '#/groups/147'
   - '#/texts/743'
+  - '#/groups/148'
   - '#/texts/744'
   - '#/texts/745'
   - '#/texts/746'
@@ -4573,9 +5497,11 @@ imbrique:
   - '#/texts/748'
   - '#/texts/749'
   - '#/texts/750'
+  - '#/groups/149'
   - '#/texts/751'
   - '#/texts/752'
   - '#/texts/753'
+  - '#/groups/150'
   - '#/texts/754'
   - '#/texts/755'
   - '#/texts/756'
@@ -4584,66 +5510,91 @@ imbrique:
   - '#/texts/759'
   - '#/texts/760'
   - '#/texts/761'
+  - '#/groups/151'
   - '#/texts/762'
+  - '#/groups/152'
   - '#/texts/763'
   - '#/texts/764'
+  - '#/groups/153'
   - '#/texts/765'
   - '#/texts/766'
+  - '#/groups/154'
   - '#/texts/767'
+  - '#/groups/155'
   - '#/texts/768'
   - '#/texts/769'
+  - '#/groups/156'
   - '#/texts/770'
+  - '#/groups/157'
   - '#/texts/771'
   - '#/texts/772'
   - '#/texts/773'
+  - '#/groups/158'
   - '#/texts/774'
   - '#/texts/775'
   - '#/texts/776'
+  - '#/groups/159'
   - '#/texts/777'
   - '#/texts/778'
   - '#/texts/779'
+  - '#/groups/160'
   - '#/texts/780'
   - '#/texts/781'
   - '#/texts/782'
+  - '#/groups/161'
   - '#/texts/783'
   - '#/texts/784'
   - '#/texts/785'
+  - '#/groups/162'
   - '#/texts/786'
   - '#/texts/787'
   - '#/texts/788'
+  - '#/groups/163'
   - '#/texts/789'
   - '#/texts/790'
   - '#/texts/791'
+  - '#/groups/164'
   - '#/texts/792'
   - '#/texts/793'
   - '#/texts/794'
   - '#/texts/795'
   - '#/texts/796'
+  - '#/groups/165'
   - '#/texts/797'
   - '#/texts/798'
   - '#/texts/799'
   - '#/texts/800'
+  - '#/groups/166'
   - '#/texts/801'
+  - '#/groups/167'
   - '#/texts/802'
   - '#/texts/803'
+  - '#/groups/168'
   - '#/texts/804'
   - '#/texts/805'
+  - '#/groups/169'
   - '#/texts/806'
   - '#/texts/807'
   - '#/texts/808'
   - '#/texts/809'
+  - '#/groups/170'
   - '#/texts/810'
+  - '#/groups/171'
   - '#/texts/811'
   - '#/texts/812'
+  - '#/groups/172'
   - '#/texts/813'
   - '#/texts/814'
+  - '#/groups/173'
   - '#/texts/815'
   - '#/texts/816'
   - '#/texts/817'
   - '#/texts/818'
+  - '#/groups/174'
   - '#/texts/819'
   - '#/texts/820'
   - '#/texts/821'
+  - '#/groups/175'
   - '#/texts/822'
   - '#/texts/823'
   - '#/texts/824'
@@ -4658,9 +5609,11 @@ imbrique:
   - '#/texts/833'
   - '#/texts/834'
   - '#/texts/835'
+  - '#/groups/176'
   - '#/texts/836'
   - '#/texts/837'
   - '#/texts/838'
+  - '#/groups/177'
   - '#/texts/839'
   - '#/texts/840'
   - '#/texts/841'
@@ -4678,9 +5631,11 @@ imbrique:
   - '#/texts/853'
   - '#/texts/854'
   - '#/texts/855'
+  - '#/groups/178'
   - '#/texts/856'
   - '#/texts/857'
   - '#/texts/858'
+  - '#/groups/179'
   - '#/texts/859'
   - '#/texts/860'
   - '#/texts/861'
@@ -4689,23 +5644,28 @@ imbrique:
   - '#/texts/864'
   - '#/texts/865'
   - '#/texts/866'
+  - '#/groups/180'
   - '#/texts/867'
   - '#/texts/868'
   - '#/texts/869'
   - '#/pictures/7'
   - '#/texts/871'
   - '#/texts/872'
+  - '#/groups/181'
   - '#/texts/873'
   - '#/texts/874'
   - '#/texts/875'
   - '#/pictures/8'
+  - '#/groups/182'
   - '#/texts/877'
   - '#/texts/878'
   - '#/texts/879'
   - '#/texts/880'
   - '#/texts/881'
+  - '#/groups/183'
   - '#/texts/882'
   - '#/texts/883'
+  - '#/groups/184'
   - '#/texts/884'
   - '#/texts/885'
   - '#/texts/886'
@@ -4714,31 +5674,51 @@ imbrique:
   - '#/texts/889'
   - '#/texts/890'
   - '#/texts/891'
+  - '#/groups/185'
   - '#/texts/892'
   - '#/texts/893'
   - '#/texts/894'
   - '#/texts/895'
   - '#/texts/896'
   - '#/pictures/9'
+  - '#/groups/186'
   - '#/texts/898'
   - '#/texts/899'
   - '#/tables/0'
+  - '#/groups/188'
+  - '#/groups/187'
   - '#/texts/900'
+  - '#/groups/190'
+  - '#/groups/189'
   - '#/texts/901'
+  - '#/groups/192'
+  - '#/groups/191'
   - '#/texts/902'
+  - '#/groups/194'
+  - '#/groups/193'
   - '#/texts/903'
   - '#/texts/904'
+  - '#/groups/196'
+  - '#/groups/195'
   - '#/texts/905'
+  - '#/groups/198'
+  - '#/groups/197'
   - '#/texts/906'
   - '#/texts/907'
+  - '#/groups/200'
+  - '#/groups/199'
   - '#/texts/908'
+  - '#/groups/202'
+  - '#/groups/201'
   - '#/texts/909'
   - '#/texts/910'
   - '#/texts/911'
   - '#/texts/912'
+  - '#/groups/203'
   - '#/texts/913'
   - '#/texts/914'
   - '#/texts/915'
+  - '#/groups/204'
   - '#/texts/916'
   - '#/texts/917'
   - '#/texts/918'
@@ -4748,11 +5728,13 @@ imbrique:
   - '#/texts/922'
   - '#/texts/923'
   - '#/texts/924'
+  - '#/groups/205'
   - '#/texts/925'
   - '#/texts/926'
   - '#/texts/927'
   - '#/texts/928'
   - '#/texts/929'
+  - '#/groups/206'
   - '#/texts/930'
   - '#/texts/931'
   - '#/texts/932'
@@ -4760,6 +5742,7 @@ imbrique:
   - '#/texts/934'
   - '#/texts/935'
   - '#/texts/936'
+  - '#/groups/207'
   - '#/texts/937'
   - '#/texts/938'
   - '#/texts/939'
@@ -4767,6 +5750,7 @@ imbrique:
   - '#/texts/941'
   - '#/texts/942'
   - '#/texts/943'
+  - '#/groups/208'
   - '#/texts/944'
   - '#/texts/945'
   - '#/texts/946'
@@ -4775,6 +5759,7 @@ imbrique:
   - '#/texts/949'
   - '#/texts/950'
   - '#/texts/951'
+  - '#/groups/209'
   - '#/texts/952'
   - '#/texts/953'
   - '#/texts/954'
@@ -4787,44 +5772,57 @@ imbrique:
   - '#/texts/961'
   - '#/texts/962'
   - '#/texts/963'
+  - '#/groups/210'
   - '#/texts/964'
   - '#/texts/965'
+  - '#/groups/211'
   - '#/texts/966'
   - '#/texts/967'
   - '#/texts/968'
+  - '#/groups/212'
   - '#/texts/969'
   - '#/texts/970'
   - '#/texts/971'
   - '#/texts/972'
   - '#/texts/973'
+  - '#/groups/213'
   - '#/texts/974'
   - '#/texts/975'
   - '#/texts/976'
   - '#/texts/977'
   - '#/texts/978'
   - '#/texts/979'
+  - '#/groups/214'
   - '#/texts/980'
+  - '#/groups/215'
   - '#/texts/981'
   - '#/texts/982'
+  - '#/groups/216'
   - '#/texts/983'
   - '#/texts/984'
+  - '#/groups/217'
   - '#/texts/985'
   - '#/texts/986'
+  - '#/groups/218'
   - '#/texts/987'
   - '#/texts/988'
+  - '#/groups/219'
   - '#/texts/989'
   - '#/texts/990'
+  - '#/groups/220'
   - '#/texts/991'
   - '#/texts/992'
   - '#/texts/993'
   - '#/texts/994'
   - '#/texts/995'
+  - '#/groups/221'
   - '#/texts/996'
   - '#/texts/997'
   - '#/texts/998'
   - '#/texts/999'
   - '#/texts/1000'
   - '#/texts/1001'
+  - '#/groups/222'
   - '#/texts/1002'
   - '#/texts/1003'
   - '#/texts/1004'
@@ -4859,12 +5857,14 @@ imbrique:
   - '#/texts/1033'
   - '#/texts/1034'
   - '#/texts/1035'
+  - '#/groups/223'
   - '#/texts/1036'
   - '#/texts/1037'
   - '#/texts/1038'
   - '#/texts/1039'
   - '#/texts/1040'
   - '#/texts/1041'
+  - '#/groups/224'
   - '#/texts/1042'
   - '#/texts/1043'
   - '#/texts/1044'
@@ -4874,9 +5874,11 @@ imbrique:
   - '#/texts/1048'
   - '#/texts/1049'
   - '#/texts/1050'
+  - '#/groups/225'
   - '#/texts/1051'
   - '#/texts/1052'
   - '#/texts/1053'
+  - '#/groups/226'
   - '#/texts/1054'
   - '#/texts/1055'
   - '#/texts/1056'
@@ -4902,6 +5904,7 @@ imbrique:
   - '#/texts/1076'
   - '#/texts/1077'
   - '#/texts/1078'
+  - '#/groups/227'
   - '#/texts/1079'
   - '#/texts/1080'
   - '#/texts/1081'
@@ -4910,6 +5913,7 @@ imbrique:
   - '#/texts/1084'
   - '#/texts/1085'
   - '#/texts/1086'
+  - '#/groups/228'
   - '#/texts/1087'
   - '#/texts/1088'
   - '#/texts/1089'
@@ -4922,13 +5926,16 @@ imbrique:
   - '#/texts/1096'
   - '#/texts/1097'
   - '#/texts/1098'
+  - '#/groups/229'
   - '#/texts/1099'
   - '#/texts/1100'
   - '#/texts/1101'
+  - '#/groups/230'
   - '#/texts/1102'
   - '#/texts/1103'
   - '#/texts/1104'
   - '#/texts/1105'
+  - '#/groups/231'
   - '#/texts/1106'
   - '#/texts/1107'
   - '#/texts/1108'
@@ -4948,12 +5955,14 @@ imbrique:
   - '#/texts/1122'
   - '#/texts/1123'
   - '#/texts/1124'
+  - '#/groups/232'
   - '#/texts/1125'
   - '#/texts/1126'
   - '#/texts/1127'
   - '#/texts/1128'
   - '#/texts/1129'
   - '#/texts/1130'
+  - '#/groups/233'
   - '#/texts/1131'
   - '#/texts/1132'
   - '#/texts/1133'
@@ -4965,6 +5974,7 @@ imbrique:
   - '#/texts/1139'
   - '#/texts/1140'
   - '#/texts/1141'
+  - '#/groups/234'
   - '#/texts/1142'
   - '#/texts/1143'
   - '#/texts/1144'
@@ -4980,6 +5990,7 @@ imbrique:
   - '#/texts/1154'
   - '#/texts/1155'
   - '#/texts/1156'
+  - '#/groups/235'
   - '#/texts/1157'
   - '#/texts/1158'
   - '#/texts/1159'
@@ -4987,10 +5998,12 @@ imbrique:
   - '#/texts/1161'
   - '#/texts/1162'
   - '#/texts/1163'
+  - '#/groups/236'
   - '#/texts/1164'
   - '#/texts/1165'
   - '#/texts/1166'
   - '#/texts/1167'
+  - '#/groups/237'
   - '#/texts/1168'
   - '#/texts/1169'
   - '#/texts/1170'
@@ -5001,9 +6014,11 @@ imbrique:
   - '#/texts/1175'
   - '#/texts/1176'
   - '#/texts/1177'
+  - '#/groups/238'
   - '#/texts/1178'
   - '#/texts/1179'
   - '#/texts/1180'
+  - '#/groups/239'
   - '#/texts/1181'
   - '#/texts/1182'
   - '#/texts/1183'
@@ -5020,72 +6035,89 @@ imbrique:
   - '#/texts/1186'
   - '#/texts/1187'
   - '#/texts/1188'
+  - '#/groups/240'
   - '#/texts/1189'
   - '#/texts/1190'
   - '#/texts/1191'
   - '#/texts/1192'
+  - '#/groups/241'
   - '#/texts/1193'
   - '#/texts/1194'
   - '#/texts/1195'
   - '#/texts/1196'
+  - '#/groups/242'
   - '#/texts/1197'
   - '#/texts/1198'
   - '#/texts/1199'
   - '#/texts/1200'
+  - '#/groups/243'
   - '#/texts/1201'
   - '#/texts/1202'
   - '#/texts/1203'
   - '#/texts/1204'
+  - '#/groups/244'
   - '#/texts/1205'
   - '#/texts/1206'
   - '#/texts/1207'
   - '#/texts/1208'
+  - '#/groups/245'
   - '#/texts/1209'
   - '#/texts/1210'
   - '#/texts/1211'
   - '#/texts/1212'
+  - '#/groups/246'
   - '#/texts/1213'
   - '#/texts/1214'
   - '#/texts/1215'
   - '#/texts/1216'
+  - '#/groups/247'
   - '#/texts/1217'
   - '#/texts/1218'
   - '#/texts/1219'
   - '#/texts/1220'
+  - '#/groups/248'
   - '#/texts/1221'
   - '#/texts/1222'
   - '#/texts/1223'
   - '#/texts/1224'
+  - '#/groups/249'
   - '#/texts/1225'
   - '#/texts/1226'
   - '#/texts/1227'
   - '#/texts/1228'
   - '#/texts/1229'
   - '#/texts/1230'
+  - '#/groups/250'
   - '#/texts/1231'
   - '#/texts/1232'
   - '#/texts/1233'
   - '#/texts/1234'
+  - '#/groups/251'
   - '#/texts/1235'
   - '#/texts/1236'
   - '#/texts/1237'
   - '#/texts/1238'
+  - '#/groups/252'
   - '#/texts/1239'
   - '#/texts/1240'
   - '#/texts/1241'
   - '#/texts/1242'
+  - '#/groups/253'
   - '#/texts/1243'
   - '#/texts/1244'
   - '#/texts/1245'
   - '#/texts/1246'
+  - '#/groups/254'
   - '#/texts/1247'
   - '#/texts/1248'
   - '#/texts/1249'
   - '#/texts/1250'
+  - '#/groups/255'
   - '#/texts/1251'
   - '#/texts/1252'
   - '#/texts/1253'
   - '#/texts/1254'
+  - '#/groups/256'
   - '#/texts/1255'
   - '#/texts/1256'
   - '#/texts/1257'
@@ -5095,6 +6127,24 @@ imbrique:
   source: Datas/htms/MLOps with Databricks/7. Foundation Models and Context Engineering.html
 plat:
   items:
+    '#/body':
+      label: unspecified
+      parent: ''
+    '#/groups/0':
+      label: inline
+      parent: '#/texts/0'
+    '#/groups/1':
+      label: inline
+      parent: '#/texts/8'
+    '#/groups/2':
+      label: inline
+      parent: '#/texts/27'
+    '#/groups/3':
+      label: inline
+      parent: '#/texts/52'
+    '#/groups/4':
+      label: inline
+      parent: '#/texts/73'
     '#/pictures/0':
       label: picture
       parent: '#/texts/0'
@@ -5357,10 +6407,12 @@ plat:
       label: text
       parent: '#/texts/8'
   ordre:
+  - '#/body'
   - '#/texts/0'
   - '#/texts/1'
   - '#/texts/2'
   - '#/texts/3'
+  - '#/groups/0'
   - '#/texts/4'
   - '#/texts/5'
   - '#/texts/6'
@@ -5370,6 +6422,7 @@ plat:
   - '#/texts/9'
   - '#/texts/10'
   - '#/texts/11'
+  - '#/groups/1'
   - '#/texts/12'
   - '#/texts/13'
   - '#/texts/14'
@@ -5390,6 +6443,7 @@ plat:
   - '#/texts/29'
   - '#/texts/30'
   - '#/texts/31'
+  - '#/groups/2'
   - '#/texts/32'
   - '#/texts/33'
   - '#/texts/34'
@@ -5413,6 +6467,7 @@ plat:
   - '#/texts/52'
   - '#/texts/53'
   - '#/texts/54'
+  - '#/groups/3'
   - '#/texts/55'
   - '#/texts/56'
   - '#/texts/57'
@@ -5432,6 +6487,7 @@ plat:
   - '#/texts/71'
   - '#/texts/72'
   - '#/texts/73'
+  - '#/groups/4'
   - '#/texts/74'
   - '#/texts/75'
   - '#/texts/76'

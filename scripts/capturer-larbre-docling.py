@@ -101,7 +101,9 @@ def capturer(chemin: Path) -> dict[str, Any]:
 
     Returns:
         Les deux empreintes et l'arbre : pour chaque item, son label et la
-        reference de son parent, tels que Docling les rend.
+        reference de son parent, tels que Docling les rend. **Les noeuds de
+        groupe en font partie** : ils ne sont pas du contenu, mais ils sont sur
+        le chemin des parents, et une chaine trouee ne se remonte pas.
     """
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from docling.document_converter import DocumentConverter
@@ -118,7 +120,26 @@ def capturer(chemin: Path) -> dict[str, Any]:
 
     items: dict[str, dict[str, str]] = {}
     ordre: list[str] = []
-    for item, _ in document.iterate_items():
+    # ``with_groups=True``, et c'est le coeur de ce script. Par defaut,
+    # ``iterate_items`` NE REND JAMAIS les noeuds de groupe — listes, blocs de
+    # mise en page, conteneurs anonymes. Or ``ranking.docling_parent_rank``
+    # REMONTE la chaine des parents et FRANCHIT ces conteneurs sans les compter :
+    # une capture qui les omet casse la chaine au premier groupe rencontre.
+    #
+    # Ce n'etait pas theorique. `mesure` : sur le chapitre imbrique, la capture
+    # sans groupes portait **1 130** references de parent pointant un noeud
+    # absent, dont **deux titres** — ``#/texts/389`` -> ``#/groups/79`` et
+    # ``#/texts/468`` -> ``#/groups/91``. Pour ces deux-la, la resolution rendait
+    # ``None``, donc ``docling_parent_rank`` rendait ``None``, donc ``flat_rank``
+    # retombait sur ``docling_level_rank`` (absent) et rendait ``None`` — et le
+    # test les JETAIT EN SILENCE avec ses autres ``None``. Il assertait 39 titres
+    # la ou le graphe reel en porte **41**.
+    #
+    # Et le silence coutait plus que deux titres : sans aucun noeud de groupe
+    # dans la capture, la mutation « compter les conteneurs anonymes comme des
+    # titres » n'avait plus rien a mordre. Le test bati sur du REEL etait aveugle
+    # au mecanisme meme qu'il existe pour eprouver.
+    for item, _ in document.iterate_items(with_groups=True):
         reference = str(getattr(item, "self_ref", ""))
         parent = getattr(item, "parent", None)
         items[reference] = {

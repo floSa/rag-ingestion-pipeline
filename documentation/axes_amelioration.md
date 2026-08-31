@@ -398,12 +398,82 @@ les parents qu'il vérifie (§3.3). Il couvre les deux cas (`mesuré`) :
 
 | chapitre | titres | distribution des rangs | `<h1>` du source |
 |---|---|---|---|
-| `MLOps with Databricks/7. Foundation Models…` | 39 | **{0: 5, 1: 10, 2: 21, 3: 3}** | 5 |
-| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | **{0: 8}** — réellement plat | 8, et **aucun `<h2>`** |
+| `MLOps with Databricks/7. Foundation Models…` | **41** | **{0: 5, 1: 10, 2: 21, 3: 5}**, 36 imbriqués | 5 |
+| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | **{0: 8}** — réellement plat | 8 |
+
+*(Ces deux lignes portaient **39 titres** et **{0: 5, 1: 10, 2: 21, 3: 3}** sous
+l'étiquette `mesuré`. **C'était faux**, et le paragraphe qui suit dit pourquoi.
+Les valeurs ci-dessus sont remesurées de deux façons indépendantes qui
+concordent : en rejouant le code de rang sur la capture corrigée, et sur le
+**graphe vivant** — `MATCH (v:SectionHeader) RETURN v.SectionHeader.depth`,
+regroupé par racine de la chaîne `PARENT_OF`, `mesuré` le 31 août 2026 sur
+l'index des 23 documents produit par le code du lot 3.)*
+
+### La capture jetait les nœuds de groupe, et le test ne pouvait pas le voir
+
+**C'était le défaut central de ce fichier, et il vivait dans le test qui est la
+raison d'être du point 6.** `scripts/capturer-larbre-docling.py` capturait via
+`document.iterate_items()`, dont le paramètre `with_groups` vaut `False` par
+défaut : **les nœuds de groupe n'étaient jamais rendus.** Or
+`ranking.docling_parent_rank` **remonte** la chaîne des parents et **franchit**
+ces conteneurs sans les compter — une capture qui les omet casse la remontée au
+premier groupe rencontré.
+
+Mesuré sur la capture du lot 3 : **1 175** références de parent pointaient un
+nœud absent (1 130 sur le chapitre imbriqué, 45 sur le plat), et **262** nœuds de
+groupe manquaient (257 et 5). Deux titres du chapitre imbriqué avaient un groupe
+pour parent **direct** — `#/texts/389` → `#/groups/79` et `#/texts/468` →
+`#/groups/91`. Pour ces deux-là, `_Ref.resolve` rendait `None`,
+`docling_parent_rank` rendait `None`, `flat_rank` retombait sur
+`docling_level_rank` (absent) et rendait `None` — et le filtre
+`[rang for rang in rangs if rang is not None]` **les jetait en silence**.
+
+**Et le silence coûtait bien plus que deux titres.** Sans aucun nœud de groupe
+dans la capture, la mutation « compter les conteneurs anonymes comme des
+titres » n'avait plus rien à mordre : **le test bâti sur du réel était aveugle au
+mécanisme même qu'il existe pour éprouver sur du réel.** Mesuré, mutation
+`ranking.py:68` — `if str(getattr(cible, "label", "")) in HEADING_LABELS` → `if
+True` :
+
+| état | `test_non_platitude.py` sous la mutation |
+|---|---|
+| lot 3, capture sans groupes | **VERT**, 10 tests — aveugle. Seul `test_ranking.py`, l'arbre fabriqué à la main, la voyait |
+| après réparation | **ROUGE**, `rc=1`, deux tests |
+
+**Couverture marginale, remesurée sur sept mutations du code de rang** (`mesuré`,
+script rejouable, les sept ancrages sont dans le message du commit) :
+
+| fichier | avant | après |
+|---|---|---|
+| `test_non_platitude.py` | 5/7 | **6/7** |
+| `test_hierarchie_bout_en_bout.py` | 5/7 | 5/7 |
+| `test_ranking.py` | 5/7 | 5/7 |
+
+*(Ce jeu de sept mutations n'est **pas** celui de l'audit du lot 3, qui annonçait
+1/7 contre 3/7 : sa liste n'a pas été retrouvée, et un ratio ne se compare pas
+d'un jeu à l'autre. Ce qui se compare, et qui est le résultat, est la
+**bascule de M-G** sur un jeu tenu constant entre les deux colonnes.)*
+
+**Trois corrections en découlent, et elles tiennent ensemble :**
+
+1. la capture passe `with_groups=True`. Les deux empreintes SHA-256 sont
+   **inchangées** — la capture décrit exactement le même HTML, seul l'arbre s'est
+   complété ;
+2. **l'assertion qui interdit le silence** vit dans l'aide `_rangs` et non dans
+   un test : **autant de rangs que de titres dans la capture**. Elle vaut donc
+   pour tous les appelants à la fois, parce que c'est le silence qui était
+   structurel, pas l'oubli d'un test. Sans elle, le défaut se reformerait au
+   prochain changement de Docling ;
+3. deux gardes de structure s'ajoutent : **aucune référence de parent ne pointe
+   hors de la capture** — elle rougit pour toute famille de nœud oubliée, pas
+   seulement pour les groupes — et **les groupes sont là, et aucun ne porte un
+   label de titre**. Le second est le témoin du premier : si Docling étiquetait
+   un jour un groupe `section_header`, tous les rangs sous lui augmenteraient
+   d'un.
 
 **Et le cas plat seul aurait été vert des deux côtés du défaut.** Mesuré par
 mutation : `docling_parent_rank` forcé à rendre 0 — le graphe devient plat —
-fait rougir **4 tests, tous du chapitre imbriqué** ; les assertions du chapitre
+fait rougir des tests **tous du chapitre imbriqué** ; les assertions du chapitre
 plat restent vertes, puisqu'il rend 0 dans les deux cas. C'est exactement
 pourquoi il fallait les deux, et pourquoi un test à un seul cas n'aurait rien
 prouvé.
@@ -426,6 +496,14 @@ comportement de Docling : la conversion est capturée une fois par
 `scripts/capturer-larbre-docling.py`, que `--verifier` rejoue en comparant.
 `docling` est épinglé à 2.117.0, et rejouer ce script fait partie du geste qui
 change cette version.
+
+**Et cette frontière est exactement là où le défaut est passé.** Le test ne peut
+pas voir ce que la capture ne porte pas, et la capture portait un arbre troué. La
+leçon est plus étroite que « une capture peut être fausse » : **le test rejoue un
+algorithme de REMONTÉE, donc sa fixture doit porter l'arbre COMPLET, pas
+seulement les nœuds qui l'intéressent.** Une capture réduite au contenu est une
+capture juste pour un algorithme qui descend et fausse pour un algorithme qui
+monte. C'est ce que gardent désormais les deux assertions de structure.
 
 **Pourquoi le test ne convertit pas lui-même**, `mesuré` le 31 août 2026 :
 `uv pip install docling==2.117.0` ajoute **85 paquets** — dont `torch` et
@@ -727,6 +805,21 @@ condition — pas avec l'ancienne.
 dérive la profondeur du **parent** et jamais du rang brut, ce qui absorbe le
 mélange d'échelles. Un rang trop **grand** est donc inoffensif ; un rang trop
 **petit** dépilerait des ancêtres, et ce cas n'a pas été observé.
+
+**Et RIEN NE GARDE L'ORDRE DES DEUX SIGNAUX — `mesuré` par la réparation du lot
+3, consigné et non traité.** `flat_rank` (`ranking.py:147-148`) essaie
+`docling_parent_rank` **puis** `docling_level_rank`, et cet ordre est le sujet de
+ce constat. Inverser les deux lignes laisse la **suite entière verte** — `rc=0`,
+639 tests. Aucun test du dépôt n'exerce la priorité, parce que sur ce corpus
+`level` est absent partout où le signal parent répond, et le second n'est donc
+jamais consulté (659 titres sur 659, ci-dessus).
+
+C'est le même déclencheur que le reste du constat : le jour où un Markdown entre
+au corpus, les deux signaux répondront sur des titres différents, et l'ordre
+cessera d'être inerte. **Le garde à écrire ce jour-là est un test de priorité sur
+un item qui offre les deux signaux** — pas une mesure sur le corpus, qui restera
+verte des deux côtés. Le lot qui fera entrer un Markdown doit lire cette ligne
+avant d'écrire une seule assertion.
 
 ### 4.13 `LINKED_TO(relation="describes")` là où le contrat annonce `DESCRIBES`
 
