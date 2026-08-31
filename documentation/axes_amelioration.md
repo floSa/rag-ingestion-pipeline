@@ -1496,6 +1496,52 @@ sur ses 88 colonnes par défaut au lieu des 100 déclarées, et rend alors
 reformatage se mesure **avec la configuration du dépôt**, jamais sur les fichiers
 seuls.
 
+#### Le « `make` n'est pas installé » du §2.4 — supprimé par `9f5a78c`, et pourquoi
+
+Le mandat portait, en §2.4 : « **`make` n'est pas installé sur le poste de
+développement, et il n'y a pas les droits pour l'y mettre** (`mesuré`, 31 août
+2026). Chaque conversation le redécouvre ; ce n'est pas un incident, c'est
+l'environnement. » C'est **faux sur ce poste** : GNU Make 4.4.1, `/usr/bin/make`,
+et `make install` rend 0 dans un clone frais (`mesuré`, 31 août 2026,
+indépendamment par le pilote et par l'auditeur). Le deuxième commit du lot 0b,
+`9f5a78c`, l'a remplacé par « la présence de `make` est un fait de POSTE :
+mesure-la, ne la lis pas ici », avec les deux mesures contradictoires citées côte
+à côte. **C'était le bon geste**, et la suppression survit à la fusion sans
+conflit — `main` n'a pas retouché ce paragraphe depuis.
+
+**Deux réserves du mandat de cette réparation sont ici renversées, et il faut le
+dire :**
+
+- « **sans le déclarer** » — non. `9f5a78c` le déclare dans son message de
+  commit, en propres termes : « Corrige aussi le mandat §2.4 sur un point qui
+  n'est pas le mien mais qui vivait dans le même paragraphe : "make n'est pas
+  installé" y était écrit comme un fait du chantier alors que c'est un fait de
+  POSTE. » Et le paragraphe de remplacement le déclare **au site**. Ce qui
+  manquait n'était pas la déclaration : c'était **la trace au registre**, qui ne
+  porte cette correction dans aucune de ses tables — ni dans « Les affirmations
+  que le lot 0b avait rendues fausses » (D2 à H9), ni ailleurs. Elle y est
+  désormais ;
+- « **le §2.4 fusionné n'aura plus de repli pour un poste sans `make`** » — non
+  plus. `9f5a78c` a conservé le repli, et l'a même corrigé du défaut qui aurait
+  compté : la recette de `main` commençait par `uv run ruff format src/`, qui
+  **écrit** dans l'arbre — c'est précisément ce que ce lot interdit à la cible
+  `all` — et la recette de la branche est passée à `ruff format --check src/`,
+  en dernière position.
+
+**Mais le repli était faux pour une autre raison, et celle-là est réelle.** Il
+prétend remplacer `make install && make all` ; il ne portait que `uv sync`,
+c'est-à-dire la **première** ligne de la cible `install`, pas la **seconde** —
+`sh scripts/installer-les-garde-fous.sh`, celle que ce lot ajoute et sur laquelle
+tout le reste repose. Un poste sans `make` suivant cette recette se retrouvait
+donc **sans aucun garde-fou** : ni contrôle d'identité, ni `detect-secrets`.
+C'est le défaut du lot 0b tout entier, revenu par la porte de sa propre recette
+de repli.
+
+`mesuré` le 31 août 2026, clone frais : après le repli tel qu'il était écrit,
+`.git/hooks` ne porte **aucun** hook ; après le repli corrigé, les **quatre**
+attendus, et la suite rend `lint=0`, `typecheck=0`, `test=0`, `format-check=1`
+— le rouge connu. Le repli du §2.4 porte désormais la ligne manquante.
+
 ### Trouvé par la réparation du lot 0b, et NON traité
 
 - **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun

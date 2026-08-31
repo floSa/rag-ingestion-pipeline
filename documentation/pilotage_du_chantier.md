@@ -296,12 +296,26 @@ vérifier. Le corpus, le `.env` et les stores relèvent de la même famille (§2
 §2.3, §4).
 
 Si `make` manque, exécute les recettes du `Makefile` **versionné**, lues depuis
-le fichier, dans l'ordre et avec arrêt au premier échec — et note que l'ordre a
-changé, `format-check` venant en dernier :
+le fichier, dans l'ordre et avec arrêt au premier échec — et note **deux**
+changements : `install` arme désormais les garde-fous, et `format-check` vient en
+dernier.
 
 ```bash
-uv sync && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/ && uv run ruff format --check src/
+uv sync && sh scripts/installer-les-garde-fous.sh \
+  && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/ \
+  && uv run ruff format --check src/
 ```
+
+**Le `sh scripts/installer-les-garde-fous.sh` de la deuxième position n'était pas
+là, et son absence était le trou.** Ce repli prétend remplacer
+`make install && make all` ; il ne portait que `uv sync`, c'est-à-dire la
+**première** ligne de la cible `install` — celle qui installe les dépendances —
+et pas la **seconde**, celle qui arme les hooks. Un poste sans `make` suivant
+cette recette n'avait donc **aucun garde-fou** : ni contrôle d'identité, ni
+`detect-secrets`, exactement l'état que ce lot ferme. `mesuré` le 31 août 2026,
+clone frais : après le repli tel qu'il était écrit, `.git/hooks` ne porte **aucun**
+hook ; après celui-ci, les quatre attendus, et la suite rend `lint=0`,
+`typecheck=0`, `test=0`, `format-check=1` — le rouge connu.
 
 La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas de
 motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
