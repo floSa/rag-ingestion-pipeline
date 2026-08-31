@@ -1166,6 +1166,54 @@ code fait.
 | **H8** | mandat §6 et §7 : le lot 0b justifié par « un dépôt dont le `.env` porte les mots de passe » | **survente.** Un hook `pre-commit` ne voit que les fichiers **indexés**, `.env` est ignoré et non suivi, donc l'installer ne le fera **jamais** scanner. Le lot avait corrigé cette survente au README et à `SECURITY.md`, **pas au mandat** — le texte le plus copié du chantier | mandat §6 et §7 |
 | **H9** | mandat §2.1 : « l'identité, dans chaque arbre de travail » | **faux.** `extensions.worktreeConfig` n'est pas activé, donc `git config user.email` écrit dans `.git/config`, **partagé** : `mesuré`, les quatre arbres de travail lisent le même fichier. Une fois suffit | mandat §2.1, dans le tableau des portées |
 
+### La seconde réparation du lot 0b — les neuf points
+
+La réparation du lot 0b a elle-même été auditée. Les trois bloquants qu'elle
+avait fermés — contrôle d'identité inconditionnel, commits de fusion couverts,
+corpus soustrait aux hooks — ont été prouvés fermés **deux fois
+indépendamment** et ne sont pas rouverts ici. Restaient neuf points, presque tous
+documentaires. Ce qui suit les consigne un par un.
+
+#### F3 → le geste canonique du README cassait le jour de la fusion
+
+Le README donnait, pour rescanner tout le dépôt versionné, `git ls-files -z |
+xargs -0 … detect-secrets-hook`, précédé de « **Il ne doit rien rendre** ». Deux
+sections plus bas, le même fichier annonce que le corpus porte deux faux positifs
+`Hex High Entropy String`. **Les deux sections se contredisaient**, et c'est celle
+qui promet le vert que le prochain développeur exécute.
+
+`mesuré` le 31 août 2026 **sur le résultat d'une fusion d'essai `--no-ff` avec
+`a005172`** (0 conflit) : `rc=123`, deux détections, aux deux emplacements
+annoncés — `Datas/htms/MLOps with Databricks/3. MLflow for Traditional ML.html:94`
+et `…/4. Model Serving： Architectures and Implementation.html:330`.
+
+La cause est exactement le sujet du lot : `detect-secrets-hook` est appelé **en
+direct**, pas par le framework, donc l'`exclude: '^Datas/'` de la racine — que
+seul `pre-commit` applique — ne le filtre pas.
+
+**Tranché : c'est la commande qui porte l'exclusion**, `git ls-files -z --
+':!Datas/'`, et la phrase « il ne doit rien rendre » est **conservée** parce
+qu'elle redevient vraie (`mesuré` sur le même arbre : aucune sortie, `rc=0`, 99
+fichiers scannés). L'autre issue — garder la commande et écrire « elle rend deux
+détections attendues » — a été écartée : un geste de contrôle dont le vert
+attendu est « deux erreurs » ne se relit pas, et la troisième détection réelle
+passerait inaperçue.
+
+**Le défaut était invisible depuis la branche**, `Datas/` n'y étant pas versionné :
+`git ls-files` ne le nomme pas, et la commande est verte pour une raison qui
+disparaît à la fusion. C'est le cas d'école du mandat §7 — deux branches vertes,
+un arbre rouge — et il ne se voit qu'en mesurant sur le résultat de la fusion.
+
+**Deux pièges consignés au README au passage**, tous deux mesurés : `xargs`
+traduit l'échec du programme qu'il appelle en **123** et jamais en 1, donc un
+contrôle écrit `rc = 1` serait vert sur le défaut ; et le code de retour d'un
+`cmd | tail` est celui de `tail`.
+
+**Reste ouvert, et petit :** le `:!Datas/` du README et l'`exclude: '^Datas/'` de
+`.pre-commit-config.yaml` disent la même chose à deux endroits. Le second est
+gardé par `tests/unit/test_hooks_contre_le_corpus.py`, le premier ne l'est pas —
+aucun test ne lit le README. C'est la même famille que F7 ci-dessous.
+
 ### Trouvé par la réparation du lot 0b, et NON traité
 
 - **`git revert`, `git cherry-pick`, `git rebase` créent des commits qu'aucun

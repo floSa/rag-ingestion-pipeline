@@ -656,11 +656,37 @@ deux fichiers, le scanner lit un **nom** de variable — `API_KEY` — sans rega
 sa valeur. Le compte était annoncé à 2 : la troisième ligne était née du piège de
 déduplication décrit au registre, et n'avait pas été recomptée. Ne recopie pas ce
 compte : le scan complet du dépôt versionné se relance en une commande, et c'est
-lui qui fait foi. Il ne doit rien rendre.
+lui qui fait foi.
 
 ```bash
-git ls-files -z | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
+git ls-files -z -- ':!Datas/' | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
 ```
+
+**Le `:!Datas/` n'est pas un détail de confort, et il n'était pas là.** Sans lui,
+cette commande contredit la section suivante : `detect-secrets` est appelé
+**directement**, donc l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` — que
+seul le framework applique — ne le filtre pas, et le scan bute sur les deux faux
+positifs du corpus. `mesuré` le 31 août 2026 **sur le résultat d'une fusion
+d'essai `--no-ff` avec `a005172`**, sans le `:!Datas/` : deux
+`Hex High Entropy String`, aux deux emplacements que la section suivante nomme.
+Avec le `:!Datas/` : aucune sortie, `rc=0`, 99 fichiers scannés. La commande
+**ne doit rien rendre** — c'est cela, son verdict.
+
+Deux réserves à connaître avant de lire son code de retour :
+
+- **le défaut ne se voit pas sur la branche seule.** Tant que `Datas/` n'est pas
+  versionné, `git ls-files` ne le nomme pas et la commande est verte pour une
+  raison qui disparaît le jour de la fusion. Mesure-la sur le résultat de la
+  fusion, jamais sur la branche ;
+- **le code de retour est celui de `xargs`, pas celui de `detect-secrets`** :
+  `xargs` traduit un échec du programme appelé en **123**, jamais en 1. Ne teste
+  donc pas `rc = 1`, teste `rc ≠ 0` — et prends-le sans pipe supplémentaire, un
+  `| tail` rendrait le code de `tail`.
+
+Ce `:!Datas/` et l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` disent la
+même chose à deux endroits : si l'un bouge, l'autre doit suivre. Le second est
+gardé par `tests/unit/test_hooks_contre_le_corpus.py` ; le premier ne l'est pas,
+et c'est consigné au registre.
 
 #### Le corpus est hors de portée des hooks, et voici comment l'étendre
 
