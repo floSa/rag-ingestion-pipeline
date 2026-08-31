@@ -22,14 +22,21 @@ venv/
 .coverage
 htmlcov/
 
-# Data volumes (managed by Docker, not versioned)
+# Volumes de donnees ecrits par Docker : jamais versionnes.
 Datas/database/
-Datas/pdfs/
-Datas/htms/
-Datas/mds/
-Datas/scratch/
+# Sortie du nettoyage HTML : regeneree a chaque run, jamais versionnee.
 Datas/.cleaned/
+Datas/scratch/
 data/
+
+# Le CORPUS, lui, EST versionne -- Datas/htms/ et Datas/pdfs/.
+# Il etait ignore, et le chantier l'a paye : le depot ne suffisait pas a
+# reprendre le travail, il fallait transporter 56 Mo a la main d'un poste a
+# l'autre. Pire, source_path entre dans le calcul de element_id : un fichier
+# recopie sous un nom qui differe d'un caractere produit d'autres identifiants,
+# donc des mesures incomparables, sans qu'aucune erreur ne le signale.
+# Le corpus fait partie de l'identite du projet. Il reste dans le depot.
+Datas/mds/
 
 # Scratch / temp
 scratch/
