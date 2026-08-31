@@ -114,15 +114,15 @@ ressemble au bon.
 
 **Et il y a trois choses à se rappeler.** Ce paragraphe disait « rien à se
 rappeler » : c'est une phrase d'exhaustivité, et c'est la famille de phrase qui
-a caché la régression R1 pendant tout le lot 0b. Les voici, toutes les trois
-`mesuré`es :
+a caché la régression R1 pendant tout le lot 0b. Les voici — les deux dernières
+`mesuré`es, la première étant une consigne de cette section :
 
 1. **`git config user.email`** — deux paragraphes plus bas, dans cette même
    section. Le script n'y touche pas ;
 2. **relancer `make install` après toute édition de `ADRESSES_AUTORISEES`** —
-   voir « la liste blanche a deux sites au runtime » ci-dessous ;
+   voir « la liste blanche a DEUX sites au runtime » ci-dessous ;
 3. **relancer `make install` depuis le clone principal si le `.venv` visé par le
-   hook disparaît** — voir « le hook fige un chemin absolu » ci-dessous.
+   hook disparaît** — voir « Le hook fige aussi un chemin absolu » ci-dessous.
 
 Cette liste-ci n'est pas fermée non plus. Si tu en trouves une quatrième,
 écris-la ici plutôt que de la garder.
