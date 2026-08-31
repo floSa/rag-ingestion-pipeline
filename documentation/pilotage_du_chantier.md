@@ -161,11 +161,13 @@ contourne jamais : pas de `--no-verify`.
 |---|---|---|
 | `git commit` | **oui** | hook `pre-commit` |
 | `git commit --amend` | **oui** | hook `pre-commit` |
-| `git merge --no-ff` | **non — voir registre** | `pre-commit install` n'installe que le type `pre-commit` ; la fusion déclenche `pre-merge-commit`, qui n'est pas installé |
+| `git merge --no-ff` | **oui** | hook `pre-merge-commit`, installé par le script et posé aussi en `pre-merge-commit.legacy` |
 | `git revert`, `git cherry-pick` | **non** | git n'y déclenche ni `pre-commit` ni `commit-msg`. Le seul point d'accroche restant, `prepare-commit-msg`, y voit l'identité **locale** et non celle du commit produit (`mesuré`) : un contrôle posé là serait vert sur le défaut |
 | `git rebase` | **non** | aucun hook de la famille ; le rebase réécrit le committer |
 
-Les trois dernières lignes sont **ouvertes**, au registre.
+Les deux dernières lignes sont **ouvertes**, au registre. Elles ne sont pas des
+gestes de ce chantier — le mandat interdit le rebase et prescrit `--no-ff` — et
+leur fermeture honnête est un hook `pre-push`, qui reste à trancher.
 
 Le distant est **personnel** : `floSa/rag-ingestion-pipeline`.
 

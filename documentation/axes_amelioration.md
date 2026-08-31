@@ -849,6 +849,58 @@ que `pre-commit` laisse passer. Il est écarté sur deux mesures :
   et il faut un `git merge --abort` ; sur `git revert`, neuf fichiers modifiés
   restent dans l'arbre sans qu'aucun état de git ne le signale.
 
+### D1 → traitée par la réparation du lot 0b — les commits de FUSION n'étaient couverts par rien
+
+Ce n'était **pas** une régression du lot 0b : le script brut avait le même trou.
+Mais le geste suivant du chantier est `git merge --no-ff`, et ce commit-là part
+sur GitHub, où la liste des contributeurs ne se défait pas.
+
+`pre-commit install` n'installe que le type `pre-commit`. Mesuré le 31 août 2026,
+mouchards posés sur chaque hook de `.git/hooks`, ce que chaque geste déclenche :
+
+| Geste | `pre-commit` | `prepare-commit-msg` | `commit-msg` | `pre-merge-commit` |
+|---|---|---|---|---|
+| `git commit` | oui | oui | oui | — |
+| `git commit --amend` | oui | oui | oui | — |
+| `git merge --no-ff` | **non** | oui | oui | **oui** |
+| `git revert --no-edit` | **non** | oui | **non** | — |
+| `git cherry-pick` | **non** | oui | **non** | — |
+
+Mesuré, dans un clone monté selon le lot tel qu'il avait été livré :
+`git merge --no-ff` avec `GIT_AUTHOR_EMAIL` et `GIT_COMMITTER_EMAIL` en
+`@aosis.net` → `rc=0`, commit de fusion **créé**, auteur et committer
+`@aosis.net`, et **aucun hook n'a tourné** — la sortie de `git merge` ne porte
+aucune bannière du framework.
+
+**Fermé des deux côtés**, parce qu'une moitié seule aurait été creuse :
+
+- `scripts/installer-les-garde-fous.sh` installe les deux types
+  (`--hook-type pre-commit --hook-type pre-merge-commit`) **et** pose la copie
+  manuelle sur les deux, donc `pre-merge-commit.legacy` couvre les arbres dont la
+  configuration ne porte pas le hook. Sans cette seconde moitié, la fusion serait
+  gardée sur la branche du lot et nulle part ailleurs — exactement le défaut R1,
+  revenu par la porte de la fusion ;
+- `.pre-commit-config.yaml` déclare `default_install_hook_types: [pre-commit,
+  pre-merge-commit]` et `stages: [pre-commit, pre-merge-commit]` sur le hook
+  d'identité. La clé ne sert qu'à un `pre-commit install` tapé à la main : le
+  script passe les types explicitement, l'installation ne devant rien à la
+  branche sortie.
+
+Prouvé par mutation sur un **vrai** `git merge`, dans
+`tests/unit/test_installation_des_garde_fous.py::TestLesCommitsDeFusionSontCouverts`,
+avec son témoin — une fusion portant une adresse de la liste blanche doit passer,
+sans quoi le test serait vrai d'un montage qui refuse toute fusion.
+
+**Reste ouvert, et borné : `git revert`, `git cherry-pick`, `git rebase`.** Le
+seul point d'accroche commun est `prepare-commit-msg`, et il est écarté sur
+mesure — voir R1 ci-dessus, « Écarté, et pourquoi » : il y voit l'identité
+**locale**, donc il serait vert sur le défaut, et son refus laisse l'arbre sale.
+La fermeture honnête est un hook `pre-push`. **À trancher par le pilote** : le
+registre §5.5 avait écarté `pre-push` au motif qu'il est « trop tard, le commit
+porte déjà la mauvaise adresse » — vrai, mais ce qui coûte cher n'est pas le
+commit local, c'est le **push**, et réécrire un historique non poussé est
+gratuit. L'argument mérite d'être rouvert ; il l'est ici, pas tranché.
+
 ### La réserve du pilote sur `.env` et `detect-secrets` — CONFIRMÉE
 
 Le §5.5 disait que `detect-secrets` « n'a jamais tourné en garde-fou sur un dépôt

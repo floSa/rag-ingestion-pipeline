@@ -53,8 +53,19 @@ cd "$racine"
 commun=$(cd "$(git rev-parse --git-common-dir)" && pwd)
 identite="$racine/scripts/git-hooks/pre-commit"
 
-# Les types de hook qu'il faut armer.
-TYPES="pre-commit"
+# Les types de hook qu'il faut armer. `pre-commit` NE SUFFIT PAS : c'est le seul
+# type que `pre-commit install` installe par defaut, et il ne couvre pas les
+# commits de fusion. `git merge --no-ff` declenche `pre-merge-commit`,
+# `prepare-commit-msg` et `commit-msg`, jamais `pre-commit` (`mesure` le 31 aout
+# 2026, mouchards poses sur chaque hook). Un commit de fusion portant une
+# adresse interdite partait donc sans rien rencontrer — et le geste suivant du
+# chantier est justement une fusion, dont le commit part sur GitHub.
+#
+# La copie manuelle est posee sur les DEUX types, pour que `<type>.legacy` couvre
+# aussi les arbres dont la configuration ne porte pas le hook. Sans cette
+# moitie, la fusion serait gardee sur la branche qui declare le hook, et nulle
+# part ailleurs.
+TYPES="pre-commit pre-merge-commit"
 
 if [ ! -f "$identite" ]; then
     echo "ECHEC : $identite est introuvable." >&2

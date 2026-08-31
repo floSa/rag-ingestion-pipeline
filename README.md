@@ -528,7 +528,7 @@ phrase que ce même lot a fait respecter à `make all`, et elle valait aussi ici
 
 | Hook | Ce qu'il fait | Écrit ? |
 |---|---|---|
-| `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche | non |
+| `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche — voir la réserve ci-dessous, tous les chemins qui créent un commit ne sont pas couverts | non |
 | `trailing-whitespace`, `end-of-file-fixer` | hygiène de fin de ligne et de fin de fichier | oui, sur les fichiers **indexés** |
 | `check-yaml`, `check-added-large-files` | YAML valide, aucun fichier > 500 ko | non |
 | `ruff` | `--fix` sur les violations de lint | oui, sur les fichiers **indexés** |
@@ -569,6 +569,37 @@ fond avec le défaut que le lot 0b vient de corriger dans `make all`
 (section précédente), qui réécrivait tout `src/` — y compris des fichiers qu'on
 n'avait pas touchés — et sortait **vert**.
 
+#### Ce que le contrôle d'identité couvre, et ce qu'il ne couvre pas
+
+**Cette réserve remplace une phrase sans réserve, et elle est mesurée.** Le
+README affirmait que le hook « refuse un commit dont l'adresse d'auteur ou de
+committer n'est pas dans la liste blanche », sans dire *quels commits*. Or
+`git commit` n'est pas le seul chemin qui en crée un, et git ne déclenche pas les
+mêmes hooks sur tous. `mesuré` le 31 août 2026, mouchards posés sur chaque hook
+de `.git/hooks` :
+
+| Geste | Couvert | Par quoi |
+|---|---|---|
+| `git commit` | **oui** | `pre-commit` |
+| `git commit --amend` | **oui** | `pre-commit` |
+| `git merge --no-ff` | **oui** | `pre-merge-commit` |
+| `git revert` | **non** | git n'y déclenche ni `pre-commit` ni `commit-msg` |
+| `git cherry-pick` | **non** | idem |
+| `git rebase` | **non** | aucun hook de la famille ; le rebase réécrit le committer |
+| `git commit --no-verify` | **non** | par construction. Ne l'utilise jamais |
+
+Les fusions ont été fermées par la réparation du lot 0b : `pre-commit install`
+n'installe que le type `pre-commit`, et un commit de fusion portant `@aosis.net`
+partait sans rencontrer quoi que ce soit (`mesuré`).
+
+**`git revert` et `git cherry-pick` restent ouverts, et ce n'est pas un oubli.**
+Le seul point d'accroche que git y déclenche est `prepare-commit-msg` — et un
+contrôle posé là serait **vert sur le défaut** : `mesuré`, lors d'un
+`cherry-pick`, `git var GIT_AUTHOR_IDENT` y rend l'identité **locale**, pas celle
+du commit produit. Un commit d'auteur `@aosis.net` cueilli depuis un arbre
+configuré en `@gmail.com` se présente au hook comme `@gmail.com`, et passe.
+La fermeture honnête est un hook `pre-push` ; elle est ouverte au registre.
+
 #### Ce que `detect-secrets` protège, et ce qu'il ne protège pas
 
 À ne pas survendre. `.env` porte les mots de passe MinIO et PostgreSQL, mais
@@ -595,7 +626,7 @@ lui qui fait foi. Il ne doit rien rendre.
 git ls-files -z | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
 ```
 
-**546 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
+**548 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre

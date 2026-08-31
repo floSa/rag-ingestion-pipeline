@@ -251,6 +251,81 @@ class TestLaProtectionNeDependPasDeLArbreDeTravail:
             config.write_text(original)
 
 
+class TestLesCommitsDeFusionSontCouverts:
+    """`git commit` n'est pas le seul chemin qui cree un commit.
+
+    `pre-commit install` n'installe que le type `pre-commit`. Une fusion sans
+    avance rapide declenche `pre-merge-commit`, et rien d'autre : `mesure` le
+    31 aout 2026, mouchards poses sur chaque hook de `.git/hooks`, un
+    `git merge --no-ff` fait tourner `pre-merge-commit`, `prepare-commit-msg` et
+    `commit-msg`, jamais `pre-commit`.
+
+    Ce n'etait pas une regression du lot 0b — le script brut avait le meme trou —
+    mais le geste suivant du chantier est precisement `git merge --no-ff`, et ce
+    commit-la part sur GitHub, ou la liste des contributeurs ne se defait pas.
+
+    Le trou se ferme des DEUX cotes : le type est installe pour le framework, et
+    la copie manuelle est posee sur `pre-merge-commit` comme sur `pre-commit`,
+    pour que `pre-merge-commit.legacy` couvre les arbres dont la configuration ne
+    porte pas le hook. Sans cette seconde moitie, la fusion serait gardee sur la
+    branche du lot et nulle part ailleurs.
+    """
+
+    @staticmethod
+    def _une_branche_a_fusionner(depot: Path, nom: str) -> None:
+        """Cree une branche `nom` portant un fichier a elle, et revient.
+
+        Le nom du fichier derive de celui de la branche : deux appels ne se
+        marchent pas dessus. Un harnais non idempotent a rendu ces deux tests
+        rouges pour la mauvaise raison avant que celui-ci ne soit ecrit — le
+        second echouait sur « nothing to commit », pas sur son sujet.
+        """
+        depuis = _git(depot, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        assert _git(depot, "checkout", "-B", nom, depuis).returncode == 0
+        (depot / f"{nom}.txt").write_text(f"apport de {nom}\n")
+        assert _git(depot, "add", f"{nom}.txt").returncode == 0
+        assert _git(depot, "commit", "-m", f"apport de {nom}").returncode == 0
+        assert _git(depot, "checkout", depuis).returncode == 0
+
+    def test_une_fusion_portant_une_adresse_interdite_est_refusee(self, depot_arme: Path):
+        self._une_branche_a_fusionner(depot_arme, "fusion-interdite")
+        avant = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
+        resultat = _git(
+            depot_arme,
+            "merge",
+            "--no-ff",
+            "fusion-interdite",
+            "-m",
+            "merge interdit",
+            env=_identite(ADRESSE_INTERDITE, ADRESSE_INTERDITE),
+        )
+        apres = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
+        _git(depot_arme, "merge", "--abort")
+
+        assert resultat.returncode != 0, "la fusion a ete acceptee"
+        assert apres == avant, f"HEAD a bouge : {avant} -> {apres}"
+
+    def test_une_fusion_portant_une_adresse_autorisee_passe(self, depot_arme: Path):
+        # Le temoin. Sans lui, le test precedent serait vrai d'un montage qui
+        # refuse TOUTE fusion — un `pre-merge-commit` casse, par exemple.
+        self._une_branche_a_fusionner(depot_arme, "fusion-autorisee")
+        avant = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
+        resultat = _git(
+            depot_arme,
+            "merge",
+            "--no-ff",
+            "fusion-autorisee",
+            "-m",
+            "merge autorise",
+            env=_identite(ADRESSE_AUTORISEE, ADRESSE_AUTORISEE),
+        )
+        apres = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
+
+        assert resultat.returncode == 0, f"{resultat.stdout}\n{resultat.stderr}"
+        assert apres != avant, "aucun commit de fusion n'a ete cree"
+        _git(depot_arme, "reset", "--hard", avant)
+
+
 class TestLeScriptConstateSonPropreResultat:
     """Le script doit ROUGIR quand le montage n'est pas celui qu'il annonce.
 

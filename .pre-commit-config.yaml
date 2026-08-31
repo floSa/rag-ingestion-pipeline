@@ -5,6 +5,16 @@
 # framework n'etait installe nulle part, donc `detect-secrets` n'avait jamais
 # tourne en garde-fou (registre §5.5). Un garde-fou declare et non installe est
 # pire qu'absent : on croit l'avoir.
+# Les types de hook a installer. Cette cle ne sert que si quelqu'un appelle
+# `pre-commit install` a la main : `scripts/installer-les-garde-fous.sh`, que
+# `make install` lance, passe les types EXPLICITEMENT — l'installation ne doit
+# rien devoir a la branche sortie au moment ou on l'execute, et cette cle vit
+# dans l'arbre de travail.
+#
+# `pre-merge-commit` n'est pas decoratif : `pre-commit` seul ne voit pas les
+# commits de fusion.
+default_install_hook_types: [pre-commit, pre-merge-commit]
+
 repos:
   # Le controle d'identite d'auteur passe par le framework, et non par un
   # `.git/hooks/pre-commit` ecrit a la main. Raison : ce fichier ne peut heberger
@@ -26,7 +36,11 @@ repos:
         name: "Identite d'auteur autorisee"
         entry: scripts/git-hooks/pre-commit
         language: script
-        stages: [pre-commit]
+        # `pre-merge-commit` en plus de `pre-commit` : sans lui, le hook
+        # declare ici ne tournerait pas sur un `git merge --no-ff`, meme le
+        # type installe. Les deux couches — celle-ci et `<type>.legacy` —
+        # couvrent donc les memes gestes.
+        stages: [pre-commit, pre-merge-commit]
         always_run: true
         pass_filenames: false
 
