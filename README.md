@@ -306,6 +306,20 @@ docker compose exec docling-service python -m src.wipe_stores
 
 Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
+> **REDÉMARREZ `docling-service` AVANT toute réingestion, y compris sans purge.**
+> C'est `init_schema()` qui joue les `ALTER TAG … ADD`, et il n'est appelé **qu'au
+> démarrage du service** (`main.py`, dans le `lifespan`). Le lot 4 ajoute la
+> colonne `page_no_end` aux onze tags d'élément : `mesuré` le 1er septembre 2026,
+> `DESCRIBE TAG Paragraph` sur le space vivant rend
+> `label, page_no, text, minio_url, depth` — **la colonne n'existe pas encore**.
+> Une réingestion lancée avant le redémarrage écrit donc contre un tag qui n'a pas
+> la colonne, et le graphd rejette chaque `INSERT`.
+>
+> L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
+> lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
+> redémarrer ne répare rien — voir le registre, le message d'anomalie
+> `page_no_end` de `verify_contract` égare sur ce point précis.
+
 > Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'un des trois stores résiste : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes.
 
 ```bash
