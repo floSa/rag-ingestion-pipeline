@@ -514,7 +514,7 @@ L'état, `mesuré` sur cette révision :
 uv run ruff format --check src/ tests/
 ```
 
-→ « 73 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+→ « 74 files already formatted », `rc=0`. Et `make all` → `rc=0`.
 
 *(Ce nombre valait **67**, et il était faux sur la révision qui le portait —
 mot pour mot le défaut que le pilote venait de corriger en `39ce91a`, « le README
@@ -827,7 +827,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**854 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
+**857 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -850,28 +850,47 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
-Le module restant, `vectors.py`, est un adaptateur vers ChromaDB : il n'est pas
-couvert en unitaire et se valide par une ingestion réelle. Il garde tout de même
-le contrôle du modèle d'embedding (`tests/unit/test_vectors.py`).
+Les modules restants, `vectors.py` et `main.py`, sont des adaptateurs — vers
+ChromaDB et vers FastAPI : ils ne sont pas couverts en unitaire et se valident par
+une ingestion réelle. Chacun garde tout de même la propriété qui décide :
+`vectors.py` le contrôle du modèle d'embedding et la page de fin des chunks
+(`tests/unit/test_vectors.py`), `main.py` le refus de démarrer hors contrat
+(`tests/unit/test_main.py`, par sous-processus). *(Cette phrase ne nommait que
+`vectors.py` : elle avait été écrite en supposant `main.py` déverrouillé, ce qu'il
+n'est pas — voir juste en dessous.)*
 
-**Trois modules ont quitté cette liste au lot 4**, et pour la même cause
-mécanique : ils étaient **inimportables côté hôte**, donc rien de ce qu'ils
-décident ne pouvait être testé — *ce qu'un test n'importe pas, il ne teste pas*.
+**Deux modules ont été DÉVERROUILLÉS au lot 4, et un troisième a été atteint
+autrement** — la distinction n'est pas cosmétique, et la première rédaction de ce
+paragraphe la gommait. La cause est la même dans les trois cas : ils étaient
+**inimportables côté hôte**, donc rien de ce qu'ils décident ne pouvait être testé
+— *ce qu'un test n'importe pas, il ne teste pas*.
 
-| Module | Ce qui l'empêchait | Ce qui le garde désormais |
-|---|---|---|
-| `nebula.py` | `import nebula3` au niveau du module | `test_nebula.py` — l'identité du document, `source_path` et jamais `filename` |
-| `extraction.py` | `import docling` au niveau du module | `test_extraction.py` — l'oubli avant réécriture, le retrait d'un document partiel, la chaîne d'images |
-| `main.py` | `fastapi` absent du venv du dépôt | `test_main.py` — le refus de démarrer hors contrat, par sous-processus |
+| Module | Ce qui l'empêchait | Ce qui a changé | Ce qui le garde désormais |
+|---|---|---|---|
+| `nebula.py` | `import nebula3` au niveau du module | l'import est **différé** dans la fonction qui en a besoin | `test_nebula.py` — l'identité du document, `source_path` et jamais `filename` |
+| `extraction.py` | `import docling` au niveau du module | l'import est **différé** | `test_extraction.py` — l'oubli avant réécriture, le retrait d'un document partiel, la chaîne d'images, le compteur de pages perdues |
+| `main.py` | `fastapi` absent du venv du dépôt | **rien : aucune ligne du module n'est modifiée** | `test_main.py` — le refus de démarrer hors contrat, atteint par un bouchon `fastapi` posé comme un vrai paquet en tête de `PYTHONPATH`, par sous-processus |
 
-Les deux premiers ont vu leur import **différé** dans la fonction qui en a besoin
-(le geste de `vectors.get_collection`) ; le troisième est atteint par un bouchon
-`fastapi` posé comme un vrai paquet en tête de `PYTHONPATH` — `main.py` **est**
-l'application FastAPI, différer cet import-là n'aurait aucun sens.
+Les deux premiers ont vu leur import différé, le geste de `vectors.get_collection`.
+Le troisième n'a **pas** été déverrouillé : `main.py` **est** l'application
+FastAPI, différer cet import-là n'aurait aucun sens, et c'est le TEST qui va le
+chercher derrière un bouchon. Un module atteint par un bouchon n'est pas un module
+importable, et l'écrire comme tel surdisait ce qui avait été fait.
 
-**Aucun module du dépôt n'est plus inimportable côté hôte.** C'était la cause
-mécanique de six angles morts du chantier (registre §3.4, §4.4, §4.5, §4.19,
-§4.28.d), et c'est la même à chaque fois.
+**Un module du dépôt reste inimportable côté hôte, et c'est le seul.** `mesuré` le
+1er septembre 2026 : **33 modules sous `src/`, 1 inimportable** —
+`src/docling_service/main.py`, `ModuleNotFoundError: No module named 'fastapi'`.
+Ce paragraphe affirmait « Aucun module du dépôt n'est plus inimportable côté
+hôte » : c'était une **phrase d'exhaustivité**, la famille que le mandat §10 nomme
+comme un défaut en attente, et elle contredisait le tableau situé juste au-dessus,
+qui dit lui-même que `main.py` est atteint par un bouchon.
+
+L'affirmation est désormais **bornée à sa portée réelle, et gardée** :
+`tests/unit/test_importabilite_cote_hote.py` importe les 33 modules dans un
+sous-processus et rougit dès qu'un module inimportable n'est pas déclaré. C'était
+la cause mécanique de six angles morts du chantier (registre §3.4, §4.4, §4.5,
+§4.19, §4.28.d) — la convertir en garde plutôt qu'en phrase est ce qui empêche le
+septième.
 
 ---
 
