@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import base64
+import logging
 
 from src.pipeline.cleaning import (
     PRECLEANED_FALLBACK,
+    ExtractionCandidate,
+    ReadabilityStrategy,
+    SemanticContainerStrategy,
+    TrafilaturaStrategy,
     clean_html,
     clean_html_file,
     preclean_html,
@@ -397,3 +402,259 @@ class TestCleanHtmlFile:
         assert dest.exists()
         assert "paragraphe numero 5" in dest.read_text(encoding="utf-8")
         assert report.cleaned_bytes == len(dest.read_bytes())
+
+
+class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
+    """Registre 4.7 : `except Exception: candidate = None`, sans une ligne.
+
+    C'etait le plus grave des quatre `except` muets du depot. `cleaning.py`
+    n'avait AUCUN logger : une strategie d'extraction qui levait devenait un
+    non-candidat, indistinguable d'une strategie qui n'a rien trouve. Le
+    document repartait sur un candidat moins bon, ou sur le repli
+    pre-nettoye — c'est-a-dire avec son boilerplate — et rien ne le disait.
+    """
+
+    HTML = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<nav>menu</nav><article><h1>Un chapitre</h1><p>"
+        + "Du contenu reel qui doit survivre au nettoyage. " * 20
+        + "</p></article></body></html>"
+    )
+
+    def test_la_levee_d_une_strategie_est_journalisee_avec_son_nom(self, monkeypatch, caplog):
+        def leve(self, html):
+            raise RuntimeError("lxml a rendu l'ame")
+
+        monkeypatch.setattr(TrafilaturaStrategy, "extract", leve)
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            clean_html(self.HTML, CleaningOptions())
+
+        messages = [enregistrement.getMessage() for enregistrement in caplog.records]
+        assert any("TrafilaturaStrategy" in message for message in messages), messages
+        assert any("lxml a rendu l'ame" in message for message in messages), messages
+
+    def test_les_autres_strategies_gagnent_quand_une_leve(self, monkeypatch, caplog):
+        """LE TEMOIN. Sans lui, un `except` qui laisserait tout tomber passerait.
+
+        La largeur de l'`except` est VOULUE, et c'est ce test qui dit pourquoi :
+        une strategie sur trois qui plante ne doit pas condamner le document.
+        """
+
+        def leve(self, html):
+            raise RuntimeError("lxml a rendu l'ame")
+
+        monkeypatch.setattr(TrafilaturaStrategy, "extract", leve)
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.strategy != PRECLEANED_FALLBACK, (
+            "une seule strategie a leve : le document ne doit pas retomber sur "
+            "son HTML pre-nettoye, qui porte encore le boilerplate"
+        )
+        assert "menu" not in _
+
+    # HTML sans conteneur semantique : `SemanticContainerStrategy` y rend `None`
+    # sans lever, ce qui est son cas NOMINAL. C'est le cas qu'il faut atteindre
+    # pour distinguer « une strategie n'a rien trouve » de « une strategie a
+    # plante », et le test ci-dessous prouve qu'il l'atteint.
+    HTML_SANS_ARTICLE = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<div><h1>Un chapitre</h1><p>"
+        + "Du contenu reel qui doit survivre au nettoyage. " * 20
+        + "</p></div></body></html>"
+    )
+
+    def test_une_strategie_qui_ne_trouve_rien_n_est_pas_journalisee(self, caplog):
+        """LE SECOND TEMOIN : le garde ne doit pas crier sur le chemin nominal.
+
+        Sans lui, un journal pose a tort — sur le simple `candidate is None`,
+        qui est le cas nominal d'une strategie qui n'a rien trouve — noierait le
+        signal reel : un avertissement a chaque document rendrait celui qui
+        compte invisible.
+
+        `mesure` : ce temoin a d'abord ete ecrit sur `HTML`, qui porte un
+        `<article>`. Aucune strategie n'y rend `None`, donc le journal mal place
+        ne se declenchait jamais et le temoin restait VERT sous la mutation —
+        il etait creux. C'est la lecon « un test qui choisit lui-meme son cas
+        doit prouver qu'il l'a atteint », et la preuve est la premiere
+        assertion.
+        """
+        precleaned = preclean_html(self.HTML_SANS_ARTICLE, CleaningOptions())
+        assert (
+            SemanticContainerStrategy(min_chars=CleaningOptions().min_text_chars).extract(
+                precleaned
+            )
+            is None
+        ), "le cas voulu n'est pas atteint : une strategie doit rendre None sans lever"
+
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            clean_html(self.HTML_SANS_ARTICLE, CleaningOptions())
+
+        levees = [
+            enregistrement.getMessage()
+            for enregistrement in caplog.records
+            if "a leve" in enregistrement.getMessage()
+        ]
+        assert levees == [], levees
+
+
+# Le pire ratio texte-conserve/texte-pre-nettoye des 22 chapitres retenus du
+# corpus, `mesure` le 1er septembre 2026 par le nettoyage reel en memoire :
+# minimal 0.988, median 0.997, maximal 0.998, 0 chapitre sous 0.95.
+PIRE_RATIO_MESURE_DU_CORPUS = 0.988
+
+
+class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
+    """Registre 4.6 : `min_text_ratio = 0.05` acceptait de jeter 95 % du texte.
+
+    Aucun seuil d'alerte, aucun journal, et `factory` ne publiait ni
+    `precleaned_text_chars` ni le ratio dans les metadonnees Dagster : la perte
+    etait structurellement invisible. Un run vert, un chapitre ampute, rien.
+
+    **Le seuil d'acceptation n'est pas touche, et c'est deliberé.** Le refuser
+    plus tot ferait retomber le document sur son HTML pre-nettoye, qui garde
+    PLUS de texte — avec son boilerplate. `0.05` est un plancher
+    d'acceptation ; ce qui manquait etait un seuil d'ALERTE au-dessus de lui.
+
+    Le defaut de ce seuil vient de la mesure, `mesure` le 1er septembre 2026 sur
+    les 22 chapitres retenus du corpus : ratio minimal **0.988**, median 0.997,
+    maximal 0.998, et **0 chapitre sous 0.95**. Les 22 passent par la strategie
+    `article`. Un seuil d'alerte a 0.90 est donc muet sur ce corpus et parle des
+    qu'un document perd plus d'un dixieme de son texte.
+    """
+
+    CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
+    HTML = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<article><h1>Un chapitre</h1><p>" + CONTENU + "</p></article>"
+        "</body></html>"
+    )
+
+    def test_le_bilan_porte_le_texte_de_reference_et_le_ratio(self):
+        _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.precleaned_text_chars > 0
+        assert 0.9 < bilan.text_ratio <= 1.0, bilan
+
+    def test_le_ratio_est_le_rapport_des_deux_comptes(self):
+        """LE TEMOIN du precedent : un ratio code en dur a 1.0 passerait sans lui."""
+        _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.text_ratio == bilan.text_chars / bilan.precleaned_text_chars
+
+    def test_un_texte_de_reference_vide_ne_divise_pas_par_zero(self):
+        """Le cas que le calcul naturel fait planter : un HTML sans texte."""
+        _, bilan = clean_html("<html><body><div></div></body></html>", CleaningOptions())
+
+        assert bilan.precleaned_text_chars == 0
+        assert bilan.text_ratio == 1.0, (
+            "sans texte a conserver, il n'y a pas de perte : 1.0 et non 0.0, "
+            "sans quoi tout document vide leverait une alerte de perte"
+        )
+
+    def test_une_perte_massive_est_journalisee_avec_ses_deux_comptes(self, monkeypatch, caplog):
+        """Une strategie qui ne rend qu'un dixieme du texte doit crier.
+
+        Le cas est FABRIQUE — le corpus reel ne descend jamais sous 0.988 — et
+        c'est precisement pourquoi il faut le fabriquer : un test sur le corpus
+        serait vert des deux cotes du defaut.
+        """
+
+        def rend_un_cinquieme(self, html):
+            # Au-dessus de `min_text_chars` (250) pour etre ACCEPTE, et bien en
+            # dessous du seuil d'alerte : c'est le cas exact que 4.6 decrit, un
+            # candidat retenu qui a jete l'essentiel du texte.
+            return ExtractionCandidate(
+                strategy="article", html="<p>" + "mot bref ici. " * 26 + "</p>"
+            )
+
+        monkeypatch.setattr(SemanticContainerStrategy, "extract", rend_un_cinquieme)
+        monkeypatch.setattr(TrafilaturaStrategy, "extract", lambda self, html: None)
+        monkeypatch.setattr(ReadabilityStrategy, "extract", lambda self, html: None)
+
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.text_ratio < 0.9, f"le cas voulu n'est pas atteint : {bilan}"
+        messages = [enregistrement.getMessage() for enregistrement in caplog.records]
+        perte = [message for message in messages if "%" in message and "texte" in message]
+        assert perte, messages
+        assert str(bilan.precleaned_text_chars) in perte[0], perte[0]
+        assert str(bilan.text_chars) in perte[0], perte[0]
+
+    def test_le_chemin_nominal_ne_journalise_aucune_perte(self, caplog):
+        """LE TEMOIN : une alerte a chaque document rendrait la vraie invisible.
+
+        C'est le meme defaut que le seuil absent, par l'autre bout : un seuil
+        pose trop haut crie sur les 22 chapitres du corpus, et plus personne ne
+        lit la ligne.
+        """
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.text_ratio >= CleaningOptions().warn_text_ratio
+        pertes = [
+            enregistrement.getMessage()
+            for enregistrement in caplog.records
+            if "du texte" in enregistrement.getMessage()
+        ]
+        assert pertes == [], pertes
+
+    def test_le_seuil_d_alerte_est_muet_sur_le_corpus_mesure(self):
+        """Le seuil vient d'une mesure, et cette mesure est ecrite ici.
+
+        `mesure` le 1er septembre 2026 : le pire ratio des 22 chapitres retenus
+        vaut 0.988. Un seuil au-dessus rendrait le journal bavard sur un corpus
+        sain, et c'est ce que ce test interdit.
+        """
+        assert CleaningOptions().warn_text_ratio < PIRE_RATIO_MESURE_DU_CORPUS, (
+            "le seuil d'alerte depasse le pire ratio reel du corpus : les 22 "
+            "chapitres leveraient une alerte, et la vraie perte serait noyee"
+        )
+        assert CleaningOptions().warn_text_ratio > CleaningOptions().min_text_ratio, (
+            "un seuil d'alerte sous le plancher d'acceptation ne peut jamais "
+            "se declencher : tout candidat accepte le satisfait deja"
+        )
+
+
+class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
+    """Registre 4.25 : la forme de l'adresse MinIO avait DEUX sites.
+
+    `images.object_url` et `MinioImageExporter.__call__` la construisaient par
+    deux f-strings identiques. C'est la forme que le CONTRAT publie — l'agent lit
+    `minio_url` — donc deux sites sont deux facons de deriver, sur la seule
+    propriete qu'aucun des deux ne peut verifier chez l'autre.
+
+    `mesure` : faire reconstruire son URL a `media.py` — en `https` au lieu de
+    `http`, par exemple — laissait la suite ENTIEREMENT VERTE.
+    """
+
+    def test_l_url_rendue_est_exactement_celle_du_site_unique(self, monkeypatch):
+        from src.docling_service.images import object_url
+        from src.pipeline.media import MinioImageExporter
+
+        exporteur = MinioImageExporter(doc_key="htms/livre/chapitre")
+        monkeypatch.setattr(
+            exporteur, "_get_client", lambda: type("C", (), {"put_object": lambda *a, **k: None})()
+        )
+
+        rendue = exporteur(b"\x89PNG", "image/png", 0)
+
+        assert rendue == object_url("images/html/htms/livre/chapitre/img_0000.png")
+
+    def test_un_upload_en_echec_ne_rend_aucune_url(self, monkeypatch):
+        """LE TEMOIN : sans lui, un exporteur qui rend toujours une URL passerait,
+        et le graphe porterait des adresses d'objets jamais televerses — le
+        registre 4.28.b, cree a la main."""
+        from src.pipeline.media import MinioImageExporter
+
+        def refuse(*a, **k):
+            raise RuntimeError("minio injoignable")
+
+        exporteur = MinioImageExporter(doc_key="htms/livre/chapitre")
+        monkeypatch.setattr(
+            exporteur, "_get_client", lambda: type("C", (), {"put_object": refuse})()
+        )
+
+        assert exporteur(b"\x89PNG", "image/png", 0) is None
+        assert exporteur.exported == 0

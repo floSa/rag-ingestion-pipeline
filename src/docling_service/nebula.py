@@ -19,10 +19,10 @@ import threading
 import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nebula3.Config import Config
-from nebula3.gclient.net import ConnectionPool
+if TYPE_CHECKING:
+    from nebula3.gclient.net import ConnectionPool
 
 from src.docling_service.elements import (
     ROOT_REFERENCE,
@@ -33,9 +33,10 @@ from src.docling_service.elements import (
 )
 from src.docling_service.ngql import (
     DOCUMENT_PROPERTIES,
+    SPACE,
     VERTEX_PROPERTIES,
-    VID_MAX_BYTES,
     compter_les_textes_coupes,
+    create_space_statement,
     document_vid,
     edge_value,
     element_vertex_value,
@@ -50,7 +51,10 @@ from src.docling_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-SPACE = "rag_space"
+# `SPACE` et la requete de creation du space vivent dans `ngql.py`, le seul des
+# deux modules importable sans graphd. `SPACE` est reexporte ici : ses appelants
+# — `wipe_stores`, `verify_contract` — le lisent depuis ce module.
+__all__ = ["SPACE", "NebulaError", "NebulaWriter", "get_writer"]
 
 # VERTEX_PROPERTIES et DOCUMENT_PROPERTIES vivaient ici ET dans ngql.py, avec
 # des valeurs differentes, celle d'ici etant la vraie. Elles n'ont plus qu'un
@@ -71,7 +75,21 @@ class NebulaWriter:
     # ── Connexion ────────────────────────────────────────────────────────────
 
     def _connect(self, max_attempts: int, wait_seconds: float) -> ConnectionPool:
-        """Ouvre un pool, avec retry (le graphd met du temps a etre pret)."""
+        """Ouvre un pool, avec retry (le graphd met du temps a etre pret).
+
+        ``nebula3`` est importe ICI et non au niveau du module, et ce n'est pas
+        un detail de style. Il n'est pas dans le venv du depot — les deps
+        lourdes d'extraction vivent dans ``Dockerfile.docling`` — donc un import
+        de module rendait ``src.docling_service.nebula`` INIMPORTABLE cote hote,
+        et tout ce qu'il porte intestable : c'est ainsi que la mutation
+        ``document_vid(identity.key)`` -> ``document_vid(identity.filename)``
+        laissait la suite entierement verte (registre 4.28.d). C'est le meme
+        geste que ``vectors.get_collection``, sur le cinquieme et dernier module
+        dans ce cas. *Ce qu'un test n'importe pas, il ne teste pas.*
+        """
+        from nebula3.Config import Config
+        from nebula3.gclient.net import ConnectionPool
+
         settings = get_settings()
         for attempt in range(1, max_attempts + 1):
             pool = ConnectionPool()
@@ -121,7 +139,8 @@ class NebulaWriter:
                 Cet echec doit etre bruyant : sinon tous les INSERT suivants
                 echouent en silence et le run se termine au vert sur un graphe vide.
         """
-        session = self._get_pool().get_session("root", "nebula")
+        settings = get_settings()
+        session = self._get_pool().get_session(settings.nebula_user, settings.nebula_password)
         try:
             if use_space:
                 execute(session, f"USE {SPACE};")
@@ -302,12 +321,7 @@ class NebulaWriter:
             # on retente jusqu'a ce que le space existe VRAIMENT, sinon tous les
             # flushs partent dans le vide en silence.
             for attempt in range(1, settings.nebula_space_attempts + 1):
-                execute(
-                    session,
-                    f"CREATE SPACE IF NOT EXISTS {SPACE}(partition_num=10, "
-                    f"replica_factor=1, vid_type=FIXED_STRING({VID_MAX_BYTES}));",
-                    required=False,
-                )
+                execute(session, create_space_statement(SPACE), required=False)
                 time.sleep(5)
                 result = session.execute("SHOW SPACES;")
                 names = [result.row_values(i)[0].as_string() for i in range(result.row_size())]

@@ -11,6 +11,7 @@ afin de rester testable sans l'image d'extraction.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -211,6 +212,71 @@ def item_provenance(item: Any) -> Any:
     return prov[0] if prov else None
 
 
+def item_page_span(item: Any) -> tuple[int, int]:
+    """Premiere et derniere page couvertes par un item Docling.
+
+    **La seconde etait JETEE, et c'est le registre 4.22.** Six pages du PDF du
+    corpus — 8, 18, 19, 25, 68, 69 sur 71 — n'ont aucun element dans le graphe,
+    alors que PyMuPDF y lit 1 181 a 1 472 caracteres. Le texte n'est pas perdu :
+    il est attribue a la page PRECEDENTE, Docling fusionnant un paragraphe qui
+    enjambe une page. Toute citation « page 7 » couvre donc en realite 7 ET 8,
+    et rien ne le disait.
+
+    L'information existait : `mesure` le 1er septembre 2026, conversion reelle du
+    PDF du corpus en `page_range=(7, 8)`, l'item `#/texts/3` porte **deux
+    provenances, pages [7, 8]**. Seule la premiere etait lue.
+
+    Args:
+        item: Item Docling.
+
+    Returns:
+        `(premiere, derniere)`. `(1, 1)` sans provenance — les formats non
+        pagines. La derniere n'est jamais inferieure a la premiere : des
+        provenances en desordre rendraient une plage vide, donc une page
+        d'entree comptee comme perdue.
+    """
+    prov = list(getattr(item, "prov", None) or [])
+    if not prov:
+        return 1, 1
+    pages = [int(p.page_no) for p in prov]
+    return pages[0], max(pages[0], pages[-1])
+
+
+def pages_sans_element(
+    elements: Sequence[dict[str, Any]],
+    total_pages: int,
+    ecartees: set[int] | None = None,
+) -> list[int]:
+    """Pages qu'AUCUN element ne couvre — le compteur la ou il y a perte.
+
+    Une page enjambee n'est PAS une page perdue : elle est couverte par un
+    element qui commence avant elle, et `page_no_end` le dit desormais. Ce qui
+    reste apres ce changement est la vraie perte — une page que personne ne
+    couvre, ni comme page d'entree ni comme page de fin.
+
+    Les pages ECARTEES ne comptent pas : le front/back matter est saute
+    volontairement, et le compter comme une perte rendrait le compteur bavard sur
+    chaque PDF. Un compteur qu'on n'ecoute plus ne compte rien.
+
+    Args:
+        elements: Elements produits par `DocumentAccumulator`.
+        total_pages: Pagination du document.
+        ecartees: Pages volontairement non converties.
+
+    Returns:
+        Les numeros de page non couverts, tries.
+    """
+    couvertes: set[int] = set()
+    for element in elements:
+        debut = int(element.get("page_no") or 1)
+        fin = max(debut, int(element.get("page_no_end") or debut))
+        couvertes.update(range(debut, fin + 1))
+    sautees = ecartees or set()
+    return [
+        page for page in range(1, total_pages + 1) if page not in couvertes and page not in sautees
+    ]
+
+
 class DocumentAccumulator:
     """Construit les elements d'un document en suivant hierarchie et positions.
 
@@ -254,7 +320,12 @@ class DocumentAccumulator:
             Le dict element, positions et rattachement hierarchique renseignes.
         """
         prov = item_provenance(item)
-        page_no = int(prov.page_no) if prov else 1
+        # `page_no` reste la PREMIERE page, et ce n'est pas un detail :
+        # `compute_id` en derive l'identifiant de l'element. Le deplacer
+        # changerait tous les `element_id` du corpus, donc le jeu de questions de
+        # l'agent (contrat, exigence 2). `page_no_end` est ADDITIF, et c'est ce
+        # qui rend le registre 4.22 corrigible sans reecrire les identifiants.
+        page_no, page_no_end = item_page_span(item)
         label = item_label(item)
         text = item_text(item, document)
 
@@ -292,6 +363,10 @@ class DocumentAccumulator:
             "self_ref": str(getattr(item, "self_ref", "")),
             "label": label,
             "page_no": page_no,
+            # Derniere page couverte. Egale a `page_no` sauf pour un element que
+            # Docling a fusionne par-dessus une frontiere de page : la, une
+            # citation « page N » couvre en realite N a `page_no_end` (4.22).
+            "page_no_end": page_no_end,
             "bbox": extract_bbox(prov.bbox if prov else None),
             "text": text,
             "order": self._global_order,

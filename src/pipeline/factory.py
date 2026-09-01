@@ -246,6 +246,17 @@ def _build_html_assets(
                 "raw_bytes": report.raw_bytes,
                 "cleaned_bytes": report.cleaned_bytes,
                 "text_chars": report.text_chars,
+                # LE DENOMINATEUR DE LA PERTE, et il manquait. `text_chars` sans
+                # rien a quoi le comparer ne dit pas si le nettoyage a retire du
+                # boilerplate ou ampute un chapitre : `min_text_ratio` accepte un
+                # candidat conservant 5 % du texte, et dans l'interface Dagster
+                # un chapitre ampute a 5 % et un chapitre propre a 99,8 %
+                # affichaient tous deux un nombre, sans rien qui les distingue
+                # (registre 4.6). Le ratio est LU sur le bilan et non recalcule
+                # ici : deux calculs du meme rapport peuvent diverger, et une
+                # metadonnee de perte qui se trompe est pire qu'absente.
+                "precleaned_text_chars": report.precleaned_text_chars,
+                "text_ratio": report.text_ratio,
                 "images_exported": exporter.exported if exporter else 0,
             }
         )
@@ -308,16 +319,44 @@ def _record_metadata(context: AssetExecutionContext, result: dict[str, Any]) -> 
     publie des metadonnees, et une fois par partition alors que le contrat le
     veut en fin d'ingestion. Le declenchement vit desormais dans
     ``reindex_job.py``, hors du chemin du document.
+
+    **Elle ne publiait que quatre cles, et c'est ce qui rendait deux etats
+    indistinguables** (registre 4.10). ``extract`` retourne ``elements: 0`` et
+    ``duplicate_of`` quand il reconnait un fichier deja ingere ; la fonction
+    n'en publiait rien. Dans l'interface Dagster, un document **ECARTE** et un
+    document **ingere VIDE** affichaient donc exactement la meme chose — quatre
+    zeros. Le premier est le comportement voulu, le second est une panne.
+
+    Les cinq cles que le constat nomme sont publiees. ``duplicate_of`` n'apparait
+    que sur un document reellement ecarte : une cle presente et vide sur les 23
+    documents redonnerait le defaut par l'autre bout, en habituant l'oeil a la
+    voir. ``failed_batches`` est publie comme un COMPTE, plus son detail : c'est
+    le compteur du 4.1 vu depuis Dagster, la ou le run rouge ne dit pas combien
+    de pages manquent.
     """
+    # LES CINQ CLES VIVENT DANS `progress`, ET C'EST LE POINT DELICAT.
+    # `main._run_extraction` fait `job.report(**result)`, et `Job.report` verse
+    # tout dans `progress` : le retour d'`extract` n'apparait donc JAMAIS au
+    # premier niveau du `snapshot()` que Dagster recoit. Les lire au premier
+    # niveau publierait des zeros sans qu'aucune erreur ne le dise — le defaut
+    # que cette fonction ferme, reintroduit dans le geste qui le ferme.
     progress = result.get("progress") or {}
-    context.add_output_metadata(
-        {
-            "elements": progress.get("elements", 0),
-            "chunks": progress.get("chunks", 0),
-            "pages": progress.get("pages", progress.get("pages_total", 0)),
-            "elapsed_seconds": result.get("elapsed_seconds", 0),
-        }
-    )
+    lots_en_echec = list(progress.get("failed_batches") or [])
+    metadonnees: dict[str, Any] = {
+        "elements": progress.get("elements", 0),
+        "chunks": progress.get("chunks", 0),
+        "pages": progress.get("pages", progress.get("pages_total", 0)),
+        "elapsed_seconds": result.get("elapsed_seconds", 0),
+        "pages_skipped": progress.get("pages_skipped", 0),
+        "ocr": bool(progress.get("ocr", False)),
+        "language": str(progress.get("language") or ""),
+        "failed_batches": len(lots_en_echec),
+        "failed_batches_detail": "; ".join(str(lot) for lot in lots_en_echec),
+    }
+    doublon = progress.get("duplicate_of")
+    if doublon:
+        metadonnees["duplicate_of"] = str(doublon)
+    context.add_output_metadata(metadonnees)
 
 
 def _build_sensor(

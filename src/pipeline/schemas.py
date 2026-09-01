@@ -37,7 +37,15 @@ class DocumentElement(BaseModel):
 
     id: str
     label: str
+    # PREMIERE page de l'element : celle ou la lecture commence, et celle dont
+    # `compute_id` derive son identifiant.
     page_no: int = 1
+    # DERNIERE page couverte. Egale a `page_no` sauf pour un element que Docling
+    # a fusionne par-dessus une frontiere de page — auquel cas une citation
+    # « page N » couvre en realite N a `page_no_end`. Six pages du PDF du corpus
+    # n'avaient aucun element propre pour cette raison, et rien ne le disait
+    # (registre 4.22).
+    page_no_end: int = 1
     bbox: BoundingBox | None = None
     text: str = ""
     order: int = 0
@@ -88,7 +96,18 @@ class ChunkMetadata(BaseModel):
     # l'anglais, l'agent a besoin de cette cle pour filtrer ou ponderer.
     language: str = ""
     label: str = ""
+    # PREMIERE page du chunk. `page_no_end` donne la derniere : un chunk peut
+    # porter du texte de DEUX pages, Docling fusionnant les paragraphes qui
+    # enjambent une frontiere de page. Citer « page N » seule est donc inexact
+    # des que les deux diffèrent (registre 4.22).
     page_no: int = 0
+    page_no_end: int = 0
+    # Adresse de l'objet MinIO — INTERNE et AUTHENTIFIEE, jamais publique. Un
+    # `GET` anonyme y rend **403**, y compris depuis un conteneur du reseau
+    # `rag_network` (`mesure`), et l'hote est un nom de service Docker qui ne
+    # resout pas au-dehors. L'agent est le PROXY : il lit l'objet avec ses
+    # identifiants S3 et le re-sert. Il ne passe jamais cette adresse a un
+    # navigateur. Registre 4.25, et `images.object_url` en est le seul site.
     minio_url: str = ""
     reference_id: str = "DOC"
     # Profondeur dans la hierarchie des titres. C'est le nombre d'aretes

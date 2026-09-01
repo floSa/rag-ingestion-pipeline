@@ -435,7 +435,7 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
         print("NebulaGraph injoignable.")
         return ["NebulaGraph injoignable : aucune propriete de graphe verifiee"]
 
-    session = pool.get_session("root", "nebula")
+    session = pool.get_session(settings.nebula_user, settings.nebula_password)
     try:
         session.execute(f"USE {SPACE};")
 
@@ -468,6 +468,26 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
                 "migre mais les donnees non — seule une reingestion les renseigne "
                 "(registre 4.11). L'agent ne peut pas distinguer « profondeur 0 » "
                 "de « profondeur inconnue »"
+            )
+
+        # LE MEME CONTROLE POUR `page_no_end`, ET POUR LA MEME RAISON. La colonne
+        # est ajoutee par le lot 4 (registre 4.22) : le schema migre en place, les
+        # DONNEES non, donc un index ecrit avant ce lot porte NULL partout. Sans
+        # ce compteur, l'agent lirait une page de fin sur les sommets recents et
+        # NULL sur les anciens, et rien ne distinguerait « cet element tient sur
+        # une page » de « on ne sait pas ou il finit ». C'est mot pour mot le
+        # quatrieme des cinq trous que l'audit du lot 3 a trouves, sur la colonne
+        # que ce lot-ci ajoute : ne pas l'ecrire aurait ete refaire le defaut
+        # dans le geste qui le connait.
+        fins = _lire_un_entier_sur_les_sommets(session, "page_no_end")
+        sans_fin = sommets_sans_profondeur(fins)
+        print(f"sommets sans page_no_end       : {sans_fin}/{len(fins)}")
+        if sans_fin:
+            anomalies.append(
+                f"{sans_fin} sommets sur {len(fins)} sans page_no_end : le tag a "
+                "migre, les donnees non — il faut une reingestion pour peupler la "
+                "colonne (registre 4.22). L'agent ne peut pas distinguer « cet "
+                "element tient sur une page » de « on ne sait pas ou il finit »"
             )
 
         anomalies.extend(_verifier_le_tag_document(session))
@@ -545,14 +565,28 @@ def _lire_les_profondeurs(session: Any) -> list[int | None]:
     `Document`, qui porte `doc_index`, et echoue sur `SectionHeader`, qui n'en a
     pas. Registre §4.27.
     """
+    return _lire_un_entier_sur_les_sommets(session, "depth")
+
+
+def _lire_un_entier_sur_les_sommets(session: Any, propriete: str) -> list[int | None]:
+    """Lit une propriete entiere sur tous les sommets d'element.
+
+    Args:
+        session: Session NebulaGraph.
+        propriete: Nom de la colonne a lire.
+
+    Returns:
+        Une valeur par sommet, ``None`` pour une propriete jamais ecrite.
+    """
     from src.docling_service.elements import TAG_MAP
 
-    profondeurs: list[int | None] = []
+    valeurs: list[int | None] = []
     for tag in sorted(set(TAG_MAP.values())):
-        for ligne in _lire(session, f"MATCH (v:{tag}) RETURN v.{tag}.depth AS depth;"):
+        requete = f"MATCH (v:{tag}) RETURN v.{tag}.{propriete} AS valeur;"
+        for ligne in _lire(session, requete):
             valeur = ligne[0]
-            profondeurs.append(None if valeur.is_null() else int(valeur.as_int()))
-    return profondeurs
+            valeurs.append(None if valeur.is_null() else int(valeur.as_int()))
+    return valeurs
 
 
 def _verifier_le_tag_document(session: Any) -> list[str]:

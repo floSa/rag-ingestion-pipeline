@@ -24,6 +24,7 @@ from __future__ import annotations
 import base64
 import binascii
 import html as html_module
+import logging
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -36,6 +37,11 @@ from bs4.element import NavigableString
 from readability import Document
 
 from src.pipeline.sources import CleaningOptions, ExtractionProfile
+
+# Ce module n'avait AUCUN logger, et c'est ce qui rendait ses deux pertes
+# silencieuses : une strategie d'extraction qui leve (registre 4.7) et un
+# nettoyage qui jette la quasi-totalite du texte (4.6).
+logger = logging.getLogger(__name__)
 
 # Balises qui ne portent jamais de contenu a ingerer.
 NOISE_TAGS: list[str] = [
@@ -107,13 +113,32 @@ _TITLE_SEP = re.compile(r"\s+[-–—|·»]\s+")
 
 @dataclass
 class CleaningReport:
-    """Bilan d'un nettoyage, expose dans les metadonnees Dagster."""
+    """Bilan d'un nettoyage, expose dans les metadonnees Dagster.
+
+    ``precleaned_text_chars`` est le denominateur de la perte, et il manquait :
+    le bilan portait `text_chars` sans rien a quoi le comparer, si bien qu'aucun
+    consommateur ne pouvait dire si le nettoyage avait retire du boilerplate ou
+    amputé un chapitre (registre 4.6).
+    """
 
     strategy: str
     raw_bytes: int
     precleaned_bytes: int
     cleaned_bytes: int
     text_chars: int
+    precleaned_text_chars: int
+
+    @property
+    def text_ratio(self) -> float:
+        """Part du texte pre-nettoye que le nettoyage a conservee.
+
+        Vaut ``1.0`` quand il n'y avait aucun texte a conserver : sans cette
+        borne, tout document sans texte visible leverait une alerte de perte —
+        et un `0.0` y serait faux, il n'y a pas de perte de rien.
+        """
+        if self.precleaned_text_chars == 0:
+            return 1.0
+        return self.text_chars / self.precleaned_text_chars
 
 
 @dataclass
@@ -429,14 +454,58 @@ def preclean_html(
     return str(soup)
 
 
-def _build_report(raw: str, precleaned: str, html: str, strategy: str) -> CleaningReport:
-    """Construit le bilan d'un nettoyage."""
+def _build_report(
+    raw: str,
+    precleaned: str,
+    html: str,
+    strategy: str,
+    reference_chars: int | None = None,
+) -> CleaningReport:
+    """Construit le bilan d'un nettoyage.
+
+    Args:
+        raw: HTML d'origine.
+        precleaned: HTML apres la pre-passe d'hygiene.
+        html: Fragment retenu.
+        strategy: Nom de la strategie gagnante.
+        reference_chars: Longueur du texte pre-nettoye, si l'appelant l'a deja
+            calculee. Elle l'est toujours dans `clean_html` : la repasser evite
+            de retokeniser un document de 80 000 caracteres pour rien.
+    """
     return CleaningReport(
         strategy=strategy,
         raw_bytes=len(raw.encode("utf-8")),
         precleaned_bytes=len(precleaned.encode("utf-8")),
         cleaned_bytes=len(html.encode("utf-8")),
         text_chars=_visible_text_length(html),
+        precleaned_text_chars=(
+            _visible_text_length(precleaned) if reference_chars is None else reference_chars
+        ),
+    )
+
+
+def _avertir_si_le_texte_est_jete(
+    bilan: CleaningReport, options: CleaningOptions, titre: str
+) -> None:
+    """Crie quand le nettoyage a conserve moins que le seuil d'alerte.
+
+    C'est le compteur qui manquait la ou il y a perte. `min_text_ratio` acceptait
+    un candidat conservant 5 % du texte ; personne ne pouvait le savoir, ce
+    module n'ayant pas de logger et le bilan pas de denominateur.
+    """
+    if bilan.text_ratio >= options.warn_text_ratio:
+        return
+    logger.warning(
+        "%s : le nettoyage n'a conserve que %.1f %% du texte (%d caracteres sur "
+        "%d) par la strategie %s, sous le seuil d'alerte de %.0f %%. Le chapitre "
+        "est probablement ampute, et rien d'autre ne le signalera : le run reste "
+        "vert et l'index recevra le texte tronque",
+        titre or "un document sans titre",
+        100 * bilan.text_ratio,
+        bilan.text_chars,
+        bilan.precleaned_text_chars,
+        bilan.strategy,
+        100 * options.warn_text_ratio,
     )
 
 
@@ -473,7 +542,9 @@ def clean_html(
         profiled = ProfileStrategy(profile, options.min_text_chars).extract(precleaned)
         if profiled is not None:
             fragment = _ensure_heading(profiled.html, title)
-            return fragment, _build_report(raw, precleaned, fragment, profiled.strategy)
+            bilan = _build_report(raw, precleaned, fragment, profiled.strategy, reference_chars)
+            _avertir_si_le_texte_est_jete(bilan, options, title)
+            return fragment, bilan
 
     strategies: tuple[CleaningStrategy, ...] = (
         SemanticContainerStrategy(min_chars=options.min_text_chars),
@@ -485,7 +556,28 @@ def clean_html(
     for strategy in strategies:
         try:
             candidate = strategy.extract(precleaned)
-        except Exception:
+        except Exception as exc:
+            # LARGEUR VOULUE, ET VOICI POURQUOI. `trafilatura` et
+            # `readability-lxml` sont des extracteurs tiers lances sur du HTML
+            # de capture, souvent malforme : ils peuvent lever n'importe quoi,
+            # et `lxml` remonte des exceptions qui ne descendent pas d'une base
+            # commune utile. Une strategie sur trois qui plante ne doit pas
+            # condamner le document — les deux autres concourent encore.
+            #
+            # CE QUI MANQUAIT ETAIT LA TRACE, et c'etait le plus grave des
+            # quatre `except` muets du depot : ce module n'avait aucun logger,
+            # si bien qu'une strategie qui LEVE etait indistinguable d'une
+            # strategie qui n'a RIEN TROUVE. Le document repartait sur un
+            # candidat moins bon, voire sur son HTML pre-nettoye — donc avec son
+            # boilerplate — et aucun code de sortie ne le disait.
+            logger.warning(
+                "%s a leve sur %s : %s. Cette strategie ne concourt pas ; le "
+                "candidat retenu sera le meilleur des autres, ou le repli "
+                "pre-nettoye si aucune ne passe les seuils",
+                type(strategy).__name__,
+                _page_title(precleaned) or "un document sans titre",
+                exc,
+            )
             candidate = None
         if candidate is None:
             continue
@@ -503,10 +595,16 @@ def clean_html(
     if accepted:
         _, best = max(accepted, key=lambda c: c[0])
         fragment = _ensure_heading(best.html, title)
-        return fragment, _build_report(raw, precleaned, fragment, best.strategy)
+        bilan = _build_report(raw, precleaned, fragment, best.strategy, reference_chars)
+        _avertir_si_le_texte_est_jete(bilan, options, title)
+        return fragment, bilan
 
     # Le repli est le document entier (avec son <head>) : pas de h1 a prefixer.
-    return precleaned, _build_report(raw, precleaned, precleaned, PRECLEANED_FALLBACK)
+    # Il ne peut pas perdre de texte — c'est le denominateur lui-meme — donc pas
+    # d'alerte a lever ici. `factory` avertit deja qu'on est retombe dessus.
+    return precleaned, _build_report(
+        raw, precleaned, precleaned, PRECLEANED_FALLBACK, reference_chars
+    )
 
 
 def clean_html_file(

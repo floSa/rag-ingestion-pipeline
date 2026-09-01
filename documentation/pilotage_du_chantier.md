@@ -345,9 +345,39 @@ dernier.
 
 ```bash
 uv sync && sh scripts/installer-les-garde-fous.sh \
-  && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/ \
-  && uv run ruff format --check src/
+  && uv run ruff check src/ tests/ && uv run mypy src/ && uv run pytest tests/ \
+  && uv run ruff format --check src/ tests/
 ```
+
+**Les DEUX cibles `ruff` portent `src/ tests/`, et la seconde ne le portait pas.**
+Le commit qui pretendait aligner les portees n'en a corrige que la moitie :
+`ruff check` est passe a `src/ tests/`, `ruff format --check` est reste a `src/`.
+`mesure` le 1er septembre 2026 sur la pointe du lot 4 : `--check src/` voit **36**
+fichiers, `--check src/ tests/` en voit **73**. Le repli etait donc aveugle aux
+fichiers de `tests/`, et les deux verdicts ne coincidaient que par chance.
+
+Mesure du desaccord, de mes mains, sur un arbre ou une seule ligne d'un fichier de
+`tests/` est pliee a la main :
+
+| Sequence | arbre propre | une ligne pliee dans `tests/` |
+|---|---|---|
+| `make all` | `rc=0` | **`rc=2`** |
+| le repli tel qu'il etait ecrit | `rc=0` | **`rc=0`** — aveugle |
+| le repli corrige ci-dessus | `rc=0` | **`rc=1`** — il voit |
+
+**Lis la colonne comme un VERDICT et non comme un code.** `make` traduit tout
+echec de recette en **2** ; `ruff format --check` sort lui-meme en **1**. Les deux
+sequences rendent donc le meme verdict — vert sur l'arbre propre, rouge sur
+l'arbre sale — et jamais le meme entier. Un controle ecrit `rc = 2` sur le repli
+serait vert sur le defaut, exactement comme le `rc=123` d'`xargs` du registre F3.
+
+C'est le trou que ce §2.4 decrit lui-meme pour l'installeur — la premiere ligne
+d'une cible recopiee, la seconde oubliee — refait un cran plus loin, dans le
+commit qui pretendait aligner les portees.
+
+**La preuve est une mesure et non un test**, et il faut le dire : F7 reste ouvert,
+aucun test de ce depot ne lit le `Makefile` ni ce fichier. Un repli qui derive de
+la cible qu'il remplace ne rougira nulle part.
 
 **Le `sh scripts/installer-les-garde-fous.sh` de la deuxième position n'était pas
 là, et son absence était le trou.** Ce repli prétend remplacer

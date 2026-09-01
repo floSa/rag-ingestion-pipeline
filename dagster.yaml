@@ -57,3 +57,61 @@ run_coordinator:
     max_concurrent_runs: 2
 
 # We use the DefaultRunLauncher so runs execute directly inside the dagster-daemon container
+
+# LE DELAI DE GARDE, ET C'EST ICI QUE LA FAMILLE ENTIERE SE FERME.
+#
+# Le registre 4.15 a 4.17 decrit une famine : un run coince en `STARTED` — worker
+# tue, daemon interrompu — bloque la reindexation INDEFINIMENT. `reindex_job`
+# saute tant qu'un run d'ingestion est non terminal, et cette garde est juste ;
+# elle partage seulement son mode de panne avec un run qui ne revient jamais.
+# Aucun delai de garde, aucune alerte.
+#
+# Le *run monitoring* de Dagster etait ABSENT de ce fichier. Le corriger ici
+# plutot que dans chaque sensor est le point : un sensor qui declarerait lui-meme
+# qu'un run est mort empieterait sur le travail du daemon, et il faudrait la meme
+# regle dans chaque sensor a venir. Un seul geste, toutes les sources.
+#
+# CE QUE CHAQUE VALEUR VAUT, ET D'OU ELLE VIENT (`mesure` le 1er septembre 2026,
+# sur l'historique Dagster de ce poste : 23 runs reussis) :
+#
+# - le run le plus long jamais observe vaut **111 s** (un chapitre HTML), et le
+#   PDF de 71 pages en a pris **108 s** ; la moyenne HTML est de **24 s** ;
+# - `PipelineSettings.extraction_timeout_seconds` vaut **86 400 s** (24 h) : c'est
+#   le plafond que le pipeline s'accorde LUI-MEME par document.
+#
+# `max_runtime_seconds` est donc pose JUSTE AU-DESSUS de ce plafond, et non en
+# dessous. Deux plafonds qui se contredisent sont pires qu'un seul : un
+# `max_runtime_seconds` plus court tuerait des runs que le pipeline considere
+# encore legitimes, et le developpeur chercherait la cause du mauvais cote. Ce
+# delai-ci est la DERNIERE ligne : il ne se declenche que quand le plafond du
+# pipeline a lui-meme echoue a se declencher, c'est-a-dire quand le run est
+# reellement gele et non lent. La marge sur le pire cas mesure est de 810x.
+#
+# `start_timeout_seconds` couvre l'autre moitie : un run que le launcher n'arrive
+# jamais a demarrer. 900 s est genereux — l'attente en file mesuree ici se compte
+# en secondes — et borne ce qui etait infini.
+#
+# `max_resume_run_attempts` reste a 0 DELIBEREMENT : la reprise d'un run dont le
+# worker est mort n'est pas prise en charge par `DefaultRunLauncher`, que ce
+# depot utilise (voir la ligne du run_launcher ci-dessus). L'y armer donnerait un
+# reglage qui ne fait rien — exactement les `CHUNK_SIZE=900` du registre 5.1. Un
+# run mort est donc marque en ECHEC, ce qui suffit : le sensor cesse de l'attendre,
+# et la partition rouge se voit.
+#
+# CE QUE CECI NE CORRIGE PAS, ecrit pour que personne ne le croie : un run
+# `QUEUED` alors que le daemon est ARRETE. C'est l'etat de ce poste (registre
+# 4.28.c), et ce n'est pas un defaut de Dagster — rien ne depile une file dont le
+# depileur est eteint. Le run repartira au `docker compose start dagster-daemon`.
+run_monitoring:
+  enabled: true
+  # Intervalle de controle du daemon. 60 s : la detection d'un run mort n'a pas
+  # besoin d'etre plus fine que la minute, et le sensor de reindexation tourne
+  # de toute facon toutes les 30 s.
+  poll_interval_seconds: 60
+  # Un run qui ne demarre pas. Voir le commentaire ci-dessus.
+  start_timeout_seconds: 900
+  # Un run qui ne finit pas. Pose au-dessus d'extraction_timeout_seconds.
+  max_runtime_seconds: 90000
+  # DefaultRunLauncher ne sait pas reprendre un run : un run mort est marque en
+  # echec, et c'est ce qui libere la reindexation.
+  max_resume_run_attempts: 0

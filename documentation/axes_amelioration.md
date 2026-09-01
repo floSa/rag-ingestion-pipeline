@@ -721,6 +721,12 @@ dans `.env.example:15-16` et ne sont exposés par **aucun** settings :
 `verify_contract.py:104` et `verify_data.py`. Le `.env` ment donc sur ce qui est
 réellement lu.
 
+**Ce constat annonce TROIS sites. Il y en avait QUATRE**, et le quatrième est
+`src/init_nebula.py`, que ce constat ne nomme pas. Les quatre lisent désormais les
+réglages, `DoclingSettings` portant `nebula_user` et `nebula_password` avec les
+défauts de `docker-compose.yml` — aucun poste ne change de comportement. **Un
+seul des quatre reste sans garde**, et lequel est mesuré : voir §4.29.d.
+
 ### 4.4 → traité par le lot 3 — le contrat est vérifié là où il casse en silence
 
 **Le constat, tel qu'il était ouvert.** `verify_contract.py` ne testait ni
@@ -1552,6 +1558,68 @@ nettoyage) sont **tous au lot 4**, et **tous peuvent déplacer `page_no` et
 `text`** — donc les `element_id`, donc **tuer un jeu de questions écrit avant
 eux**. Écrire les 30 questions avant le lot 4 est un travail à refaire.
 
+#### RETOURNÉ par le lot 4 — les `element_id` NE BOUGENT PAS, et l'ordre tient quand même
+
+**Mesuré, et reproduit trois fois indépendamment** (le lot 4, son audit
+indépendant, et le pilote statiquement) : les ensembles d'`element_id` sont
+**rigoureusement égaux** entre `main` et la pointe du lot 4 — **15 173** de
+chaque côté, différence symétrique **nulle** —, et les **3 750** identifiants de
+l'index vivant sont un sous-ensemble strict des deux.
+
+**La cause est mécanique, et elle se lit dans le code sans rien exécuter.**
+`compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`.
+Sur `main`, `page_no` valait `int(prov.page_no)` où `prov = prov[0]`
+(`elements.py:256-257` de `main`) ; sur la pointe, il vaut `pages[0]` rendu par
+`item_page_span` (`elements.py:215`, `:328`). **C'est la même valeur par
+construction** : `page_no_end` est une propriété AJOUTÉE, `page_no` n'a pas
+changé de définition. Le §4.22 ne déplace donc rien — il rend LISIBLE ce qui
+était déjà écrit.
+
+**Le raisonnement qui rangeait §4.22 parmi les causes de rupture était juste sur
+son mécanisme et faux sur son antécédent.** Il supposait que « corriger
+l'attribution des pages » changerait `page_no`. La correction retenue ne le
+change pas : elle ajoute une page de FIN. *Un raisonnement juste sur un
+antécédent faux se relit comme une preuve* — la leçon du §3.2, appliquée au
+plan que ce registre écrit lui-même.
+
+**MAIS L'ORDRE DU PLAN RESTE FORCÉ, POUR DEUX AUTRES RAISONS.** C'est la moitié
+qui tient, et c'est elle qu'il faut lire :
+
+1. **le jeu de CHUNKS change.** Le lot 4 cesse de filtrer les chunks qui ont des
+   frères (§4.28.a) : deux éléments retrouvent le morceau qu'ils perdaient, donc
+   **4 365 → 4 367** *(chiffre du lot 4, non remesuré ici : il décrit un index
+   qui n'existe pas encore, et il ne se vérifiera qu'à la réingestion. L'index
+   vivant en porte bien **4 365**, `mesuré` le 1er septembre 2026)*. Un jeu de
+   questions désigne des `element_id`, mais un rappel se calcule sur des chunks :
+   deux chunks de plus déplacent le dénominateur ;
+2. **`page_no_end` demande une réingestion pour être peuplé.** Le schéma migre en
+   place, les **données** non — `mesuré` le 1er septembre 2026,
+   `DESCRIBE TAG Paragraph` sur le space vivant rend
+   `label, page_no, text, minio_url, depth` : la colonne n'existe **pas encore**.
+   Un jeu de questions écrit contre l'index actuel ne pourrait pas exercer le
+   cadrage « page N à M » que le lot 4 livre.
+
+**Ce qui est retourné, et ce qui tient — les deux moitiés, côte à côte :**
+
+| Affirmation | État |
+|---|---|
+| « les `element_id` bougeront » (§4.28.e, mandat §6 et §7) | **FAUX** — 15 173 = 15 173, différence symétrique nulle |
+| « §4.22 déplace `page_no` » | **FAUX** — `prov[0].page_no` et `pages[0]` sont la même valeur |
+| « §4.6 / §4.7 déplacent `text` » | **non mesuré ici**, et sans objet pour la conclusion : le point 1 suffit |
+| « le lot 6 attend le lot 4 » | **VRAI**, pour le jeu de chunks et pour `page_no_end` |
+| « écrire les 30 questions avant est un travail à refaire » | **VRAI**, et pour une raison qui n'est plus celle-là |
+
+**À RETOURNER SUR `main` APRÈS FUSION, par le pilote** : ce §4.28.e et le §6 du
+mandat, qui portent tous deux « les `element_id` bougeront » comme motif de
+l'ordre. Le motif change, la conclusion ne change pas. La part du lot 4 est
+d'écrire la mesure ici pour que le pilote l'ait sous les yeux ; il n'appartient
+pas à une branche de réécrire le plan.
+
+*(Et la leçon de forme, parce qu'elle vaut plus que le fait : la conclusion
+« le lot 6 attend le lot 4 » était juste, elle a été soutenue pendant deux lots
+par un antécédent faux, et personne ne l'a vu parce que la conclusion, elle,
+était vérifiable. **Une conclusion juste ne valide pas sa prémisse.**)*
+
 **TRANCHÉ par le pilote le 1er septembre 2026 : les 30 questions attendent le lot
 4.** Le fait ci-dessus décide seul, et il n'y avait rien à arbitrer au-delà de lui.
 Deux points à garder, parce qu'ils ne se déduisent pas du fait :
@@ -1563,6 +1631,300 @@ Deux points à garder, parce qu'ils ne se déduisent pas du fait :
    paraîtraient bonnes jusqu'à la réingestion — un jeu de questions ne rougit pas,
    il devient faux en silence. C'est le motif de tout ce chantier, appliqué à son
    propre plan.
+
+### 4.29 → CONSIGNÉ par la réparation du lot 4, NON traité
+
+Neuf constats trouvés en réparant, laissés hors du diff. **Périmètre strict**, et
+chacun porte la **forme du garde à écrire** — sans quoi un constat n'est qu'une
+observation qui vieillit.
+
+Deux d'entre eux **corrigent un chiffre du mandat de cette réparation**, remesuré
+plutôt que recopié : le b et le f. C'est le principe du chantier, et il vaut
+aussi pour les chiffres que le chantier vient d'écrire.
+
+#### 4.29.a Le containment ne protège pas d'une cible contenue mais fausse
+
+Le bloquant B1 est fermé : `purge_cleaned` refuse toute cible qui n'est pas
+**strictement contenue** dans `source_dir` après résolution (`wipe_stores.py`).
+Cela ferme les quatre valeurs de `CLEANED_SUBDIR` qui font viser la racine ou
+au-dessus — `""`, `"."`, `".."`, un chemin absolu.
+
+**Cela ne ferme pas une cible bien contenue et fausse.** `mesuré` le
+1er septembre 2026, sur un faux corpus jetable : `CLEANED_SUBDIR=htms` est
+strictement contenu dans la racine, passe le garde, et `rmtree` détruit
+`Datas/htms/` — **24 des 25 fichiers du corpus versionné**. Le test correspondant
+rougissait sur le code livré, et il a été retiré du juge : la décision du pilote
+est le containment, et l'étendre de ma main aurait été rediscuter une décision
+prise, non la tenir.
+
+**La forme du garde à écrire**, si le pilote veut fermer ce reste : `purge_cleaned`
+n'accepte qu'un chemin dont **chaque composant relatif** est celui que l'asset
+`cleaned_html` écrit — c'est-à-dire une comparaison à `PipelineSettings`
+`cleaned_subdir` **par défaut**, et un refus de toute autre valeur. Le test existe
+déjà en négatif : remettre le cas `("htms", …)` dans la paramétrisation de
+`TestUneCibleHorsDeLaRacineEstREFUSEE`, plus un témoin sur la valeur par défaut.
+
+**Et la question qui décide n'est pas technique** : `CLEANED_SUBDIR` doit-il
+rester un réglage ? Un réglage annoncé dont trois valeurs sur quatre détruisent le
+corpus est un réglage qui coûte plus qu'il ne rend. **À trancher.**
+
+#### 4.29.b `media.py` : un site de dérivation fermé, un autre ouvert
+
+L'objet est téléversé dans `PipelineSettings.minio_bucket` /
+`.minio_endpoint` (`media.py:50`, `:64`) ; l'URL publiée est construite par
+`images.object_url`, qui lit `DoclingSettings` (`images.py:117-118`). **Deux
+classes de réglages décident du même objet.**
+
+Les deux lisent les mêmes variables d'environnement et portent les **mêmes
+défauts** — `minio:9000` et `documents` de chaque côté (`settings.py:18`, `:21`
+et `settings.py:25`, `:28`) —, donc **aucune conséquence aujourd'hui**. Mais rien
+ne garde leur accord : `mesuré` le 1er septembre 2026 **sur le code livré par
+cette réparation**, porter `PipelineSettings.minio_bucket` à une autre valeur
+laisse la suite **entièrement verte, 857 tests**.
+
+Une image téléversée dans un bucket et publiée sous un autre est **un objet qui
+existe et une URL qui 404** — le §4.28.b refait, dans le geste qui vient de le
+fermer.
+
+**La forme du garde à écrire** : une assertion d'égalité entre les deux réglages,
+dans un test qui importe les deux classes. Deux lignes. Son témoin : la faire
+porter sur les deux couples (`minio_endpoint` **et** `minio_bucket`), sans quoi
+la moitié non assertée redeviendrait libre de dériver.
+
+#### 4.29.c `VERTEX_PROPERTIES` / `VERTEX_TYPES` : la longueur est gardée, la CORRESPONDANCE non
+
+L'invariant est écrit au site — « les deux tuples sont lus ensemble par
+`tag_schema_statements` : les désaligner produit un `CREATE TAG` qui n'a pas les
+colonnes que les `INSERT` écrivent » (`ngql.py:275-278`). Le lot 4 porte les deux
+tuples de **5 à 6** entrées, `page_no_end` étant ajoutée.
+
+**Le mandat de cette réparation annonçait « les désaligner laisse 825 tests
+verts ». Remesuré sur le code livré, c'est vrai d'une moitié et faux de l'autre**
+(`mesuré` le 1er septembre 2026, mutation appliquée puis révoquée, texte vérifié
+changé) :
+
+| Mutation | Suite entière |
+|---|---|
+| un type **retiré** — longueur 5 contre 6 | **ROUGE**, `rc=1`, **5** tests de `TestTagSchemaStatements` |
+| le type de `page_no_end` passé à `string` — longueurs égales, correspondance fausse | **VERT**, **857** tests |
+
+La **longueur** est donc gardée, et pas par un test : par le `strict=True` des
+deux `zip` (`ngql.py:208`, `:218`), qui lève. C'est un garde réel, et il est au
+site. Ce qui n'est gardé par rien est la **correspondance colonne → type**, celle
+qui décide qu'un `page_no_end` est un `int`.
+
+Antérieur au lot, échec **bruyant** — le graphd rejette chaque `INSERT` —, d'où
+la sévérité basse. Mais un `int` déclaré `string` ne rejette pas forcément : il
+accepte et stocke la mauvaise forme.
+
+**La forme du garde à écrire** : un test qui asserte le couple attendu pour chaque
+colonne, `{"page_no": "int", "page_no_end": "int", "depth": "int", "label":
+"string", …}`, contre le `CREATE TAG` rendu par `tag_schema_statements`. Son
+témoin : que le test rougisse aussi sur une **permutation** des types, pas
+seulement sur un type changé — sans quoi il serait vert sur deux colonnes de même
+type échangées.
+
+#### 4.29.d `verify_contract.py:438` est le SEUL des quatre sites d'identifiants du graphe que rien ne garde
+
+Le lot 4 a exposé `NEBULA_USER` / `NEBULA_PASSWORD` en réglages et corrigé les
+**quatre** sites qui codaient `("root", "nebula")` en dur (§4.3, qui en annonçait
+trois). **Le lot a ensuite consigné que « deux modules » restaient sans garde.
+C'est faux : il en reste UN.**
+
+`mesuré` de mes mains le 1er septembre 2026, mutation
+`get_session(settings.nebula_user, settings.nebula_password)` →
+`get_session("root", "nebula")` appliquée site par site, texte vérifié changé,
+suite entière relancée :
+
+| Site | Suite entière sous mutation |
+|---|---|
+| `src/verify_contract.py:438` | **VERTE** — aucun garde |
+| `src/verify_data.py:94` | ROUGE — `test_verify_data.py::…::test_le_env_decide_des_identifiants` |
+| `src/init_nebula.py:41` | ROUGE — `test_init_nebula.py::…::test_l_adresse_et_les_identifiants_viennent_du_env` |
+| `src/docling_service/nebula.py:143` | ROUGE — `test_nebula.py::…::test_la_session_recoit_les_identifiants_des_reglages` |
+
+`init_nebula.py` a gagné son garde au commit suivant celui qui a écrit « deux
+modules » : le constat a péri dans le lot qui l'a posé. **Remesuré ici plutôt que
+repris de l'audit**, qui annonçait le même chiffre.
+
+**La forme du garde à écrire** : celui de `verify_data`, transposé — un bouchon
+`nebula3` qui **imprime** les identifiants qu'il reçoit, et
+`python -m src.verify_contract` lancé pour de bon en sous-processus. Son témoin,
+et il n'est pas optionnel : le test doit **retirer** les deux variables de
+l'environnement hérité avant de poser les siennes, sans quoi un poste qui les
+déclare rendrait le témoin vert ou rouge selon la machine.
+
+*(Le harnais du bloquant B2.d bouchonne désormais `nebula3` pour
+`_verifier_le_graphe`, mais par `monkeypatch.setitem` et non en sous-processus :
+il n'observe pas ce que `pool.get_session` reçoit. Il rapproche le geste, il ne le
+fait pas.)*
+
+#### 4.29.e Le message d'anomalie `page_no_end` de `verify_contract` égare
+
+`verify_contract.py:486-491` dit, quand des sommets n'ont pas de `page_no_end` :
+
+> « le tag a migré, les données non — il faut une réingestion pour peupler la
+> colonne »
+
+**Dans le cas mesuré, le tag n'a PAS migré : la colonne n'existe pas.** `mesuré`
+le 1er septembre 2026 sur le space vivant, `DESCRIBE TAG Paragraph` et
+`SectionHeader` rendent `label, page_no, text, minio_url, depth` — cinq colonnes,
+sans `page_no_end`. Le message décrit donc un état qui n'est pas celui du poste,
+et il prescrit le geste qui ne suffit pas.
+
+**Et `init_schema()` n'est joué qu'au DÉMARRAGE du service** (`main.py:72`, dans
+le `lifespan`). La consigne complète est donc **« redémarrer `docling-service`,
+PUIS réingérer »**. Un opérateur qui suit la phrase telle quelle réingère contre
+un tag sans la colonne, et le graphd rejette chaque `INSERT`.
+
+La consigne est écrite au `README.md`, section « Ré-ingérer proprement », là où un
+opérateur la trouve. **Le message d'anomalie, lui, n'est pas corrigé** — il est
+dans le module que ce lot livre, et le corriger demande de distinguer deux états
+que le contrôle actuel confond.
+
+**La forme du garde à écrire** : le contrôle doit lire `DESCRIBE TAG` **avant** de
+compter les NULL, et rendre deux anomalies distinctes — « la colonne n'existe pas,
+redémarrer le service » et « la colonne existe, les données sont à NULL,
+réingérer ». Le mécanisme existe déjà : `_verifier_le_tag_document` fait
+exactement ce `DESCRIBE` pour le tag `Document`, et `ngql.colonnes_manquantes`
+rend les colonnes absentes d'un tag réel. Son témoin : les deux états doivent
+rendre des messages différents, sans quoi la distinction serait faite dans le code
+et perdue dans la sortie.
+
+#### 4.29.f Un chunk vide peut atteindre l'embedding, en principe — et la conséquence écrite était fausse
+
+`vectors.py:229-230` : `autonome = ancre.count == 1`, puis
+`if autonome and (not has_content(texte) or len(texte) < settings.min_chunk_chars)`.
+**Dès que `ancre.count > 1`, le filtre ne s'applique plus** — c'est la borne
+volontaire du §4.28.a, et elle est argumentée à son site. Un chunk vide ou
+purement typographique qui a des frères entre donc dans l'index vectoriel.
+
+**Zéro occurrence sur ce corpus** : les 4 365 chunks de l'index vivant portent
+tous du texte.
+
+**Le mandat de cette réparation annonçait « le vecteur d'une chaîne vide a une
+norme SUPÉRIEURE à celle des textes réels (4,07 contre ~2,9–3,0) : un voisin
+plausible pour n'importe quelle requête ». Remesuré, la première moitié est
+inexacte et la seconde n'est pas établie.**
+
+`mesuré` le 1er septembre 2026, dans l'image d'extraction, sur la **totalité** des
+4 365 vecteurs de la collection :
+
+| | norme L2 |
+|---|---|
+| chaîne vide | **4,073** |
+| une espace | 4,073 |
+| chunks réels — minimum | **2,630** |
+| chunks réels — médiane | **3,427** |
+| chunks réels — maximum | **5,498** |
+| chunks réels dont la norme **dépasse** 4,073 | **181 sur 4 365 (4,1 %)** |
+
+La chaîne vide se place donc au **95,9ᵉ centile** des normes réelles, et non
+au-dessus de toutes. Le « ~2,9–3,0 » décrivait un échantillon, pas le corpus.
+
+**Et la conséquence dépend de la distance, que la collection ne déclare pas.**
+`mesuré` : les métadonnées de la collection `rag_documents` portent
+`{'embedding_model': 'paraphrase-multilingual-MiniLM-L12-v2'}` et **aucun
+`hnsw:space`** ; le défaut de ChromaDB est `l2`
+(`HnswParams.__init__`, `metadata.get("hnsw:space", "l2")`). **Sous une distance
+L2, une norme élevée éloigne d'une requête, elle n'en rapproche pas** : le
+raisonnement « voisin plausible pour n'importe quelle requête » vaudrait sous un
+produit scalaire, pas ici.
+
+**Ce qui reste, et c'est réel** : le mécanisme est ouvert, et sa conséquence est
+inconnue plutôt que grave. Borne connue, à surveiller si le corpus change.
+
+**La forme du garde à écrire** — et c'est un garde de **serrage**, pas un garde
+« ça marche » : un test qui pose un chunk vide **avec des frères** et exige qu'il
+n'entre pas dans l'index, plus son témoin — le morceau court du **milieu**, lui,
+doit être conservé, sinon le garde rouvrirait le §4.28.a. La distinction à écrire
+est « vide ou sans caractère alphanumérique » contre « court », et non
+« autonome » contre « avec frères » : c'est la longueur qui justifiait la borne,
+pas la vacuité.
+
+**Et une décision préalable, qui n'est pas à moi** : déclarer `hnsw:space`
+explicitement sur la collection. Le laisser au défaut fait dépendre le
+comportement de recherche d'une valeur que personne n'a écrite — la famille des
+`CHUNK_SIZE=900` du §5.1, dans l'autre sens.
+
+#### 4.29.g `test_le_launcher_est_bien_celui_que_ce_raisonnement_suppose` asserte sur un commentaire
+
+`tests/unit/test_dagster_yaml.py:123`. Sa première assertion est
+`"DefaultRunLauncher" in texte`, sur le contenu brut de `dagster.yaml`. `mesuré`
+le 1er septembre 2026 : la chaîne apparaît sur **trois** lignes du fichier, et
+**les trois sont des commentaires** — `grep -v '^\s*#' dagster.yaml | grep -c
+DefaultRunLauncher` rend **0**.
+
+Le test ne trouve donc **que du commentaire**, dans un fichier dont le docstring
+affirme « **Ce fichier n'est pas un test de texte**, et la distinction compte ».
+Le docstring a raison sur le reste du fichier — la configuration est validée par
+le processeur de configuration de Dagster lui-même, et ses seuils sont comparés
+aux réglages réels du pipeline — et faux sur cette assertion-là.
+
+**Sa seconde assertion est, elle, substantielle** : `"run_launcher:" not in texte`
+détecte l'apparition d'un bloc `run_launcher` explicite, c'est-à-dire exactement
+l'événement qui rendrait `max_resume_run_attempts: 0` mauvais. Elle porte le
+raisonnement ; la première ne porte rien.
+
+**La forme du garde à écrire** : lire le launcher **effectif** plutôt que le
+texte. `DagsterInstance.from_config` sur le `dagster.yaml` livré expose
+`instance.run_launcher`, et l'assertion devient
+`isinstance(instance.run_launcher, DefaultRunLauncher)`. C'est le même geste que
+celui déjà employé deux tests plus haut pour `max_runtime_seconds` — comparer une
+valeur du fichier à un réglage réel — appliqué au dernier endroit du fichier qui
+lit encore une chaîne.
+
+#### 4.29.h Ma déclaration du quatrième écart surdisait — CORRIGÉE au README, non au message de commit
+
+`src/docling_service/main.py` n'a **AUCUNE ligne modifiée** dans le diff du lot 4
+(`mesuré` : `git diff main..HEAD -- src/docling_service/main.py` rend le vide). Il
+est atteint par un bouchon `fastapi` posé comme un vrai paquet en tête de
+`PYTHONPATH`. Je l'avais déclaré « déverrouillé » au même rang que `nebula.py` et
+`extraction.py`, dont les imports sont réellement différés. **Un module atteint
+par un bouchon n'est pas un module importable.**
+
+Corrigé au `README.md` avec le bloquant B6, dans le même geste que la phrase
+d'exhaustivité qu'il soutenait — les deux vivaient dans le même paragraphe, et la
+seconde était la conséquence de la première.
+
+**Non corrigé, et c'est une divergence permanente et assumée** : le message de
+commit de `2f6d8eb` porte « **`main.py` etait le SEPTIEME module inimportable cote
+hote** » puis « Plus aucun module du depot n'est inimportable cote hote ». La règle
+du chantier interdit de réécrire un commit dont la porte a été prouvée verte pour
+un gain documentaire — c'est le précédent du §5.8, et il vaut ici. La divergence
+est écrite pour que personne ne la redécouvre comme un défaut.
+
+**Il n'y a pas de garde à écrire pour celui-ci**, et c'est le point : un écart se
+déclare à sa taille exacte **au moment où on le prend**, et aucun test ne le fera
+à la place de qui le prend. Ce qui est gardé désormais est la conséquence, pas la
+déclaration — `tests/unit/test_importabilite_cote_hote.py` rougirait si `main.py`
+devenait importable, en exigeant qu'on retire l'exception plutôt que la garder.
+
+#### 4.29.i `extract()` purge avant de convertir — un changement du chemin NOMINAL
+
+`extraction.py` fait `storage.forget_document(identity)` **avant** la conversion,
+et l'ordre est gardé (`test_extraction.py`, `ordre == ["oubli", "conversion"]`).
+C'est le §4.2 fermé, et l'ordre est le bon : purger après avoir écrit détruirait
+ce qu'on vient d'écrire.
+
+**Mais une panne DURE de conversion retire désormais un document SAIN de
+l'index**, là où `main` laissait la version précédente en place. C'est cohérent
+avec l'invariant que le lot installe — *un document est entièrement dans les
+stores, ou pas du tout* — et la partition rouge le dit. Ce n'est pas un défaut.
+
+**C'est un changement de comportement du chemin NOMINAL, et c'est pour cela qu'il
+mérite le registre et pas seulement un docstring.** Le capteur déclenche sur
+`mtime` (`factory.py:407-418`) : toucher un fichier suffit. Un document dont la
+conversion échoue durablement — un HTML corrompu, un service d'extraction à
+genoux — **disparaît de l'index à chaque tick**, et l'ancienne version, qui
+servait, n'est plus servie. Avant le lot, elle l'était.
+
+**La forme du garde à écrire**, si le pilote juge le troc mauvais : conserver la
+version précédente jusqu'au succès de la conversion, c'est-à-dire écrire sous une
+clé provisoire puis basculer. C'est un chantier, pas un correctif — et il faut
+d'abord trancher lequel des deux états on préfère : *un index qui sert un document
+périmé* ou *un index qui n'en sert aucun*. Le lot a choisi le second et l'a écrit ;
+le choix n'est pas évident et il n'a pas été posé au pilote.
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 

@@ -128,7 +128,9 @@ def element_vertex_value(element: Mapping[str, Any], max_chars: int) -> str:
 
     ``depth`` vaut 0 par defaut et non une chaine vide : c'est un entier, et 0
     est la profondeur d'un titre rattache au document — une valeur, pas une
-    absence.
+    absence. ``page_no_end`` retombe sur ``page_no`` et non sur 0, pour la meme
+    raison inversee : un element d'une seule page FINIT sur elle, et un 0 y
+    dirait « page inconnue ».
 
     Args:
         element: Element produit par ``DocumentAccumulator``.
@@ -144,6 +146,11 @@ def element_vertex_value(element: Mapping[str, Any], max_chars: int) -> str:
         (
             str(element["label"]),
             int(element["page_no"]),
+            # Derniere page couverte. `page_no` seule etait ecrite, et six pages
+            # du PDF paraissaient vides pour cette raison (registre 4.22). Le
+            # repli sur `page_no` n'est pas un defaut : un element d'une seule
+            # page finit sur elle, et un 0 y serait faux.
+            int(element.get("page_no_end") or element["page_no"]),
             str(element.get("text") or "")[:max_chars],
             str(element.get("minio_url") or ""),
             int(element.get("depth") or 0),
@@ -263,13 +270,13 @@ VID_MAX_BYTES = 256
 # il etait arrive sans les compter lui-meme. Et le substitut suppose — la
 # metadonnee `depth` de ChromaDB — ne substitue rien : aucun `section_header`
 # n'est jamais un chunk (registre 4.24, mesure).
-VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url", "depth")
+VERTEX_PROPERTIES = ("label", "page_no", "page_no_end", "text", "minio_url", "depth")
 
 # Le type nGQL de chaque colonne de VERTEX_PROPERTIES, dans le meme ordre. Les
 # deux tuples sont lus ensemble par :func:`tag_schema_statements` : les
 # desaligner produit un CREATE TAG qui n'a pas les colonnes que les INSERT
 # ecrivent, donc un rejet du graphd sur chaque element.
-VERTEX_TYPES = ("string", "int", "string", "string", "int")
+VERTEX_TYPES = ("string", "int", "int", "string", "string", "int")
 
 DOCUMENT_PROPERTIES = (
     "filename",
@@ -280,6 +287,41 @@ DOCUMENT_PROPERTIES = (
     "language",
     "content_hash",
 )
+
+
+SPACE = "rag_space"
+
+
+def create_space_statement(space: str = SPACE) -> str:
+    """Le ``CREATE SPACE`` du graphe, et son SEUL site.
+
+    Il en existait DEUX, avec des valeurs differentes. ``nebula._create_space``
+    declarait ``FIXED_STRING(VID_MAX_BYTES)``, soit 256 ; ``init_nebula.py``
+    declarait ``FIXED_STRING(64)`` en dur. Les deux passent par
+    ``CREATE SPACE IF NOT EXISTS``, donc **le premier a tourner gagne** — et
+    `init_nebula.py` prescrit lui-meme d'etre lance « sur une pile neuve, avant
+    le premier demarrage du service ».
+
+    Ce que cela produit, `mesure` le 1er septembre 2026 sur un space jetable en
+    ``FIXED_STRING(64)`` : l'insertion des deux documents reels du corpus est
+    **REFUSEE** — « Storage Error: The VID must be a 64-bit integer or a string
+    fitting space vertex id length limit » — leurs identifiants faisant 65 et
+    67 octets. Et Nebula ne sait pas modifier le ``vid_type`` d'un space : la
+    reparation coute une purge complete des stores.
+
+    Le montage, lui, avait l'air du bon : `init_nebula.py` affichait
+    « CREATE SPACE: True ».
+
+    Args:
+        space: Nom du space. Le defaut est celui du depot.
+
+    Returns:
+        La requete, idempotente.
+    """
+    return (
+        f"CREATE SPACE IF NOT EXISTS {space}(partition_num=10, "
+        f"replica_factor=1, vid_type=FIXED_STRING({VID_MAX_BYTES}));"
+    )
 
 
 def document_vid(cle_du_document: str) -> str:

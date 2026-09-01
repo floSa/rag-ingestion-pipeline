@@ -13,6 +13,7 @@ import re
 
 from minio import Minio
 
+from src.docling_service.images import object_url
 from src.pipeline.settings import get_settings
 
 _MIME_EXTENSIONS: dict[str, str] = {
@@ -70,4 +71,9 @@ class MinioImageExporter:
             print(f"MinIO image export failed ({object_name}): {exc}")
             return None
         self.exported += 1
-        return f"http://{settings.minio_endpoint}/{settings.minio_bucket}/{object_name}"
+        # La forme de l'adresse a UN seul site, `images.object_url`, qui dit
+        # aussi ce qu'elle est : interne, authentifiee, et destinee a l'agent
+        # comme proxy (registre 4.25). Elle etait reconstruite ici a l'identique
+        # par une seconde f-string — deux sites pour la forme que le contrat
+        # publie, donc deux facons de deriver.
+        return object_url(object_name)

@@ -13,7 +13,8 @@ from dagster import (
     sensor,
 )
 
-from src.pipeline.factory import build_source
+from src.docling_service.jobs import Job
+from src.pipeline.factory import _record_metadata, build_source
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig, load_sources
 
@@ -264,3 +265,223 @@ class TestLesSensorsDIngestionSontLivresArmes:
             return SkipReason("temoin")
 
         assert temoin.default_status is not DefaultSensorStatus.RUNNING
+
+
+# --- Contexte Dagster bouchonne -----------------------------------------------
+# Les assets sont atteints par `build_source(...).assets[n].op.compute_fn.
+# decorated_fn`, c'est-a-dire le corps REELLEMENT livre, a travers l'objet que
+# `definitions.py` expedie. C'est la meme discipline que
+# `TestLesSensorsDIngestionSontLivresArmes`, qui asserte sur `build_source(...)
+# .sensor` et jamais sur la presence d'un mot dans la source. Un contexte
+# `build_asset_context` ne convient pas : `add_output_metadata` y leve
+# `DagsterInvalidPropertyError` en invocation directe (`mesure`).
+
+
+class JournalEspion:
+    def __init__(self) -> None:
+        self.avertissements: list[str] = []
+        self.infos: list[str] = []
+
+    def warning(self, message: str) -> None:
+        self.avertissements.append(str(message))
+
+    def info(self, message: str) -> None:
+        self.infos.append(str(message))
+
+
+class ContexteEspion:
+    """Contexte d'asset bouchonne qui retient les metadonnees publiees."""
+
+    def __init__(self, partition_key: str) -> None:
+        self.partition_key = partition_key
+        self.log = JournalEspion()
+        self.metadonnees: dict[str, object] = {}
+
+    def add_output_metadata(self, metadata: dict[str, object]) -> None:
+        self.metadonnees.update(metadata)
+
+
+def _asset_par_nom(source, nom: str):
+    """Le corps livre de l'asset nomme, pris sur l'objet que la fabrique rend."""
+    definitions = build_source(source)
+    for asset_def in definitions.assets:
+        if asset_def.key.path[-1] == nom:
+            return asset_def.op.compute_fn.decorated_fn
+    raise AssertionError(f"asset {nom!r} absent de {source.name}")
+
+
+class TestLeNettoyagePublieCeQuIlAJete:
+    """Registre 4.6 : ni `precleaned_text_chars` ni le ratio n'etaient publies.
+
+    `min_text_ratio = 0.05` accepte un candidat qui ne conserve que 5 % du texte.
+    Les metadonnees Dagster portaient `text_chars` sans aucun denominateur : dans
+    l'interface, un chapitre ampute a 5 % et un chapitre nettoye a 99,8 %
+    affichaient tous deux un nombre, et rien ne les distinguait.
+    """
+
+    CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
+    HTML = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<nav>menu</nav><article><h1>Un chapitre</h1><p>" + CONTENU + "</p></article>"
+        "</body></html>"
+    )
+
+    def _executer(self, tmp_path, monkeypatch, html: str = ""):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        source = [s for s in load_sources() if s.type == "html"][0]
+        source = source.model_copy(update={"cleaning": source.cleaning.model_copy()})
+        source.cleaning.export_images = False
+
+        cle = "livre/chapitre.html"
+        chemin = tmp_path / cle
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        chemin.write_text(html or self.HTML, encoding="utf-8")
+
+        contexte = ContexteEspion(cle)
+        _asset_par_nom(source, "cleaned_html")(contexte)
+        return contexte
+
+    def test_les_metadonnees_portent_le_denominateur_et_le_ratio(self, tmp_path, monkeypatch):
+        try:
+            contexte = self._executer(tmp_path, monkeypatch)
+        finally:
+            get_settings.cache_clear()
+
+        assert "precleaned_text_chars" in contexte.metadonnees, contexte.metadonnees
+        assert "text_ratio" in contexte.metadonnees, contexte.metadonnees
+        assert contexte.metadonnees["precleaned_text_chars"] > 0
+        assert 0.0 < contexte.metadonnees["text_ratio"] <= 1.0
+
+    def test_les_metadonnees_historiques_sont_conservees(self, tmp_path, monkeypatch):
+        """LE TEMOIN : ajouter deux cles ne doit pas en retirer cinq."""
+        try:
+            contexte = self._executer(tmp_path, monkeypatch)
+        finally:
+            get_settings.cache_clear()
+
+        for cle in ("strategy", "raw_bytes", "cleaned_bytes", "text_chars", "images_exported"):
+            assert cle in contexte.metadonnees, f"{cle} a disparu des metadonnees"
+
+    def test_le_ratio_publie_est_celui_du_bilan(self, tmp_path, monkeypatch):
+        """Le ratio publie n'est pas recalcule a cote : c'est celui du bilan.
+
+        Sans cette assertion, deux calculs du meme rapport pourraient diverger —
+        et une metadonnee de perte qui se trompe est pire qu'absente.
+        """
+        try:
+            contexte = self._executer(tmp_path, monkeypatch)
+        finally:
+            get_settings.cache_clear()
+
+        attendu = contexte.metadonnees["text_chars"] / contexte.metadonnees["precleaned_text_chars"]
+        assert contexte.metadonnees["text_ratio"] == attendu
+
+
+class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
+    """Registre 4.10 : un doublon exact rendait une partition VERTE a zero element.
+
+    `extraction.extract` retourne `{"elements": 0, "chunks": 0, "duplicate_of":
+    ...}` quand il reconnait un fichier deja ingere. Mais `_record_metadata` ne
+    publiait que `elements`, `chunks`, `pages` et `elapsed_seconds` : dans
+    l'interface Dagster, un document ECARTE et un document ingere VIDE affichaient
+    exactement la meme chose — quatre zeros. Le premier est le comportement voulu,
+    le second est une panne, et rien ne les distinguait.
+
+    Le constat nomme cinq cles absentes : `duplicate_of`, `pages_skipped`, `ocr`,
+    `language` et `failed_batches`. Les cinq sont publiees.
+    """
+
+    # LA FORME EST CELLE QUE LA PRODUCTION FABRIQUE, et elle a failli m'echapper.
+    # `main._run_extraction` fait `job.report(**result)`, et `Job.report` met tout
+    # dans `progress` : les cinq cles du constat arrivent donc DANS `progress` et
+    # non au premier niveau du `snapshot()`. Une fixture qui les aurait posees au
+    # premier niveau aurait rendu ce garde VERT sur un chemin de production casse.
+    # D'ou `_snapshot_reel` ci-dessous, qui construit la forme par le vrai `Job`.
+    BILAN_DOUBLON_RENDU_PAR_EXTRACT = {
+        "elements": 0,
+        "chunks": 0,
+        "pages": 0,
+        "duplicate_of": "htms/MLOps with Databricks/Preface.html",
+        "type_file": "html",
+    }
+    BILAN_PDF_RENDU_PAR_EXTRACT = {
+        "elements": 3750,
+        "chunks": 4365,
+        "pages": 71,
+        "pages_skipped": 6,
+        "ocr": False,
+        "language": "en",
+        "failed_batches": ["31-35 (RuntimeError: page illisible)"],
+        "type_file": "pdf",
+    }
+
+    @staticmethod
+    def _snapshot_reel(bilan: dict[str, object]) -> dict[str, object]:
+        """Le bilan tel que Dagster le recoit, fabrique par le vrai `Job`.
+
+        C'est la composition qui compte : `_record_metadata` lit un `snapshot()`,
+        pas le retour d'`extract`. Les tester separement laisserait passer un
+        desaccord sur l'emplacement des cles.
+        """
+        job = Job(id="essai", filepath="/opt/dagster/app/Datas/x")
+        job.report(**bilan)
+        return job.snapshot()
+
+    def test_un_doublon_est_nomme_dans_les_metadonnees(self):
+        contexte = ContexteEspion("livre/chapitre.html")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_DOUBLON_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees.get("duplicate_of") == (
+            "htms/MLOps with Databricks/Preface.html"
+        ), contexte.metadonnees
+
+    def test_un_document_ingere_ne_porte_pas_de_duplicate_of(self):
+        """LE TEMOIN. Sans lui, publier `duplicate_of` en dur passerait.
+
+        La cle ne doit apparaitre que sur un document reellement ecarte : une
+        cle presente et vide sur les 23 documents redonnerait exactement le
+        defaut, par l'autre bout.
+        """
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert "duplicate_of" not in contexte.metadonnees, contexte.metadonnees
+
+    def test_les_quatre_autres_cles_du_constat_sont_publiees(self):
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees["pages_skipped"] == 6
+        assert contexte.metadonnees["ocr"] is False
+        assert contexte.metadonnees["language"] == "en"
+        assert contexte.metadonnees["failed_batches"] == 1
+
+    def test_les_lots_en_echec_sont_comptes_et_nommes(self):
+        """Un lot PDF en echec doit se voir dans les metadonnees, pas seulement
+        dans le rouge du run : c'est le compteur du 4.1, cote Dagster."""
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees["failed_batches"] == 1
+        assert "31-35" in str(contexte.metadonnees["failed_batches_detail"])
+
+    def test_les_quatre_metadonnees_historiques_survivent(self):
+        """LE TEMOIN : ajouter cinq cles ne doit pas en retirer quatre."""
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees["elements"] == 3750
+        assert contexte.metadonnees["chunks"] == 4365
+        assert contexte.metadonnees["pages"] == 71
+        assert contexte.metadonnees["elapsed_seconds"] >= 0.0
+
+    def test_un_bilan_minimal_ne_leve_pas(self):
+        """Le cas que le code naturel fait planter : un bilan sans aucune des
+        cles optionnelles — c'est celui d'un HTML nominal."""
+        contexte = ContexteEspion("livre/chapitre.html")
+        _record_metadata(contexte, self._snapshot_reel({"elements": 12, "chunks": 30}))
+
+        assert contexte.metadonnees["elements"] == 12
+        assert "duplicate_of" not in contexte.metadonnees
+        assert contexte.metadonnees["failed_batches"] == 0

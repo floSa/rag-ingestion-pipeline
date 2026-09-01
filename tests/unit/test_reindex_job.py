@@ -21,6 +21,8 @@ Deux precautions, sans lesquelles ces tests seraient creux :
 
 from __future__ import annotations
 
+import re
+
 import pytest
 import requests
 from dagster import (
@@ -36,6 +38,7 @@ from dagster import (
     materialize,
     sensor,
 )
+from dagster._core.events import DagsterEvent, DagsterEventType
 from dagster._core.test_utils import create_run_for_test
 
 from src.pipeline import factory
@@ -84,9 +87,47 @@ class _Reponse:
 def _rafale(
     instance, documents: int, statut=DagsterRunStatus.SUCCESS, job_name: str = JOB_INGESTION
 ) -> None:
-    """Simule une rafale : `documents` runs d'ingestion, un par fichier."""
+    """Simule une rafale : `documents` runs d'ingestion, un par fichier.
+
+    **Elle ne pose AUCUN `start_time`**, et c'est ce qui a rendu creux le garde
+    de l'age du run : `create_run_for_test` ecrit une ligne de run, pas un
+    evenement de demarrage. Pour un run qui porte son horodatage, voir
+    :func:`_demarrer_un_run`.
+    """
     for _ in range(documents):
         create_run_for_test(instance, job_name=job_name, status=statut)
+
+
+def _demarrer_un_run(instance, job_name: str = JOB_INGESTION) -> str:
+    """Un run REELLEMENT demarre : en `STARTED`, et portant son `start_time`.
+
+    C'est le mecanisme de Dagster lui-meme, et non un champ pose a la main :
+    `start_time` est renseigne par le stockage quand il traite un evenement
+    `PIPELINE_START` (`sql_run_storage.py`, branche
+    `event.event_type == DagsterEventType.PIPELINE_START`). Le meme evenement
+    fait passer le run en `STARTED`, donc en vol pour le sensor.
+
+    Sans cela, `_decrire_le_run` prend sa branche DEGRADEE et le message dit
+    « depuis une date inconnue » — la branche qui calcule l'age n'etant jamais
+    executee par la suite. *Mute le producteur, pas le consommateur* : c'est bien
+    le producteur de l'horodatage qu'il fallait reproduire.
+
+    Args:
+        instance: Instance Dagster ephemere.
+        job_name: Nom du job du run.
+
+    Returns:
+        L'identifiant du run demarre.
+    """
+    run = create_run_for_test(instance, job_name=job_name, status=DagsterRunStatus.STARTING)
+    instance.report_dagster_event(
+        DagsterEvent(
+            event_type_value=DagsterEventType.PIPELINE_START.value,
+            job_name=job_name,
+        ),
+        run_id=run.run_id,
+    )
+    return run.run_id
 
 
 class _Capteur:
@@ -655,3 +696,181 @@ class TestLeCablageReel:
 
         assert defs.resolve_job_def(REINDEX_JOB_NAME) is not None
         assert any(a.key.to_user_string() == "agent/lexical_index" for a in defs.assets)
+
+
+class TestLaClassificationDesStatutsTerminaux:
+    """Registre 4.17 : retirer `CANCELED` de `STATUTS_TERMINES` laissait la
+    suite VERTE, et une ingestion annulee aurait bloque la reindexation POUR
+    TOUJOURS.
+
+    Le test existant (`test_aucun_statut_terminal_ne_bloque`) asserte que les
+    deux ensembles partitionnent `DagsterRunStatus` — vrai des deux cotes du
+    defaut, la soustraction etant faite par le code lui-meme. Ce qui manquait est
+    l'assertion sur le CONTENU, et elle se verifie contre le Dagster EPINGLE.
+    """
+
+    def test_les_trois_statuts_terminaux_sont_nommes(self):
+        assert (
+            frozenset(
+                {
+                    DagsterRunStatus.SUCCESS,
+                    DagsterRunStatus.FAILURE,
+                    DagsterRunStatus.CANCELED,
+                }
+            )
+            == STATUTS_TERMINES
+        )
+
+    def test_ils_sont_exactement_ceux_que_dagster_declare_finis(self):
+        """LE TEMOIN, et c'est lui qui survit a une montee de version.
+
+        Le docstring du module ecrivait « les trois SEULS etats dont un run
+        Dagster ne revient pas » — une phrase d'exhaustivite, qu'une montee de
+        Dagster peut rendre fausse en silence. Cette assertion la remplace par un
+        controle : elle rougit le jour ou Dagster change sa propre liste, au lieu
+        de laisser le sensor reindexer au milieu d'une ingestion.
+        """
+        from dagster import DagsterRunStatus as Statuts
+        from dagster._core.storage.dagster_run import FINISHED_STATUSES
+
+        assert frozenset(FINISHED_STATUSES) == STATUTS_TERMINES, (
+            "la liste des statuts terminaux de Dagster a change : le sensor "
+            "classerait un statut inconnu du mauvais cote"
+        )
+        assert Statuts.CANCELED in STATUTS_TERMINES, (
+            "sans CANCELED, une ingestion ANNULEE bloque la reindexation pour "
+            "toujours : le sensor l'attend indefiniment"
+        )
+
+    def test_un_statut_non_terminal_est_prudemment_compte_en_vol(self):
+        """La soustraction reste le mecanisme : un statut inconnu doit bloquer.
+
+        C'est l'inverse du defaut precedent, et les deux comptent : mal classer
+        un terminal gele la reindexation, mal classer un non-terminal la lance au
+        milieu d'une ingestion.
+        """
+        assert DagsterRunStatus.STARTED in STATUTS_EN_COURS
+        assert DagsterRunStatus.STARTING in STATUTS_EN_COURS
+        assert DagsterRunStatus.QUEUED in STATUTS_EN_COURS
+        assert DagsterRunStatus.CANCELING in STATUTS_EN_COURS
+
+
+class TestLeSensorDitDepuisCombienDeTempsIlAttend:
+    """Registre 4.15 : « Aucun delai de garde, aucune ALERTE ».
+
+    Un run coince en `STARTED` bloque la reindexation indefiniment. Le delai de
+    garde se pose dans `dagster.yaml` — c'est la que la famille entiere se ferme
+    d'un geste. L'ALERTE, elle, est ici : la raison de saut du sensor nommait le
+    job mais pas le run, ni depuis combien de temps il bloque. Un opérateur
+    voyait « Ingestion en cours » a chaque tick, pendant des heures, sans rien
+    qui distingue « ca travaille » de « c'est gele ».
+    """
+
+    def test_la_raison_de_saut_nomme_le_run_qui_bloque(self):
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 1, DagsterRunStatus.STARTED, JOB_INGESTION)
+            resultat = _tick(instance)
+
+        assert isinstance(resultat, SkipReason)
+        message = str(resultat.skip_message)
+        assert JOB_INGESTION in message
+        assert "run " in message, message
+
+    def test_la_raison_de_saut_donne_l_age_du_run_qui_bloque(self):
+        """LE GARDE, ET IL AFFIRMAIT LE CONTRAIRE DE CE QU'IL OBSERVAIT.
+
+        Ce test prouvait, sur le papier, que la raison de saut donne l'age du
+        run. `mesure` le 1er septembre 2026 : son montage — `_rafale` sur une
+        instance ephemere — ne pose AUCUN `start_time`, donc `_decrire_le_run`
+        prenait la branche DEGRADEE et le message reel disait
+
+            « Le run <id> est en STARTED, depuis une date inconnue. »
+
+        Ses deux assertions etaient satisfaites par ce message-la : « depuis » y
+        figure, et « s » est satisfait par n'importe quel message — ici par le
+        « S » de STARTED. **La branche qui CALCULE l'age n'etait jamais
+        executee.** C'est celle qui tourne en production : `mesure` sur
+        l'historique Dagster de ce poste, `SELECT status, count(*),
+        count(start_time) FROM runs GROUP BY status` rend **23/23** sur les runs
+        reussis et **67/67** sur les echoues ; seul le run `QUEUED`, jamais
+        demarre, n'en porte pas.
+
+        Le harnais pose donc l'horodatage par le mecanisme REEL de Dagster — un
+        evenement `PIPELINE_START` rapporte a l'instance, ce qui fait aussi
+        passer le run en `STARTED` — et l'assertion porte sur le NOMBRE DE
+        SECONDES, jamais sur la presence d'une lettre.
+        """
+        with DagsterInstance.ephemeral() as instance:
+            _demarrer_un_run(instance, JOB_INGESTION)
+            resultat = _tick(instance)
+
+        message = str(resultat.skip_message)
+        assert "date inconnue" not in message, (
+            f"le montage n'a pas pose de start_time : la branche DEGRADEE a "
+            f"tourne, et la branche de production n'est pas eprouvee\n{message}"
+        )
+        secondes = re.search(r"depuis (\d+) s\.", message)
+        assert secondes is not None, (
+            f"la raison de saut ne porte pas un age en secondes : {message}"
+        )
+        assert int(secondes.group(1)) < 300, (
+            f"l'age lu vaut {secondes.group(1)} s : ce n'est pas l'age d'un run "
+            f"cree a l'instant, donc ce n'est pas l'age du run"
+        )
+
+    def test_le_montage_pose_bien_l_horodatage_qu_il_croit(self):
+        """LE TEMOIN DU HARNAIS. *Verifie ton harnais avant de croire ton rouge.*
+
+        C'est exactement ce qui manquait au test ci-dessus : rien n'observait que
+        `start_time` etait renseigne, donc le test restait vert sur la branche
+        degradee. Si `_demarrer_un_run` cessait de poser l'horodatage, l'assertion
+        « date inconnue » ci-dessus le verrait — mais elle le verrait comme un
+        defaut du CODE, alors que ce serait un defaut du MONTAGE.
+        """
+        with DagsterInstance.ephemeral() as instance:
+            _demarrer_un_run(instance, JOB_INGESTION)
+            enregistrements = instance.get_run_records()
+
+            assert len(enregistrements) == 1, enregistrements
+            assert enregistrements[0].start_time is not None, (
+                "le montage ne pose pas de start_time : la branche de production "
+                "de `_decrire_le_run` reste inatteignable par cette suite"
+            )
+            assert enregistrements[0].dagster_run.status in STATUTS_EN_COURS, (
+                "le run n'est pas en vol : le sensor ne le verrait pas bloquer"
+            )
+
+    def test_un_run_sans_horodatage_est_dit_degrade_et_ne_fait_pas_echouer_le_tick(self):
+        """L'AUTRE BRANCHE, et elle n'est pas morte — elle decrit un etat REEL.
+
+        `mesure` sur l'historique Dagster de ce poste : le seul run sans
+        `start_time` est celui qui est reste en attente, jamais demarre (registre
+        4.28.c). Un run non demarre n'a pas de date de debut, et il ne doit pas
+        faire echouer le tick du sensor. Sans ce test, « corriger » la branche
+        degradee en la supprimant passerait le garde ci-dessus.
+
+        Ce qui est reproduit ici est l'ABSENCE d'horodatage — une ligne de run
+        sans evenement de demarrage — et non le statut `QUEUED` lui-meme, que
+        `create_run_for_test` refuse de fabriquer sans origine de job distante.
+        C'est bien l'absence qui decide de la branche.
+        """
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 1, DagsterRunStatus.STARTED, JOB_INGESTION)
+            enregistrements = instance.get_run_records()
+            assert enregistrements[0].start_time is None, (
+                "le cas voulu n'est pas atteint : ce run porte un horodatage"
+            )
+            resultat = _tick(instance)
+
+        assert isinstance(resultat, SkipReason)
+        message = str(resultat.skip_message)
+        assert "date inconnue" in message, message
+        assert JOB_INGESTION in message, message
+
+    def test_rien_n_est_dit_quand_aucun_run_ne_bloque(self):
+        """LE TEMOIN : l'alerte ne doit pas parler sur le chemin nominal."""
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 1)
+            resultat = _tick(instance)
+
+        assert isinstance(resultat, RunRequest), resultat

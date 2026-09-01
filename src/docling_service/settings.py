@@ -22,6 +22,16 @@ class DoclingSettings(BaseSettings):
 
     nebula_host: str = "graphd"
     nebula_port: int = 9669
+    # `NEBULA_USER` et `NEBULA_PASSWORD` existent dans `.env.example` depuis le
+    # depart et n'etaient exposes par AUCUN settings : les quatre sites qui
+    # ouvrent une session ecrivaient ("root", "nebula") en dur, si bien que le
+    # `.env` mentait sur ce qui est reellement lu. Changer le mot de passe du
+    # graphd rendait la pile inutilisable sans qu'aucun reglage ne l'explique.
+    # Les defauts sont ceux de `docker-compose.yml`, donc aucun poste ne change
+    # de comportement : ce sont les identifiants publics d'un graphd de
+    # developpement, pas un secret.
+    nebula_user: str = "root"
+    nebula_password: str = "nebula"  # pragma: allowlist secret
 
     chroma_host: str = "chromadb"
     chroma_port: int = 8000
@@ -37,6 +47,12 @@ class DoclingSettings(BaseSettings):
     # Nombre de tentatives de CREATE SPACE : le storaged doit avoir termine son
     # heartbeat d'enregistrement, ce qui peut prendre une minute au demarrage.
     nebula_space_attempts: int = 12
+    # Attente entre les etapes d'amorcage de `init_nebula.py`. C'etaient trois
+    # `time.sleep` ecrits en dur, donc ni ajustables sur un poste lent, ni
+    # neutralisables pour eprouver le script : ses 15 s de pause coutaient
+    # 76 s a la suite de tests (`mesure`). La duree est un fait d'environnement,
+    # pas une propriete du script.
+    nebula_amorcage_pause_seconds: float = 5.0
 
     # ── Extraction ───────────────────────────────────────────────────────────
     # Pages converties par passe. Les batchs bornent la memoire sur les gros

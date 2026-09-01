@@ -306,6 +306,20 @@ docker compose exec docling-service python -m src.wipe_stores
 
 Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
+> **REDÉMARREZ `docling-service` AVANT toute réingestion, y compris sans purge.**
+> C'est `init_schema()` qui joue les `ALTER TAG … ADD`, et il n'est appelé **qu'au
+> démarrage du service** (`main.py`, dans le `lifespan`). Le lot 4 ajoute la
+> colonne `page_no_end` aux onze tags d'élément : `mesuré` le 1er septembre 2026,
+> `DESCRIBE TAG Paragraph` sur le space vivant rend
+> `label, page_no, text, minio_url, depth` — **la colonne n'existe pas encore**.
+> Une réingestion lancée avant le redémarrage écrit donc contre un tag qui n'a pas
+> la colonne, et le graphd rejette chaque `INSERT`.
+>
+> L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
+> lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
+> redémarrer ne répare rien — voir le registre, le message d'anomalie
+> `page_no_end` de `verify_contract` égare sur ce point précis.
+
 > Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'un des trois stores résiste : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes.
 
 ```bash
@@ -481,6 +495,18 @@ Les deux gestes sont désormais séparés :
 |---|---|---|
 | `make format` | **écrit** — `ruff format src/ tests/` | geste volontaire, dans aucune porte |
 | `make format-check` | **constate** — `ruff format --check src/ tests/` | dernière étape de `make all` |
+| `make lint` | **constate** — `ruff check src/ tests/` | première étape de `make all` |
+
+**`make lint` a porté `src/` seul jusqu'au lot 4, et c'était le MÊME angle mort
+que D7, d'un cran plus loin.** Le hook `ruff` voit tout ce qui est **indexé**,
+donc `tests/` ; la cible ne voyait que `src/`. `make all` rendait donc 0 sur un
+arbre dont le hook refusait le commit, et le développeur apprenait la faute au
+moment du commit, pas au moment du contrôle. `mesuré` le 1er septembre 2026 :
+**deux commits du lot 4 ont été refusés pour des règles — `N802`, `SIM223`,
+`E402`, `I001` — que `make all` venait de déclarer propres.** Les deux gardes
+voient désormais la même chose. `typecheck` reste borné à `src/` : c'est
+`pyproject.toml` qui exclut `tests/` de `mypy`, un choix déclaré et non une
+divergence de portée.
 
 **Cette table a porté `src/` seul pendant quelques heures, et c'était faux.**
 Le commit qui a étendu les deux cibles à `tests/` — pour fermer l'angle mort D7,
@@ -502,7 +528,14 @@ L'état, `mesuré` sur cette révision :
 uv run ruff format --check src/ tests/
 ```
 
-→ « 67 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+→ « 74 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+
+*(Ce nombre valait **67**, et il était faux sur la révision qui le portait —
+mot pour mot le défaut que le pilote venait de corriger en `39ce91a`, « le README
+annonçait 66 fichiers formatés », refait par le lot suivant. Un `mesuré` n'est pas
+une étiquette de véracité, c'est une étiquette de **provenance**, et une
+provenance comprend l'arbre. Une phrase qui dit « SUR CETTE RÉVISION » se
+remesure à chaque révision qui la traverse, ou elle se supprime.)*
 
 **Ce que le prochain développeur doit en faire : un rc non nul est un défaut,
 sans exception à connaître.** C'est tout l'intérêt du geste. Le détail de ce
@@ -680,15 +713,52 @@ avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
 désormais **au site**, avec sa justification, par un commentaire
 `# pragma: allowlist secret`.
 
-Le dépôt en porte **3** au 31 août 2026 (`mesuré` :
-`grep -rn 'pragma: allowlist secret' --include='*.py' .`, trois lignes
-*porteuses* — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et
-`:92`, les autres occurrences étant les commentaires qui les justifient). Dans les
-deux fichiers, le scanner lit un **nom** de variable — `API_KEY` — sans regarder
-sa valeur. Le compte était annoncé à 2 : la troisième ligne était née du piège de
-déduplication décrit au registre, et n'avait pas été recomptée. Ne recopie pas ce
-compte : le scan complet du dépôt versionné se relance en une commande, et c'est
-lui qui fait foi.
+**Distingue les lignes qui PORTENT le pragma de celles qui le citent en prose :
+les deux comptes ne sont pas le même.** Une ligne porteuse annote une valeur, et
+c'est celle-là que `detect-secrets` lit ; les autres sont les commentaires qui la
+justifient, cette section, et la ligne de `scripts/capturer-larbre-docling.py`
+qui *écrit* le pragma dans la capture YAML.
+
+Les porteuses se comptent ainsi (`mesuré` le 1er septembre 2026) :
+
+```bash
+git ls-files -z -- '*.py' '*.yaml' | xargs -0 grep -nE '#[[:space:]]*pragma: allowlist secret$'
+```
+
+Elle en rend **11** — **7** en Python et **4** dans la capture YAML —, contre
+**25** occurrences si l'on compte toute mention dans tout fichier versionné :
+
+| Site | Ce que le scanner y lit |
+|---|---|
+| `src/pipeline/reindex.py:69` | `API_KEY_HEADER`, dont la valeur est un **nom** d'en-tête HTTP |
+| `src/docling_service/settings.py:34` | `NEBULA_PASSWORD`, le mot de passe **public** du graphd de développement, celui de `docker-compose.yml` |
+| `tests/unit/test_reindex.py:91` et `:92` | l'argument `api_key`, dont la valeur d'essai est le mot « secret » lui-même |
+| `tests/unit/test_nebula.py:201`, `tests/unit/test_verify_data.py:246`, `tests/unit/test_init_nebula.py:186` | les mêmes identifiants publics, posés en variables d'environnement d'essai |
+| `tests/fixtures/arbres_docling.yaml`, 4 lignes | les empreintes SHA-256 des captures, lues comme des « Hex High Entropy String » |
+
+Le compte est passé de 2 à 3, puis à 6, puis à 11, et **jamais parce qu'un secret
+était apparu** : à 3, la troisième ligne était née du piège de déduplication
+décrit au registre ; les suivantes sont les identifiants du graphd exposés en
+réglages et les empreintes de la capture. Ne recopie pas ce compte : la commande
+ci-dessus se relance, et c'est elle qui fait foi.
+
+**La commande porte `'*.py' '*.yaml'` et non `--include='*.py'`, et c'est un
+correctif.** Bornée aux fichiers Python, elle ne voyait pas les 4 porteuses de la
+capture YAML — elle annonçait donc un dépôt plus propre qu'il n'est, sur la
+mesure même qui existe pour compter les exceptions.
+
+**Le pragma doit annoter la ligne qui porte la VALEUR**, pas la ligne qui ouvre le
+dictionnaire ou l'appel : posé une ligne trop haut, il ne filtre rien et le commit
+est refusé sans que le message dise pourquoi (`mesuré` le 1er septembre 2026, deux
+refus consécutifs sur `tests/unit/test_verify_data.py`).
+
+> Cette section a été perdue une fois, et c'est consigné plutôt que tu. Le commit
+> `0217bab` l'avait écrite ; `a54636c`, juste après la réparation d'un incident de
+> procédé — un `git checkout <branche> -- .` dans un arbre portant des commits —,
+> a réintroduit le texte de `main` par-dessus. Un `make all` vert ne pouvait pas
+> le montrer : rien de ce qui se perd dans un document ne rougit. Le geste pour
+> lire un fichier d'une autre révision est `git show <rev>:<fichier>`, et rien
+> d'autre.
 
 ```bash
 git ls-files -z -- ':!Datas/' | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
@@ -771,7 +841,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**708 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
+**857 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -794,7 +864,47 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
-Les modules restants (`nebula.py`, `vectors.py`, `extraction.py`, `main.py`) sont des adaptateurs vers Docling, NebulaGraph et ChromaDB : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle.
+Les modules restants, `vectors.py` et `main.py`, sont des adaptateurs — vers
+ChromaDB et vers FastAPI : ils ne sont pas couverts en unitaire et se valident par
+une ingestion réelle. Chacun garde tout de même la propriété qui décide :
+`vectors.py` le contrôle du modèle d'embedding et la page de fin des chunks
+(`tests/unit/test_vectors.py`), `main.py` le refus de démarrer hors contrat
+(`tests/unit/test_main.py`, par sous-processus). *(Cette phrase ne nommait que
+`vectors.py` : elle avait été écrite en supposant `main.py` déverrouillé, ce qu'il
+n'est pas — voir juste en dessous.)*
+
+**Deux modules ont été DÉVERROUILLÉS au lot 4, et un troisième a été atteint
+autrement** — la distinction n'est pas cosmétique, et la première rédaction de ce
+paragraphe la gommait. La cause est la même dans les trois cas : ils étaient
+**inimportables côté hôte**, donc rien de ce qu'ils décident ne pouvait être testé
+— *ce qu'un test n'importe pas, il ne teste pas*.
+
+| Module | Ce qui l'empêchait | Ce qui a changé | Ce qui le garde désormais |
+|---|---|---|---|
+| `nebula.py` | `import nebula3` au niveau du module | l'import est **différé** dans la fonction qui en a besoin | `test_nebula.py` — l'identité du document, `source_path` et jamais `filename` |
+| `extraction.py` | `import docling` au niveau du module | l'import est **différé** | `test_extraction.py` — l'oubli avant réécriture, le retrait d'un document partiel, la chaîne d'images, le compteur de pages perdues |
+| `main.py` | `fastapi` absent du venv du dépôt | **rien : aucune ligne du module n'est modifiée** | `test_main.py` — le refus de démarrer hors contrat, atteint par un bouchon `fastapi` posé comme un vrai paquet en tête de `PYTHONPATH`, par sous-processus |
+
+Les deux premiers ont vu leur import différé, le geste de `vectors.get_collection`.
+Le troisième n'a **pas** été déverrouillé : `main.py` **est** l'application
+FastAPI, différer cet import-là n'aurait aucun sens, et c'est le TEST qui va le
+chercher derrière un bouchon. Un module atteint par un bouchon n'est pas un module
+importable, et l'écrire comme tel surdisait ce qui avait été fait.
+
+**Un module du dépôt reste inimportable côté hôte, et c'est le seul.** `mesuré` le
+1er septembre 2026 : **33 modules sous `src/`, 1 inimportable** —
+`src/docling_service/main.py`, `ModuleNotFoundError: No module named 'fastapi'`.
+Ce paragraphe affirmait « Aucun module du dépôt n'est plus inimportable côté
+hôte » : c'était une **phrase d'exhaustivité**, la famille que le mandat §10 nomme
+comme un défaut en attente, et elle contredisait le tableau situé juste au-dessus,
+qui dit lui-même que `main.py` est atteint par un bouchon.
+
+L'affirmation est désormais **bornée à sa portée réelle, et gardée** :
+`tests/unit/test_importabilite_cote_hote.py` importe les 33 modules dans un
+sous-processus et rougit dès qu'un module inimportable n'est pas déclaré. C'était
+la cause mécanique de six angles morts du chantier (registre §3.4, §4.4, §4.5,
+§4.19, §4.28.d) — la convertir en garde plutôt qu'en phrase est ce qui empêche le
+septième.
 
 ---
 

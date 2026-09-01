@@ -195,9 +195,39 @@ def build_chunks(
 
     for morceau, ancre, refs_du_chunk in zip(morceaux, ancres, refs, strict=True):
         texte = morceau.text.strip()
-        # Un chunk sans ancre connue serait rattache au hasard ; un chunk sans
-        # caractere alphanumerique n'a rien a apporter a une recherche.
-        if ancre is None or not has_content(texte) or len(texte) < settings.min_chunk_chars:
+        # Un chunk sans ancre connue serait rattache au hasard. Il ne troue aucun
+        # compte : `resolve_anchors` ne compte que les chunks dont l'ancre est
+        # connue, donc `chunk_count` l'ignore aussi.
+        if ancre is None:
+            continue
+
+        # LE FILTRE NE VAUT QUE POUR UN CHUNK AUTONOME, et c'est la correction du
+        # registre 4.28.a. `resolve_anchors` fixe `chunk_count` AVANT ce filtrage :
+        # jeter un chunk qui a des freres laissait un TROU dans le jeu, avec un
+        # compte qui annonce le morceau manquant. `mesure` sur l'index vivant,
+        # 4 365 chunks : `aa3de10738` annonce 7 chunks et n'en a que 6 (index 4
+        # manquant), `eb52c4ec8f` annonce 4 et n'en a que 3 (index 3). L'agent
+        # concatene ce qu'il trouve et rend un texte troue, sans aucune erreur.
+        #
+        # LES DEUX ELEMENTS SONT DES BLOCS DE CODE, et leurs chunks se raccordent
+        # bord a bord : le morceau manquant est une fenetre du MILIEU d'un texte
+        # continu, entre deux fenetres conservees. Le motif ecrit du filtre —
+        # « trop court pour porter du sens » — suppose un chunk AUTONOME, et cette
+        # supposition est fausse pour une fenetre du milieu.
+        #
+        # RECALCULER LE COMPTE APRES FILTRAGE aurait ete l'autre issue. Elle est
+        # ECARTEE : elle rendrait le compte exact et la perte SILENCIEUSE a
+        # nouveau — l'agent concatenerait 6 chunks annonces 6 et obtiendrait un
+        # texte troue qu'il ne peut plus detecter, et le controle
+        # `jeux_de_chunks_incomplets` redeviendrait vert sur un index toujours
+        # casse. C'est ajuster le compteur a la perte au lieu de la fermer.
+        #
+        # Ici, le compte devient exact PARCE QUE RIEN NE MANQUE.
+        #
+        # Prix assume : quelques vecteurs de faible valeur pour une recherche, en
+        # echange d'un texte entier. Sur l'index mesure, 2 chunks sur 4 365.
+        autonome = ancre.count == 1
+        if autonome and (not has_content(texte) or len(texte) < settings.min_chunk_chars):
             continue
 
         element = ancre.element
@@ -216,6 +246,7 @@ def build_chunks(
                 language=language,
                 label=str(element.get("label") or ""),
                 page_no=int(element.get("page_no") or 0),
+                page_no_end=int(element.get("page_no_end") or element.get("page_no") or 0),
                 minio_url=str(element.get("minio_url") or ""),
                 reference_id=str(element.get("reference_id") or "DOC"),
                 depth=int(element.get("depth") or 0),
@@ -229,6 +260,39 @@ def build_chunks(
         )
 
     return ids, texts, metadatas
+
+
+def delete_document(identity: DocumentIdentity, collection: Any = None) -> int:
+    """Retire de l'index vectoriel tous les chunks d'un document.
+
+    **Le pendant de ``NebulaWriter.delete_document``, et il n'existait pas.**
+    Les identifiants derivent du TEXTE (``elements.py``) : un texte modifie
+    produit de nouveaux identifiants, et `upsert` ecrit les nouveaux sans
+    toucher aux anciens, qui survivent en orphelins. Le capteur Dagster
+    declenchant sur ``mtime``, mettre a jour un document est le chemin NOMINAL
+    (registre 4.2).
+
+    La suppression vise ``source_path`` et jamais ``filename`` : ``source_path``
+    est l'identite d'un document (contrat, exigence 3), et le corpus porte deux
+    ``Preface.html``. Une purge par nom emporterait les deux.
+
+    Args:
+        identity: Identite du document a purger.
+        collection: Collection ChromaDB. Ouverte au besoin ; l'argument existe
+            pour que la decision soit eprouvable sans ChromaDB.
+
+    Returns:
+        Nombre de chunks retires. C'est un compteur la ou il y a perte : une
+        purge muette ne dit pas si elle a retire trois chunks ou trois mille.
+    """
+    cible = get_collection() if collection is None else collection
+    clause = {"source_path": identity.source_path}
+    presents = cible.get(where=clause, include=[])
+    nombre = len(presents.get("ids") or [])
+    if nombre:
+        cible.delete(where=clause)
+        logger.info("ChromaDB: %d chunks retires pour %s", nombre, identity.source_path)
+    return nombre
 
 
 def write_elements(
