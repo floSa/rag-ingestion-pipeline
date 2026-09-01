@@ -233,3 +233,141 @@ class TestLaPurgeDUnDocumentDansLIndexVectoriel:
         collection = CollectionEspionne(chunks=["a", "b", "c", "d", "e"])
 
         assert delete_document(IDENTITE, collection=collection) == 5
+
+
+class TestChunkCountNeMentPlus:
+    """Registre 4.28.a : `chunk_count` etait fixe AVANT le filtrage des chunks.
+
+    `anchoring.resolve_anchors` compte les chunks qui partagent une ancre ;
+    `build_chunks` en jette ensuite ceux qui echouent `has_content` ou sont plus
+    courts que `min_chunk_chars`. Le compte annonce est celui d'AVANT.
+
+    `mesure` le 1er septembre 2026 sur l'index vivant, 4 365 chunks et 3 750
+    elements — chiffres reproduits a l'unite pres :
+
+        element_id=aa3de10738  chunk_count=7  presents=[0,1,2,3,5,6]  MANQUE 4
+        element_id=eb52c4ec8f  chunk_count=4  presents=[0,1,2]        MANQUE 3
+
+    **LA MESURE QUI A DECIDE.** Les deux elements sont des blocs de CODE decoupes
+    en fenetres successives, et les chunks conserves se raccordent bord a bord :
+    `#3` finit sur `self.model_info = mlflow .` et `#5` reprend sur
+    `log_model ( python_model = self ,`. Le morceau manquant est donc une fenetre
+    du MILIEU d'un texte continu, entre deux fenetres gardees.
+
+    **CE QUI EST TRANCHE, ET POURQUOI.** Les deux issues que le mandat pose ne
+    sont pas equivalentes :
+
+    - *recalculer `chunk_count` apres filtrage* rendrait le compte exact et
+      **rendrait la perte silencieuse a nouveau** : l'agent concatenerait 6
+      chunks annonces 6 et obtiendrait un texte troue qu'il ne peut plus
+      detecter. Le controle `jeux_de_chunks_incomplets` (registre 4.4)
+      redeviendrait vert sur un index toujours casse. C'est ajuster le compteur
+      a la perte au lieu de la fermer — exactement le defaut que ce lot traque ;
+    - *cesser de filtrer* ferme la perte. Le compte devient exact **parce que
+      rien ne manque**, et non parce qu'on a corrige le compte.
+
+    La seconde est retenue, et **bornee** : le filtre garde son motif pour un
+    chunk qui est le SEUL de son element — un fragment isole n'apporte rien a une
+    recherche, et l'element reste dans le graphe. Il cesse de s'appliquer a un
+    chunk qui a des FRERES : la, ce n'est pas un fragment isole, c'est la
+    continuation d'un texte dont les voisins sont conserves. Le motif ecrit du
+    filtre — « trop court pour porter du sens » — suppose un chunk autonome, et
+    cette supposition est fausse pour une fenetre du milieu.
+
+    Prix assume : quelques vecteurs de faible valeur pour une recherche, en
+    echange d'un texte entier. Sur l'index mesure, cela vaut **2 chunks sur
+    4 365**.
+    """
+
+    @staticmethod
+    def _chunks(textes: list[str], meme_ancre: bool = True) -> Any:
+        """Un document Docling bouchonne dont les chunks partagent une ancre."""
+
+        class Morceau:
+            def __init__(self, texte: str, ref: str) -> None:
+                self.text = texte
+                self.meta = type("M", (), {"doc_items": [type("I", (), {"self_ref": ref})()]})()
+
+        return [
+            Morceau(texte, "#/texts/0" if meme_ancre else f"#/texts/{i}")
+            for i, texte in enumerate(textes)
+        ]
+
+    ELEMENTS = [
+        {
+            "id": "aa3de10738",
+            "self_ref": "#/texts/0",
+            "label": "code",
+            "page_no": 1,
+            "text": "un bloc de code",
+            "minio_url": "",
+            "depth": 1,
+            "order": 0,
+            "reference_id": "DOC",
+        }
+    ]
+
+    def _construire(self, monkeypatch: Any, textes: list[str]) -> Any:
+        from src.docling_service import vectors as module
+
+        monkeypatch.setattr(
+            module,
+            "get_chunker",
+            lambda: type("C", (), {"chunk": lambda s, d: self._chunks(textes)})(),
+        )
+        return module.build_chunks(self.ELEMENTS, IDENTITE, None, document=object())
+
+    # Le morceau du MILIEU est court : c'est le cas mesure sur `aa3de10738`.
+    TEXTES = ["a" * 200, "b" * 200, "cd", "d" * 200]
+
+    def test_le_jeu_de_chunks_d_un_element_est_complet(self, monkeypatch):
+        ids, textes, metas = self._construire(monkeypatch, self.TEXTES)
+
+        indices = sorted(m["chunk_index"] for m in metas)
+        assert indices == [0, 1, 2, 3], (
+            f"le jeu est troue : {indices}. L'agent concatene ce qu'il trouve et "
+            "rend un texte troue, sans aucune erreur"
+        )
+
+    def test_chunk_count_egale_le_nombre_de_chunks_reellement_ecrits(self, monkeypatch):
+        ids, textes, metas = self._construire(monkeypatch, self.TEXTES)
+
+        assert {m["chunk_count"] for m in metas} == {len(ids)}
+
+    def test_le_morceau_court_du_milieu_est_conserve(self, monkeypatch):
+        """Le fait mesure : la fenetre du milieu porte du texte, et il revient."""
+        ids, textes, metas = self._construire(monkeypatch, self.TEXTES)
+
+        assert "cd" in textes, textes
+
+    def test_un_chunk_seul_et_trop_court_reste_ecarte(self, monkeypatch):
+        """LE TEMOIN, et c'est lui qui borne la decision.
+
+        Sans lui, « cesser de filtrer » aurait emporte le motif entier du filtre :
+        un fragment de mise en page isole — un filet de tableau, une puce —
+        entrerait dans l'index vectoriel. Le filtre garde son sens pour un chunk
+        autonome ; il le perd pour une fenetre du milieu.
+        """
+        ids, textes, metas = self._construire(monkeypatch, ["cd"])
+
+        assert ids == [], f"un fragment isole de 2 caracteres ne doit pas etre indexe : {textes}"
+
+    def test_un_chunk_seul_sans_caractere_alphanumerique_reste_ecarte(self, monkeypatch):
+        """Le second temoin : `has_content` garde son sens sur un chunk autonome."""
+        ids, textes, metas = self._construire(monkeypatch, ["|---|---|" * 10])
+
+        assert ids == [], f"un artefact de mise en page ne doit pas etre indexe : {textes}"
+
+    def test_un_chunk_sans_ancre_reste_ecarte_et_ne_troue_aucun_compte(self, monkeypatch):
+        """Un chunk qu'on ne sait pas rattacher est ecarte — inchange — et il ne
+        peut pas trouer un compte : `resolve_anchors` ne le compte jamais."""
+        from src.docling_service import vectors as module
+
+        morceaux = self._chunks(["a" * 200, "b" * 200], meme_ancre=False)
+        monkeypatch.setattr(
+            module, "get_chunker", lambda: type("C", (), {"chunk": lambda s, d: morceaux})()
+        )
+        ids, textes, metas = module.build_chunks(self.ELEMENTS, IDENTITE, None, document=object())
+
+        assert len(ids) == 1, f"seul le chunk dont l'ancre est connue est ecrit : {ids}"
+        assert metas[0]["chunk_count"] == 1
