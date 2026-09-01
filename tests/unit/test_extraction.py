@@ -158,8 +158,23 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
     """
 
     @staticmethod
-    def _monter(monkeypatch: pytest.MonkeyPatch, lots_qui_echouent: set[int]) -> dict[str, Any]:
-        """Bouchonne autour de ``_extract_pdf`` et retient ce qui est demande."""
+    def _monter(
+        monkeypatch: pytest.MonkeyPatch,
+        lots_qui_echouent: set[int],
+        pages_sans_element: set[int] | None = None,
+        pages_ecartees: set[int] | None = None,
+    ) -> dict[str, Any]:
+        """Bouchonne autour de ``_extract_pdf`` et retient ce qui est demande.
+
+        Args:
+            monkeypatch: Le patcheur de pytest.
+            lots_qui_echouent: Premieres pages des lots qui doivent lever.
+            pages_sans_element: Pages pour lesquelles le bouchon ne rend AUCUN
+                element, ni comme page d'entree ni comme page de fin. C'est la
+                seule facon de fabriquer une perte reelle, celle que le compteur
+                du registre 4.22 existe pour crier.
+            pages_ecartees: Pages que `_front_back_matter_pages` declare sautees.
+        """
         trace: dict[str, Any] = {"persistes": [], "oublies": [], "convertis": []}
 
         # `fitz` est pose par `monkeypatch.setitem`, donc REVOQUE a la fin du
@@ -169,7 +184,9 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
 
         monkeypatch.setattr(extraction, "get_converter", lambda ocr=False: object())
         monkeypatch.setattr(extraction, "_pdf_font_profile", lambda *a, **k: (15.0, {}))
-        monkeypatch.setattr(extraction, "_front_back_matter_pages", lambda *a, **k: set())
+        monkeypatch.setattr(
+            extraction, "_front_back_matter_pages", lambda *a, **k: set(pages_ecartees or set())
+        )
         monkeypatch.setattr(extraction, "_has_text_layer", lambda *a, **k: True)
         monkeypatch.setattr(extraction, "_detect_document_language", lambda *a, **k: "en")
 
@@ -190,6 +207,7 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
             # Un element par page du lot, avec ses deux pages : le bouchon doit
             # rendre la forme que la production rend, sans quoi le compteur de
             # pages perdues serait teste sur une forme inventee.
+            muettes = pages_sans_element or set()
             elements = [
                 {
                     "id": f"e{page:04d}",
@@ -198,6 +216,7 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
                     "page_no_end": page,
                 }
                 for page in range(start_page, end_page + 1)
+                if page not in muettes
             ]
             return elements, object(), (0, 0)
 
@@ -297,6 +316,171 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
         message = str(leve.value)
         assert "page 6 illisible" in message, message
         assert "N'A PAS PU" in message and "graphd injoignable" in message, message
+
+
+class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
+    """Registre 4.22, ET LE MOTIF EXACT QUE J'AVAIS DEJA FERME AILLEURS.
+
+    `pages_sans_element` est gardee en unitaire — `test_elements.py` couvre le
+    calcul, l'enjambement, les pages ecartees, la plage vide. **Son SITE D'APPEL
+    ne l'etait pas**, et c'est la que la perte se voit ou ne se voit pas : c'est
+    `_extract_pdf` qui accumule la couverture lot par lot, qui appelle le
+    compteur, qui crie, et qui rend `pages_without_element` dans son bilan — donc
+    dans les metadonnees Dagster.
+
+    C'est le motif que j'ai trouve et ferme pour la chaine d'images
+    (`TestLaCorrespondancePositionnelleEstGardeeParUnRefus`) et laisse ouvert sur
+    mon propre fil conducteur. *Mute le producteur, pas le consommateur* : le
+    producteur du chiffre est cette boucle, pas la fonction pure.
+
+    Le harnais existant pilote `_extract_pdf` avec des bouchons ; il gagne ici de
+    quoi fabriquer un TROU — des pages pour lesquelles la conversion ne rend
+    aucun element. Sans trou, le compteur est vrai a zero des deux cotes du
+    defaut.
+    """
+
+    IDENTITE = TestUnLotPdfEnEchecRetireLeDocumentPartiel.IDENTITE
+
+    def _bilan(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        pages_sans_element: set[int] | None = None,
+        pages_ecartees: set[int] | None = None,
+    ) -> dict[str, Any]:
+        TestUnLotPdfEnEchecRetireLeDocumentPartiel._monter(
+            monkeypatch,
+            lots_qui_echouent=set(),
+            pages_sans_element=pages_sans_element,
+            pages_ecartees=pages_ecartees,
+        )
+        pdf = tmp_path / "livre.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        return extraction._extract_pdf(pdf, self.IDENTITE, "empreinte", lambda **k: None)
+
+    def test_les_pages_sans_aucun_element_sont_comptees_dans_le_bilan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE GARDE. Le bilan est ce que Dagster publie : c'est le chiffre qui sort.
+
+        Trois pages muettes sur les dix du PDF bouchonne. Le compte annonce doit
+        etre 3, et pas 0 — un run vert sur un corpus troue est exactement ce que
+        ce lot ferme.
+        """
+        bilan = self._bilan(tmp_path, monkeypatch, pages_sans_element={2, 5, 9})
+
+        assert bilan["pages_without_element"] == 3, (
+            f"trois pages n'ont aucun element et le bilan en annonce "
+            f"{bilan['pages_without_element']} : la perte ne sort pas du job"
+        )
+
+    def test_la_couverture_est_accumulee_sur_tout_le_document_et_pas_par_lot(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """La seconde moitie du garde, et elle porte sur `pages_couvertes.extend`.
+
+        Les elements ne survivent pas a leur lot — ils sont persistes puis jetes —
+        donc la couverture doit etre retenue lot par lot. Sans l'`extend`, le
+        compteur ne voit RIEN de couvert et annonce toutes les pages perdues :
+        un compteur qui crie sur un document sain, qu'on cesse d'ecouter.
+
+        Le PDF bouchonne fait 10 pages et les lots en font moins : le document
+        traverse donc plusieurs lots, et c'est ce que ce test exige d'abord.
+        """
+        bilan = self._bilan(tmp_path, monkeypatch, pages_sans_element={4})
+
+        assert bilan["pages"] == PAGES_DU_PDF_BOUCHONNE
+        assert bilan["pages_without_element"] == 1, (
+            f"une seule page est muette, le bilan en annonce "
+            f"{bilan['pages_without_element']} : la couverture des lots "
+            f"precedents est perdue a chaque lot"
+        )
+
+    def test_un_document_entierement_couvert_n_annonce_aucune_perte(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE TEMOIN, et sans lui un compteur toujours bavard passerait les deux.
+
+        C'est aussi le cas du corpus reel : les six pages du PDF qui paraissaient
+        vides (8, 18, 19, 25, 68, 69) sont ENJAMBEES, donc couvertes, donc ce
+        compteur doit se taire dessus. Il ne parle que d'une perte reelle.
+        """
+        bilan = self._bilan(tmp_path, monkeypatch)
+
+        assert bilan["pages_without_element"] == 0, (
+            "aucune page n'est muette : le compteur ne doit rien annoncer"
+        )
+
+    def test_une_page_enjambee_n_est_pas_une_page_perdue_au_site_d_appel(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Le second temoin, sur le mecanisme meme du registre 4.22.
+
+        Une page qu'aucun element ne prend pour page d'ENTREE mais qu'un element
+        voisin couvre par sa page de FIN n'est pas perdue. C'est le cas des six
+        pages du corpus, et c'est ce que `page_no_end` a rendu distinguable. Le
+        garde unitaire le dit sur la fonction ; celui-ci le dit sur la boucle qui
+        accumule, ou l'enjambement doit traverser la frontiere des lots.
+        """
+        TestUnLotPdfEnEchecRetireLeDocumentPartiel._monter(monkeypatch, lots_qui_echouent=set())
+
+        def enjambe(
+            converter: Any,
+            pdf_path: Any,
+            stem: str,
+            document: Any,
+            accumulator: Any,
+            start_page: int,
+            end_page: int,
+            body_size: Any,
+            size_ranks: Any,
+        ) -> Any:
+            # Chaque element couvre sa page ET la suivante, et AUCUN element ne
+            # prend les pages paires pour page d'entree.
+            elements = [
+                {
+                    "id": f"e{page:04d}",
+                    "label": "text",
+                    "page_no": page,
+                    "page_no_end": page + 1,
+                }
+                for page in range(start_page, end_page + 1)
+                if page % 2 == 1
+            ]
+            return elements, object(), (0, 0)
+
+        monkeypatch.setattr(extraction, "_convert_batch", enjambe)
+        pdf = tmp_path / "livre.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+
+        bilan = extraction._extract_pdf(pdf, self.IDENTITE, "empreinte", lambda **k: None)
+
+        assert bilan["pages_without_element"] == 0, (
+            "les pages paires sont couvertes par le `page_no_end` de leur "
+            "voisine : les compter perdues rendrait le compteur bavard sur "
+            "chaque PDF"
+        )
+        assert bilan["pages_spanned"] > 0, (
+            "le cas voulu n'est pas atteint : aucun element n'enjambe"
+        )
+
+    def test_une_page_ecartee_volontairement_n_est_pas_comptee_perdue(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Le troisieme temoin : le front/back matter est saute VOLONTAIREMENT.
+
+        Le compter comme une perte rendrait le compteur bavard sur chaque PDF —
+        et un compteur qu'on n'ecoute plus ne compte rien. Ce test verrouille que
+        les pages ecartees traversent bien jusqu'au compteur depuis le site
+        d'appel, `skipped` etant calcule la et nulle part ailleurs.
+        """
+        bilan = self._bilan(tmp_path, monkeypatch, pages_sans_element={2, 3}, pages_ecartees={2, 3})
+
+        assert bilan["pages_skipped"] == 2
+        assert bilan["pages_without_element"] == 0, (
+            "les pages ecartees sont sautees volontairement : les compter "
+            "perdues rend le compteur bavard"
+        )
 
 
 class TestLesUrlDImagesHtmlAtteignentLeGraphe:
