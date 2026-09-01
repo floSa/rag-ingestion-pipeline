@@ -18,6 +18,13 @@ du HTML PERIME, pointant des objets que la purge venait de supprimer. `mesure` :
 13 objets dans le bucket, 199 URL referencees dans `Datas/.cleaned/`. Voir
 :func:`purge_cleaned`.
 
+**Ce module SUPPRIME des repertoires, et sa cible vient de la configuration.**
+`CLEANED_SUBDIR` est un reglage annonce dans `.env.example`, et quatre de ses
+valeurs faisaient viser `Datas/` ou son parent — le corpus versionne et les bind
+mounts des stores. `purge_cleaned` REFUSE desormais toute cible qui n'est pas
+strictement contenue dans `source_dir`, et le refus sort en 1. Le detail, les
+quatre valeurs et le motif du refus dur sont a son docstring.
+
 **Les trois stores, pas deux.** Le bucket MinIO etait laisse intact : les crops
 d'images des ingestions precedentes y survivaient a toute purge. Ce n'est pas
 une fuite — l'agent ne sert que les objets references par le graphe
@@ -107,8 +114,16 @@ def purge_space(session: Any, space: str) -> str:
     return f"DROP SPACE : {result.error_msg()}"
 
 
-def purge_cleaned(repertoire: Path) -> int:
-    """Supprime le HTML nettoye, et c'est LE PIEGE DE CE LOT.
+class CibleHorsRacineError(RuntimeError):
+    """La cible de la purge n'est pas strictement contenue dans la racine.
+
+    Levee AVANT tout `rmtree`. Voir :func:`purge_cleaned` pour ce que ce refus
+    protege et pourquoi il est dur.
+    """
+
+
+def purge_cleaned(repertoire: Path, racine: Path) -> int:
+    """Supprime le HTML nettoye, et REFUSE toute cible hors de la racine.
 
     `Datas/.cleaned/` n'etait PAS purge, et cela ne se voit pas. Le HTML nettoye
     porte les URL MinIO des images — `cleaning.py` reecrit les `img src` — et
@@ -122,22 +137,71 @@ def purge_cleaned(repertoire: Path) -> int:
     **Reextraire ne suffit pas** : seule une execution de `cleaned_html` les
     restaure, en re-televersant les images depuis les captures (registre 4.28.b).
 
-    La cible est le SOUS-REPERTOIRE nettoye, jamais `Datas/`. `Datas/` porte le
-    corpus versionne — 25 fichiers, 57 Mo — et le contenu entre dans le calcul
-    d'`element_id` (contrat, exigences 2 et 3). Aucun garde-fou git ne s'y
-    opposerait : `rmtree` ne lit pas `.gitignore`.
+    **CE DOCSTRING AFFIRMAIT « La cible est le SOUS-REPERTOIRE nettoye, JAMAIS
+    `Datas/` ». C'ETAIT UNE PHRASE D'EXHAUSTIVITE, ET ELLE ETAIT FAUSSE SOUS
+    CONFIGURATION.** `main()` calcule
+    `Path(reglages.source_dir) / reglages.cleaned_subdir`, et `CLEANED_SUBDIR`
+    est un reglage annonce a l'operateur (`.env.example:54`). Quatre de ses
+    valeurs faisaient viser la racine ou au-dessus (`mesure`) :
+
+    ==================== =========================================
+    ``CLEANED_SUBDIR``   Ce que `main()` passait a ce `rmtree`
+    ==================== =========================================
+    ``""``               ``/x/Datas`` — ``Path(base) / ""`` vaut ``base``
+    ``"."``              ``/x/Datas``, apres resolution
+    ``".."``             ``/x`` — le PARENT de la racine
+    ``"/quelque/part"``  ``/quelque/part`` — un absolu REMPLACE la base
+    ==================== =========================================
+
+    Sur ce poste, `Datas/` porte le corpus VERSIONNE — 25 fichiers,
+    57 381 999 octets, dont le contenu entre dans le calcul d'`element_id`
+    (contrat, exigences 2 et 3) — **et** `Datas/database/`, les bind mounts de
+    ChromaDB, Nebula, MinIO et Postgres, c'est-a-dire l'antecedent mesure du
+    chantier. `rmtree` ne lit pas `.gitignore` : aucun garde-fou git ne s'y
+    opposerait.
+
+    **LE REFUS EST DUR, ET LA PORTEE DE CETTE FONCTION EST DESORMAIS BORNEE AU
+    LIEU D'ETRE PROMISE.** Ni avertissement, ni repli sur le defaut : une cible
+    qui n'est pas STRICTEMENT contenue dans `racine` apres resolution leve, et
+    `main()` la verse a ses `echecs` — code de sortie 1. *Une purge qui ne sait
+    pas ce qu'elle vise ne purge pas.* Un repli silencieux sur `.cleaned` serait
+    pire : l'operateur croirait avoir configure une cible que le code aurait
+    remplacee sans le dire, ce qui est la famille de defaut que ce lot ferme.
+
+    La comparaison porte sur le chemin RESOLU des deux cotes : un `.cleaned` qui
+    serait un lien symbolique vers l'exterieur passerait toute comparaison
+    textuelle, et `rmtree` suivrait le lien.
 
     Args:
-        repertoire: Repertoire du HTML nettoye.
+        repertoire: Repertoire du HTML nettoye, tel que le reglage le designe.
+        racine: Racine des donnees (``source_dir``). La cible doit y etre
+            strictement contenue.
 
     Returns:
         Le nombre de fichiers retires. Une purge muette ne dit pas si elle a
         retire un fichier ou vingt-deux.
+
+    Raises:
+        CibleHorsRacineError: Si la cible n'est pas strictement contenue dans
+            ``racine``.
     """
-    if not repertoire.exists():
+    cible = repertoire.resolve()
+    base = racine.resolve()
+    # `parents` EXCLUT le chemin lui-meme : c'est ce qui rend le containment
+    # STRICT, donc ce qui refuse `CLEANED_SUBDIR=""` et `"."`, dont la cible est
+    # la racine elle-meme.
+    if base not in cible.parents:
+        raise CibleHorsRacineError(
+            f"cible {cible} hors de {base} : refus de purger. La cible vient de "
+            f"CLEANED_SUBDIR, et une valeur vide, « . », « .. » ou absolue fait "
+            f"viser la racine ou au-dessus — donc le corpus versionne et les "
+            f"stores de Datas/database/. Reglage attendu : un sous-repertoire "
+            f"relatif, « .cleaned » par defaut"
+        )
+    if not cible.exists():
         return 0
-    fichiers = sum(1 for chemin in repertoire.rglob("*") if chemin.is_file())
-    shutil.rmtree(repertoire)
+    fichiers = sum(1 for chemin in cible.rglob("*") if chemin.is_file())
+    shutil.rmtree(cible)
     return fichiers
 
 
@@ -209,13 +273,22 @@ def main() -> None:
         from src.pipeline.settings import get_settings as get_pipeline_settings
 
         reglages = get_pipeline_settings()
+        # LA RACINE EST PASSEE, ET C'EST CE QUI REND LE REFUS POSSIBLE. La cible
+        # se compose de deux reglages, dont `CLEANED_SUBDIR`, annonce a
+        # l'operateur : quatre de ses valeurs faisaient viser `Datas/` ou son
+        # parent, donc le corpus versionne et les stores. `purge_cleaned` decide,
+        # pas cet appelant — un controle pose ici laisserait la fonction publique
+        # sans garde pour tout autre appelant.
         nettoye = Path(reglages.source_dir) / reglages.cleaned_subdir
-        retires = purge_cleaned(nettoye)
+        retires = purge_cleaned(nettoye, Path(reglages.source_dir))
         print(f"{retires} fichiers retires de {nettoye}")
     except Exception as exc:
         # LARGEUR VOULUE, meme motif que les trois stores : le bilan doit se
         # former. `rmtree` leve `OSError` mais aussi les erreurs de permission
         # d'un repertoire ecrit par Docker en `root`, cas connu de ce depot.
+        # `CibleHorsRacineError` passe volontairement par ici : un refus de
+        # containment EST une purge incomplete, et il doit sortir en 1 comme les
+        # trois autres. Il est nomme dans la sortie avec sa cause.
         print(f"HTML nettoye : {exc}")
         echecs.append("HTML nettoye")
 
