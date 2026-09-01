@@ -7,6 +7,8 @@ import logging
 
 from src.pipeline.cleaning import (
     PRECLEANED_FALLBACK,
+    ExtractionCandidate,
+    ReadabilityStrategy,
     SemanticContainerStrategy,
     TrafilaturaStrategy,
     clean_html,
@@ -494,3 +496,122 @@ class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
             if "a leve" in enregistrement.getMessage()
         ]
         assert levees == [], levees
+
+
+# Le pire ratio texte-conserve/texte-pre-nettoye des 22 chapitres retenus du
+# corpus, `mesure` le 1er septembre 2026 par le nettoyage reel en memoire :
+# minimal 0.988, median 0.997, maximal 0.998, 0 chapitre sous 0.95.
+PIRE_RATIO_MESURE_DU_CORPUS = 0.988
+
+
+class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
+    """Registre 4.6 : `min_text_ratio = 0.05` acceptait de jeter 95 % du texte.
+
+    Aucun seuil d'alerte, aucun journal, et `factory` ne publiait ni
+    `precleaned_text_chars` ni le ratio dans les metadonnees Dagster : la perte
+    etait structurellement invisible. Un run vert, un chapitre ampute, rien.
+
+    **Le seuil d'acceptation n'est pas touche, et c'est deliberé.** Le refuser
+    plus tot ferait retomber le document sur son HTML pre-nettoye, qui garde
+    PLUS de texte — avec son boilerplate. `0.05` est un plancher
+    d'acceptation ; ce qui manquait etait un seuil d'ALERTE au-dessus de lui.
+
+    Le defaut de ce seuil vient de la mesure, `mesure` le 1er septembre 2026 sur
+    les 22 chapitres retenus du corpus : ratio minimal **0.988**, median 0.997,
+    maximal 0.998, et **0 chapitre sous 0.95**. Les 22 passent par la strategie
+    `article`. Un seuil d'alerte a 0.90 est donc muet sur ce corpus et parle des
+    qu'un document perd plus d'un dixieme de son texte.
+    """
+
+    CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
+    HTML = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<article><h1>Un chapitre</h1><p>" + CONTENU + "</p></article>"
+        "</body></html>"
+    )
+
+    def test_le_bilan_porte_le_texte_de_reference_et_le_ratio(self):
+        _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.precleaned_text_chars > 0
+        assert 0.9 < bilan.text_ratio <= 1.0, bilan
+
+    def test_le_ratio_est_le_rapport_des_deux_comptes(self):
+        """LE TEMOIN du precedent : un ratio code en dur a 1.0 passerait sans lui."""
+        _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.text_ratio == bilan.text_chars / bilan.precleaned_text_chars
+
+    def test_un_texte_de_reference_vide_ne_divise_pas_par_zero(self):
+        """Le cas que le calcul naturel fait planter : un HTML sans texte."""
+        _, bilan = clean_html("<html><body><div></div></body></html>", CleaningOptions())
+
+        assert bilan.precleaned_text_chars == 0
+        assert bilan.text_ratio == 1.0, (
+            "sans texte a conserver, il n'y a pas de perte : 1.0 et non 0.0, "
+            "sans quoi tout document vide leverait une alerte de perte"
+        )
+
+    def test_une_perte_massive_est_journalisee_avec_ses_deux_comptes(self, monkeypatch, caplog):
+        """Une strategie qui ne rend qu'un dixieme du texte doit crier.
+
+        Le cas est FABRIQUE — le corpus reel ne descend jamais sous 0.988 — et
+        c'est precisement pourquoi il faut le fabriquer : un test sur le corpus
+        serait vert des deux cotes du defaut.
+        """
+
+        def rend_un_cinquieme(self, html):
+            # Au-dessus de `min_text_chars` (250) pour etre ACCEPTE, et bien en
+            # dessous du seuil d'alerte : c'est le cas exact que 4.6 decrit, un
+            # candidat retenu qui a jete l'essentiel du texte.
+            return ExtractionCandidate(
+                strategy="article", html="<p>" + "mot bref ici. " * 26 + "</p>"
+            )
+
+        monkeypatch.setattr(SemanticContainerStrategy, "extract", rend_un_cinquieme)
+        monkeypatch.setattr(TrafilaturaStrategy, "extract", lambda self, html: None)
+        monkeypatch.setattr(ReadabilityStrategy, "extract", lambda self, html: None)
+
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.text_ratio < 0.9, f"le cas voulu n'est pas atteint : {bilan}"
+        messages = [enregistrement.getMessage() for enregistrement in caplog.records]
+        perte = [message for message in messages if "%" in message and "texte" in message]
+        assert perte, messages
+        assert str(bilan.precleaned_text_chars) in perte[0], perte[0]
+        assert str(bilan.text_chars) in perte[0], perte[0]
+
+    def test_le_chemin_nominal_ne_journalise_aucune_perte(self, caplog):
+        """LE TEMOIN : une alerte a chaque document rendrait la vraie invisible.
+
+        C'est le meme defaut que le seuil absent, par l'autre bout : un seuil
+        pose trop haut crie sur les 22 chapitres du corpus, et plus personne ne
+        lit la ligne.
+        """
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.text_ratio >= CleaningOptions().warn_text_ratio
+        pertes = [
+            enregistrement.getMessage()
+            for enregistrement in caplog.records
+            if "du texte" in enregistrement.getMessage()
+        ]
+        assert pertes == [], pertes
+
+    def test_le_seuil_d_alerte_est_muet_sur_le_corpus_mesure(self):
+        """Le seuil vient d'une mesure, et cette mesure est ecrite ici.
+
+        `mesure` le 1er septembre 2026 : le pire ratio des 22 chapitres retenus
+        vaut 0.988. Un seuil au-dessus rendrait le journal bavard sur un corpus
+        sain, et c'est ce que ce test interdit.
+        """
+        assert CleaningOptions().warn_text_ratio < PIRE_RATIO_MESURE_DU_CORPUS, (
+            "le seuil d'alerte depasse le pire ratio reel du corpus : les 22 "
+            "chapitres leveraient une alerte, et la vraie perte serait noyee"
+        )
+        assert CleaningOptions().warn_text_ratio > CleaningOptions().min_text_ratio, (
+            "un seuil d'alerte sous le plancher d'acceptation ne peut jamais "
+            "se declencher : tout candidat accepte le satisfait deja"
+        )

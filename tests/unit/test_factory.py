@@ -264,3 +264,114 @@ class TestLesSensorsDIngestionSontLivresArmes:
             return SkipReason("temoin")
 
         assert temoin.default_status is not DefaultSensorStatus.RUNNING
+
+
+# --- Contexte Dagster bouchonne -----------------------------------------------
+# Les assets sont atteints par `build_source(...).assets[n].op.compute_fn.
+# decorated_fn`, c'est-a-dire le corps REELLEMENT livre, a travers l'objet que
+# `definitions.py` expedie. C'est la meme discipline que
+# `TestLesSensorsDIngestionSontLivresArmes`, qui asserte sur `build_source(...)
+# .sensor` et jamais sur la presence d'un mot dans la source. Un contexte
+# `build_asset_context` ne convient pas : `add_output_metadata` y leve
+# `DagsterInvalidPropertyError` en invocation directe (`mesure`).
+
+
+class JournalEspion:
+    def __init__(self) -> None:
+        self.avertissements: list[str] = []
+        self.infos: list[str] = []
+
+    def warning(self, message: str) -> None:
+        self.avertissements.append(str(message))
+
+    def info(self, message: str) -> None:
+        self.infos.append(str(message))
+
+
+class ContexteEspion:
+    """Contexte d'asset bouchonne qui retient les metadonnees publiees."""
+
+    def __init__(self, partition_key: str) -> None:
+        self.partition_key = partition_key
+        self.log = JournalEspion()
+        self.metadonnees: dict[str, object] = {}
+
+    def add_output_metadata(self, metadata: dict[str, object]) -> None:
+        self.metadonnees.update(metadata)
+
+
+def _asset_par_nom(source, nom: str):
+    """Le corps livre de l'asset nomme, pris sur l'objet que la fabrique rend."""
+    definitions = build_source(source)
+    for asset_def in definitions.assets:
+        if asset_def.key.path[-1] == nom:
+            return asset_def.op.compute_fn.decorated_fn
+    raise AssertionError(f"asset {nom!r} absent de {source.name}")
+
+
+class TestLeNettoyagePublieCeQuIlAJete:
+    """Registre 4.6 : ni `precleaned_text_chars` ni le ratio n'etaient publies.
+
+    `min_text_ratio = 0.05` accepte un candidat qui ne conserve que 5 % du texte.
+    Les metadonnees Dagster portaient `text_chars` sans aucun denominateur : dans
+    l'interface, un chapitre ampute a 5 % et un chapitre nettoye a 99,8 %
+    affichaient tous deux un nombre, et rien ne les distinguait.
+    """
+
+    CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
+    HTML = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<nav>menu</nav><article><h1>Un chapitre</h1><p>" + CONTENU + "</p></article>"
+        "</body></html>"
+    )
+
+    def _executer(self, tmp_path, monkeypatch, html: str = ""):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        source = [s for s in load_sources() if s.type == "html"][0]
+        source = source.model_copy(update={"cleaning": source.cleaning.model_copy()})
+        source.cleaning.export_images = False
+
+        cle = "livre/chapitre.html"
+        chemin = tmp_path / cle
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        chemin.write_text(html or self.HTML, encoding="utf-8")
+
+        contexte = ContexteEspion(cle)
+        _asset_par_nom(source, "cleaned_html")(contexte)
+        return contexte
+
+    def test_les_metadonnees_portent_le_denominateur_et_le_ratio(self, tmp_path, monkeypatch):
+        try:
+            contexte = self._executer(tmp_path, monkeypatch)
+        finally:
+            get_settings.cache_clear()
+
+        assert "precleaned_text_chars" in contexte.metadonnees, contexte.metadonnees
+        assert "text_ratio" in contexte.metadonnees, contexte.metadonnees
+        assert contexte.metadonnees["precleaned_text_chars"] > 0
+        assert 0.0 < contexte.metadonnees["text_ratio"] <= 1.0
+
+    def test_les_metadonnees_historiques_sont_conservees(self, tmp_path, monkeypatch):
+        """LE TEMOIN : ajouter deux cles ne doit pas en retirer cinq."""
+        try:
+            contexte = self._executer(tmp_path, monkeypatch)
+        finally:
+            get_settings.cache_clear()
+
+        for cle in ("strategy", "raw_bytes", "cleaned_bytes", "text_chars", "images_exported"):
+            assert cle in contexte.metadonnees, f"{cle} a disparu des metadonnees"
+
+    def test_le_ratio_publie_est_celui_du_bilan(self, tmp_path, monkeypatch):
+        """Le ratio publie n'est pas recalcule a cote : c'est celui du bilan.
+
+        Sans cette assertion, deux calculs du meme rapport pourraient diverger —
+        et une metadonnee de perte qui se trompe est pire qu'absente.
+        """
+        try:
+            contexte = self._executer(tmp_path, monkeypatch)
+        finally:
+            get_settings.cache_clear()
+
+        attendu = contexte.metadonnees["text_chars"] / contexte.metadonnees["precleaned_text_chars"]
+        assert contexte.metadonnees["text_ratio"] == attendu

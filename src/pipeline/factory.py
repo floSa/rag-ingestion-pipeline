@@ -246,6 +246,17 @@ def _build_html_assets(
                 "raw_bytes": report.raw_bytes,
                 "cleaned_bytes": report.cleaned_bytes,
                 "text_chars": report.text_chars,
+                # LE DENOMINATEUR DE LA PERTE, et il manquait. `text_chars` sans
+                # rien a quoi le comparer ne dit pas si le nettoyage a retire du
+                # boilerplate ou ampute un chapitre : `min_text_ratio` accepte un
+                # candidat conservant 5 % du texte, et dans l'interface Dagster
+                # un chapitre ampute a 5 % et un chapitre propre a 99,8 %
+                # affichaient tous deux un nombre, sans rien qui les distingue
+                # (registre 4.6). Le ratio est LU sur le bilan et non recalcule
+                # ici : deux calculs du meme rapport peuvent diverger, et une
+                # metadonnee de perte qui se trompe est pire qu'absente.
+                "precleaned_text_chars": report.precleaned_text_chars,
+                "text_ratio": report.text_ratio,
                 "images_exported": exporter.exported if exporter else 0,
             }
         )

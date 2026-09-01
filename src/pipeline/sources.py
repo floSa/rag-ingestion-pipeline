@@ -62,7 +62,21 @@ class CleaningOptions(BaseModel):
     )
     min_text_ratio: float = Field(
         default=0.05,
-        description="Ratio minimal texte extrait / texte pre-nettoye.",
+        description="Ratio minimal texte extrait / texte pre-nettoye pour ACCEPTER "
+        "un candidat. C'est un plancher d'acceptation, pas un seuil de qualite : "
+        "refuser plus tot fait retomber le document sur son HTML pre-nettoye, qui "
+        "garde PLUS de texte, avec son boilerplate. Voir warn_text_ratio.",
+    )
+    warn_text_ratio: float = Field(
+        default=0.90,
+        description="Ratio sous lequel le nettoyage AVERTIT qu'il a jete du texte. "
+        "min_text_ratio acceptait 0.05, soit 95 % de perte, sans journal ni "
+        "metadonnee : la perte etait structurellement invisible (registre 4.6). "
+        "Le defaut vient de la mesure du 1er septembre 2026 sur les 22 chapitres "
+        "retenus du corpus — ratio minimal 0.988, median 0.997, 0 chapitre sous "
+        "0.95 — donc 0.90 est muet sur un corpus sain et parle des qu'un document "
+        "perd plus d'un dixieme de son texte. Un seuil plus haut crierait sur les "
+        "22 chapitres, et plus personne ne lirait la ligne.",
     )
     max_data_uri_bytes: int = Field(
         default=4096,
