@@ -371,3 +371,119 @@ class TestChunkCountNeMentPlus:
 
         assert len(ids) == 1, f"seul le chunk dont l'ancre est connue est ecrit : {ids}"
         assert metas[0]["chunk_count"] == 1
+
+
+class TestPageNoEndAtteintLaMetadonneeDeChunk:
+    """LA MOITIE VECTORIELLE DU REGISTRE 4.22, ET ELLE N'ETAIT PROUVEE PAR RIEN.
+
+    `page_no_end` est ecrit dans les deux stores. La moitie GRAPHE est gardee —
+    `test_ngql.py::test_page_no_end_falls_back_on_page_no_and_not_on_zero`. La
+    moitie VECTORIELLE ne l'etait pas : aucun test n'assertait `page_no_end` sur
+    la metadonnee de chunk.
+
+    **Et son echec est silencieux, y compris pour l'instrument.**
+    `verify_contract` ne peut pas le voir : il controle la PRESENCE de la cle, et
+    son compteur ne compte que les `None`. Un `0` partout passerait donc pour une
+    valeur — alors que `ngql.py` ecrit a son propre site qu'un 0 y dirait « page
+    inconnue ». Un agent lirait « cet element finit page 0 » sans qu'aucune
+    erreur ne distingue cela de « on ne sait pas ».
+
+    Le repli est `page_no` et JAMAIS 0, pour la meme raison qu'au site du graphe :
+    un element qui tient sur une page finit sur sa page d'entree, et 0 n'est pas
+    un numero de page.
+    """
+
+    ELEMENT_QUI_ENJAMBE = {
+        "id": "aa3de10738",
+        "self_ref": "#/texts/0",
+        "label": "text",
+        "page_no": 7,
+        "page_no_end": 8,
+        "text": "un paragraphe qui enjambe",
+        "minio_url": "",
+        "depth": 1,
+        "order": 0,
+        "reference_id": "DOC",
+    }
+
+    @staticmethod
+    def _metadonnees(monkeypatch: Any, elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Les metadonnees que `build_chunks` ecrirait dans ChromaDB."""
+        from src.docling_service import vectors as module
+
+        class Morceau:
+            def __init__(self, texte: str) -> None:
+                self.text = texte
+                self.meta = type(
+                    "M", (), {"doc_items": [type("I", (), {"self_ref": "#/texts/0"})()]}
+                )()
+
+        monkeypatch.setattr(
+            module,
+            "get_chunker",
+            lambda: type("C", (), {"chunk": lambda s, d: [Morceau("a" * 200)]})(),
+        )
+        _, _, metas = module.build_chunks(elements, IDENTITE, None, document=object())
+        return metas
+
+    def test_la_page_de_fin_d_un_element_qui_enjambe_atteint_chromadb(self, monkeypatch):
+        """LE GARDE. C'est la valeur que l'agent lira pour cadrer une citation.
+
+        Une citation « page 7 » sur cet element couvre en realite 7 ET 8 : sans
+        `page_no_end`, l'agent ne peut pas le dire, et c'est le defaut que le
+        registre 4.22 nomme.
+        """
+        metas = self._metadonnees(monkeypatch, [self.ELEMENT_QUI_ENJAMBE])
+
+        assert metas, "aucun chunk produit : le cas voulu n'est pas atteint"
+        assert metas[0]["page_no_end"] == 8, (
+            f"page_no_end vaut {metas[0]['page_no_end']} au lieu de 8 : la page "
+            "de fin n'atteint pas l'index vectoriel, et rien ne le dirait — "
+            "`verify_contract` ne compte que les None, donc un 0 passe pour une "
+            "valeur"
+        )
+        assert metas[0]["page_no"] == 7, metas[0]
+
+    def test_un_element_sans_page_de_fin_retombe_sur_sa_page_d_entree(self, monkeypatch):
+        """LE TEMOIN, et il porte le meme argument que le site du graphe.
+
+        Le repli est `page_no`, JAMAIS 0 : un element qui tient sur une page finit
+        sur sa page d'entree. Un 0 dirait « page inconnue » — c'est ecrit au site
+        de `ngql.py` — et rendrait indistinguables « tient sur une page » et « on
+        ne sait pas ou il finit ». Sans ce temoin, un `page_no_end=0` inconditionnel
+        resterait vert des que l'element ne porte pas la cle.
+        """
+        sans_fin = {k: v for k, v in self.ELEMENT_QUI_ENJAMBE.items() if k != "page_no_end"}
+        metas = self._metadonnees(monkeypatch, [sans_fin])
+
+        assert metas[0]["page_no_end"] == 7, (
+            f"le repli vaut {metas[0]['page_no_end']} au lieu de la page d'entree : "
+            "0 dirait « page inconnue » et non « tient sur une page »"
+        )
+
+    def test_une_page_de_fin_a_zero_retombe_aussi_sur_la_page_d_entree(self, monkeypatch):
+        """Le second temoin : `0` est traite comme une ABSENCE, pas comme une page.
+
+        C'est la forme que porte un element ecrit avant que la colonne n'existe.
+        Le laisser passer a 0 ferait ecrire dans ChromaDB la valeur que le graphe
+        refuse d'y ecrire, et les deux stores divergeraient en silence.
+        """
+        metas = self._metadonnees(monkeypatch, [{**self.ELEMENT_QUI_ENJAMBE, "page_no_end": 0}])
+
+        assert metas[0]["page_no_end"] == 7, metas[0]
+
+    def test_la_page_de_fin_ne_recopie_pas_la_page_d_entree_sur_un_element_qui_enjambe(
+        self, monkeypatch
+    ):
+        """Le troisieme temoin, et il ferme la correction la plus tentante.
+
+        Un `page_no_end=int(element.get("page_no") or 0)` — la faute d'un
+        caractere — passerait les deux temoins ci-dessus, le repli etant
+        precisement `page_no`. Seul un element qui ENJAMBE les distingue, et c'est
+        pourquoi le premier test de cette classe en utilise un.
+        """
+        metas = self._metadonnees(monkeypatch, [self.ELEMENT_QUI_ENJAMBE])
+
+        assert metas[0]["page_no_end"] != metas[0]["page_no"], (
+            "la page de fin recopie la page d'entree : l'enjambement est perdu"
+        )
