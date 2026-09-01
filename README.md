@@ -514,7 +514,14 @@ L'état, `mesuré` sur cette révision :
 uv run ruff format --check src/ tests/
 ```
 
-→ « 67 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+→ « 73 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+
+*(Ce nombre valait **67**, et il était faux sur la révision qui le portait —
+mot pour mot le défaut que le pilote venait de corriger en `39ce91a`, « le README
+annonçait 66 fichiers formatés », refait par le lot suivant. Un `mesuré` n'est pas
+une étiquette de véracité, c'est une étiquette de **provenance**, et une
+provenance comprend l'arbre. Une phrase qui dit « SUR CETTE RÉVISION » se
+remesure à chaque révision qui la traverse, ou elle se supprime.)*
 
 **Ce que le prochain développeur doit en faire : un rc non nul est un défaut,
 sans exception à connaître.** C'est tout l'intérêt du geste. Le détail de ce
