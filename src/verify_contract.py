@@ -435,7 +435,7 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
         print("NebulaGraph injoignable.")
         return ["NebulaGraph injoignable : aucune propriete de graphe verifiee"]
 
-    session = pool.get_session("root", "nebula")
+    session = pool.get_session(settings.nebula_user, settings.nebula_password)
     try:
         session.execute(f"USE {SPACE};")
 

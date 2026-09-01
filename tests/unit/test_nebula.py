@@ -183,6 +183,52 @@ class TestLeSommetDocumentPorteLaCleEtNonLeNomDeFichier:
         assert document_vid(PREFACE_MLOPS.key) in aretes[0]
 
 
+class TestLesIdentifiantsDuGrapheViennentDesReglages:
+    """Registre 4.3 : ``get_session("root", "nebula")`` etait ecrit en dur.
+
+    ``NEBULA_USER`` et ``NEBULA_PASSWORD`` existent dans ``.env.example`` et
+    n'etaient exposes par AUCUN settings : le ``.env`` mentait sur ce qui est
+    reellement lu. Changer le mot de passe du graphd rendait le service
+    inutilisable sans qu'aucun reglage ne l'explique.
+    """
+
+    def test_la_session_recoit_les_identifiants_des_reglages(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from src.docling_service.settings import get_settings
+
+        monkeypatch.setenv("NEBULA_USER", "utilisateur_du_env")
+        monkeypatch.setenv("NEBULA_PASSWORD", "phrase_du_env")  # pragma: allowlist secret
+        get_settings.cache_clear()
+        try:
+            writer, pool = writer_espionne(monkeypatch)
+            writer.write_elements(ELEMENTS, PREFACE_MLOPS, FACTS)
+            assert pool.identifiants == [("utilisateur_du_env", "phrase_du_env")]
+        finally:
+            get_settings.cache_clear()
+
+    def test_les_valeurs_par_defaut_restent_celles_de_la_pile(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE TEMOIN. Sans variable, les defauts historiques valent toujours.
+
+        Sans lui, exposer les reglages avec de mauvais defauts casserait tout
+        poste dont le ``.env`` ne les declare pas — et le test ci-dessus
+        resterait vert, puisqu'il fournit les deux variables.
+        """
+        from src.docling_service.settings import get_settings
+
+        monkeypatch.delenv("NEBULA_USER", raising=False)
+        monkeypatch.delenv("NEBULA_PASSWORD", raising=False)
+        get_settings.cache_clear()
+        try:
+            writer, pool = writer_espionne(monkeypatch)
+            writer.write_elements(ELEMENTS, PREFACE_MLOPS, FACTS)
+            assert pool.identifiants == [("root", "nebula")]
+        finally:
+            get_settings.cache_clear()
+
+
 class TestLaPurgeDUnDocumentViseSaCle:
     """``delete_document`` derive lui aussi son identifiant de la cle."""
 

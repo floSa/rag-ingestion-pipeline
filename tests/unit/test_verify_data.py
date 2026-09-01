@@ -111,6 +111,9 @@ class ConnectionPool:
         return not doit_echouer("nebula")
 
     def get_session(self, utilisateur, mot_de_passe):
+        # Les identifiants sont IMPRIMES : c'est ce qui permet d'asserter qu'ils
+        # viennent des reglages et ne sont plus ecrits en dur (registre 4.3).
+        print(f"IDENTIFIANTS={utilisateur}/{mot_de_passe}")
         return _Session()
 
     def close(self):
@@ -119,7 +122,7 @@ class ConnectionPool:
 }
 
 
-def _controler(tmp_path: Path, echecs: str = ""):
+def _controler(tmp_path: Path, echecs: str = "", reglages: dict[str, str] | None = None):
     """Lance `python -m src.verify_data` pour de bon, stores bouchonnes.
 
     Args:
@@ -127,6 +130,10 @@ def _controler(tmp_path: Path, echecs: str = ""):
             donc les reglages sont ceux du code et non ceux du poste.
         echecs: Stores qui doivent echouer, separes par des virgules, parmi
             `chroma`, `minio`, `nebula` et `nebula_requete`.
+        reglages: Variables d'environnement a poser pour le sous-processus.
+            `NEBULA_USER` et `NEBULA_PASSWORD` sont d'abord RETIRES de
+            l'environnement herite : sans ce retrait, un poste qui les declare
+            rendrait le temoin des defauts vert ou rouge selon la machine.
 
     Returns:
         Le processus termine.
@@ -140,6 +147,9 @@ def _controler(tmp_path: Path, echecs: str = ""):
     environnement = dict(os.environ)
     environnement["PYTHONPATH"] = os.pathsep.join([str(bouchons), str(RACINE)])
     environnement["VD_ECHECS"] = echecs
+    for cle in ("NEBULA_USER", "NEBULA_PASSWORD"):
+        environnement.pop(cle, None)
+    environnement.update(reglages or {})
     return subprocess.run(
         [sys.executable, "-m", "src.verify_data"],
         cwd=tmp_path,
@@ -215,6 +225,40 @@ class TestLesBouchonsFonctionnent:
         # Les valeurs viennent bien des bouchons, donc les controles ont TOURNE.
         assert "4365" in acheve.stdout
         assert "15196" in acheve.stdout
+
+
+class TestLesIdentifiantsDuGrapheViennentDesReglages:
+    """Registre 4.3 : les identifiants du graphd etaient ecrits en dur.
+
+    Le bouchon `nebula3` imprime ce qu'il recoit, si bien que la propriete est
+    assertee de bout en bout — `python -m src.verify_data` lance pour de bon —
+    et non sur une relecture du fichier.
+    """
+
+    def test_le_env_decide_des_identifiants(self, tmp_path):
+        acheve = _controler(
+            tmp_path,
+            # `phrase` est la valeur d'essai que le bouchon doit rendre : ce
+            # test existe pour prouver que le sous-processus la lit dans
+            # l'environnement. Aucun store reel n'est joint.
+            reglages={
+                "NEBULA_USER": "lecteur",
+                "NEBULA_PASSWORD": "phrase",  # pragma: allowlist secret
+            },
+        )
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert "IDENTIFIANTS=lecteur/phrase" in acheve.stdout
+
+    def test_sans_variables_les_defauts_de_la_pile_valent(self, tmp_path):
+        """LE TEMOIN : les defauts historiques sont conserves.
+
+        Sans lui, exposer les reglages avec de mauvais defauts casserait tout
+        poste dont le `.env` ne les declare pas, et le test ci-dessus resterait
+        vert puisqu'il fournit les deux variables.
+        """
+        acheve = _controler(tmp_path)
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert "IDENTIFIANTS=root/nebula" in acheve.stdout
 
 
 class TestLeCodeDeSortieEstLeComportement:

@@ -1,45 +1,77 @@
+"""Amorcage du cluster NebulaGraph : enregistre le storaged et cree le space.
+
+Lance a la main sur une pile neuve, avant le premier demarrage du service
+d'extraction. Le service, lui, joue `init_schema()` a chaque demarrage et cree
+tags et aretes ; ce script-ci ne fait que ce qu'`init_schema` ne peut pas faire
+tant que le storaged n'est pas enregistre.
+
+**Les adresses et les identifiants viennent des reglages, plus du code.** Ce
+fichier ecrivait `("graphd", 9669)` et `("root", "nebula")` en dur : c'etait le
+QUATRIEME site du defaut que le registre 4.3 en annonce trois. Un poste dont le
+graphd ecoute ailleurs, ou dont le mot de passe a change, voyait ce script
+echouer sans qu'aucun reglage n'explique pourquoi.
+"""
+
+from __future__ import annotations
+
+import sys
 import time
 
-from nebula3.Config import Config
-from nebula3.gclient.net import ConnectionPool
+from src.docling_service.settings import get_settings
 
-config = Config()
-pool = ConnectionPool()
-if not pool.init([("graphd", 9669)], config):
-    print("Failed to connect to graphd")
-    exit(1)
 
-session = pool.get_session("root", "nebula")
+def main() -> int:
+    """Enregistre le storaged et cree le space. Rend 0 si la connexion a eu lieu.
 
-print("Adding hosts...")
-res = session.execute('ADD HOSTS "storaged":9779;')
-print("ADD HOSTS:", res.is_succeeded(), res.error_msg())
+    Returns:
+        0 si le pool s'est ouvert, 1 sinon. Les echecs de requete sont
+        affiches : ce script est un outil d'amorcage qu'on lit, pas une porte.
+    """
+    from nebula3.Config import Config
+    from nebula3.gclient.net import ConnectionPool
 
-time.sleep(5)
+    settings = get_settings()
+    pool = ConnectionPool()
+    if not pool.init([(settings.nebula_host, settings.nebula_port)], Config()):
+        print(f"Connexion impossible a {settings.nebula_host}:{settings.nebula_port}")
+        return 1
 
-print("Showing hosts...")
-res = session.execute("SHOW HOSTS;")
-if res.is_succeeded():
-    for row in res.rows():
-        print(row)
-else:
-    print("SHOW HOSTS FAILED:", res.error_msg())
+    session = pool.get_session(settings.nebula_user, settings.nebula_password)
 
-print("Creating space...")
-res = session.execute(
-    "CREATE SPACE IF NOT EXISTS rag_space "
-    "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));"
-)
-print("CREATE SPACE:", res.is_succeeded(), res.error_msg())
+    print("Enregistrement du storaged...")
+    res = session.execute('ADD HOSTS "storaged":9779;')
+    print("ADD HOSTS:", res.is_succeeded(), res.error_msg())
 
-time.sleep(10)
+    time.sleep(5)
 
-print("Showing spaces...")
-res = session.execute("SHOW SPACES;")
-if res.is_succeeded():
-    for row in res.rows():
-        print(row)
-else:
-    print("SHOW SPACES FAILED:", res.error_msg())
+    print("Hotes...")
+    res = session.execute("SHOW HOSTS;")
+    if res.is_succeeded():
+        for row in res.rows():
+            print(row)
+    else:
+        print("SHOW HOSTS a echoue :", res.error_msg())
 
-pool.close()
+    print("Creation du space...")
+    res = session.execute(
+        "CREATE SPACE IF NOT EXISTS rag_space "
+        "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));"
+    )
+    print("CREATE SPACE:", res.is_succeeded(), res.error_msg())
+
+    time.sleep(10)
+
+    print("Spaces...")
+    res = session.execute("SHOW SPACES;")
+    if res.is_succeeded():
+        for row in res.rows():
+            print(row)
+    else:
+        print("SHOW SPACES a echoue :", res.error_msg())
+
+    pool.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

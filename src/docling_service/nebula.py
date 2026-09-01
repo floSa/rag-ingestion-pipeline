@@ -135,7 +135,8 @@ class NebulaWriter:
                 Cet echec doit etre bruyant : sinon tous les INSERT suivants
                 echouent en silence et le run se termine au vert sur un graphe vide.
         """
-        session = self._get_pool().get_session("root", "nebula")
+        settings = get_settings()
+        session = self._get_pool().get_session(settings.nebula_user, settings.nebula_password)
         try:
             if use_space:
                 execute(session, f"USE {SPACE};")

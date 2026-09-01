@@ -22,6 +22,16 @@ class DoclingSettings(BaseSettings):
 
     nebula_host: str = "graphd"
     nebula_port: int = 9669
+    # `NEBULA_USER` et `NEBULA_PASSWORD` existent dans `.env.example` depuis le
+    # depart et n'etaient exposes par AUCUN settings : les quatre sites qui
+    # ouvrent une session ecrivaient ("root", "nebula") en dur, si bien que le
+    # `.env` mentait sur ce qui est reellement lu. Changer le mot de passe du
+    # graphd rendait la pile inutilisable sans qu'aucun reglage ne l'explique.
+    # Les defauts sont ceux de `docker-compose.yml`, donc aucun poste ne change
+    # de comportement : ce sont les identifiants publics d'un graphd de
+    # developpement, pas un secret.
+    nebula_user: str = "root"
+    nebula_password: str = "nebula"  # pragma: allowlist secret
 
     chroma_host: str = "chromadb"
     chroma_port: int = 8000

@@ -91,7 +91,7 @@ def verifier_nebula(settings: Any, echecs: list[str]) -> None:
         if not pool.init([(settings.nebula_host, settings.nebula_port)], Config()):
             report("connexion", "init a renvoye False", echecs, ok=False)
             return
-        session = pool.get_session("root", "nebula")
+        session = pool.get_session(settings.nebula_user, settings.nebula_password)
         try:
             for label, query in (
                 ("noeuds", "USE rag_space; MATCH (v) RETURN count(v) AS cnt;"),
