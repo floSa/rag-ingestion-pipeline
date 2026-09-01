@@ -53,6 +53,50 @@ côté agent ; ce qui suit est autosuffisant.
    réingestion qui retire autant de chunks qu'elle en ajoute — exactement notre
    cas.
 
+### Ce que le graphe déclare de la hiérarchie — la partie qui est à nous
+
+**Le mandat du lot 3 demandait « écris au contrat ce que l'agent doit lire », et
+le §0 canonique n'en disait rien.** Le lot l'avait écrit dans `schemas.py`, au
+§4.24 et dans `llm_integration_plan.md` ; il argumentait que la moitié « côté
+agent » vit dans l'autre dépôt, et c'est défendable. Mais **le contrat canonique
+est ici**, et la moitié qui décrit ce que CE pipeline écrit est à nous. La voici.
+
+**Le signal exact est la chaîne `PARENT_OF`**, et elle est saine : 0 sommet à deux
+parents, acyclique, une racine `Document` par document, tout `SectionHeader`
+atteignable (`mesuré`).
+
+**Chaque sommet d'élément porte `depth`** — les 11 tags d'élément, pas seulement
+`SectionHeader`. C'est le nombre d'arêtes `PARENT_OF` qui séparent l'élément de
+la racine de son document, **sans plafond** : il vaut 0 sur une racine et atteint
+5 sur ce corpus. Il donne la longueur de la chaîne sans avoir à la parcourir.
+
+**`depth` MÉLANGE DEUX ÉCHELLES, et la valeur seule ne dit pas laquelle on lit.**
+C'est `label` qui le dit :
+
+| l'élément | ce que `depth` compte |
+|---|---|
+| un **titre** (`label = section_header`, `title`, `heading`) | les titres au-dessus de lui |
+| **tout autre** élément | celui de son titre, **plus 1** |
+
+Un paragraphe sous un titre de premier niveau vaut donc **1**, comme un
+sous-titre. Retirer le plafond ne fusionne pas les deux échelles : il rend
+seulement `depth` exact dans chacune.
+
+**Et `depth` n'est lisible que dans le GRAPHE.** Aucun `section_header` n'est
+jamais un chunk (`mesuré` : `section_header` = 0 dans les labels ChromaDB) : la
+métadonnée `depth` de ChromaDB existe, mais elle ne décrit **jamais** un titre.
+Un agent qui voudrait le niveau d'un titre doit lire le sommet du graphe, ou
+remonter la chaîne.
+
+**`NULL` n'est pas `0`.** Le schéma Nebula migre en place, les **données** non :
+un `ALTER TAG … ADD (depth int)` laisse à `NULL` tous les sommets déjà écrits, et
+seule une réécriture du document les renseigne. Un `depth` absent signifie
+« profondeur inconnue », jamais « racine ». `verify_contract` le compte.
+
+**Ce qui reste à écrire côté agent**, et que ce dépôt ne peut pas faire : les
+trois réserves de lecture de `sequence` (§6.16). C'est la moitié pour laquelle
+§6.16 reste ouvert.
+
 ### Les deux contraintes d'ordre
 
 6. **L'ablation du graphe ne se mesure pas avant que la profondeur RÉELLE du
@@ -178,8 +222,10 @@ dans `README.md`, section Tests.
 les 3 commits de livraison, 5 de premiere reparation, 10 de seconde). Verifie
 par le pilote **sur le commit de fusion lui-meme** (`mesure`, 31 aout 2026) :
 **552 tests verts**, `ruff` propre, `mypy` « no issues found in 36 source
-files », `make all` en **2** — le rouge attendu de `format-check` sur les quatre
-fichiers plies a la main (§5.4) — et l'arbre **non sali**. La porte sur chacun
+files », `make all` en **2** — le rouge d'alors, `format-check` sur les quatre
+fichiers plies a la main (§5.4) — et l'arbre **non sali**. *(Mesure conservee
+telle quelle : elle decrit le commit de fusion du lot 0b. Ces quatre fichiers ont
+ete reformates depuis, et `make all` rend **0** — §5.4.)* La porte sur chacun
 des 18 commits pris individuellement, et le balayage de graines, sont aux
 rapports des developpeurs ; le pilote a rejoue la porte sur cinq commits et un
 sondage de graines, plus la mesure de fusion ci-dessus. Le compte canonique
@@ -249,15 +295,56 @@ donc **jamais** consulté. **21 chapitres imbriquent, 1 est plat.**
 **Le périmètre exact, à ne pas élargir.** Le chapitre plat est
 `Datas/htms/Practical MLflow for Generative AI on Databricks/10. Unifying GenAI Systems with MLflow.html`
 — 8 titres, tous `label=title`, tous `parent.cref == "#/body"`, tous `level`
-absent, tous de rang 0. **La cause est dans la capture, pas dans le code** :
-c'est le seul chapitre retenu qui n'a **aucune balise `<h2>`** (`h1=8`, `h6=1`,
-rien entre). Le pilote l'a recompté sur le corpus versionné : le nombre de
-titres de rang 0 **égale le nombre de `<h1>`** dans **22 chapitres sur 22**.
+absent, tous de rang 0. **La cause est dans la capture, pas dans le code.** Le
+pilote l'a recompté sur le corpus versionné : le nombre de titres de rang 0
+**égale le nombre de `<h1>`** dans **22 chapitres sur 22**.
 
-**Deux réserves de lecture, mesurées.** Les deux `Preface.html` n'imbriquent
-que par des libellés d'admonition (`Tip`, `Note`, `Warning` — des `<h6>`) et
-n'ont aucun `<h2>` : leur hiérarchie n'est pas éditoriale. Sur tout le corpus
-HTML, **55 des 513 titres imbriqués (10,7 %) sont des admonitions**.
+#### « Le seul chapitre retenu sans aucun `<h2>` » était FAUX — ils sont trois
+
+Ce constat écrivait, et le mandat §5.1 ter avec lui, que ce chapitre était « le
+seul chapitre retenu sans aucune balise `<h2>` ». **C'est faux, et le tableau des
+balises était sous les yeux de qui l'a écrit.** Remesuré par la réparation du lot
+3 sur les **22** chapitres retenus par le capteur (`matter.is_front_back_matter`
+écarte les deux `Index.html`) :
+
+```bash
+# comptage des <h2> sur les 22 chapitres retenus, sur le corpus versionné
+uv run python -c "…BeautifulSoup(f).find_all('h2')…"   # voir tests/unit/test_non_platitude.py
+```
+
+| chapitre retenu sans aucun `<h2>` | `<h1>` | `<h6>` | son graphe |
+|---|---|---|---|
+| `MLOps with Databricks/Preface.html` | 9 | 4 | **`{0: 9, 1: 4}` — il s'imbrique** |
+| `Practical MLflow…/Preface.html` | 8 | 4 | **`{0: 8, 1: 4}` — il s'imbrique** |
+| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | 1 | `{0: 8}` — **plat** |
+
+*(Distributions `mesuré`es le 31 août 2026 sur le graphe vivant des 23 documents,
+produit par le code du lot 3 : `MATCH (v:SectionHeader) RETURN
+v.SectionHeader.depth`, regroupé par racine de la chaîne `PARENT_OF`. Comptes de
+balises `mesuré`s sur le corpus versionné.)*
+
+**« Sans aucun `<h2>` » n'est donc PAS la propriété discriminante.** Deux
+chapitres sur trois la portent et s'imbriquent quand même.
+
+**Ce qui discrimine, mesuré :** le chapitre plat est le seul dont **aucune balise
+de titre sous `<h1>` ne devient un titre pour Docling**. Il n'en porte qu'une, et
+c'est la légende de sa figure — `<h6>Figure 10-1. MLflow as an integration plane
+for traces, assistants…</h6>` — que Docling classe **`caption`**, rattachée à
+l'image. Sa capture porte exactement 1 `picture` et 1 `caption`, et 8 items à
+label de titre pour 8 `<h1>`. Les deux Prefaces, elles, portent quatre `<h6>` qui
+sont des **libellés d'admonition** — `Tip`, `Note`, `Warning`, `Note` — et Docling
+les rend comme des titres, imbriqués sous le `<h1>` qui précède.
+
+**Et la formulation prudente s'arrête là.** Que « toute légende de figure en
+`<h6>` devienne un `caption` » est une généralisation à partir d'**un** cas : ce
+qui est mesuré, c'est ce chapitre-ci. La propriété qui se teste sans extrapoler
+est celle-ci, et c'est elle que `test_non_platitude.py` asserte : **le graphe d'un
+chapitre est plat quand son nombre de titres rendus égale son nombre de `<h1>`**,
+c'est-à-dire quand rien ne survit sous le niveau de tête.
+
+**Une réserve de lecture, mesurée.** Les deux `Preface.html` n'imbriquent que par
+des libellés d'admonition : leur hiérarchie n'est pas éditoriale. Sur tout le
+corpus HTML, **55 des 513 titres imbriqués (10,7 %) sont des admonitions**.
 
 **Le graphe réellement écrit** (3 documents ingérés par le lot 1, `mesuré`,
 rejoué par le pilote) : 2 288 sommets, 2 285 arêtes `PARENT_OF`, **159 arêtes
@@ -319,44 +406,249 @@ donc son docstring — « des items tels que Docling les rend » — est **faux*
 c'est une prétention à corriger, pas une couverture absente. L'audit du lot 0
 avait mesuré sa valeur marginale à **3 mutations sur 7 que lui seul voit**.
 
-### 3.4 L'instrument de troncature tokenise le mauvais texte — mesuré, il sous-compte de moitié
+### 3.4 → traité par le lot 3 — l'instrument tokenise ce que le modèle reçoit
 
-`index_report.py:75-84` tokenise `documents`, c'est-à-dire le texte **stocké**.
-Or `vectors.py:186-192` encode `contextualize(texte, section_title)` (l'ancien
-renvoi `vectors.py:199-203` désignait la boucle d'`upsert` : **périmé**),
-c'est-à-dire le texte **préfixé du titre de section**.
+**Le constat, tel qu'il était ouvert.** `index_report.py` tokenisait
+`documents`, c'est-à-dire le texte **stocké**, quand `vectors.py` encode
+`contextualize(texte, section_title)`, le texte **préfixé du titre de section**.
 
-**MESURÉ le 31 août 2026, par le lot 1 puis rejoué par son audit et par le
-pilote — trois fois les mêmes chiffres**, sur 773 chunks, fenêtre 128 :
+**Remesuré par le lot 3 sur le CORPUS COMPLET** — 4 365 chunks, 23 documents,
+fenêtre 128 (`mesuré` le 31 août 2026 ; le lot 1 mesurait 773 chunks sur 3
+documents) :
 
 | | médiane | maximum | au-dessus de 128 |
 |---|---|---|---|
-| texte **stocké**, ce que l'instrument tokenise | 87 | **140** | **8 (1,0 %)** |
-| texte **encodé**, ce que le modèle reçoit | 93 | **149** | **16 (2,1 %)** |
+| texte **stocké**, ce que l'instrument tokenisait | 88 | **140** | **65 (1,5 %)** |
+| texte **encodé**, ce que le modèle reçoit | 95 | **149** | **137 (3,1 %)** |
 
-**L'instrument sous-compte d'un facteur 2 exactement : 8 annoncés, 16 réels.**
-**8 chunks franchissent la fenêtre par le seul préfixe de titre** — l'aggravant
-annoncé ci-dessous, désormais mesuré.
+**PROVENANCE, ET L'ÉTIQUETTE ÉTAIT FAUSSE.** Ces chiffres portaient la mention
+« index produit par le code de `main` **avant toute correction** ». C'est
+inexact : l'index de ce poste a été produit par le code du **lot 3** lui-même —
+le Postgres Dagster est reparti vierge et les sensors, livrés armés, ont
+réingéré le corpus complet (§4.26). *Un chiffre mesuré avant ton changement n'est
+pas un chiffre mesuré après.*
 
-**Le registre se trompait en écrivant « 0 % ».** L'instrument annonce **1,0 %**,
-et ce 1,0 % est ce qui cachait le défaut : un lecteur y voit un bruit d'arrondi
-autour de zéro. Le défaut n'est pas qu'il annonce zéro, c'est qu'il annonce **la
-moitié**. Le prompt du lot 1 reprenait ce « 0 % » et affaiblissait la mesure
-qu'il commandait — leçon de pilotage, §11 du mandat.
+**La conclusion est robuste, et c'est l'étiquette qui était à reprendre** :
+l'audit a remesuré les sept valeurs — 65 / 137 / 72 / 88 / 95 / 140 / 149 — sur
+l'index actuel et obtient les **mêmes**. C'est attendu, la correction portant sur
+l'INSTRUMENT et non sur ce qu'il mesure. Mais la robustesse se démontre en
+remesurant, jamais en étiquetant.
 
-**La mesure porte bien sur le PRODUCTEUR**, et l'audit l'a prouvé depuis le
-code : `vectors.py:203-209` écrit dans ChromaDB **le même** `texts` et **les
-mêmes** `metadatas` que ceux passés à `contextualize`, et
-`settings.embed_section_context` vaut `True` (`mesuré`). Relire `documents` et
-`metadatas.section_title` reconstruit donc la chaîne encodée au caractère près.
+**72 chunks franchissent la fenêtre par le seul préfixe de titre.** Le facteur
+de sous-comptage vaut **2,1** ici ; le lot 1 avait mesuré « exactement 2 » sur
+son échantillon de 773 — la conclusion tenait, le facteur exact était propre à
+l'échantillon.
 
-Aggravant : `HybridChunker` compte ses tokens sur **sa propre** sérialisation
-contextualisée (titres compris). Préfixer un second titre par-dessus peut
-refranchir la fenêtre de 128 tokens — exactement la troncature silencieuse que
-le passage à `HybridChunker` prétendait supprimer. `supposé`, à mesurer.
+**Ce qui a été corrigé n'est pas le calcul, c'est la DIVERGENCE.** Deux endroits
+décidaient du même texte. Corriger l'instrument aurait fermé l'écart du jour et
+laissé les deux sites libres de diverger à nouveau. La construction du texte
+encodé vit désormais à un seul endroit, `chunking.embedding_inputs`, et les deux
+appelants la partagent. Elle refuse une entrée désalignée : un décalage d'un
+rang préfixerait chaque chunk du titre de son voisin, sans que rien ne le
+signale.
 
-**Coût de l'attente** : on croirait avoir supprimé la troncature sans l'avoir
-vérifiée, sur l'instrument même censé la voir.
+Le rapport dit désormais **sur quel texte il compte**, et le réglage
+`embed_section_context` a deux positions : à faux, il n'y a pas de préfixe, et
+l'instrument le dit plutôt que de laisser croire qu'il en tient compte.
+
+**Et l'instrument n'était gardé par aucun test, pour une raison mécanique** :
+`index_report` importait `chromadb` et le modèle d'embedding au niveau du
+module, donc aucun test ne pouvait l'importer sans l'image d'extraction (10,4 Go).
+Ces imports sont passés dans `main`, la mesure est devenue une fonction pure à
+tokeniseur injecté, et un sous-processus garde la propriété. *Ce qu'un test
+n'importe pas, il ne teste pas.*
+
+### 3.4 bis → traité par le lot 3 — les deux phrases d'exhaustivité de `vectors.py`
+
+`vectors.py` affirmait en en-tête « **plus de troncature** », et dans
+`get_chunker` que recevoir le tokenizer du modèle « est ce qui **garantit
+qu'aucun chunk ne sera tronqué** à l'encodage ». Deux phrases d'exhaustivité,
+dans le fichier qui produit les vecteurs, et **toutes deux fausses**.
+
+Elles le sont de deux façons distinctes, mesurées :
+
+1. **`HybridChunker` ne peut pas fractionner une table.** Une table sérialisée
+   en Markdown est un bloc indivisible : il la rend telle quelle, plus longue
+   que la fenêtre. Les **65** chunks qui dépassent déjà sur le texte stocké sont
+   **65 tables sur 65** — aucun autre label (le lot 1 mesurait 8 sur 8 sur son
+   échantillon). Ce n'est pas un réglage : réduire la fenêtre ne fractionne pas
+   davantage. **Ce qui manquait était de le mesurer et de l'écrire** ; refaire
+   le découpage des tables est un chantier à part, §7.1 ;
+2. **le titre est préposé APRÈS le découpage.** Le découpeur compte ses tokens
+   sur sa propre sérialisation ; `write_elements` préfixe ensuite. **72** chunks
+   franchissent par ce seul geste, et le découpeur ne pouvait pas le prévoir.
+   L'aggravant que §3.4 étiquetait `supposé` est donc **mesuré**, et confirmé.
+
+Les deux docstrings portent désormais le chiffre et la cause. `architecture.md`
+portait la même affirmation — « (aucune troncature) » — et est corrigé dans le
+même commit.
+
+### 3.6 bis → le test de non-platitude, livré par le lot 3
+
+L'audit du lot 1 réclamait un test qui distingue « **Docling** imbrique » de
+« **ce chapitre-là** imbrique ». Le chantier a failli supprimer un lot entier sur
+un antécédent jamais mesuré : `tests/unit/test_non_platitude.py` le mesure.
+
+Il rejoue le code de rang de production sur des arbres Docling **capturés depuis
+les captures réelles et versionnées**, et non sur un arbre fabriqué à la main —
+le reproche exact fait à `test_hierarchie_bout_en_bout.py`, qui pose lui-même
+les parents qu'il vérifie (§3.3). Il couvre les deux cas (`mesuré`) :
+
+| chapitre | titres | distribution des rangs | `<h1>` du source |
+|---|---|---|---|
+| `MLOps with Databricks/7. Foundation Models…` | **41** | **{0: 5, 1: 10, 2: 21, 3: 5}**, 36 imbriqués | 5 |
+| `Practical MLflow…/10. Unifying GenAI Systems…` | 8 | **{0: 8}** — réellement plat | 8, et **aucun titre rendu sous le niveau de tête** |
+
+*(Ces deux lignes portaient **39 titres** et **{0: 5, 1: 10, 2: 21, 3: 3}** sous
+l'étiquette `mesuré`. **C'était faux**, et le paragraphe qui suit dit pourquoi.
+Les valeurs ci-dessus sont remesurées de deux façons indépendantes qui
+concordent : en rejouant le code de rang sur la capture corrigée, et sur le
+**graphe vivant** — `MATCH (v:SectionHeader) RETURN v.SectionHeader.depth`,
+regroupé par racine de la chaîne `PARENT_OF`, `mesuré` le 31 août 2026 sur
+l'index des 23 documents produit par le code du lot 3.)*
+
+### La capture jetait les nœuds de groupe, et le test ne pouvait pas le voir
+
+**C'était le défaut central de ce fichier, et il vivait dans le test qui est la
+raison d'être du point 6.** `scripts/capturer-larbre-docling.py` capturait via
+`document.iterate_items()`, dont le paramètre `with_groups` vaut `False` par
+défaut : **les nœuds de groupe n'étaient jamais rendus.** Or
+`ranking.docling_parent_rank` **remonte** la chaîne des parents et **franchit**
+ces conteneurs sans les compter — une capture qui les omet casse la remontée au
+premier groupe rencontré.
+
+Mesuré sur la capture du lot 3 : **1 175** références de parent pointaient un
+nœud absent (1 130 sur le chapitre imbriqué, 45 sur le plat), et **262** nœuds de
+groupe manquaient (257 et 5). Deux titres du chapitre imbriqué avaient un groupe
+pour parent **direct** — `#/texts/389` → `#/groups/79` et `#/texts/468` →
+`#/groups/91`. Pour ces deux-là, `_Ref.resolve` rendait `None`,
+`docling_parent_rank` rendait `None`, `flat_rank` retombait sur
+`docling_level_rank` (absent) et rendait `None` — et le filtre
+`[rang for rang in rangs if rang is not None]` **les jetait en silence**.
+
+**Et le silence coûtait bien plus que deux titres.** Sans aucun nœud de groupe
+dans la capture, la mutation « compter les conteneurs anonymes comme des
+titres » n'avait plus rien à mordre : **le test bâti sur du réel était aveugle au
+mécanisme même qu'il existe pour éprouver sur du réel.** Mesuré, mutation
+`ranking.py:68` — `if str(getattr(cible, "label", "")) in HEADING_LABELS` → `if
+True` :
+
+| état | `test_non_platitude.py` sous la mutation |
+|---|---|
+| lot 3, capture sans groupes | **VERT**, 10 tests — aveugle. Seul `test_ranking.py`, l'arbre fabriqué à la main, la voyait |
+| après réparation | **ROUGE**, `rc=1`, deux tests |
+
+**Couverture marginale, remesurée sur sept mutations du code de rang** (`mesuré`,
+script rejouable, les sept ancrages sont dans le message du commit) :
+
+| fichier | avant | après |
+|---|---|---|
+| `test_non_platitude.py` | 5/7 | **6/7** |
+| `test_hierarchie_bout_en_bout.py` | 5/7 | 5/7 |
+| `test_ranking.py` | 5/7 | 5/7 |
+
+*(Ce jeu de sept mutations n'est **pas** celui de l'audit du lot 3, qui annonçait
+1/7 contre 3/7 : sa liste n'a pas été retrouvée, et un ratio ne se compare pas
+d'un jeu à l'autre. Ce qui se compare, et qui est le résultat, est la
+**bascule de M-G** sur un jeu tenu constant entre les deux colonnes.)*
+
+**Trois corrections en découlent, et elles tiennent ensemble :**
+
+1. la capture passe `with_groups=True`. Les deux empreintes SHA-256 sont
+   **inchangées** — la capture décrit exactement le même HTML, seul l'arbre s'est
+   complété ;
+2. **l'assertion qui interdit le silence** vit dans l'aide `_rangs` et non dans
+   un test : **autant de rangs que de titres dans la capture**. Elle vaut donc
+   pour tous les appelants à la fois, parce que c'est le silence qui était
+   structurel, pas l'oubli d'un test. Sans elle, le défaut se reformerait au
+   prochain changement de Docling ;
+3. deux gardes de structure s'ajoutent : **aucune référence de parent ne pointe
+   hors de la capture** — elle rougit pour toute famille de nœud oubliée, pas
+   seulement pour les groupes — et **les groupes sont là, et aucun ne porte un
+   label de titre**. Le second est le témoin du premier : si Docling étiquetait
+   un jour un groupe `section_header`, tous les rangs sous lui augmenteraient
+   d'un.
+
+**Et le cas plat seul aurait été vert des deux côtés du défaut.** Mesuré par
+mutation : `docling_parent_rank` forcé à rendre 0 — le graphe devient plat —
+fait rougir des tests **tous du chapitre imbriqué** ; les assertions du chapitre
+plat restent vertes, puisqu'il rend 0 dans les deux cas. C'est exactement
+pourquoi il fallait les deux, et pourquoi un test à un seul cas n'aurait rien
+prouvé.
+
+**Et il asserte la bonne cause de la platitude, pas celle qui avait été
+écrite.** Le lot 3 avait recopié du §3.2 « c'est le seul chapitre retenu sans
+aucune balise `<h2>` », et son test portait une assertion nommée
+`test_the_flatness_comes_from_the_source_which_has_no_h2` : **une causalité que la
+mesure démentait.** Trois des 22 chapitres retenus n'ont aucun `<h2>`, et deux
+s'imbriquent (§3.2). Le test asserte désormais, **à pleine portée du corpus** :
+
+- que ces trois chapitres existent, et que le chapitre plat en est un — donc que
+  « sans `<h2>` » ne peut pas être la cause, puisque la propriété est partagée ;
+- que la propriété qui discrimine est **« aucun titre rendu sous le niveau de
+  tête »** : titres rendus = `<h1>` = 8 pour le plat, 41 contre 5 pour l'autre ;
+- que la cause mesurée de ce chapitre-ci est que sa seule balise de titre sous
+  `<h1>` est une **légende de figure**, que Docling classe `caption`.
+
+Coût de cette assertion à pleine portée : **+0,86 s** (`mesuré`) — la lecture des
+balises `<h2>` des 22 chapitres. C'est payé volontairement : elle convertit une
+mesure écrite dans un document, que le chantier a recopiée trois fois sans la
+vérifier, en un garde qui rougit.
+
+**Il prouve qu'il a atteint le chapitre qu'il croit**, par l'empreinte SHA-256 du
+HTML brut versionné **et** par celle du HTML nettoyé, que le test recalcule en
+faisant tourner le vrai nettoyage. Deux développeurs de ce chantier s'étaient
+fabriqué un faux vert en bouclant sur une liste non protégée : le test échoue
+aussi si la capture ne porte pas exactement les deux cas attendus.
+
+**La capture est en YAML et non en JSON**, et ce n'est pas un goût : les deux
+empreintes SHA-256 sont lues par `detect-secrets` comme des « Hex High Entropy
+String ». Le dépôt déclare ses faux positifs **au site**, par un
+`pragma: allowlist secret` justifié — et JSON n'admet pas de commentaire. Le
+YAML porte la justification à côté de la valeur, où un relecteur la voit, et
+`check-yaml` le contrôle. Aucune baseline, aucune règle relâchée.
+
+**Ce qu'il ne voit pas, et qui le voit à sa place.** Un changement de
+comportement de Docling : la conversion est capturée une fois par
+`scripts/capturer-larbre-docling.py`, que `--verifier` rejoue en comparant.
+`docling` est épinglé à 2.117.0, et rejouer ce script fait partie du geste qui
+change cette version.
+
+**Et cette frontière est exactement là où le défaut est passé.** Le test ne peut
+pas voir ce que la capture ne porte pas, et la capture portait un arbre troué. La
+leçon est plus étroite que « une capture peut être fausse » : **le test rejoue un
+algorithme de REMONTÉE, donc sa fixture doit porter l'arbre COMPLET, pas
+seulement les nœuds qui l'intéressent.** Une capture réduite au contenu est une
+capture juste pour un algorithme qui descend et fausse pour un algorithme qui
+monte. C'est ce que gardent désormais les deux assertions de structure.
+
+**Pourquoi le test ne convertit pas lui-même**, `mesuré` le 31 août 2026 :
+`uv pip install docling==2.117.0` ajoute **85 paquets** — dont `torch` et
+**quinze paquets NVIDIA CUDA** — et **rétrograde `websockets`** (17.0.1 → 16.1.1),
+une dépendance de l'orchestrateur. Sur une chaîne qui tourne sur processeur et
+dont le `pyproject.toml` dit que « les deps lourdes d'extraction vivent dans
+`Dockerfile.docling` », faire porter cela à `make install` n'était pas
+défendable.
+
+**Coût, remesuré après la réparation** (`mesuré`,
+`pytest tests/unit/test_non_platitude.py --durations=5`) : le fichier entier
+tient en **2,57 s**, dont deux postes qui font tout le reste —
+
+| poste | coût |
+|---|---|
+| `test_the_real_cleaning_still_produces_what_was_captured` (le nettoyage réel des deux chapitres) | **0,99 s** |
+| `test_the_absence_of_h2_is_shared_by_three_chapters_so_it_explains_nothing` (les balises des 22 chapitres) | **0,90 s** |
+| tout le reste, 12 tests | < 0,3 s |
+
+La livraison du lot 3 mesurait **+1,26 s** sur `make test` ; la réparation ajoute
+la seconde du contre-exemple à pleine portée. **C'est payé volontairement** : ce
+poste-là convertit en garde une mesure qui vivait dans un document et que le
+chantier a recopiée trois fois sans la vérifier — c'est précisément comme cela
+que « le seul chapitre sans `<h2>` » a survécu du lot 1 au lot 3.
+
+**Aucun marquage** : ni `slow`, ni `skip`, ni `xfail`. Un marqueur sortirait le
+test de la porte par défaut, et un garde qu'on n'exécute pas n'est pas un garde ;
+deux secondes et demie sur une suite de 11 s ne le justifient pas.
 
 ### 3.5 La chaîne d'images HTML est ROMPUE — mesuré, 199 images sans `minio_url`
 
@@ -429,22 +721,233 @@ dans `.env.example:15-16` et ne sont exposés par **aucun** settings :
 `verify_contract.py:104` et `verify_data.py`. Le `.env` ment donc sur ce qui est
 réellement lu.
 
-### 4.4 `verify_contract` ne vérifie pas ce qui casse en silence
+### 4.4 → traité par le lot 3 — le contrat est vérifié là où il casse en silence
 
-`src/verify_contract.py` ne teste ni l'existence des arêtes `PARENT_OF`, ni la
-**monotonie de `sequence`** (exigence 4), ni que `source_path` est non vide, ni
-la cohérence `chunk_index` / `chunk_count`, ni le modèle qui a produit les
-vecteurs. L'échantillon de 400 (`verify_contract.py:38-40`) est justifié par
-« une rupture de contrat est systématique » : c'est vrai d'un format, faux
-d'une monotonie qui se casserait sur un document sur vingt. Phrase
-d'exhaustivité (l.12-16) qui clôt une énumération que personne ne rouvre.
+**Le constat, tel qu'il était ouvert.** `verify_contract.py` ne testait ni
+l'existence des arêtes `PARENT_OF`, ni l'ordre de `sequence` (exigence 4), ni
+que `source_path` est non vide (exigence 3), ni la cohérence
+`chunk_index` / `chunk_count`, ni le modèle qui a produit les vecteurs
+(exigence 1). Il rendait donc **rc=0 et « Contrat respecté »** sur l'index
+complet du 31 août 2026 (`mesuré`, 4 365 chunks) — le même index où **251
+sommets visuels sur 264 n'ont aucune URL**.
 
-### 4.5 `verify_data.py` s'exécute à l'import
+**Ce qui a été ajouté**, et pour chacun l'exigence qu'il garde :
 
-Pas de `main()` : le module fait ses entrées-sorties au niveau du module
-(`settings = get_settings()`, `failures = []`, puis les contrôles). Intestable,
-et un `import` accidentel déclenche les contrôles. `wipe_stores.py` avait le
-même défaut sur `main` — la branche le corrige, mais pas `verify_data.py`.
+| Contrôle | Exigence | Sur l'index vivant, `mesuré` sur la pointe de la réparation |
+|---|---|---|
+| `page_no` ne décroît pas dans l'ordre des `sequence`, par document | 4 | **0 inversion sur 15 173 arêtes** |
+| `source_path` non vide | 3 | 0 chunk fautif |
+| `0 ≤ chunk_index < chunk_count` | — | 0 chunk fautif |
+| présence d'arêtes `PARENT_OF` | 4 | 15 173 |
+| `minio_url` sur les sommets visuels | — | **251 sur 264 sans URL → anomalie** |
+| modèle inscrit sur la collection | **1** | `paraphrase-multilingual-MiniLM-L12-v2` — **tracé, aucune anomalie** |
+| **l'index n'est pas vide** *(neuf)* | toutes | 4 365 chunks |
+| **`sequence` présente sur chaque arête** *(neuf)* | **4** | 0 arête sans `sequence` |
+| **le jeu `{chunk_index}` est complet par élément** *(neuf)* | — | **2 éléments sur 3 750 troués → anomalie** |
+| **`depth` non nul sur les sommets** *(neuf)* | — | 0 sur 15 173 |
+| **le tag `Document` porte ses 7 colonnes** *(neuf)* | **3** | 7, aucune manquante |
+| ancres présentes dans le graphe | 2 | **3 750 / 3 750** — la totalité, plus un échantillon |
+
+**Deux affirmations de cette section étaient fausses, et la mesure les dément.**
+Elle écrivait « modèle **non tracé** → anomalie » et, plus bas, « il redeviendra
+vert quand le lot 4 aura réparé la chaîne d'images **et qu'une réingestion aura
+inscrit le modèle** ». La collection **porte déjà** `embedding_model` — le lot 3
+a réingéré le corpus complet avec son propre code, donc `_inscrire_le_modele` a
+tourné. `verify_contract` affiche le modèle et ne lève **aucune** anomalie de
+modèle. C'est la question la plus productive du chantier — *qu'est-ce que la
+documentation affirme que le code ne fait pas ?* — appliquée au lot qui l'a
+posée.
+
+**Et un piège de provenance s'y cachait.** Le service Docling monte `/app/src`
+depuis le **clone principal**, donc `docker compose exec docling-service python
+-m src.verify_contract` exécute le code de `main` : il rend `rc=0` et « Contrat
+respecté », c'est-à-dire exactement le défaut que ce constat ferme. Toute mesure
+du code d'une branche doit monter le `src` de cette branche (voir §4.27).
+
+**Le garde de `sequence` est celui du §6.16, et pas un autre.** La propriété
+« aucun parent ne porte deux fois la même valeur » est l'**unicité sous un
+parent** : une numérotation aléatoire distincte par parent la satisferait sans
+porter aucun ordre. Les trois réserves mesurées dictent la forme du contrôle et
+sont écrites à son site : `sequence` repart à 0 par document — d'où un contrôle
+**borné au document**, sans quoi deux documents entrelacés rendraient des
+inversions fausses — elle n'est pas contiguë sous un parent, et le plus grand
+trou vaut 993, donc **exiger la contiguïté rougirait sur un graphe sain**.
+
+**La phrase d'exhaustivité est corrigée, et l'échantillon est SUPPRIMÉ.** « Une
+rupture de contrat est systématique » est vraie d'un FORMAT et fausse d'un ORDRE.
+Le lot 3 avait borné l'échantillon de 400 à la seule présence des ancres, « le
+seul contrôle dont le coût croît vraiment avec le corpus ».
+
+**Cette dernière justification est démolie par la mesure.** L'échantillon valait
+400 sur 3 750 avec `random.seed(0)` : **les mêmes 89 % n'étaient jamais
+vérifiés**, exécution après exécution. Une graine fixe ne fait pas d'un
+échantillon une couverture — elle fait d'un angle mort un angle mort **stable**.
+Et le contrôle complet tient en **une** requête nGQL : `mesuré` le 31 août 2026
+sur l'index complet, chronométré autour du seul `session.execute`, **0,053 s**
+pour les 3 750 identifiants contre **0,008 s** pour 400. Soit 6,6 fois le coût
+pour 9,4 fois la couverture. Il n'y avait rien à échantillonner.
+
+**Et l'absence d'échantillon est GARDÉE**, ce qui n'allait pas de soi : `mesuré`,
+remettre `identifiants[:400]` laissait la suite **entièrement verte**. Retirer un
+échantillonnage sans garder son absence, c'est le laisser revenir au premier lot
+qui trouvera le contrôle lent — et il le trouvera lent, puisque personne ne
+remesure. Le garde asserte les identifiants **un par un** dans la requête, et son
+témoin asserte le dénominateur : un échantillonnage qui réduirait les deux côtés
+resterait vert sur une simple égalité.
+
+#### Les cinq trous que l'audit a trouvés, et ce que chacun laissait passer
+
+1. **`rc=0` SUR UN INDEX VIDE**, et c'est le pire des cinq parce que **tous** les
+   contrôles vivent derrière ce garde. `if not metadatas: print("Index vide…");
+   return` — donc une purge, une ingestion en échec ou un nom de collection
+   erroné passaient pour « Contrat respecté », dans un outil dont le docstring
+   dit « pour un usage en pré-déploiement ». Le défaut préexistait sur
+   `main:52-54` ; sa portée s'était élargie à tout ce que le lot 3 avait ajouté
+   derrière lui. Il sort désormais en **1** en nommant les causes usuelles ;
+2. **il LEVAIT au lieu de rapporter quand `sequence` est NULL.**
+   `int(ligne[2].as_int())` sans garde `is_null()`, alors que `page_no` en avait
+   un à la ligne suivante. L'exigence 4 est « absente **OU** non monotone » : sur
+   la moitié « absente », le rapport avortait sur une
+   `InvalidValueTypeException`. Un outil de pré-déploiement qui plante ne dit pas
+   « non conforme », il ne dit **rien**. Les arêtes sans `sequence` sont
+   désormais comptées et nommées — et **écartées** du contrôle d'ordre plutôt que
+   comptées à zéro, ce qui fabriquerait une fausse inversion ;
+3. **`chunks_incoherents` ne voyait pas la panne que son docstring nomme.** Un
+   morceau qui MANQUE est invisible depuis un chunk isolé : chaque chunk présent
+   satisfait `0 ≤ index < count` même quand un frère a disparu. `mesuré` :
+   **2 éléments sur 3 750** annoncent 7 et 4 chunks alors que 6 et 3 existent —
+   `aa3de10738` (index 4 manquant) et `eb52c4ec8f` (index 3 manquant) — et le
+   contrôle rendait « 0 chunk fautif ». `jeux_de_chunks_incomplets` vérifie le
+   **jeu** complet. La **cause** n'est pas réparée ici et va au lot 4 (voir
+   ci-dessous) ;
+4. **`depth` n'était pas vérifié non nul sur les sommets** — la charge utile du
+   §4.11. Le schéma migre en place, les **données** non : un `ALTER TAG … ADD`
+   laisse à NULL tous les sommets déjà écrits. Un index à moitié migré était donc
+   possible, et l'agent aurait lu `depth` sur les sommets récents et `NULL` sur
+   les anciens sans qu'aucune erreur ne distingue « profondeur 0 » de
+   « profondeur inconnue ». Le garde porte son témoin : **`depth = 0` est une
+   profondeur, pas une absence** — un compteur écrit `if not profondeur`, la
+   faute naturelle, rougirait sur un graphe sain, et c'est précisément le piège
+   que `depth` tend depuis que le plafond est retiré (§4.24) ;
+5. **le tag `Document` n'était pas couvert** — le défaut que
+   `_verifier_les_tags` venait de fermer restait ouvert **d'un tag**. Elle reçoit
+   `sorted(set(TAG_MAP.values()))`, c'est-à-dire les **11 tags d'élément** ; le
+   tag `Document` n'en fait pas partie, son schéma lui étant propre. Or ses
+   quatre `ALTER TAG Document ADD` (`nebula.py:333-340`) sont `required=False`
+   par construction — « la colonne existe déjà » est leur cas nominal — donc une
+   migration **réellement** refusée ne disait rien. Et parmi ces colonnes,
+   `source_path` **est l'exigence 3 du contrat**. Un `DESCRIBE` en échec est
+   désormais une anomalie et non une liste vide lue comme « aucune manquante » :
+   *ne pas savoir n'est pas savoir que c'est bon.*
+
+**Le contrôle du modèle a deux moitiés, et la seconde ferme la panne.** Rien
+n'enregistrait quel modèle avait écrit l'index : un `.env` changé entre deux
+ingestions laissait une collection portant des vecteurs de **deux** modèles,
+tous deux en 384 dimensions. `vectors._inscrire_le_modele` inscrit le modèle sur
+la collection à l'ouverture, et **lève** si elle en porte un autre — le job
+échoue plutôt que d'écrire un index mixte. `verify_contract` lit la même
+inscription après coup. Un index écrit avant ce garde n'est pas déclaré bon : il
+est déclaré **non traçable**, ce qui n'est pas la même chose.
+
+#### La levée n'était gardée par RIEN, et c'est le garde le plus important du lot
+
+Cette section écrivait « (`mesuré` : la levée se produit) ». **C'est une
+observation faite à la main une fois, pas un garde**, et la distinction est
+exactement celle que ce chantier traque. `mesuré` par l'audit du lot 3 :
+remplacer le `raise` de `vectors.py` par un `logger.warning` laissait **639 tests
+verts**. Le garde contre la panne la plus coûteuse du système — exigence 1 du
+contrat — reposait sur une relecture.
+
+**Et il n'existait aucun `tests/unit/test_vectors.py`, pour une raison
+mécanique.** `vectors.py` importait `chromadb` au niveau du module, et `chromadb`
+n'est pas dans le venv du dépôt : aucun test ne pouvait importer le module.
+C'est **le même défaut** que `index_report` (§3.4), `verify_contract` (ci-dessus)
+et `verify_data` (§4.5) — le lot 3 l'avait fermé sur trois modules et manqué le
+quatrième, **le seul des quatre dont le contrat est un `raise`**. L'import est
+différé dans `get_collection`, et `tests/unit/test_vectors.py` existe.
+
+Il porte ses deux témoins, sans lesquels il serait creux : le **même** modèle
+écrit sous son nom préfixé `sentence-transformers/` ne doit **pas** lever — sinon
+un garde qui lève sur tout passerait —, et la panne est assertée **dans les deux
+sens**, la collection portant le bon modèle et l'ingestion tournant avec le
+mauvais étant la même panne renversée.
+
+#### Le seul contrôle d'ordre du contrat était neutralisable en silence
+
+`mesuré` par l'audit : neutraliser la remontée de
+`verify_contract.racine_de_chaque_element` laissait **639 tests verts**, et
+`test_verify_contract.py` **n'importait même pas cette fonction** — *ce qu'un
+test n'importe pas, il ne teste pas.*
+
+**La conséquence n'est pas une anomalie manquée, c'est un succès faux.**
+`inversions_de_page` groupe par document ; si le rattachement rend chaque élément
+à lui-même, chaque groupe ne porte plus qu'**une** arête, et une seule arête ne
+peut pas être en désordre. Le contrôle rend donc **zéro anomalie** sur un graphe
+réellement cassé. Mesuré sur un graphe portant une vraie inversion de page : le
+code livré rapporte `[('doc', 2, 9, 2)]`, la mutation rapporte `[]`.
+
+**Le garde asserte la COMPOSITION, et pas la fonction seule.** Prise isolément,
+`racine_de_chaque_element` a l'air d'une commodité, et un test de son seul
+contrat aurait pu passer sans que l'ordre soit gardé. La composition vit
+désormais dans `verify_contract.rattacher_au_document`, fonction pure — elle
+existe pour être testable sans graphd, non pour factoriser une ligne — et le
+garde porte son **témoin** : les mêmes arêtes **sans** rattachement rendent zéro
+inversion. C'est ce témoin qui est le résultat.
+
+**Ces contrôles n'étaient testables par rien**, le module faisant ses imports de
+`chromadb` et `nebula3` au niveau du module. Ils sont différés dans `main`, les
+décisions sont des fonctions pures, et un sous-processus garde la propriété.
+
+**Conséquence à connaître : `verify_contract` sort désormais en 1 sur l'index de
+ce poste**, et c'est le verdict juste. Il redeviendra vert quand le lot 4 aura
+réparé la chaîne d'images (§3.5) et qu'une réingestion aura inscrit le modèle.
+Un outil qui ne peut pas être vert aujourd'hui vaut mieux qu'un outil vert sur
+un index cassé.
+
+### 4.5 → traité par le lot 3 — `verify_data.py` ne fait plus rien à l'import
+
+Le module n'avait pas de `main()` : `settings = get_settings()`, `failures = []`
+puis les trois contrôles étaient des instructions de **niveau module**. Un
+`import` accidentel — un outil qui parcourt le paquet, une complétion, un
+`pytest --collect-only` — ouvrait une connexion ChromaDB, listait un bucket
+MinIO, interrogeait NebulaGraph, et pouvait appeler `sys.exit(1)`.
+
+**Et rien n'était testable** : un test qui importe le module aurait exigé les
+trois stores debout. C'est le troisième module du lot dans ce cas, après
+`index_report` et `verify_contract` — *ce qu'un test n'importe pas, il ne teste
+pas*, et un module qu'on ne peut pas importer, personne ne le teste.
+
+Les contrôles sont trois fonctions, les clients de stores sont importés dans
+`main`, et la liste des échecs est **passée en argument** au lieu d'être un état
+de module : un état de module survit à l'appel, donc deux exécutions dans un
+même processus cumuleraient leurs échecs et la seconde sortirait en erreur pour
+ceux de la première.
+
+Le garde passe par un **sous-processus** : un `import` de plus dans
+l'interpréteur courant ne rejouerait pas un module déjà chargé, donc le test
+serait vert des deux côtés du défaut.
+
+**Mais le lot 3 avait gardé l'import et LAISSÉ LE CODE DE SORTIE.** `mesuré` par
+son audit : remplacer le `sys.exit(1)` de `main()` par `sys.exit(0)` laissait
+**639 tests verts**. C'est **mot pour mot** la leçon que le lot 0 a payée sur
+`wipe_stores` — « un code de sortie documenté et justifié n'était asserté nulle
+part » — et l'équivalent y est gardé par cinq tests depuis `1c002f2`. Le même
+défaut, dans le même dépôt, sur le module d'à côté, quatre lots plus tard.
+
+Le garde est **décliné de celui de `wipe_stores`**, et pour la même raison : le
+code de sortie **est** le comportement, pas son témoin. C'est ce qu'un
+`docker compose exec` remonte et ce qu'un `&&` lit dans une procédure
+d'avant-vol. Un `import` laisserait attraper `SystemExit` — prouver qu'un objet a
+été levé, pas que la commande échoue. Les trois clients de stores sont bouchonnés
+comme de vrais paquets en tête de `PYTHONPATH`, et non dans `sys.modules` : sinon
+les bouchons survivraient au test et l'ordre des tests deviendrait significatif.
+
+Quatre chemins d'échec sont couverts, et le quatrième est celui qu'on oublie :
+ChromaDB injoignable, MinIO injoignable, `pool.init` qui rend **`False`** — une
+branche distincte de l'exception —, et une **requête nGQL rejetée** alors que les
+trois stores répondent. Sans ce dernier, un garde qui n'observerait que les
+connexions serait vert sur un graphd debout dont le space n'existe pas. Plus le
+témoin : les trois stores debout sortent en **0**.
 
 ### 4.6 Un nettoyage peut jeter 95 % du texte sans que rien ne le dise
 
@@ -483,14 +986,82 @@ l'image finit le lot précédent perd son arête `LINKED_TO`.
 `failed_batches` : dans l'interface Dagster, un document écarté ressemble à un
 document ingéré vide.
 
-### 4.11 Le niveau du titre n'est pas stocké dans le graphe
+### 4.11 → traité par le lot 3 — `depth` est écrit sur le sommet, et la migration se constate
 
-`nebula.py:49` : `VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")`.
-Ni `depth`, ni `section_title`, ni `reference_id` ne sont écrits sur les
-sommets ; `depth` n'existe que dans les métadonnées ChromaDB
-(`schemas.py:94-95`). La correction demandée côté agent — « stocker le niveau du
-titre sur le tag `SectionHeader` » — n'est pas faite. L'agent peut remonter les
-`PARENT_OF`, mais ne peut pas lire un niveau.
+**Le constat, tel qu'il était ouvert.** `nebula.py:49` portait
+`VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")`. Ni `depth`, ni
+`section_title`, ni `reference_id` n'étaient écrits sur les sommets ; `depth`
+n'existait que dans les métadonnées ChromaDB. L'agent pouvait remonter les
+`PARENT_OF`, mais ne pouvait lire aucun niveau déclaré.
+
+**Ce qui est écrit, et ce qui a été écarté.** Une seule propriété est ajoutée :
+`depth`. Les deux autres ont été écartées, et pour la même raison — elles
+seraient une **seconde source de vérité** pour une information que le graphe
+porte déjà exactement :
+
+- `reference_id` **est** l'extrémité source de l'arête `PARENT_OF`. L'écrire sur
+  le sommet crée deux versions du même lien, qui peuvent diverger ; aucune
+  requête n'en a besoin, puisque l'arête se traverse ;
+- `section_title` **est** le `text` du sommet parent, atteignable en une arête.
+  L'écrire dupliquerait le texte de chaque titre sur chacun de ses descendants.
+
+`depth`, lui, n'est déductible qu'en **parcourant** la chaîne jusqu'à la racine :
+c'est la seule des trois qui apporte quelque chose. Elle est écrite sur **tous**
+les tags d'élément et non sur le seul `SectionHeader` — ils partagent un schéma
+unique, et `depth` est déjà calculée pour tout élément.
+
+**La migration retenue, et l'affirmation du plan qu'elle corrige.** Le plan
+disait « cela change le schéma Nebula, et le schéma n'évolue pas en place ;
+toute correction impose une réingestion ». **L'antécédent est faux, et c'est
+mesuré** : `ALTER TAG <tag> ADD (depth int)` réussit sur `rag_space` peuplé de
+2 288 puis de 15 196 sommets, sans purge ni recréation. Ce qui n'évolue pas en
+place est le `vid_type` du space (`ngql.py`, `FIXED_STRING`), pas une propriété
+de tag.
+
+**La conclusion d'ordre du plan tient quand même, pour une autre raison.** Le
+schéma migre ; les **données** non. Les sommets déjà écrits portent `NULL`
+(`mesuré` : 188 sur 188 après l'ALTER), et seule une réécriture du document les
+renseigne. §4.11 doit donc bien précéder le lot 6 — non parce que le schéma
+serait figé, mais parce que peupler la colonne coûte une réingestion complète.
+*Un raisonnement juste sur un antécédent faux se relit comme une preuve.*
+
+Le mécanisme est celui qui existait déjà pour le tag `Document` :
+`CREATE TAG IF NOT EXISTS` pour un space neuf, puis un `ALTER TAG ... ADD` par
+colonne, dont l'échec « Existed! » est toléré. Un `ALTER` par colonne et non
+pour la seule colonne du jour : il n'y a aucune liste à tenir à jour.
+
+**Et le lot a découvert le garde qui manquait, en le subissant.** `mesuré` le
+31 août 2026 : sur un space où un `ALTER ... DROP` avait été joué,
+`init_schema()` a rendu **`True`** alors que **onze tags sur douze** seulement
+avaient migré. Nebula avait refusé le douzième avec **« Schema exisited
+before! »** — il conserve l'historique de schéma d'un tag et **n'autorise jamais
+une colonne supprimée à revenir sous le même nom**. L'échec d'un `ALTER` étant
+toléré par construction, rien ne l'a signalé : le défaut ne se serait vu qu'à la
+**première écriture**, sur un rejet du graphd, document à moitié écrit.
+
+`NebulaWriter._verifier_les_tags` constate donc désormais le résultat au lieu de
+le supposer : elle relit `DESCRIBE TAG` et lève si une colonne manque, en
+nommant le tag, la colonne et le geste de réparation. `init_schema()` rend
+`False`, et le service refuse de se déclarer prêt — un service mort se voit.
+**Vérifié sur le cas réel** : sur le space empoisonné, `init_schema()` rend
+`False` là où le code de `main` rendait `True`.
+
+**La propriété est lisible sur le space réel, après réingestion complète**
+(`mesuré` le 31 août 2026, corpus entier, 23 documents) : le tag `SectionHeader`
+porte `depth`, **746 sommets sur 746 la portent, 0 à NULL**, et sa distribution
+— `{0: 163, 1: 301, 2: 234, 3: 40, 4: 8}` — est **identique** à la profondeur
+calculée indépendamment en remontant les chaînes `PARENT_OF` avant le changement.
+Les deux voies concordent. `Paragraph` atteint désormais `depth = 5`, valeur que
+le plafond rendait inatteignable.
+
+**Deux conséquences à connaître, écrites ici parce qu'elles ne sont écrites
+nulle part ailleurs :**
+
+1. **une migration n'est pas réversible.** `ALTER ... DROP` condamne le tag
+   jusqu'à la recréation du space. Ne l'utiliser jamais comme retour arrière ;
+2. **un space existant qui a subi un `DROP` doit être recréé.** C'est le cas du
+   `rag_space` de ce poste au 31 août 2026, et c'est le lot 3 qui l'a mis dans
+   cet état en éprouvant la réversibilité — le dire plutôt que le taire.
 
 ### 4.12 Échelles de rang mélangées
 
@@ -515,6 +1086,21 @@ dérive la profondeur du **parent** et jamais du rang brut, ce qui absorbe le
 mélange d'échelles. Un rang trop **grand** est donc inoffensif ; un rang trop
 **petit** dépilerait des ancêtres, et ce cas n'a pas été observé.
 
+**Et RIEN NE GARDE L'ORDRE DES DEUX SIGNAUX — `mesuré` par la réparation du lot
+3, consigné et non traité.** `flat_rank` (`ranking.py:147-148`) essaie
+`docling_parent_rank` **puis** `docling_level_rank`, et cet ordre est le sujet de
+ce constat. Inverser les deux lignes laisse la **suite entière verte** — `rc=0`,
+639 tests. Aucun test du dépôt n'exerce la priorité, parce que sur ce corpus
+`level` est absent partout où le signal parent répond, et le second n'est donc
+jamais consulté (659 titres sur 659, ci-dessus).
+
+C'est le même déclencheur que le reste du constat : le jour où un Markdown entre
+au corpus, les deux signaux répondront sur des titres différents, et l'ordre
+cessera d'être inerte. **Le garde à écrire ce jour-là est un test de priorité sur
+un item qui offre les deux signaux** — pas une mesure sur le corpus, qui restera
+verte des deux côtés. Le lot qui fera entrer un Markdown doit lire cette ligne
+avant d'écrire une seule assertion.
+
 ### 4.13 `LINKED_TO(relation="describes")` là où le contrat annonce `DESCRIBES`
 
 `nebula.py:184`, `nebula.py:217`, `nebula.py:345`. La documentation d'ici l'écrit
@@ -522,13 +1108,38 @@ fidèlement (`graphe_connaissances.md:29`, `services/nebulagraph.md:33`) ; celle
 de l'agent annonce une arête `DESCRIBES`. L'agent accepte les deux, mais la
 divergence n'était documentée d'aucun côté d'ici. Elle l'est désormais.
 
-### 4.14 Le contrat « pas de chevauchement de lots » n'est gardé par aucun test
+### 4.14 → traité par le lot 3 — le contrat est gardé, et sa conséquence était mal décrite
 
-`extraction.py:453` et `extraction.py:496` réalisent l'absence de chevauchement
-(`end_page = min(start + n - 1, range_end)` puis `start_page = end_page + 1`).
-Aucun test ne fait régresser ce `+1` : le remplacer par `start_page = end_page`
-laisserait la suite verte. Le bug est corrigé à la source, le contrat n'est pas
-gardé.
+Le découpage en lots vit désormais dans `matter.page_batches`, fonction pure, et
+`_extract_pdf` la consomme. Le motif du déménagement est mécanique :
+`extraction.py` importe `docling` au niveau du module, donc **aucun test ne peut
+l'importer** sur un poste sans l'image d'extraction ; `matter.py` est importable,
+et il portait déjà `kept_ranges`, dont le découpage en lots est la suite.
+
+**Ce constat annonçait une conséquence, et elle est fausse — `mesuré` par
+mutation.** Il écrivait : « le remplacer par `start_page = end_page` laisserait
+la suite verte ». La première moitié est vraie — la suite reste verte, personne
+n'exerçait cette boucle. **La seconde est fausse** : cette mutation ne produit
+pas un chevauchement silencieux, elle produit une **boucle infinie**. Avec
+`start_page = end_page`, `end_page = min(start + n − 1, range_end)` cesse de
+progresser dès que la plage est épuisée, et la conversion ne termine jamais
+(`mesuré` : `rc=124`, la suite tuée au bout de 120 s). Un run qui ne finit pas
+n'est pas un run vert sur un graphe faux — c'est un run gelé, et le §4.15 dit ce
+qu'un run gelé coûte à la réindexation.
+
+**Le vrai chevauchement se produit autrement**, et c'est lui que les tests
+gardent : allonger un lot d'une page (`lots.append((debut, fin + 1))`) fait
+rougir **4 tests**, dont `test_batches_do_not_overlap`. L'erreur symétrique — un
+pas de deux, une page sautée en silence — en fait rougir **5**.
+
+**Et le chevauchement n'est pas inoffensif**, ce que le constat ne disait pas :
+`compute_id` dérive l'identifiant d'un élément de
+`(document, page, rang dans la page, texte)`, donc convertir une page deux fois
+**réécrit les mêmes sommets** — rien ne duplique, et c'est ce qui rend la chose
+invisible. Mais `DocumentAccumulator._global_order` est un compteur **global au
+document** : il a avancé, et `sequence` avec lui. **L'exigence 4 du contrat casse
+sans qu'aucune erreur ne le signale.** C'est le vrai coût, et il est plus grave
+que « des éléments en double ».
 
 ---
 
@@ -593,10 +1204,10 @@ Deux choses distinctes, toutes deux antérieures au lot 0 (`mesuré`, 29 août
 `make audit` ne fait pas partie de `make all` : la porte est verte, l'audit est
 rouge, et rien ne le rappelle.
 
-### 4.21 PDF : 46 % des titres reçoivent un rang de REPLI, pas un rang mesuré
+### 4.21 → traité par le lot 3 — le repli est compté, et il n'est pas réparé
 
-`mesuré` le 31 août 2026, sur le seul PDF du corpus, 86 des 87 titres du graphe
-retrouvés par leur taille de police réelle :
+**Le constat, tel qu'il était ouvert.** Sur le seul PDF du corpus, 86 des 87
+titres du graphe retrouvés par leur taille de police réelle :
 
 | taille | rang | origine | titres |
 |---|---|---|---|
@@ -606,31 +1217,78 @@ retrouvés par leur taille de police réelle :
 | 15,0 pt (= corps) | 3 | **repli `inclassable`** | 39 |
 | 11,2 pt (< corps) | 3 | **repli `inclassable`** | 1 |
 
-**40 titres sur 86 (46 %) tombent sur le repli.** Le PDF ne mesure donc que
-**trois** niveaux (17 / 21 / 8), et les profondeurs `17/34/30/6` relevées dans le
-graphe mélangent trois niveaux mesurés et un niveau d'empilement par défaut :
-22 des 30 titres de profondeur 3 et **les 6** de profondeur 4 viennent du repli.
-Aucun compteur ne dit combien de titres sont tombés au repli.
+**Aucun compteur ne disait combien de titres tombaient au repli.** Il y en a un
+désormais, et il compte **à la source** — au moment où le rang est attribué,
+et non a posteriori en retrouvant les tailles.
 
-Le garde-fou `exceeds_body_size` **fonctionne** — il empêche « OceanofPDF.com »,
-à 15,0 pt, de remettre l'arbre à zéro, ce que `ranking.py:192-194` promet — et
-son effet de bord est que presque la moitié de l'arbre PDF est un empilement par
-défaut, invisible dans le chiffre de profondeur.
+**Remesuré par le compteur livré** (`mesuré` le 31 août 2026, journal de
+`_extract_pdf` sur le PDF entier) : **39 titres sur 87, soit 45 %**, et le
+document ne classe que **3 niveaux** (corps à 15,0 pt, `fallback_rank` = 3).
+Le chiffre est **juste** — l'audit l'a reproduit à la source.
 
-**Et le mécanisme n'est pas robuste, argumenté depuis le code.** Ce PDF est une
-re-fabrication `calibre 7.4.0` depuis un EPUB : ses tailles sont des multiples
-CSS exacts d'un `em` de 15 pt, donc *un niveau = une valeur*. Un PDF composé à
-la main rend 16,94 / 16,96 / 17,02 pour un seul niveau logique — trois rangs.
-`_pdf_font_profile` (`extraction.py:565-598`) prend **toute** taille arrondie
-supérieure au corps comme un niveau, quel que soit ce qui la porte : numéros de
-chapitre, lettrines, titres courants, en-têtes de tableau, formules. Chaque
-taille parasite consomme un rang et décale tous les vrais niveaux en dessous
-d'elle, en silence. `pdf_heading_rank` ne borne jamais le rang ; seul `MAX_DEPTH`
-borne la **profondeur**, pas le **rattachement**.
+**Mais l'explication écrite ici ne tenait pas, et elle est corrigée.** Elle
+disait : « Le lot 1 annonçait 40 sur 86 : l'écart d'une unité est le titre que sa
+méthode n'avait pas retrouvé. Les deux mesures concordent. » **L'écart n'est pas
+d'une unité, et il ne porte pas sur un titre.** Les deux dénominateurs se
+décomposent :
 
-Corollaire éditorial : `27,5 pt` porte à la fois la couverture, la « Revision
-History », le « Brief Table of Contents », les titres de chapitre **et** des
-sections de premier rang. Le niveau 0 du PDF est mélangé.
+| | mesures | replis | total |
+|---|---|---|---|
+| lot 1, tailles retrouvées après coup | 17 + 21 + 8 = **46** | 40 | **86** |
+| ce compteur, à la source | **48** | 39 | **87** |
+
+**Deux titres changent de CLASSE** — ils passent du repli à un rang mesuré — et
+un titre de plus est vu au total. Dire « l'écart d'une unité » décrivait la
+différence des totaux et masquait le mouvement réel. C'est la famille de défaut
+que ce lot existe pour fermer : *deux erreurs qui se compensent se cachent
+mutuellement*, et ici c'est une différence qui en cachait deux.
+
+`ranking.fallback_rank` existe pour que la **décision** et le **compteur** lisent
+la même valeur : recalculer le repli dans le compteur reviendrait à compter
+autre chose que ce qui est attribué. Un test le verrouille.
+
+**Le mécanisme typographique n'est PAS refait**, et c'est délibéré : l'audit du
+lot 1 a montré qu'il n'est robuste que sur ce PDF-ci, une refabrication
+`calibre 7.4.0` depuis un EPUB dont les tailles sont des multiples CSS exacts
+d'un `em` de 15 pt. Un PDF composé à la main rendrait 16,94 / 16,96 / 17,02 pour
+un seul niveau logique. **Le mesurer suffit ; le refaire est un chantier.** Le
+reste du constat d'origine — `_pdf_font_profile` prend toute taille arrondie
+supérieure au corps comme un niveau, le niveau 0 mélange couverture, « Revision
+History » et titres de chapitre — **reste ouvert et non traité**, au lot 4.
+
+**Ce que le compteur n'a PAS fait, et pourquoi.** Le mandat demandait de le dire
+« dans le rapport d'index ». Il n'y est pas : `index_report` lit ChromaDB, et
+**aucun `section_header` n'est jamais un chunk** (§4.24) — l'information n'y
+existe pas et n'a pas de raison d'y être. Le compteur vit donc là où le dépôt met
+déjà `pages_skipped`, `ocr` et `failed_batches` : le journal, en
+**avertissement**, et le bilan que `_extract_pdf` retourne, sous
+`headings` / `headings_fallback`. C'est un écart au mandat, déclaré.
+
+### 4.23 → traité par le lot 3 — la coupe à 2 000 caractères se journalise
+
+**Le constat, tel qu'il était ouvert.** `graph_text_max_chars = 2000` coupait
+sans un mot : aucun journal, aucune métrique. ChromaDB n'est pas touché — le
+découpeur repart du document Docling — donc **graphe et vecteurs divergent en
+silence** sur ces éléments-là, l'agent lisant un texte tronqué d'un côté et
+complet de l'autre.
+
+**Remesuré sur le corpus complet** (`mesuré` le 31 août 2026, 15 173 éléments du
+graphe) : **18 éléments font exactement 2 000 caractères** — 14 tables et
+4 paragraphes. Le lot 1 en comptait 4, sur 3 documents.
+
+`nebula.write_elements` compte désormais les éléments dont le texte dépasse la
+limite et émet un **avertissement**, pas un `info` : c'est une perte de texte,
+bornée et voulue, mais une perte. Le message nomme la divergence avec ChromaDB,
+qui est ce qui rend la coupe dangereuse.
+
+Le comptage vit dans `ngql.compter_les_textes_coupes`, donc testable sans
+graphd. La borne est stricte : un texte qui fait exactement la limite n'est pas
+coupé — un test le verrouille, sans quoi le compteur exagérerait d'autant.
+
+**Ce qui reste ouvert** : la divergence elle-même. Ce lot la rend bruyante, il ne
+la supprime pas. Réconcilier les deux stores demande soit de couper aussi le
+texte envoyé au découpeur — donc de perdre du texte des deux côtés — soit de ne
+plus couper le graphe. C'est un arbitrage, pas un correctif.
 
 ### 4.22 Six pages du PDF n'ont aucun élément — leur texte est attribué à la page précédente
 
@@ -644,32 +1302,74 @@ Cause : `page_no` vient de la **première** provenance de l'item, et Docling
 fusionne un paragraphe qui enjambe une page. Conséquence : toute citation « page
 7 » couvre en réalité 7 **et** 8. Run vert, aucun compteur, aucun signal.
 
-### 4.23 `graph_text_max_chars = 2000` coupe quatre éléments sans le dire
+### 4.24 → traité par le lot 3 — le plafond est retiré, les deux échelles sont écrites au contrat
 
-`mesuré` : 4 éléments `text` du PDF font **exactement** 2 000 caractères dans le
-graphe. Aucun journal, aucune métrique. ChromaDB n'est pas touché — le découpeur
-repart du document Docling — donc **graphe et vecteurs divergent en silence** sur
-ces quatre éléments.
+**Le constat, tel qu'il était ouvert.** `HeadingStack.place` (`hierarchy.py:91`)
+plafonnait la profondeur d'un **titre** à `MAX_DEPTH = 3`, mais **`parent_id`
+n'était pas plafonné** : l'arête `PARENT_OF` pointe le vrai parent, donc la
+chaîne était plus longue que `depth`. `add_item` donne aux **non-titres**
+`depth = profondeur_du_titre + 1`, sans plafond. Résultat dans ChromaDB :
+`depth ∈ {1: 92, 2: 238, 3: 345, 4: 98}` — il ne vaut **jamais 0**, et
+**`depth = 4` recouvrait les vraies profondeurs 4 ET 5** (`mesuré` par le lot 1
+sur 773 chunks).
 
-### 4.24 `depth` mélange deux échelles, et ne décrit jamais un titre
+**Ce qui a été tranché, et pourquoi le plafond ne se défendait pas.** Il ne
+bornait aucune structure : `parent_id` n'a jamais été plafonné, donc les arêtes
+écrites dans le graphe étaient **les mêmes** avec ou sans lui. Son motif écrit
+— « au-delà, un RAG n'y gagne rien : l'objectif est de reconstruire un bloc avec
+ses titres parents, pas de reproduire une arborescence complète » — décrivait
+une limitation de l'arbre qui n'a jamais existé. **Et il ne tenait pas sa propre
+promesse** : un non-titre recevait `profondeur_du_titre + 1` sans plafond, donc
+la valeur 4 existait déjà dans ChromaDB alors que le maximum annoncé était 3.
+Son seul effet mesurable était de rendre `depth` **non injectif**.
 
-`mesuré`. `HeadingStack.place` (`hierarchy.py:91`) plafonne la profondeur d'un
-**titre** à `MAX_DEPTH = 3`, mais **`parent_id` n'est pas plafonné** : l'arête
-`PARENT_OF` pointe le vrai parent, donc la chaîne est plus longue que `depth`.
-`add_item` donne aux **non-titres** `depth = profondeur_du_titre + 1`, sans
-plafond. Résultat dans ChromaDB : `depth ∈ {1: 92, 2: 238, 3: 345, 4: 98}` — il
-ne vaut **jamais 0**, et **`depth = 4` recouvre les vraies profondeurs 4 ET 5**
-(1 chunk sur 773 aujourd'hui, davantage avec le corpus).
+Le plafond est retiré, et `MAX_DEPTH` avec lui. `depth` est désormais le nombre
+d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document.
 
-Aggravant décisif : **aucun `section_header` n'est jamais un chunk** — labels
-ChromaDB mesurés : `text` 502, `code` 157, `list_item` 79, `table` 25,
-`caption` 10, **`section_header` 0**. L'agent ne peut donc **jamais** lire le
-niveau d'un titre par cette voie. À traiter avec §4.11, dont c'est la charge
-utile.
+**Et ce n'était pas un no-op — mesuré avant/après sur le même corpus**, 4 365
+chunks réingérés (`mesuré` le 31 août 2026) :
 
-**Ce que l'agent doit lire : la chaîne `PARENT_OF`, et rien d'autre.** C'est le
-seul signal exact — 0 double parent, acyclique, 3 racines `Document`, tout
-`SectionHeader` atteignable (`mesuré`).
+| | distribution de `depth` dans ChromaDB |
+|---|---|
+| avant, avec le plafond | `{1: 912, 2: 1993, 3: 1164, 4: 296}` |
+| après | `{1: 912, 2: 1993, 3: 1164, 4: 256, 5: 40}` |
+
+**40 chunks changent de valeur**, soit 0,9 % : ils valaient 4 et valent 5. Les
+296 de la valeur 4 recouvraient bien deux profondeurs réelles. Le total et les
+autres valeurs sont inchangés — la correction est exactement aussi étroite
+qu'annoncé.
+
+**Les deux échelles subsistent, et elles sont désormais ÉCRITES.** Retirer le
+plafond ne les fusionne pas : sur un titre, `depth` compte les titres au-dessus ;
+sur tout autre élément, il vaut celui de son titre + 1. Un paragraphe sous un
+titre de premier niveau vaut donc 1, comme un sous-titre. **La valeur seule ne
+dit pas quelle échelle on lit — c'est `label` qui le dit**, et c'est écrit au
+site du contrat, `schemas.py`, sur `ChunkMetadata.depth`.
+
+Aggravant décisif, toujours vrai : **aucun `section_header` n'est jamais un
+chunk** — labels ChromaDB mesurés : `text` 502, `code` 157, `list_item` 79,
+`table` 25, `caption` 10, **`section_header` 0**. L'agent ne peut donc **jamais**
+lire le niveau d'un titre par ChromaDB. C'est la charge utile de §4.11, que le
+même lot ferme en écrivant `depth` sur le sommet du graphe.
+
+**Ce que l'agent doit lire : la chaîne `PARENT_OF`, et le `depth` du sommet.**
+La chaîne reste le signal exact, et `depth` en donne désormais la longueur sans
+avoir à la parcourir.
+
+**Deux jeux de chiffres de cette section étaient ceux du lot 1, repris au
+présent.** Ils portaient sur 3 documents et 773 chunks ; l'index en porte 23 et
+4 365. Remesurés le 31 août 2026 sur l'index vivant :
+
+| affirmation | ce qu'elle disait | `mesuré` aujourd'hui |
+|---|---|---|
+| racines de la chaîne `PARENT_OF` | « 3 racines toutes `Document` » | **23**, toutes `Document` |
+| labels ChromaDB | `text` 502, `code` 157, `list_item` 79, `table` 25, `caption` 10 | **2604 / 973 / 484 / 196 / 108** |
+
+**La moitié qui porte l'argument tient toujours**, et c'est elle qui compte :
+`section_header` vaut **0**. Aucun titre n'est jamais un chunk, donc l'agent ne
+peut pas lire un niveau par ChromaDB — c'est la charge utile de §4.11, et elle
+est intacte. Les propriétés qualitatives de la chaîne tiennent aussi : 0 double
+parent, acyclique, une racine `Document` par document.
 
 ### 4.25 Les URL du graphe rendent 403 en GET anonyme
 
@@ -680,43 +1380,178 @@ inutilisable sans identifiants et **hors du réseau Docker**. « 0 URL morte »
 dépend donc entièrement de la méthode de lecture. À trancher avec l'agent, qui
 « ne sert que ce que le graphe référence ».
 
-### 4.26 La pile entière et le seul `.env` du poste vivent dans un arbre de travail — À TRAITER AVANT TOUT
+### 4.26 → traité par le lot 3 — la pile est remontée depuis le clone principal
 
-**`mesuré` le 31 août 2026, et c'est un piège armé par le geste que le mandat
-prescrit.** Le lot 1 a monté la pile depuis son arbre de travail. Tous les
-stores sont des **bind mounts** de cet arbre :
+**Le constat, tel qu'il était ouvert.** Le lot 1 avait monté la pile depuis son
+arbre de travail : les cinq stores étaient des bind mounts de
+`.claude/worktrees/lot-1-observation-b12761/Datas/database/`, `src` et `Datas` du
+service Docling aussi, et le seul `.env` du poste y vivait. Supprimer cet arbre —
+ce que le §7 du mandat prescrit après une fusion — aurait détruit le graphe, les
+vecteurs, les objets et le Postgres, sans qu'aucun garde-fou git ne s'y oppose.
+
+**Ce qui a été fait, et pourquoi pas une réingestion.** `docker compose down`
+depuis l'arbre du lot 1, copie de `.env` et de `Datas/database/` vers le clone
+principal, `docker compose up -d` depuis celui-ci. Déménager plutôt que
+réingérer préservait **l'antécédent** : un index produit par le code de `main`,
+sur lequel prouver que `verify_contract` était vert alors qu'il n'aurait pas dû
+l'être. Le graphe a survécu à l'octet — **2 288 sommets avant, 2 288 après**
+(`mesuré`), 773 chunks, mêmes empreintes de fichiers.
+
+État après (`mesuré`, 31 août 2026) : projet compose **`rag-ingestion-pipeline`**,
+bind mounts sous le clone principal, `.env` dans le clone principal.
+`docker compose ps` depuis le clone principal voit les dix services.
+**L'arbre du lot 1 n'ancre plus rien** ; ses données y restent en copie, filet
+volontaire, et il peut être supprimé.
+
+**Ce qui n'a PAS pu être déménagé, et ce qu'il en est sorti.**
+`Datas/database/postgres` appartient à `root` dans le conteneur : `Permission
+denied`. Le Postgres de Dagster est donc reparti **vierge**, les curseurs des
+sensors avec lui — et **les sensors étant livrés armés** (§4.18, fermé par le
+lot 0b), le simple `docker compose up -d` a déclenché **l'ingestion complète du
+corpus**. Ce n'est pas un défaut, c'est le comportement voulu ; c'est un effet à
+connaître avant de remonter la pile, et il n'était écrit nulle part.
+
+Il en est sorti un bénéfice inattendu : le lot 3 a mesuré tous ses antécédents
+sur le **corpus complet** — 23 documents, 15 196 sommets, 4 365 chunks — et non
+sur les 3 documents du lot 1. Plusieurs chiffres du registre s'en trouvent
+élargis, et **la projection `calculé` du §3.2 est confirmée à l'unité près** :
+elle annonçait 746 titres au total, le graphe en porte **746**.
+
+### 4.27 Pièges de mesure — trois, et le troisième a failli passer inaperçu
+
+**1. `SHOW STATS` rend 0 sur un space peuplé.** `mesuré` : 0 partout sur
+`rag_space`, faute de `SUBMIT JOB STATS`. Un space qui porte 15 196 sommets y
+ressemble à un space vide. Les stores s'interrogent par `MATCH`,
+`collection.count()` et `list_objects`, jamais par une statistique qu'aucun job
+n'a calculée — ni par une taille de dossier (un ChromaDB vide pèse 250 Mo).
+
+**2. Un `WHERE` sur une propriété rend `IndexNotFound` — mais pas sur tous les
+tags.** `mesuré` le 31 août 2026 sur `rag_space` :
+
+| requête | résultat |
+|---|---|
+| `MATCH (v:SectionHeader) RETURN v.SectionHeader.depth` | **OK** |
+| `MATCH (v:SectionHeader) WHERE v.SectionHeader.depth == 0 RETURN v` | **`IndexNotFound: No valid index found`** |
+| `MATCH (v:Document) WHERE v.Document.source_path == '…' RETURN v` | **OK** |
+
+**La condition exacte est l'absence de TOUT index de tag**, et non la propriété
+filtrée : `Document` porte `doc_index` — sur `filename`, pas sur `source_path` —
+et l'optimiseur s'en sert pour restreindre puis filtrer. Les 11 tags d'élément
+n'ont **aucun** index, donc aucun filtre nGQL n'y passe.
+
+Le lot 3 a évité le piège **en filtrant en Python**, et à l'insu du suivant :
+rien ne l'écrivait. `verify_contract._lire_les_profondeurs` le fait aussi, et le
+dit à son site. **Le geste : lire la propriété et filtrer côté client**, ou créer
+un index de tag — ce qui est une décision de schéma, pas un contournement de
+mesure.
+
+**3. Le service Docling exécute le code du CLONE PRINCIPAL, pas celui de ta
+branche.** `docker inspect` le montre : `/home/ubuntu/RAG/rag-ingestion-pipeline/src
+-> /app/src`. Donc `docker compose exec docling-service python -m src.verify_contract`
+mesure le code de `main`, quelle que soit la branche sortie dans ton arbre de
+travail. `mesuré` le 31 août 2026 : la même commande rend **`rc=0` « Contrat
+respecté »** avec le code de `main` et **`rc=1` avec deux anomalies** avec celui
+de la réparation du lot 3 — et un `rc=1` peut tout aussi bien venir d'un
+`ImportError` que d'un garde. **Le pilote s'y est fait prendre.**
+
+Le geste, pour mesurer SON code contre l'index vivant :
+
+```bash
+docker run --rm --network rag_network \
+  -v "$PWD/src":/app/src:ro \
+  -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache \
+  --env-file /home/ubuntu/RAG/rag-ingestion-pipeline/.env \
+  -e HOME=/tmp -e PYTHONPATH=/app -w /app \
+  rag-ingestion-pipeline-docling-service python -m src.verify_contract
+```
+
+### 4.28 → CONSIGNÉ par la réparation du lot 3, NON traité — pour le lot 4
+
+Cinq constats trouvés en réparant, et laissés hors du diff. Périmètre strict.
+
+#### 4.28.a `chunk_count` est mensonger — deux éléments perdent un morceau
+
+`anchoring.resolve_anchors` fixe `chunk_count` **avant** que
+`vectors.build_chunks:186` ne jette les chunks échouant `has_content` ou plus
+courts que `min_chunk_chars`. Le compte annoncé est celui d'**avant** le filtrage.
+
+`mesuré` le 31 août 2026 sur l'index vivant, 4 365 chunks et 3 750 éléments :
 
 ```
-projet compose : lot-1-observation-b12761
-graphd / metad / storaged  -> <arbre>/Datas/database/nebula/{meta,storage}
-chromadb                   -> <arbre>/Datas/database/chromadb
-minio                      -> <arbre>/Datas/database/minio
-postgres-dagster           -> <arbre>/Datas/database/postgres
-docling-service            -> <arbre>/src  et  <arbre>/Datas
-.env                       -> n'existe QUE dans cet arbre
+element_id=aa3de10738  chunk_count=7  présents=[0,1,2,3,5,6]  MANQUE 4
+element_id=eb52c4ec8f  chunk_count=4  présents=[0,1,2]        MANQUE 3
 ```
 
-**Supprimer cet arbre de travail — l'étape 5 du §7 du mandat — détruirait le
-graphe, les vecteurs, les objets et le Postgres de Dagster**, et
-`Datas/database/` étant dans le `.gitignore`, **aucun garde-fou git ne s'y
-oppose**. `git worktree remove` n'y verrait rien à protéger.
+**Un morceau de texte disparaît de la reconstitution sans aucune erreur.** L'agent
+concatène ce qu'il trouve et rend un texte troué. **Le CONTRÔLE est livré**
+(§4.4, `jeux_de_chunks_incomplets`) : la panne est désormais bruyante. **La CAUSE
+va au lot 4** — il faut décider si `chunk_count` se recalcule après filtrage, ou
+si les chunks filtrés doivent cesser de l'être.
 
-Second effet, mesuré : **`docker compose ps` depuis le clone principal ne voit
-rien** — 20 avertissements de variables vides et aucune ligne de service. Un
-pilote qui interroge la pile depuis le dépôt principal la croit éteinte.
+#### 4.28.b Les 199 images HTML sont absentes de MinIO — le bucket porte 13 objets
 
-**Le §7 du mandat gagne donc une étape avant toute suppression d'arbre** :
-vérifier qu'aucun projet Compose ni bind mount ne l'ancre. Et le §4 doit dire
-qu'une pile montée depuis un arbre de travail est invisible depuis le clone
-principal.
+`mesuré` : `list_objects` sur `documents` rend **13** objets, et ce sont **tous**
+des crops du PDF (chaîne `images.py`, qui fonctionne). Les 199 images des
+captures HTML n'y sont **pas** — ni téléversées, ni référencées.
 
-### 4.27 Piège de mesure : `SHOW STATS` rend 0 sur un space peuplé
+Deux conséquences que §3.5 ne dit pas encore : `Datas/.cleaned/` référence encore
+les URL `http://minio:9000/…` dans son HTML nettoyé, donc le HTML pointe des
+objets inexistants ; et **`wipe_stores` ne purge pas `Datas/.cleaned/`**, donc une
+purge suivie d'une réingestion repart du HTML nettoyé périmé. Seule une exécution
+Dagster de l'asset `cleaned_html` les restaurerait.
 
-`mesuré` : `SHOW STATS` rend 0 partout sur `rag_space`, faute de
-`SUBMIT JOB STATS`. Un space qui porte **2 288 sommets** y ressemble à un space
-vide. À ranger avec les autres pièges de mesure : les stores s'interrogent par
-`MATCH`, `collection.count()` et `list_objects`, jamais par une statistique
-qu'aucun job n'a calculée — ni par une taille de dossier.
+**Le lot 4 doit lire ceci AVANT d'attaquer §3.5** : le constat §3.5 décrit 199
+images sans `minio_url` dans le graphe ; il faut savoir en plus qu'elles ne sont
+pas non plus dans le bucket.
+
+#### 4.28.c `dagster-daemon` est arrêté, et l'exigence 5 n'est pas éprouvable ici
+
+`mesuré` : le daemon est arrêté — le lot 3 l'a arrêté pour que les sensors ne
+réingèrent pas par-dessus ses mesures (§7.2 du mandat) — un run est `QUEUED`
+depuis deux heures, et l'historique porte **67 `ReindexError`**.
+
+C'est le **§4.15 en vrai** : un run bloqué gèle la réindexation indéfiniment,
+sans délai de garde ni alerte. Et la conséquence pratique : **l'exigence 5 du
+contrat — `POST /reindex` en fin de pipeline — n'est pas éprouvable sur ce poste
+en l'état.** Lot 4, avec la famille §4.15 à §4.17.
+
+#### 4.28.d `document_vid` : le piège est fermé au nom, pas au garde
+
+`ngql.document_vid` reçoit `identity.key` de ses trois appelants, et le graphe est
+juste — les 23 sommets `Document` ont 23 identifiants distincts, dont
+`doc_htms/MLOps with Databricks/Preface` et
+`doc_htms/Practical MLflow …/Preface` (`mesuré`). Mais son paramètre s'appelait
+`filename` et son docstring disait « Nom du document, sans extension » : une
+**invitation** à passer `identity.filename`, ce qui ferait collisionner les deux
+`Preface.html` sur un seul sommet — perte silencieuse d'un document entier, et
+violation directe de l'exigence 3.
+
+Le paramètre est renommé `cle_du_document` et le docstring dit ce qu'il attend.
+**Mais l'appelant n'est gardé par aucun test** : `mesuré`, remplacer
+`document_vid(identity.key)` par `document_vid(identity.filename)`
+(`nebula.py:154`) laisse la suite **entièrement verte**.
+
+La raison est **mécanique et connue** : `nebula.py` importe `nebula3` au niveau du
+module, donc aucun test ne peut l'importer côté hôte. **C'est le cinquième module
+dans ce cas**, après `index_report` (§3.4), `verify_contract` (§4.4),
+`verify_data` (§4.5) et `vectors` (§4.4). Les quatre premiers sont fermés ;
+`nebula.py` est le plus gros, et le déverrouiller dépasse le périmètre de cette
+réparation. **À faire au lot où `nebula.py` est touché** — et il l'est au lot 4.
+
+#### 4.28.e Le lot 6 est entamé sans avoir été décidé
+
+L'ingestion **complète** a eu lieu, `verify_contract` et `index_report` ont tourné
+sur le corpus complet : les trois premières étapes du lot 6 sont faites. Restent
+les 30 questions, et **l'ordre reste forcé** — les `element_id` sont créés par
+l'ingestion.
+
+**Le fait qui doit décider, et il est mesuré** : `compute_id` dérive de
+`(identity.key, page_no, position_in_page, text[:50])`. Or §4.22 (six pages du PDF
+sans élément, leur texte attribué à la page précédente) et §4.6 / §4.7 (le
+nettoyage) sont **tous au lot 4**, et **tous peuvent déplacer `page_no` et
+`text`** — donc les `element_id`, donc **tuer un jeu de questions écrit avant
+eux**. Écrire les 30 questions avant le lot 4 est un travail à refaire. Le pilote
+tranche ; le fait est ici.
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
@@ -750,64 +1585,85 @@ remplacé `build_blocks`. `documentation/base_vectorielle.md:20` affirme quant �
 lui que les fragments isolés « sont absorbés dans leur paragraphe d'origine ».
 Les deux ne peuvent pas être vrais.
 
-### 5.3 `ngql.py:130-131` redéfinit un schéma faux
+### 5.3 → traité par le lot 3, et c'était devenu une condition, pas un choix
 
-`VERTEX_PROPERTIES` et `DOCUMENT_PROPERTIES` y sont déclarés sans jamais être
-importés, et `DOCUMENT_PROPERTIES` y compte **3** champs contre **7** dans
-`nebula.py:50-58`. Un lecteur qui ouvre `ngql.py` lit un schéma périmé.
+`VERTEX_PROPERTIES` et `DOCUMENT_PROPERTIES` étaient déclarés dans `ngql.py`
+sans jamais être importés, et `DOCUMENT_PROPERTIES` y comptait **3** champs
+contre **7** dans `nebula.py`. Un lecteur qui ouvrait `ngql.py` lisait un schéma
+périmé.
 
-### 5.4 `main` n'est pas format-propre — quatre fichiers, dont trois réservés au lot 2
+**Ce constat était rangé au lot 5, et le lot 3 l'a pris — voici l'argument.**
+Ajouter `depth` au schéma (§4.11) sans toucher au doublon aurait porté à **deux**
+le nombre de définitions fausses dans le fichier même où l'on vient de changer
+le schéma. Une constante morte qui décrit faussement ce qu'on vient de modifier
+n'est pas du code mort : c'est un piège, et c'est exactement la famille de
+défaut que le lot 3 existe pour fermer.
 
-`ruff format --check src/` signale **3 fichiers** sur `main` :
-`extraction.py:412`, `:442`, `:479` ; `language.py:136-140` ;
-`matter.py:134-137` (`mesuré` avec `ruff` 0.11.8 — la version épinglée par
-`pyproject.toml` **et** par `.pre-commit-config.yaml` — et 0.16.5, même
-résultat ; reconfirmé le 31 août 2026 : « 3 files would be reformatted, 33 files
-already formatted »). Ce sont des lignes tenant dans les 100 colonnes mais
-pliées à la main.
+Le sens de la déduplication est **l'inverse** de celui qu'on attendrait : c'est
+la définition de `nebula.py` qui disparaît, et celle de `ngql.py` qui devient
+canonique. `ngql.py` est le seul des deux modules « sans dépendance externe »,
+donc le seul testable sans graphd — et c'est ce qui permet aux gardes de §4.11
+d'exister comme tests unitaires plutôt que comme intentions.
 
-La correction est cosmétique et sans risque, mais elle touche `extraction.py`,
-que le chantier de la hiérarchie réécrit : **à faire dans le lot 2, pas avant.**
-Les reformater plus tôt noierait le diff du lot qui compte dans un reformatage
-massif.
+### 5.4 → FERMÉ par la réparation du lot 3 — les quatre fichiers sont format-propres, et `make all` rend 0
 
-**Un QUATRIÈME fichier n'est pas format-propre, et il est dans un angle mort.**
-`tests/unit/test_wipe_stores.py`, préexistant sur `main` (`mesuré`, 31 août
-2026, remesuré sur cette révision : `uv run ruff format --check src/ tests/` →
-« 4 files would be reformatted, 58 files already formatted »). Il n'a rien à voir avec le lot 2. Son angle mort
-est triple : `make format-check` est **borné à `src/`** et ne le signale jamais ;
-`make format` ne le répare pas, pour la même raison ; mais le hook
-`ruff-format --check`, installé depuis le lot 0b, **bloque** tout commit qui le
-touche — sans issue automatique. **Le geste, quand ce jour viendra :**
-`uv run ruff format tests/unit/test_wipe_stores.py`, dans le commit qui touche ce
-fichier et nulle part ailleurs.
+**Le constat, tel qu'il était ouvert.** `ruff format --check src/` signalait
+**3 fichiers** sur `main` — `extraction.py:412`, `:442`, `:479` ;
+`language.py:136-140` ; `matter.py:134-137` — plus un **quatrième dans un angle
+mort**, `tests/unit/test_wipe_stores.py`, préexistant sur `main` : `make
+format-check` était **borné à `src/`** et ne le signalait jamais, `make format`
+ne le réparait pas, mais le hook `ruff-format --check` **bloquait** tout commit
+qui le touchait, sans issue automatique. Ce sont des lignes tenant dans les 100
+colonnes mais pliées à la main.
 
-**Toute phrase de ce dépôt qui dit « trois fichiers » parle de la portée de
+**Ce qui a fermé le constat, et en trois temps.** Le report était rangé au lot 2,
+puis au lot 5 quand le lot 2 a disparu, au motif que reformater `extraction.py`
+noierait le diff du lot qui le réécrit. Deux arguments ont eu raison de ce motif :
+
+1. **le lot 3 a reformaté `extraction.py` et `matter.py`**, en écarts déclarés,
+   parce que le hook refuse tout commit qui les touche et que les gardes de §4.21
+   et §4.14 y vivent. Coût `mesuré` : **9** et **4** lignes
+   (`git show --numstat --format= 23055cb 27c3c22`) ;
+2. **le report des deux derniers supposait que personne n'y toucherait**, alors
+   que le lot 4 vise `extraction.py` quatre fois (§4.1, §4.6, §4.7, §4.22) : le
+   report se serait heurté au même mur. La réparation du lot 3 a donc reformaté
+   `language.py` et `tests/unit/test_wipe_stores.py` dans un commit de style
+   seul. Coût `mesuré` : **7** lignes — 3 ajoutées, 4 retirées.
+
+**Coût total : 20 lignes de diff, sur trois commits de style.** Le récit d'un
+« reformatage massif » était surdimensionné de bout en bout, et il instruisait
+chaque conversation à venir de l'accepter sans remesurer. Le chiffre de 16 lignes
+sur 1 221 qui vivait ici — mesuré pour les trois fichiers de `src/` avec `ruff`
+0.11.8 et le `pyproject.toml` du dépôt, sans lequel `ruff` retombe sur 88
+colonnes — était juste ; c'est le mot « massif » qui n'a jamais rien mesuré.
+
+**Ce que la fermeture obtient, et c'est le motif réel.** `make all` rend **0**.
+L'exception « rc=2 est le rouge attendu » — qui vivait dans chaque prompt du
+chantier depuis le lot 0b, que chaque conversation redécouvrait, et qui a déjà
+**masqué un vrai rouge une fois** — n'existe plus. Un `rc` non nul est désormais
+un défaut, sans exception à connaître.
+
+`mesuré` sur la pointe de la réparation du lot 3 :
+`uv run ruff format --check src/ tests/` → « 66 files already formatted »,
+`rc=0` ; `make all` → `rc=0`.
+
+**Et l'angle mort est fermé par la portée, pas par le nettoyage.** Reformater les
+quatre fichiers rend le dépôt propre **aujourd'hui** ; cela ne garde rien. La
+divergence des deux portées — `make format-check` sur `src/`, le hook sur tout ce
+qui est indexé — **était** le défaut, et c'est elle qui a produit l'angle mort
+D7. `make format` et `make format-check` portent désormais sur `src/ tests/`,
+donc les deux gardes voient la même chose. Sans ce second geste,
+`test_wipe_stores.py` pouvait redériver en silence et rebloquer le commit suivant
+qui le touche : *un garde-fou qui repose sur la mémoire du suivant n'est pas un
+garde-fou.* C'est un écart au périmètre de la réparation, déclaré, et il était
+déjà proposé au registre — « étendre `format-check` à `tests/` fermerait cet
+angle mort d'un geste », consigné par la seconde réparation du lot 0b.
+
+**Toute phrase de ce dépôt qui disait « trois fichiers » parlait de la portée de
 `make format-check`, jamais de l'état du dépôt.** Le lot 0b avait clos cette
 énumération sur une portée qui n'était plus celle du garde qu'il installait :
-c'est une phrase d'exhaustivité, et c'en est la deuxième de ce lot.
-
-**Le coût du reformatage est MESURÉ, et il est petit.** `uv run ruff format src/`
-produit **16 lignes** de diff — 4 ajoutées, 12 supprimées
-(`git diff --numstat -- src`) — sur **1 221** lignes dans les trois fichiers
-(`wc -l` **avant** le reformatage : le « 1 213 » écrit ici comptait l'arbre
-**d'après**, et un diff ne se rapporte pas au tas qu'il a produit), à **cinq**
-endroits, dont **quatre** replis de ligne faits à la main et un doublon de ligne
-vide dans `_extract_pdf` (`mesuré`, 31 août 2026, `ruff` 0.11.8 avec le
-`pyproject.toml` du dépôt — sans lui, `ruff` retombe sur 88 colonnes et le chiffre
-n'a plus rien à voir). **Ce n'est pas un « reformatage massif ».** La phrase
-qui l'affirmait était surdimensionnée, et le mandat instruisait chaque
-conversation à venir de l'accepter sans remesurer. **La décision de ne pas
-reformater reste la bonne, pour une autre raison :** trois des cinq endroits
-sont dans `extraction.py`, que le lot 2 devait réécrire — lot supprimé, voir §3.2 —, et un diff de formatage mêlé à
-cette réécriture se relit mal. C'est un argument de lisibilité, pas de volume.
-
-**Conséquence, assumée et voulue : `make all` est ROUGE sur `main`.** C'est la
-moitié de ce constat qui a été fermée par le lot 0b (voir §8) : la porte
-**constate** désormais au lieu d'écrire, donc elle dit la vérité sur l'état du
-dépôt — et cette vérité est « **quatre** fichiers ne sont pas format-propres,
-dont trois que `make format-check` sait voir ». Ne pas éteindre ce rouge avec
-`make format` — la marche à suivre est écrite au `README.md`, section Tests.
+c'était une phrase d'exhaustivité. Elle est sans objet désormais — les deux
+portées coïncident, et le compte est **zéro**.
 
 ### 5.6 Trois `except Exception` sans justification écrite au site
 
@@ -891,11 +1747,38 @@ Trois réserves qu'aucun document ne porte, et dont l'agent peut se tromper :
    d'éléments que demandé ; un agent qui lit la contiguïté comme un indice
    d'intégrité conclura à une perte.
 
-**Le garde manque aussi.** La propriété que le lot 1 avait d'abord conclue —
-« aucun parent ne porte deux fois la même valeur » — est l'**unicité sous un
-parent**, et non l'ordre exigé : une numérotation aléatoire distincte par parent
-passerait ce test. Le garde à écrire est le second : `page_no` ne décroît pas
-dans l'ordre des `sequence`. À traiter avec §4.4.
+**Le garde existe désormais — écrit par le lot 3 avec §4.4.** La propriété que
+le lot 1 avait d'abord conclue — « aucun parent ne porte deux fois la même
+valeur » — est l'**unicité sous un parent**, et non l'ordre exigé : une
+numérotation aléatoire distincte par parent passerait ce test. Le garde écrit
+est le second : `page_no` ne décroît pas dans l'ordre des `sequence`, borné au
+document. `verify_contract.inversions_de_page` le vérifie sur la **totalité** des
+arêtes — **0 inversion sur 15 173**, corpus complet, `mesuré` le 31 août 2026 —
+et les trois réserves ci-dessus sont écrites à son site, parce que deux d'entre
+elles interdisent des contrôles qu'on serait tenté d'écrire à la place.
+
+**Restent à écrire au contrat côté agent**, ce que le lot 3 ne peut pas faire
+d'ici : les réserves 1 à 3 concernent la façon dont l'agent LIT `sequence`, et
+sa documentation vit dans l'autre dépôt.
+
+### 6.18 Les deux blocs de schéma documentés portent d'autres erreurs — relevé par le lot 3, NON traité
+
+Le lot 3 a mis à jour `documentation/services/nebulagraph.md` et
+`documentation/llm_integration_plan.md` sur le seul point que son code rendait
+faux — les tags d'élément gagnent `depth`. **Il a laissé les erreurs
+préexistantes du même bloc**, périmètre strict, et les voici pour le lot 5
+(`mesuré` le 31 août 2026 par `DESCRIBE TAG Document;` et `DESC SPACE rag_space;`
+sur `rag_space`) :
+
+| Site | Ce qu'il dit | Mesuré |
+|---|---|---|
+| `services/nebulagraph.md:24` | `vid_type=FIXED_STRING(64)` | **256** — `ngql.py` porte `VID_MAX_BYTES = 256`, et le commentaire y explique pourquoi 64 ne suffisait pas |
+| `services/nebulagraph.md:26` | `CREATE TAG Document(filename string, type_file string)` | **7** propriétés : `filename`, `type_file`, `total_pages`, `collection`, `source_path`, `language`, `content_hash` |
+| `llm_integration_plan.md:298` | `Document \| filename: string, type_file: string` | les mêmes 7 |
+
+C'est la même famille que §6.3 : une énumération close que personne n'a
+rouverte. `source_path` y manque des deux côtés, et c'est **l'exigence 3 du
+contrat** — l'identité d'un document.
 
 ### 6.17 Chiffres et renvois faux, relevés le 31 août 2026
 
@@ -1464,7 +2347,7 @@ code fait.
 | **D2** | README : les hooks qui écrivent « montrent leur diff » | **faux.** `--show-diff-on-failure` n'est activé nulle part, et **aucune clé** de `.pre-commit-config.yaml` ne peut l'activer — c'est un drapeau de ligne de commande. La sortie se limite à `files were modified by this hook` puis `Fixing <fichier>` (`mesuré`) | README : la phrase est corrigée, et les deux commandes qui montrent le diff sont données |
 | **D3** | README : `check-added-large-files` = « aucun fichier > 500 ko » | **faux.** Seuls les fichiers **ajoutés** sont contrôlés ; un fichier déjà suivi qu'on modifie passe quelle que soit sa taille, et le dépôt post-fusion en porte **25** au-dessus du seuil (`mesuré`) | README, tableau des hooks — ligne détachée de `check-yaml` |
 | **D4** | Makefile : « `uv sync` … c'est la **seule** étape d'installation de la porte qualité » | **rendue fausse par le lot**, qui en avait fait deux. Redevenue **vraie** : `make install` arme aussi les hooks | Makefile, cible `install` — voir R1 |
-| **D7** | README, mandat §2.4, ce registre §5.4 : « trois fichiers » non format-propres | **faux.** Il y en a **quatre** : `tests/unit/test_wipe_stores.py`, préexistant sur `main`, invisible à `make format-check` (borné à `src/`), non réparé par `make format`, mais **bloqué** par le hook `ruff-format --check` | §5.4 ci-dessus, plus README et mandat §2.4. Le geste de sortie y est écrit |
+| **D7** | README, mandat §2.4, ce registre §5.4 : « trois fichiers » non format-propres | **faux.** Il y en avait **quatre** : `tests/unit/test_wipe_stores.py`, préexistant sur `main`, invisible à `make format-check` (borné à `src/`), non réparé par `make format`, mais **bloqué** par le hook `ruff-format --check`. **Sans objet depuis la réparation du lot 3** : les quatre sont reformatés, les deux portées coïncident sur `src/ tests/`, et le compte est zéro (§5.4) | §5.4 ci-dessus, plus README et mandat §2.4 |
 | **D8** | « reformatage massif » qui « noierait le lot 2 » | **surdimensionné.** `mesuré` : **16 lignes** de diff sur **1 221**, à cinq endroits, dont quatre replis de ligne (le « 1 213, quatre endroits » de cette ligne était lui-même imprécis — voir F2 plus bas). La décision de ne pas reformater reste bonne — pour la **lisibilité** du lot 2, pas pour un volume | §5.4 ci-dessus : le récit est remplacé par la mesure |
 | **D9** | README : « le dépôt en portait **2** » pragmas | **faux.** Il y en a **3** — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et `:92` (`mesuré`). La troisième est née du piège de déduplication décrit plus haut, et n'avait pas été recomptée | README, avec la commande de comptage |
 | **D10** | `is_verified: false` lu comme un signe de pourrissement de la baseline | **faux.** En sémantique `detect-secrets`, `is_verified` signifie « vérifié contre le **service réel** » ; le champ d'audit humain est `is_secret`. C'est la valeur normale de presque toute entrée. **La preuve du fantôme reste entière** — la ligne 44 disparue — mais elle tenait seule | `.pre-commit-config.yaml` et ce registre, aux deux sites |
@@ -1847,7 +2730,10 @@ de repli.
 `mesuré` le 31 août 2026, clone frais : après le repli tel qu'il était écrit,
 `.git/hooks` ne porte **aucun** hook ; après le repli corrigé, les **quatre**
 attendus, et la suite rend `lint=0`, `typecheck=0`, `test=0`, `format-check=1`
-— le rouge connu. Le repli du §2.4 porte désormais la ligne manquante.
+— le rouge d'alors. Le repli du §2.4 porte désormais la ligne manquante.
+*(`format-check` rend **0** depuis la réparation du lot 3 — §5.4. La mesure
+ci-dessus est conservée telle quelle : elle décrit le clone frais du 31 août
+2026.)*
 
 #### Trouvé par la SECONDE réparation, et NON traité — consigné, pas corrigé
 
@@ -2020,6 +2906,9 @@ fichier et nulle part ailleurs. Détail complet au §5.4.
   d'un quatrième fichier et **fermerait cet angle mort d'un geste** — mais cela
   demande de reformater `test_wipe_stores.py`, ce que le mandat de la réparation
   interdit explicitement. À trancher avec §5.4.
+  **→ RETENU et fait par la réparation du lot 3** : le fichier est reformaté,
+  `make format` et `make format-check` portent sur `src/ tests/`, et `make all`
+  rend 0. La piste était juste, et c'est le reformatage qui la débloquait.
 
 ### 3.6 → traité par `eaa8a8e` — la porte qualité est reproductible
 

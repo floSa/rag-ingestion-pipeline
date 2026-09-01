@@ -27,8 +27,15 @@ lint:
 
 # `format` ECRIT dans le depot. C'est le geste volontaire du developpeur qui
 # decide de reformater, et il n'entre dans aucune porte.
+#
+# La portee est `src/ tests/`, et elle etait bornee a `src/`. C'etait un ANGLE
+# MORT, nomme au registre (D7) : `tests/unit/test_wipe_stores.py` n'etait pas
+# format-propre, `make format-check` ne le voyait jamais, `make format` ne le
+# reparait pas — mais le hook `ruff-format --check`, qui voit tout ce qui est
+# indexe, BLOQUAIT tout commit qui le touchait, sans issue automatique. Les deux
+# portees divergeaient, et c'est la divergence qui etait le defaut.
 format:
-	uv run ruff format src/
+	uv run ruff format src/ tests/
 
 # `format-check` ne fait que CONSTATER, et c'est lui qui entre dans `all`. Une
 # porte qualite qui reecrit l'arbre qu'elle controle ne controle rien : elle
@@ -38,7 +45,7 @@ format:
 # l'a fait six fois parce qu'il le savait. Un garde-fou qui repose sur la
 # memoire du suivant n'est pas un garde-fou.
 format-check:
-	uv run ruff format --check src/
+	uv run ruff format --check src/ tests/
 
 typecheck:
 	uv run mypy src/
@@ -52,10 +59,12 @@ test-cov:
 audit:
 	uv run pip-audit -r requirements.txt -r src/docling_service/requirements.txt
 
-# `format-check` passe EN DERNIER, et ce n'est pas cosmetique. Il est rouge sur
-# `main` — trois fichiers plies a la main, que le lot de la hierarchie reecrira
-# (registre 5.4) — et l'ordre ne change pas le verdict de la porte, seulement ce
-# qu'un humain apprend avant qu'elle ne s'arrete. Place en premier, il priverait
-# tous les lots a venir du signal de `lint`, `typecheck` et `test` sur `main`.
-# Place en dernier, la porte dit tout ce qu'elle sait avant de s'arreter.
+# `format-check` passe EN DERNIER, et l'ordre a ete choisi quand il etait ROUGE :
+# les quatre fichiers plies a la main faisaient sortir `make all` en 2 sur
+# `main`, et le placer en premier aurait prive tous les lots a venir du signal de
+# `lint`, `typecheck` et `test`. Ces quatre fichiers sont desormais
+# format-propres (registre 5.4), donc `make all` rend 0 et l'exception « rc=2 est
+# le rouge attendu » n'existe plus : un rc non nul est un defaut, sans exception
+# a connaitre. L'ordre est conserve — il ne coute rien et il redeviendrait le bon
+# le jour ou un fichier repart de travers.
 all: lint typecheck test format-check

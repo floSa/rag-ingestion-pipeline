@@ -393,9 +393,7 @@ def _extract_pdf(
         # leur vitesse puisqu'ils n'empruntent jamais cette branche.
         logger.warning("[%s] aucune couche texte : conversion avec OCR", stem)
 
-    logger.info(
-        "[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped)
-    )
+    logger.info("[%s] PDF de %d pages, %d ecartees (hors contenu)", stem, total_pages, len(skipped))
     report(
         pages_total=total_pages,
         pages_done=0,
@@ -420,66 +418,85 @@ def _extract_pdf(
     converter = get_converter(ocr=besoin_ocr)
     total_chunks = 0
     failed_batches: list[str] = []
+    # Combien de titres ont recu un rang MESURE, et combien le rang de repli.
+    # Le PDF ne classe que les tailles superieures au corps du texte : tout le
+    # reste s'empile sous le titre courant, et rien ne le comptait. Sans ce
+    # chiffre, une profondeur relevee dans le graphe melange des niveaux
+    # mesures et un empilement par defaut sans qu'on puisse les distinguer.
+    titres_total = 0
+    titres_replis = 0
     # Detectee sur le premier lot converti, puis conservee : la langue d'un
     # ouvrage ne change pas en cours de route, et les lots suivants ecrivent
     # le meme noeud Document.
     langue = ""
 
+    # Le decoupage en lots vit dans matter.page_batches et non ici : le contrat
+    # « pas de chevauchement » etait realise par un « + 1 » que rien ne gardait,
+    # et ce module n'est pas importable sans docling, donc pas testable.
+    lots = matter.page_batches(ranges, settings.pdf_batch_pages)
 
     # Le PDF est ouvert UNE fois pour tous les crops du document.
     with fitz.open(pdf_path) as document:
-        for range_start, range_end in ranges:
-            start_page = range_start
-            while start_page <= range_end:
-                end_page = min(start_page + settings.pdf_batch_pages - 1, range_end)
-                logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
+        for start_page, end_page in lots:
+            logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
 
-                try:
-                    batch_elements, batch_document = _convert_batch(
-                        converter,
-                        pdf_path,
-                        stem,
-                        document,
-                        accumulator,
-                        start_page,
-                        end_page,
-                        body_size,
-                        size_ranks,
-                    )
-                except Exception as exc:
-                    # Une page illisible ne doit pas condamner les 399 autres : on
-                    # note l'echec, on continue, et le job echouera a la fin avec
-                    # la liste des pages manquantes. Jamais un run vert sur un trou.
-                    logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
-                    failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
-                else:
-                    if not langue:
-                        langue = _detect_document_language(batch_elements, stem)
-                    facts = DocumentFacts(
-                        type_file="pdf",
-                        total_pages=total_pages,
-                        language=langue,
-                        content_hash=content_hash,
-                    )
-                    # L'ecriture, elle, est bloquante : si un store refuse le lot,
-                    # continuer n'aurait aucun sens.
-                    total_chunks += storage.persist(
-                        batch_elements, identity, facts, batch_document
-                    )
-
-                report(
-                    pages_done=end_page,
-                    elements=accumulator.count,
-                    chunks=total_chunks,
-                    language=langue,
-                    failed_batches=list(failed_batches),
+            try:
+                batch_elements, batch_document, comptes = _convert_batch(
+                    converter,
+                    pdf_path,
+                    stem,
+                    document,
+                    accumulator,
+                    start_page,
+                    end_page,
+                    body_size,
+                    size_ranks,
                 )
-                start_page = end_page + 1
+            except Exception as exc:
+                # Une page illisible ne doit pas condamner les 399 autres : on
+                # note l'echec, on continue, et le job echouera a la fin avec
+                # la liste des pages manquantes. Jamais un run vert sur un trou.
+                logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
+                failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
+            else:
+                titres_total += comptes[0]
+                titres_replis += comptes[1]
+                if not langue:
+                    langue = _detect_document_language(batch_elements, stem)
+                facts = DocumentFacts(
+                    type_file="pdf",
+                    total_pages=total_pages,
+                    language=langue,
+                    content_hash=content_hash,
+                )
+                # L'ecriture, elle, est bloquante : si un store refuse le lot,
+                # continuer n'aurait aucun sens.
+                total_chunks += storage.persist(batch_elements, identity, facts, batch_document)
+
+            report(
+                pages_done=end_page,
+                elements=accumulator.count,
+                chunks=total_chunks,
+                language=langue,
+                failed_batches=list(failed_batches),
+            )
 
     if failed_batches:
         raise BatchExtractionError(
             f"{len(failed_batches)} batch(s) non convertis pour {stem} : "
             f"{'; '.join(failed_batches)}"
+        )
+
+    if titres_replis:
+        logger.warning(
+            "[%s] %d titres sur %d (%.0f %%) ont recu le rang de REPLI et non un "
+            "rang mesure : le document ne classe que %d niveau(x) de titre. Leur "
+            "profondeur dans le graphe est un empilement par defaut",
+            stem,
+            titres_replis,
+            titres_total,
+            100 * titres_replis / titres_total if titres_total else 0,
+            len(size_ranks),
         )
 
     logger.info("[%s] termine : %d elements, %d chunks", stem, accumulator.count, total_chunks)
@@ -491,6 +508,8 @@ def _extract_pdf(
         "ocr": besoin_ocr,
         "language": langue,
         "type_file": "pdf",
+        "headings": titres_total,
+        "headings_fallback": titres_replis,
     }
 
 
@@ -685,19 +704,27 @@ def _convert_batch(
     end_page: int,
     body_size: float = 0.0,
     size_ranks: dict[float, int] | None = None,
-) -> tuple[list[dict[str, Any]], Any]:
+) -> tuple[list[dict[str, Any]], Any, tuple[int, int]]:
     """Convertit une plage de pages et construit ses elements.
 
     Returns:
-        Les elements du lot, et le document Docling converti — ce dernier est
-        necessaire au decoupeur, qui travaille sur la structure.
+        Les elements du lot, le document Docling converti — necessaire au
+        decoupeur, qui travaille sur la structure — et le couple
+        ``(titres, titres tombes au rang de repli)`` de ce lot.
     """
     result = converter.convert(pdf_path, page_range=(start_page, end_page))
     elements: list[dict[str, Any]] = []
     rangs = size_ranks or {}
+    repli = ranking.fallback_rank(rangs)
+    titres = inclassables = 0
 
     for item, _ in result.document.iterate_items():
         rang = _pdf_heading_rank(item, document, elements, body_size, rangs)
+        if rang is not None:
+            titres += 1
+            # Le compteur lit le repli a la MEME source que la decision : le
+            # recalculer ici compterait autre chose que ce qui est attribue.
+            inclassables += int(rang == repli)
         element = accumulator.add_item(item, result.document, heading_rank=rang)
         if element["label"] in VISUAL_LABELS and element["bbox"]:
             element["minio_url"] = images.crop_and_upload(
@@ -715,4 +742,4 @@ def _convert_batch(
     if backend is not None:
         backend.unload()
 
-    return elements, result.document
+    return elements, result.document, (titres, inclassables)

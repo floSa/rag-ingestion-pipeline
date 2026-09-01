@@ -11,15 +11,20 @@ import pytest
 
 from src.docling_service.ngql import (
     MAX_VALUES_PER_STATEMENT,
+    VERTEX_PROPERTIES,
     VID_MAX_BYTES,
     batch_values,
+    compter_les_textes_coupes,
     document_vid,
     edge_value,
+    element_vertex_value,
     escape_ngql,
     insert_edge_statements,
     insert_vertex_statements,
+    missing_vertex_columns,
     quote,
     render,
+    tag_schema_statements,
     vertex_value,
 )
 
@@ -196,3 +201,139 @@ class TestDocumentVid:
     def test_deux_titres_de_meme_debut_ne_se_confondent_pas(self):
         base = "a" * 300
         assert document_vid(base + "premier") != document_vid(base + "second")
+
+
+class TestElementVertexValue:
+    """Le sommet ecrit dans le graphe doit porter le niveau du titre.
+
+    L'agent peut remonter les aretes PARENT_OF, mais il ne pouvait lire aucun
+    niveau declare : ni depth, ni rien d'autre n'etait ecrit sur le sommet
+    (registre 4.11). Ces tests font regresser l'ecriture de la propriete, et
+    non la seule presence de son nom dans une constante.
+    """
+
+    ELEMENT = {
+        "id": "0011223344",
+        "label": "section_header",
+        "page_no": 7,
+        "text": "Chunking",
+        "minio_url": "",
+        "depth": 2,
+    }
+
+    def test_the_depth_reaches_the_values_expression(self):
+        rendu = element_vertex_value(self.ELEMENT, max_chars=2000)
+        assert rendu == '"0011223344":("section_header", 7, "Chunking", "", 2)'
+
+    def test_a_root_heading_writes_zero_and_not_an_empty_value(self):
+        """depth = 0 est une VALEUR, pas une absence : un faux None l'effacerait."""
+        rendu = element_vertex_value({**self.ELEMENT, "depth": 0}, max_chars=2000)
+        assert rendu.endswith(", 0)")
+
+    def test_the_properties_and_the_values_stay_aligned(self):
+        """Une colonne ajoutee d'un cote seulement decale tout l'INSERT."""
+        rendu = element_vertex_value(self.ELEMENT, max_chars=2000)
+        valeurs = rendu.split(":(", 1)[1].rstrip(")").split(", ")
+        assert len(valeurs) == len(VERTEX_PROPERTIES)
+        assert VERTEX_PROPERTIES[-1] == "depth"
+
+    def test_a_missing_depth_falls_back_to_zero(self):
+        sans = {cle: valeur for cle, valeur in self.ELEMENT.items() if cle != "depth"}
+        assert element_vertex_value(sans, max_chars=2000).endswith(", 0)")
+
+    def test_the_text_is_still_truncated_to_the_graph_limit(self):
+        rendu = element_vertex_value({**self.ELEMENT, "text": "x" * 50}, max_chars=10)
+        assert '"xxxxxxxxxx"' in rendu
+
+
+class TestTagSchemaStatements:
+    """La migration du schema, sans laquelle la propriete n'a nulle part ou aller."""
+
+    def test_every_tag_is_created_with_the_depth_column(self):
+        statements = tag_schema_statements(["SectionHeader", "Paragraph"])
+        creations = [s for s in statements if s.startswith("CREATE TAG")]
+        assert len(creations) == 2
+        assert all("depth int" in s for s in creations)
+
+    def test_every_tag_gets_an_alter_for_the_spaces_that_already_exist(self):
+        """CREATE TAG IF NOT EXISTS n'ajoute RIEN a un tag deja cree.
+
+        Sans cet ALTER, un space peuple par une version anterieure garde le
+        schema d'avant et les INSERT sont rejetes pour colonne inconnue.
+        """
+        statements = tag_schema_statements(["SectionHeader"])
+        assert "ALTER TAG SectionHeader ADD (depth int);" in statements
+
+    def test_the_alter_comes_after_the_create(self):
+        statements = tag_schema_statements(["SectionHeader"])
+        creation = next(i for i, s in enumerate(statements) if s.startswith("CREATE TAG"))
+        alteration = next(i for i, s in enumerate(statements) if s.startswith("ALTER TAG"))
+        assert creation < alteration
+
+    def test_no_tag_no_statement(self):
+        assert tag_schema_statements([]) == []
+
+    def test_every_column_gets_its_alter_so_no_list_has_to_be_kept_up_to_date(self):
+        """Une migration limitee a « la colonne du jour » est une liste a tenir.
+
+        Le tag Document a deja ce patron : un ALTER par colonne, tous toleres.
+        Une colonne ajoutee demain migre donc sans qu'on y pense.
+        """
+        statements = tag_schema_statements(["Paragraph"])
+        alterations = [s for s in statements if s.startswith("ALTER TAG")]
+        assert len(alterations) == len(VERTEX_PROPERTIES)
+
+
+class TestMissingVertexColumns:
+    """Le garde qui manquait : une migration peut echouer et se taire.
+
+    Mesure le 31 aout 2026 sur ``rag_space`` : ``init_schema()`` a rendu
+    **True** alors que le tag SectionHeader n'avait PAS gagne sa colonne. Nebula
+    avait refuse l'ALTER avec « Schema exisited before! » — la trace d'un DROP
+    anterieur de la meme colonne, qu'il n'autorise jamais a revenir. L'echec
+    etant tolere (``required=False``), rien ne l'a signale, et le defaut ne se
+    serait vu qu'a la premiere ecriture, sur un rejet du graphd.
+    """
+
+    def test_a_complete_tag_reports_nothing(self):
+        assert missing_vertex_columns(VERTEX_PROPERTIES) == ()
+
+    def test_the_missing_column_is_named(self):
+        lues = ("label", "page_no", "text", "minio_url")
+        assert missing_vertex_columns(lues) == ("depth",)
+
+    def test_extra_columns_are_not_a_gap(self):
+        """Un space plus riche que le schema courant n'est pas en faute."""
+        assert missing_vertex_columns((*VERTEX_PROPERTIES, "commentaire")) == ()
+
+    def test_an_empty_description_reports_every_column(self):
+        """Un tag absent se lit comme un tag vide : il manque tout."""
+        assert missing_vertex_columns(()) == VERTEX_PROPERTIES
+
+
+class TestTextesCoupes:
+    """graph_text_max_chars coupait quatre elements sans un mot.
+
+    `mesure` le 31 aout 2026 sur le corpus complet : **18 elements** du graphe
+    font exactement 2 000 caracteres. ChromaDB, lui, n'est pas coupe — le
+    decoupeur repart du document Docling — donc graphe et vecteurs divergent en
+    silence sur ces elements-la (registre 4.23).
+    """
+
+    def test_nothing_is_cut_below_the_limit(self):
+        elements = [{"text": "x" * 100}, {"text": "y" * 1999}]
+        assert compter_les_textes_coupes(elements, 2000) == 0
+
+    def test_a_text_exactly_at_the_limit_is_not_cut(self):
+        """La borne est stricte : couper a 2 000 laisse 2 000 caracteres."""
+        assert compter_les_textes_coupes([{"text": "x" * 2000}], 2000) == 0
+
+    def test_a_longer_text_is_counted(self):
+        assert compter_les_textes_coupes([{"text": "x" * 2001}], 2000) == 1
+
+    def test_each_cut_element_counts_once(self):
+        elements = [{"text": "x" * 5000}, {"text": "y" * 10}, {"text": "z" * 2500}]
+        assert compter_les_textes_coupes(elements, 2000) == 2
+
+    def test_a_missing_text_is_not_a_cut(self):
+        assert compter_les_textes_coupes([{}, {"text": None}], 2000) == 0

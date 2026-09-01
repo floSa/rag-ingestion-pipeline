@@ -23,6 +23,7 @@ from src.docling_service.embedding import (
     EmbeddingContractError,
     canonical_name,
     get_embedding_model,
+    index_model_gap,
     reset_model,
     verify_dimension,
     verify_model_name,
@@ -208,3 +209,41 @@ class TestBalayageDesModelesCourants:
 
     def test_le_contrat_lui_meme_passe(self):
         verify_model_name(CONTRACT_MODEL)
+
+
+class TestIndexModelGap:
+    """Exigence 1 verifiee APRES coup, sur ce qui a REELLEMENT produit l'index.
+
+    verify_model_name garde le modele au chargement. Rien ne gardait l'index
+    lui-meme : un `.env` change entre deux ingestions, et la collection porte
+    des vecteurs de deux modeles differents, tous deux en 384 dimensions.
+    ChromaDB accepte, aucune sonde ne voit rien, la recherche rend des passages
+    plausibles et faux.
+    """
+
+    def test_the_same_model_is_no_gap(self):
+        assert index_model_gap(CONTRACT_MODEL, CONTRACT_MODEL) is None
+
+    def test_the_organisation_prefix_is_not_a_gap(self):
+        """Le meme artefact sous ses deux noms : un garde cure-dent finit desactive."""
+        assert index_model_gap(CONTRACT_MODEL, f"sentence-transformers/{CONTRACT_MODEL}") is None
+
+    def test_another_model_is_reported(self):
+        ecart = index_model_gap(CONTRACT_MODEL, "all-MiniLM-L6-v2")
+        assert ecart is not None
+        assert "all-MiniLM-L6-v2" in ecart
+
+    def test_an_untraced_index_is_reported_and_not_assumed_correct(self):
+        """Ne pas savoir n'est pas la meme chose que savoir que c'est bon.
+
+        Un index ecrit avant que la tracabilite n'existe ne porte pas le nom du
+        modele. Le taire reviendrait a declarer l'exigence 1 tenue sans preuve.
+        """
+        ecart = index_model_gap(CONTRACT_MODEL, None)
+        assert ecart is not None
+        assert "trace" in ecart.lower()
+
+    def test_the_message_names_both_models(self):
+        ecart = index_model_gap("paraphrase-multilingual-MiniLM-L12-v2", "all-MiniLM-L6-v2")
+        assert ecart is not None
+        assert "paraphrase-multilingual-MiniLM-L12-v2" in ecart

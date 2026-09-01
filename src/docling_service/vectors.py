@@ -2,9 +2,13 @@
 
 Deux corrections par rapport a la version initiale :
 
-- **plus de troncature** : les textes longs sont decoupes en fenetres
-  recouvrantes au lieu d'etre coupes a 1000 caracteres, dans l'embedding comme
-  dans le document stocke ;
+- **plus de troncature a 1000 caracteres** : les textes longs sont decoupes en
+  fenetres recouvrantes au lieu d'etre coupes, dans l'embedding comme dans le
+  document stocke. Cette ligne disait « plus de troncature », sans borne : une
+  phrase d'exhaustivite, et elle est fausse. `mesure` le 31 aout 2026 sur
+  4 365 chunks : **137 (3,1 %) depassent la fenetre de 128 tokens** du modele,
+  qui les tronque lui-meme. Voir :func:`get_chunker` pour la cause, qui est
+  structurelle et non un reglage ;
 - **encodage par lots** : ``SentenceTransformer.encode`` recoit toute la liste
   d'un coup au lieu d'un appel par element, ce qui exploite reellement le GPU.
 
@@ -21,13 +25,15 @@ from collections.abc import Sequence
 from functools import lru_cache
 from typing import Any
 
-import chromadb
-
+from src.docling_service import chunking
 from src.docling_service.anchoring import block_size, resolve_anchors
 from src.docling_service.blocks import has_content
-from src.docling_service.chunking import contextualize
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
-from src.docling_service.embedding import get_embedding_model
+from src.docling_service.embedding import (
+    EmbeddingContractError,
+    canonical_name,
+    get_embedding_model,
+)
 from src.docling_service.settings import get_settings
 from src.pipeline.schemas import ChunkMetadata
 
@@ -44,14 +50,65 @@ def get_collection() -> Any:
 
     Le client est conserve : en ouvrir un par lot d'ecriture rouvrait une
     connexion HTTP toutes les quelques pages.
+
+    `chromadb` est importe ICI et non au niveau du module, et ce n'est pas un
+    detail de style. Il n'est pas dans le venv du depot — les deps lourdes
+    d'extraction vivent dans ``Dockerfile.docling`` — donc un import de module
+    rendait ``src.docling_service.vectors`` INIMPORTABLE cote hote, et
+    ``_inscrire_le_modele`` intestable. C'est le meme defaut mecanique que
+    ``index_report``, ``verify_contract`` et ``verify_data`` (registre §3.4,
+    §4.4, §4.5), sur le quatrieme module — et le seul des quatre dont le contrat
+    est un `raise`. *Ce qu'un test n'importe pas, il ne teste pas.*
     """
+    import chromadb
+
     global _collection
     with _collection_lock:
         if _collection is None:
             settings = get_settings()
             client = chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
             _collection = client.get_or_create_collection(name=COLLECTION_NAME)
+            _inscrire_le_modele(_collection, settings.embedding_model_name)
         return _collection
+
+
+def _inscrire_le_modele(collection: Any, modele: str) -> None:
+    """Inscrit sur la collection le modele qui produit ses vecteurs, et refuse d'en melanger deux.
+
+    L'exigence 1 du contrat n'etait verifiable par personne apres coup : rien
+    n'enregistrait quel modele avait ecrit l'index. Un ``.env`` change entre
+    deux ingestions laissait une collection qui portait des vecteurs de deux
+    modeles, tous deux en 384 dimensions, sans qu'aucune erreur ne le signale.
+
+    Trois cas, et un seul refuse :
+
+    - la collection ne porte rien : on l'inscrit. C'est le cas de tout index
+      ecrit avant ce garde ;
+    - elle porte le meme modele : rien a faire ;
+    - **elle porte un AUTRE modele : on leve.** Ecrire par-dessus melangerait
+      deux espaces vectoriels dans une meme collection, et c'est la panne la
+      plus couteuse du systeme.
+
+    Args:
+        collection: Collection ChromaDB ouverte.
+        modele: ``settings.embedding_model_name``.
+
+    Raises:
+        EmbeddingContractError: Si la collection a ete produite par un autre
+            modele. Le job echoue plutot que d'ecrire un index mixte.
+    """
+    enregistre = (getattr(collection, "metadata", None) or {}).get("embedding_model")
+    if enregistre and canonical_name(str(enregistre)) != canonical_name(modele):
+        raise EmbeddingContractError(
+            f"la collection {COLLECTION_NAME} a ete produite par "
+            f"« {enregistre} » et l'ingestion tourne avec « {modele} ». Ecrire "
+            "par-dessus melangerait deux espaces vectoriels dans une meme "
+            "collection, sans qu'aucune erreur ne le signale a l'usage. Purger "
+            "et reingerer, ou corriger EMBEDDING_MODEL_NAME."
+        )
+    if not enregistre:
+        collection.modify(metadata={"embedding_model": canonical_name(modele)})
+        logger.info("ChromaDB: collection tracee au modele %s", canonical_name(modele))
 
 
 @lru_cache(maxsize=1)
@@ -60,8 +117,26 @@ def get_chunker() -> Any:
 
     ``HybridChunker`` decoupe en respectant la structure du document *et* la
     fenetre du modele d'embedding. Il recoit le tokenizer du modele lui-meme,
-    pas une approximation : c'est ce qui garantit qu'aucun chunk ne sera
-    tronque a l'encodage.
+    et non une approximation.
+
+    Ce docstring affirmait que « c'est ce qui garantit qu'aucun chunk ne sera
+    tronque a l'encodage ». **C'est faux, et de deux facons distinctes**, toutes
+    deux mesurees le 31 aout 2026 sur les 4 365 chunks du corpus :
+
+    1. **Le decoupeur ne peut pas fractionner une table.** Une table serialisee
+       en Markdown est un bloc indivisible pour lui : il la rend telle quelle,
+       plus longue que la fenetre. Les **65** chunks qui depassent deja sur le
+       texte stocke sont **65 sur 65 des tables** — aucun autre label. Ce n'est
+       pas un reglage a corriger ici : reduire la fenetre ne fractionne pas
+       davantage, et refaire le decoupage des tables est un chantier a part
+       (registre 7.1). Ce qui manquait etait de le MESURER et de l'ecrire ;
+    2. **le titre de section est prefixe APRES le decoupage.** ``HybridChunker``
+       compte ses tokens sur sa propre serialisation ; ``write_elements``
+       prepose ensuite le titre pour l'encodage. **72** chunks franchissent la
+       fenetre par ce seul prefixe, et le decoupeur ne pouvait pas le prevoir.
+
+    Le nombre reel de chunks tronques par le modele est donc **137 (3,1 %)**, et
+    ``index_report`` le dit desormais — il en annoncait 65.
     """
     from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
     from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
@@ -183,13 +258,12 @@ def write_elements(
     settings = get_settings()
     # Le vecteur est calcule sur le texte contextualise, le document stocke
     # reste le texte brut : le passage s'affiche tel quel cote agent.
-    if settings.embed_section_context:
-        embed_texts = [
-            contextualize(text, str(meta.get("section_title") or ""))
-            for text, meta in zip(texts, metadatas, strict=True)
-        ]
-    else:
-        embed_texts = texts
+    #
+    # La construction vit dans chunking.embedding_inputs et non ici, parce que
+    # index_report doit tokeniser EXACTEMENT le meme texte pour compter les
+    # troncatures. Quand les deux decidaient chacun de leur cote, l'instrument
+    # en annoncait la moitie (registre 3.4).
+    embed_texts = chunking.embedding_inputs(texts, metadatas, settings.embed_section_context)
 
     vectors = get_embedding_model().encode(
         embed_texts,

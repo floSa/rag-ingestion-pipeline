@@ -93,6 +93,45 @@ def verify_model_name(nom: str) -> None:
     )
 
 
+def index_model_gap(modele_courant: str, modele_enregistre: str | None) -> str | None:
+    """Compare le modele courant a celui qui a REELLEMENT produit l'index.
+
+    :func:`verify_model_name` garde le chargement ; elle ne dit rien de ce qui a
+    ete ecrit hier. Un ``.env`` change entre deux ingestions laisse une
+    collection qui porte des vecteurs de **deux** modeles, tous deux en 384
+    dimensions : ChromaDB accepte, aucune sonde ne voit rien, et la recherche
+    rend des passages plausibles et faux. C'est l'exigence 1 du contrat, et rien
+    ne la verifiait apres coup.
+
+    Rend un message plutot que de lever : ce controle sert un rapport qui
+    enumere TOUTES ses anomalies avant de sortir en erreur, et lever ici
+    masquerait celles qui suivent.
+
+    Args:
+        modele_courant: ``settings.embedding_model_name``.
+        modele_enregistre: Nom inscrit sur la collection, ou ``None`` si
+            l'index a ete ecrit avant que la tracabilite n'existe.
+
+    Returns:
+        Le message d'anomalie, ou ``None`` si l'index est du bon modele.
+    """
+    if modele_enregistre is None:
+        return (
+            "le modele qui a produit les vecteurs n'est pas trace sur la "
+            "collection : l'exigence 1 ne peut pas etre prouvee sur cet index. "
+            "Il a ete ecrit avant que la tracabilite n'existe — une reingestion "
+            "l'inscrira. Ne pas savoir n'est pas savoir que c'est bon."
+        )
+    if canonical_name(modele_enregistre) == canonical_name(modele_courant):
+        return None
+    return (
+        f"l'index a ete produit par « {modele_enregistre} » et la configuration "
+        f"demande « {modele_courant} ». Les deux rendent la meme dimension, donc "
+        "rien ne le signalera a l'usage : la recherche rendra des passages "
+        "plausibles et faux. Purger et reingerer."
+    )
+
+
 def verify_dimension(dimension: int, nom: str) -> None:
     """Verifie la sortie du modele reellement charge.
 

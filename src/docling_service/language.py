@@ -136,8 +136,7 @@ def detect_language(text: str) -> str:
 
     frequences = Counter(mots)
     scores = {
-        code: sum(frequences[mot] for mot in vocabulaire)
-        for code, vocabulaire in STOPWORDS.items()
+        code: sum(frequences[mot] for mot in vocabulaire) for code, vocabulaire in STOPWORDS.items()
     }
     classement = sorted(scores.items(), key=lambda paire: -paire[1])
     gagnante, meilleur = classement[0]

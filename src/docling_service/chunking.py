@@ -11,6 +11,9 @@ sentence-transformers ni ChromaDB.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 # ~450 caracteres : le modele multilingue encode 128 tokens, soit environ 500
 # caracteres de prose francaise ou anglaise. Au-dela il tronque de lui-meme, et
 # le vecteur ne represente plus que le debut du texte sans que rien ne le
@@ -100,6 +103,52 @@ def contextualize(text: str, section_title: str) -> str:
     if text.lstrip().lower().startswith(title.lower()):
         return text
     return f"{title}\n\n{text}"
+
+
+def embedding_inputs(
+    texts: Sequence[str],
+    metadatas: Sequence[Mapping[str, Any]],
+    embed_section_context: bool,
+) -> list[str]:
+    """Construit exactement ce que le modele d'embedding recoit.
+
+    C'est le SEUL site qui en decide, et c'en est le point. Il y en avait deux :
+    ``vectors.write_elements`` prefixait le titre de section avant d'encoder, et
+    ``index_report`` tokenisait le texte stocke pour compter les troncatures.
+    L'instrument mesurait donc un autre texte que celui qu'il pretendait
+    surveiller, et sous-comptait d'un facteur 2 — 65 chunks annonces au-dela de
+    la fenetre contre 137 reels (`mesure`, 31 aout 2026, 4 365 chunks).
+
+    Corriger le calcul de l'instrument n'aurait ferme que l'ecart du jour : deux
+    endroits qui decident du meme texte finissent par diverger a nouveau. Il n'y
+    en a plus qu'un, et les deux appelants le partagent.
+
+    Args:
+        texts: Textes stockes, dans l'ordre.
+        metadatas: Metadonnees alignees sur ``texts``, dont ``section_title``.
+        embed_section_context: Reglage ``settings.embed_section_context``. A
+            faux, aucun prefixe n'est ajoute — et l'instrument doit dire vrai
+            dans les deux positions.
+
+    Returns:
+        Les textes tels que le modele les recoit, alignes sur l'entree.
+
+    Raises:
+        ValueError: Si les deux suites n'ont pas la meme longueur. Un decalage
+            d'un rang prefixerait chaque chunk du titre de son voisin, sans que
+            rien ne le signale.
+    """
+    if len(texts) != len(metadatas):
+        raise ValueError(
+            f"{len(texts)} textes pour {len(metadatas)} metadonnees : "
+            "le prefixe serait pris sur le mauvais chunk"
+        )
+    if not embed_section_context:
+        return list(texts)
+    return [
+        contextualize(text, str(meta.get("section_title") or ""))
+        for text, meta in zip(texts, metadatas, strict=True)
+    ]
 
 
 def chunk_ids(element_id: str, count: int) -> list[str]:

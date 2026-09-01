@@ -72,8 +72,17 @@ def purge_bucket(client: Any, bucket: str) -> int:
 def purge_space(session: Any, space: str) -> str:
     """Supprime le space NebulaGraph.
 
-    Le schema n'evolue pas en place : c'est un DROP puis une recreation au
-    redemarrage du service, jamais une migration.
+    Ce docstring affirmait « le schema n'evolue pas en place : c'est un DROP
+    puis une recreation au redemarrage du service, jamais une migration ».
+    C'est faux d'une PROPRIETE de tag : ``ALTER TAG ... ADD`` reussit sur un
+    space peuple (`mesure`, 31 aout 2026, 15 196 sommets), et le service joue
+    cette migration a chaque demarrage. Ce qui n'evolue effectivement pas en
+    place est le ``vid_type`` du space — voir ``VID_MAX_BYTES`` dans ``ngql.py``.
+
+    Purger reste donc le geste qu'il faut quand on veut REPEUPLER une colonne
+    ajoutee : le schema migre, les donnees non, et les sommets deja ecrits
+    gardent NULL jusqu'a leur reecriture. Et c'est le seul recours apres un
+    ``ALTER ... DROP``, que Nebula n'autorise jamais a defaire.
 
     Args:
         session: Session NebulaGraph.

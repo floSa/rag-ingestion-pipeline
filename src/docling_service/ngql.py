@@ -13,7 +13,8 @@ livre de 400 pages).
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from typing import Any
 
 # Bornes d'un INSERT groupe. On limite a la fois le nombre de valeurs et le
 # poids en octets : un livre peut contenir des paragraphes tres longs, et un
@@ -117,6 +118,129 @@ def insert_edge_statements(
         yield f"INSERT EDGE {edge}({columns}) VALUES {', '.join(batch)};"
 
 
+def element_vertex_value(element: Mapping[str, Any], max_chars: int) -> str:
+    """Construit l'expression VALUES d'un element, dans l'ordre de VERTEX_PROPERTIES.
+
+    C'est ici, et non dans l'ecriture NebulaGraph, que se decide ce qu'un
+    sommet porte : ce module n'a aucune dependance externe, donc la decision
+    est verifiable sans graphd, et une colonne qui cesserait d'etre ecrite fait
+    rougir un test.
+
+    ``depth`` vaut 0 par defaut et non une chaine vide : c'est un entier, et 0
+    est la profondeur d'un titre rattache au document — une valeur, pas une
+    absence.
+
+    Args:
+        element: Element produit par ``DocumentAccumulator``.
+        max_chars: Longueur au-dela de laquelle le texte est coupe dans le
+            graphe. ChromaDB, lui, n'est pas coupe : les deux stores divergent
+            sur ces elements-la, et ``nebula.py`` le compte.
+
+    Returns:
+        L'expression ``"vid":(p1, p2, ...)`` prete pour un INSERT groupe.
+    """
+    return vertex_value(
+        str(element["id"]),
+        (
+            str(element["label"]),
+            int(element["page_no"]),
+            str(element.get("text") or "")[:max_chars],
+            str(element.get("minio_url") or ""),
+            int(element.get("depth") or 0),
+        ),
+    )
+
+
+def compter_les_textes_coupes(elements: Sequence[Mapping[str, Any]], max_chars: int) -> int:
+    """Compte les elements dont le texte est coupe a l'ecriture dans le graphe.
+
+    ``graph_text_max_chars`` coupait sans un mot : aucun journal, aucune
+    metrique. Et ChromaDB n'est PAS coupe — le decoupeur repart du document
+    Docling — donc le graphe et les vecteurs divergent en silence sur ces
+    elements-la, l'agent lisant un texte tronque d'un cote et complet de
+    l'autre (registre 4.23).
+
+    `mesure` le 31 aout 2026, corpus complet : **18 elements** du graphe font
+    exactement 2 000 caracteres, dont 14 tables.
+
+    Args:
+        elements: Elements produits par ``DocumentAccumulator``.
+        max_chars: ``settings.graph_text_max_chars``.
+
+    Returns:
+        Le nombre d'elements dont le texte depasse la limite. Un texte qui fait
+        exactement la limite n'est pas coupe.
+    """
+    return sum(1 for element in elements if len(str(element.get("text") or "")) > max_chars)
+
+
+def tag_schema_statements(tags: Sequence[str]) -> list[str]:
+    """Genere la creation ET la migration des tags d'element.
+
+    Les deux sont necessaires et ne se remplacent pas :
+
+    - ``CREATE TAG IF NOT EXISTS`` cree le tag sur un space neuf, et ne fait
+      **rien** sur un space ou le tag existe deja, meme si son schema a change ;
+    - ``ALTER TAG ... ADD`` ajoute la colonne manquante a un space deja peuple.
+      Il echoue avec « Existed! » quand la colonne est la : cet echec est
+      attendu et l'appelant le tolere.
+
+    Ce que devient un space existant, `mesure` le 31 aout 2026 sur ``rag_space``
+    peuple de 2 288 sommets : le tag gagne la colonne, et les sommets deja
+    ecrits la portent a NULL. Le schema migre en place ; les **donnees**, non.
+    Seule une reecriture du document — donc une reingestion — les renseigne.
+
+    Args:
+        tags: Tags d'element a creer, sans le tag ``Document``, dont le schema
+            lui est propre.
+
+    Returns:
+        Les requetes, creations d'abord, migrations ensuite.
+    """
+    colonnes = ", ".join(
+        f"{nom} {type_}" for nom, type_ in zip(VERTEX_PROPERTIES, VERTEX_TYPES, strict=True)
+    )
+    creations = [f"CREATE TAG IF NOT EXISTS {tag}({colonnes});" for tag in tags]
+    # Un ALTER par colonne, et non pour la seule colonne du jour : c'est le
+    # patron deja applique au tag Document, et il n'a aucune liste a tenir a
+    # jour. Sur un space neuf les douze echouent en « Existed! », ce qui est
+    # tolere ; sur un space ancien, seules les manquantes passent.
+    migrations = [
+        f"ALTER TAG {tag} ADD ({nom} {type_});"
+        for tag in tags
+        for nom, type_ in zip(VERTEX_PROPERTIES, VERTEX_TYPES, strict=True)
+    ]
+    return creations + migrations
+
+
+def missing_vertex_columns(colonnes_lues: Iterable[str]) -> tuple[str, ...]:
+    """Retourne les colonnes de VERTEX_PROPERTIES absentes d'un tag reel.
+
+    Sert a constater qu'une migration a REELLEMENT eu lieu, et pas seulement
+    qu'elle a ete demandee. Une migration echoue silencieusement — l'appelant
+    tolere l'echec d'un ALTER, puisque « la colonne existe deja » en est le cas
+    nominal — et son echec ne se verrait autrement qu'a la premiere ecriture,
+    sur un rejet du graphd pour colonne inconnue.
+
+    Ce n'est pas une precaution theorique. `mesure` le 31 aout 2026 sur
+    ``rag_space`` peuple de 15 196 sommets : onze tags sur douze ont migre, le
+    douzieme a ete refuse avec « Schema exisited before! », et ``init_schema()``
+    a rendu **True**. Nebula conserve l'historique de schema d'un tag et
+    n'autorise jamais une colonne supprimee a revenir sous le meme nom : une
+    migration n'est donc PAS reversible, et un ``ALTER ... DROP`` condamne le
+    tag jusqu'a la recreation du space.
+
+    Args:
+        colonnes_lues: Noms de colonnes rendus par ``DESCRIBE TAG``.
+
+    Returns:
+        Les colonnes manquantes, dans l'ordre du schema. Vide si le tag est
+        complet ; un tag plus riche que le schema n'est pas en faute.
+    """
+    presentes = set(colonnes_lues)
+    return tuple(colonne for colonne in VERTEX_PROPERTIES if colonne not in presentes)
+
+
 # Longueur des identifiants de noeud declaree a la creation du space, en
 # OCTETS et non en caracteres. Un titre francais un peu long depassait les 64
 # octets d'origine : « Kimi K3 — l'architecture d'un modele pense pour
@@ -127,11 +251,38 @@ def insert_edge_statements(
 # recreer le space (purge des stores).
 VID_MAX_BYTES = 256
 
-VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url")
-DOCUMENT_PROPERTIES = ("filename", "type_file", "total_pages")
+# Le schema d'un sommet d'element, et son SEUL site. Il en existait deux —
+# celui-ci, mort et faux, et celui de nebula.py, vivant — et la duplication a
+# survecu a trois campagnes de mesure (registre 5.3). Une constante morte qui
+# decrit faussement le schema qu'on vient de changer est un piege : elle se
+# relit comme une definition.
+#
+# `depth` est la derniere colonne, et elle est arrivee la parce que l'agent ne
+# pouvait lire AUCUN niveau declare sur un titre (registre 4.11). Il pouvait
+# remonter les aretes PARENT_OF ; il ne pouvait pas savoir a quelle profondeur
+# il etait arrive sans les compter lui-meme. Et le substitut suppose — la
+# metadonnee `depth` de ChromaDB — ne substitue rien : aucun `section_header`
+# n'est jamais un chunk (registre 4.24, mesure).
+VERTEX_PROPERTIES = ("label", "page_no", "text", "minio_url", "depth")
+
+# Le type nGQL de chaque colonne de VERTEX_PROPERTIES, dans le meme ordre. Les
+# deux tuples sont lus ensemble par :func:`tag_schema_statements` : les
+# desaligner produit un CREATE TAG qui n'a pas les colonnes que les INSERT
+# ecrivent, donc un rejet du graphd sur chaque element.
+VERTEX_TYPES = ("string", "int", "string", "string", "int")
+
+DOCUMENT_PROPERTIES = (
+    "filename",
+    "type_file",
+    "total_pages",
+    "collection",
+    "source_path",
+    "language",
+    "content_hash",
+)
 
 
-def document_vid(filename: str) -> str:
+def document_vid(cle_du_document: str) -> str:
     """Construit l'identifiant du noeud Document, borne a la longueur admise.
 
     L'identifiant reste lisible — ``doc_mon_livre`` — ce qui rend les requetes
@@ -139,17 +290,30 @@ def document_vid(filename: str) -> str:
     tronque sur une frontiere de caractere et suffixe d'une empreinte, pour que
     deux titres partageant leur debut ne se confondent pas.
 
+    LE PARAMETRE S'APPELAIT `filename` ET SON DOCSTRING DISAIT « Nom du
+    document », ALORS QUE SES TROIS APPELANTS PASSENT `identity.key` — le chemin
+    relatif complet. Le code est juste : `mesure` le 31 aout 2026, les 23 sommets
+    `Document` du graphe ont bien 23 identifiants distincts, dont
+    ``doc_htms/MLOps with Databricks/Preface`` et
+    ``doc_htms/Practical MLflow .../Preface``. C'est le NOM du parametre qui
+    etait un piege : il invitait le prochain appelant a passer
+    `identity.filename`, ce qui ferait collisionner les deux ``Preface.html`` du
+    corpus sur UN SEUL sommet — perte silencieuse d'un document entier, et
+    violation directe de l'exigence 3.
+
     Args:
-        filename: Nom du document, sans extension.
+        cle_du_document: ``identity.key``, le chemin relatif du document — et non
+            son nom seul. ``source_path`` est l'identite d'un document (contrat,
+            exigence 3) : le corpus porte deux ``Preface.html``.
 
     Returns:
         Un identifiant tenant dans ``VID_MAX_BYTES`` octets.
     """
-    lisible = f"doc_{filename}"
+    lisible = f"doc_{cle_du_document}"
     encode = lisible.encode()
     if len(encode) <= VID_MAX_BYTES:
         return lisible
 
-    empreinte = hashlib.sha256(filename.encode()).hexdigest()[:10]
+    empreinte = hashlib.sha256(cle_du_document.encode()).hexdigest()[:10]
     garde = VID_MAX_BYTES - len(empreinte) - 1
     return f"{encode[:garde].decode(errors='ignore')}_{empreinte}"

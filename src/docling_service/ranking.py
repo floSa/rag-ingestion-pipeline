@@ -148,6 +148,34 @@ def flat_rank(item: Any, document: Any) -> int | None:
     return rang if rang is not None else docling_level_rank(item)
 
 
+def fallback_rank(size_ranks: dict[float, int]) -> int | None:
+    """Rang attribue a un titre que le document ne sait pas classer.
+
+    Il se range sous le titre courant plutot que d'ouvrir un niveau. Lui donner
+    le rang 0 en ferait un chapitre et remettrait l'arbre a zero : c'est ce que
+    faisait « Then: », faux titre detecte en pleine page.
+
+    Cette fonction existe pour que la DECISION et le COMPTEUR lisent la meme
+    valeur. `mesure` le 31 aout 2026, par le compteur livre, a la source : **39
+    titres sur 87, soit 45 %** recoivent ce rang et non un rang mesure — le PDF
+    ne classe que trois niveaux. Les profondeurs relevees dans le graphe
+    melangent donc trois niveaux mesures et un empilement par defaut, et rien ne
+    le comptait (registre 4.21, site canonique de ce chiffre).
+
+    Le lot 1 annonçait 40 sur 86, en retrouvant les tailles APRES coup. Ce n'est
+    pas « un ecart d'une unite » : 46 mesures + 40 replis d'un cote, 48 + 39 de
+    l'autre — DEUX titres changent de classe, et un titre de plus est vu.
+
+    Args:
+        size_ranks: Rang de chaque taille de titre du document.
+
+    Returns:
+        Le rang de repli, ou ``None`` si le document n'offre aucun classement —
+        auquel cas tous ses titres restent freres et il n'y a pas de repli.
+    """
+    return max(size_ranks.values()) + 1 if size_ranks else None
+
+
 def pdf_heading_rank(
     label: str,
     bbox: dict[str, float] | None,
@@ -186,13 +214,9 @@ def pdf_heading_rank(
     """
     if label not in HEADING_LABELS:
         return None
-    if not size_ranks:
+    inclassable = fallback_rank(size_ranks)
+    if inclassable is None:
         return None
-
-    # Un titre que l'on ne sait pas classer se range sous le titre courant.
-    # Lui donner le rang 0 en ferait un chapitre et remettrait l'arbre a zero :
-    # c'est ce que faisait « Then: », faux titre detecte en pleine page.
-    inclassable = max(size_ranks.values()) + 1
 
     if not bbox:
         return inclassable
