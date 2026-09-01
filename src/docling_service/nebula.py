@@ -33,9 +33,10 @@ from src.docling_service.elements import (
 )
 from src.docling_service.ngql import (
     DOCUMENT_PROPERTIES,
+    SPACE,
     VERTEX_PROPERTIES,
-    VID_MAX_BYTES,
     compter_les_textes_coupes,
+    create_space_statement,
     document_vid,
     edge_value,
     element_vertex_value,
@@ -50,7 +51,10 @@ from src.docling_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-SPACE = "rag_space"
+# `SPACE` et la requete de creation du space vivent dans `ngql.py`, le seul des
+# deux modules importable sans graphd. `SPACE` est reexporte ici : ses appelants
+# — `wipe_stores`, `verify_contract` — le lisent depuis ce module.
+__all__ = ["SPACE", "NebulaError", "NebulaWriter", "get_writer"]
 
 # VERTEX_PROPERTIES et DOCUMENT_PROPERTIES vivaient ici ET dans ngql.py, avec
 # des valeurs differentes, celle d'ici etant la vraie. Elles n'ont plus qu'un
@@ -317,12 +321,7 @@ class NebulaWriter:
             # on retente jusqu'a ce que le space existe VRAIMENT, sinon tous les
             # flushs partent dans le vide en silence.
             for attempt in range(1, settings.nebula_space_attempts + 1):
-                execute(
-                    session,
-                    f"CREATE SPACE IF NOT EXISTS {SPACE}(partition_num=10, "
-                    f"replica_factor=1, vid_type=FIXED_STRING({VID_MAX_BYTES}));",
-                    required=False,
-                )
+                execute(session, create_space_statement(SPACE), required=False)
                 time.sleep(5)
                 result = session.execute("SHOW SPACES;")
                 names = [result.row_values(i)[0].as_string() for i in range(result.row_size())]

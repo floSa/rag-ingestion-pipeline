@@ -47,6 +47,12 @@ class DoclingSettings(BaseSettings):
     # Nombre de tentatives de CREATE SPACE : le storaged doit avoir termine son
     # heartbeat d'enregistrement, ce qui peut prendre une minute au demarrage.
     nebula_space_attempts: int = 12
+    # Attente entre les etapes d'amorcage de `init_nebula.py`. C'etaient trois
+    # `time.sleep` ecrits en dur, donc ni ajustables sur un poste lent, ni
+    # neutralisables pour eprouver le script : ses 15 s de pause coutaient
+    # 76 s a la suite de tests (`mesure`). La duree est un fait d'environnement,
+    # pas une propriete du script.
+    nebula_amorcage_pause_seconds: float = 5.0
 
     # ── Extraction ───────────────────────────────────────────────────────────
     # Pages converties par passe. Les batchs bornent la memoire sur les gros

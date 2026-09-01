@@ -15,6 +15,7 @@ from src.docling_service.ngql import (
     VID_MAX_BYTES,
     batch_values,
     compter_les_textes_coupes,
+    create_space_statement,
     document_vid,
     edge_value,
     element_vertex_value,
@@ -337,3 +338,58 @@ class TestTextesCoupes:
 
     def test_a_missing_text_is_not_a_cut(self):
         assert compter_les_textes_coupes([{}, {"text": None}], 2000) == 0
+
+
+class TestLeCreateSpaceNAQuUnSiteEtIlTientLeCorpus:
+    """Registre : le `CREATE SPACE` avait DEUX sites, a des valeurs differentes.
+
+    `nebula._create_space` declarait `FIXED_STRING(VID_MAX_BYTES)`, soit 256 ;
+    `init_nebula.py` declarait `FIXED_STRING(64)` en dur. Les deux passent par
+    `CREATE SPACE IF NOT EXISTS`, donc le premier a tourner gagne — et
+    `init_nebula.py` prescrit d'etre lance avant le service.
+
+    `mesure` le 1er septembre 2026 sur un space jetable en `FIXED_STRING(64)` :
+    l'insertion des deux documents reels ci-dessous est REFUSEE par le graphd.
+    """
+
+    # Les deux plus longs identifiants que le corpus produit reellement, mesures
+    # le 1er septembre 2026. Ils sont ecrits ici plutot que calcules : c'est le
+    # fait que la declaration doit couvrir, et un calcul depuis le meme code ne
+    # prouverait rien.
+    CLES_REELLES = (
+        "htms/Practical MLflow for Generative AI on Databricks/Preface",
+        "htms/MLOps with Databricks/7. Foundation Models and Fine-tuning",
+    )
+
+    def test_la_taille_declaree_couvre_les_identifiants_du_corpus(self):
+        """Le garde qui compte : la declaration doit tenir le corpus reel."""
+        for cle in self.CLES_REELLES:
+            octets = len(document_vid(cle).encode())
+            assert octets <= VID_MAX_BYTES, (
+                f"{cle!r} produit un identifiant de {octets} octets, au-dela des "
+                f"{VID_MAX_BYTES} declares : le graphd refusera le document entier"
+            )
+
+    def test_les_identifiants_du_corpus_depassent_bien_64_octets(self):
+        """LE TEMOIN, et c'est lui qui fait du test precedent autre chose qu'une
+        tautologie : `document_vid` tronque a `VID_MAX_BYTES`, donc le premier
+        test resterait vert pour toute valeur, 64 comprise. Celui-ci asserte le
+        FAIT independant — ces deux cles depassent 64 octets — et rougit donc
+        si `VID_MAX_BYTES` retombe a 64, l'identifiant etant alors tronque.
+        """
+        for cle in self.CLES_REELLES:
+            brut = len(f"doc_{cle}".encode())
+            assert brut > 64, f"{cle!r} ne fait que {brut} octets : ce n'est plus le cas mesure"
+            assert document_vid(cle) == f"doc_{cle}", (
+                f"{cle!r} est TRONQUE par document_vid : la taille declaree ne "
+                "suffit plus pour le corpus, et deux chemins voisins peuvent "
+                "collisionner sur un seul sommet"
+            )
+
+    def test_la_requete_declare_la_taille_du_code_et_non_un_litteral(self):
+        assert f"FIXED_STRING({VID_MAX_BYTES})" in create_space_statement()
+        assert "FIXED_STRING(64)" not in create_space_statement()
+
+    def test_la_requete_est_idempotente_et_nomme_le_space_demande(self):
+        assert "IF NOT EXISTS" in create_space_statement()
+        assert "essai_de_space" in create_space_statement("essai_de_space")

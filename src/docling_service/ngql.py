@@ -282,6 +282,41 @@ DOCUMENT_PROPERTIES = (
 )
 
 
+SPACE = "rag_space"
+
+
+def create_space_statement(space: str = SPACE) -> str:
+    """Le ``CREATE SPACE`` du graphe, et son SEUL site.
+
+    Il en existait DEUX, avec des valeurs differentes. ``nebula._create_space``
+    declarait ``FIXED_STRING(VID_MAX_BYTES)``, soit 256 ; ``init_nebula.py``
+    declarait ``FIXED_STRING(64)`` en dur. Les deux passent par
+    ``CREATE SPACE IF NOT EXISTS``, donc **le premier a tourner gagne** — et
+    `init_nebula.py` prescrit lui-meme d'etre lance « sur une pile neuve, avant
+    le premier demarrage du service ».
+
+    Ce que cela produit, `mesure` le 1er septembre 2026 sur un space jetable en
+    ``FIXED_STRING(64)`` : l'insertion des deux documents reels du corpus est
+    **REFUSEE** — « Storage Error: The VID must be a 64-bit integer or a string
+    fitting space vertex id length limit » — leurs identifiants faisant 65 et
+    67 octets. Et Nebula ne sait pas modifier le ``vid_type`` d'un space : la
+    reparation coute une purge complete des stores.
+
+    Le montage, lui, avait l'air du bon : `init_nebula.py` affichait
+    « CREATE SPACE: True ».
+
+    Args:
+        space: Nom du space. Le defaut est celui du depot.
+
+    Returns:
+        La requete, idempotente.
+    """
+    return (
+        f"CREATE SPACE IF NOT EXISTS {space}(partition_num=10, "
+        f"replica_factor=1, vid_type=FIXED_STRING({VID_MAX_BYTES}));"
+    )
+
+
 def document_vid(cle_du_document: str) -> str:
     """Construit l'identifiant du noeud Document, borne a la longueur admise.
 

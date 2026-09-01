@@ -17,8 +17,22 @@ noeuds (Document, SectionHeader, Paragraph, Table, Picture...) et relations
 
 ## Schema nGQL
 
+> **`vid_type` vaut 256 octets et non 64, et l'écart n'était pas cosmétique.**
+> Ce bloc annonçait `FIXED_STRING(64)`, une requête directement copiable — et un
+> space créé à 64 **refuse** les deux documents réels du corpus, dont les
+> identifiants font 65 et 67 octets : « *Storage Error: The VID must be a 64-bit
+> integer or a string fitting space vertex id length limit* » (`mesuré` le
+> 1er septembre 2026 sur un space jetable). Nebula ne sait pas modifier un
+> `vid_type` : la réparation coûte une purge complète des stores. Le site
+> canonique de cette valeur est `VID_MAX_BYTES` dans
+> `src/docling_service/ngql.py`, et `create_space_statement()` est la seule
+> requête de création du dépôt.
+>
+> Les autres écarts de ce bloc — le tag `Document` porte **7** propriétés et non
+> 2 — restent ouverts au registre §6.18, pour le lot 5.
+
 ```ngql
-CREATE SPACE rag_space(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));
+CREATE SPACE rag_space(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(256));
 
 -- Tags (types de noeuds)
 CREATE TAG Document(filename string, type_file string);

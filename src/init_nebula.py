@@ -17,6 +17,7 @@ from __future__ import annotations
 import sys
 import time
 
+from src.docling_service.ngql import create_space_statement
 from src.docling_service.settings import get_settings
 
 
@@ -31,6 +32,7 @@ def main() -> int:
     from nebula3.gclient.net import ConnectionPool
 
     settings = get_settings()
+    pause = settings.nebula_amorcage_pause_seconds
     pool = ConnectionPool()
     if not pool.init([(settings.nebula_host, settings.nebula_port)], Config()):
         print(f"Connexion impossible a {settings.nebula_host}:{settings.nebula_port}")
@@ -42,7 +44,7 @@ def main() -> int:
     res = session.execute('ADD HOSTS "storaged":9779;')
     print("ADD HOSTS:", res.is_succeeded(), res.error_msg())
 
-    time.sleep(5)
+    time.sleep(pause)
 
     print("Hotes...")
     res = session.execute("SHOW HOSTS;")
@@ -53,13 +55,10 @@ def main() -> int:
         print("SHOW HOSTS a echoue :", res.error_msg())
 
     print("Creation du space...")
-    res = session.execute(
-        "CREATE SPACE IF NOT EXISTS rag_space "
-        "(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(64));"
-    )
+    res = session.execute(create_space_statement())
     print("CREATE SPACE:", res.is_succeeded(), res.error_msg())
 
-    time.sleep(10)
+    time.sleep(pause * 2)
 
     print("Spaces...")
     res = session.execute("SHOW SPACES;")
