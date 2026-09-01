@@ -38,6 +38,49 @@ L'appel ne peut pas faire échouer une ingestion — il vit dans son propre run.
 
 Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurrent_runs` n'accélère rien tant que le service reste mono-worker : c'est un levier à ne toucher que si l'extraction est parallélisée.
 
+### Un run bloqué ne gèle plus la réindexation
+
+Le sensor de réindexation saute tant qu'un run d'ingestion est non terminal, et
+cette garde est juste. Elle partageait un mode de panne avec un run qui **ne
+revient jamais** — worker tué, daemon interrompu : la réindexation était alors
+bloquée *indéfiniment*, sans délai de garde ni alerte. Le *run monitoring* de
+Dagster, qui reprend ou fait échouer les runs orphelins, était **absent de
+`dagster.yaml`**.
+
+Il y est désormais, et c'est là que la famille entière se ferme d'un geste :
+un sensor qui déciderait lui-même qu'un run est mort empiéterait sur le travail
+du daemon, et il faudrait la même règle dans chaque sensor à venir.
+
+| Réglage | Valeur | Ce qu'il borne |
+|---|---|---|
+| `enabled` | `true` | rien n'était surveillé |
+| `start_timeout_seconds` | 900 | un run que le launcher n'arrive jamais à démarrer |
+| `max_runtime_seconds` | 90 000 | un run qui ne finit jamais |
+| `max_resume_run_attempts` | 0 | `DefaultRunLauncher` ne sait pas reprendre un run ; l'armer donnerait un réglage qui ne fait rien |
+
+**Pourquoi 90 000 et non une valeur serrée.** `EXTRACTION_TIMEOUT_SECONDS` vaut
+86 400 s (24 h) : c'est le plafond que le pipeline s'accorde lui-même *par
+document*. Un `max_runtime_seconds` plus court tuerait des runs que le pipeline
+considère encore légitimes, et la cause serait cherchée du mauvais côté — deux
+plafonds qui se contredisent sont pires qu'un seul. Ce délai-ci est la **dernière
+ligne** : il ne se déclenche que quand le plafond du pipeline a lui-même échoué à
+se déclencher, donc quand le run est réellement gelé et non lent. Pour mémoire,
+le run le plus long jamais mesuré sur ce corpus vaut **111 s** (`mesuré` le
+1er septembre 2026, 23 runs réussis) : la marge est de 810×.
+
+`tests/unit/test_dagster_yaml.py` garde ces valeurs, et le garde qui compte
+compare les **deux fichiers** — il rougit si l'un des deux plafonds bouge sans
+l'autre.
+
+**Ce que cela ne corrige pas**, écrit pour que personne ne le croie : un run
+`QUEUED` pendant que le daemon est **arrêté**. Ce n'est pas un défaut de Dagster —
+rien ne dépile une file dont le dépileur est éteint — et le run repart au
+`docker compose start dagster-daemon`.
+
+Enfin, la raison de saut du sensor **nomme le run qui bloque et son âge**. Elle
+ne nommait que le job : un opérateur lisait « Ingestion en cours » à chaque tick,
+pendant des heures, sans rien qui distingue « ça travaille » de « c'est gelé ».
+
 Avant de soumettre, l'asset attend que le service se déclare prêt (`GET /health`) : au démarrage de la stack, le chargement des modèles et l'initialisation du schéma NebulaGraph prennent plusieurs minutes, et le premier run échouerait pour une raison sans rapport avec le document.
 
 ## Combien de temps prend une ingestion
@@ -81,6 +124,6 @@ Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :
   ```
 
 ## Problèmes rencontrés et solutions
-- **Rechargement Intempestif des Tâches lors du Reboot** : 
+- **Rechargement Intempestif des Tâches lors du Reboot** :
   - *Problème* : Au redémarrage (ex: fermeture WSL), tous les services Docker n'étaient pas gardés persistants sauf Docling. La base PostgreSQL de Dagster étant perdue lors d'un restart, l'orchestrateur relançait le processus de traitement de tous les livres à zéro car il avait oublié les curseurs.
   - *Solution* : Ajout de la contrainte `restart: unless-stopped` sur tous les conteneurs dans le `docker-compose.yml`, pour qu'ils soient tous persistants tout comme la base d'états Dagster, verrouillant ainsi et pour de bon les données extraites au premier passage.

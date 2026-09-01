@@ -93,6 +93,7 @@ reel de l'argument ``context``, pas sa forme differee en chaine.
 """
 
 import logging
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -230,6 +231,31 @@ agent_reindex_job = define_asset_job(
 )
 
 
+def _decrire_le_run(record: Any) -> str:
+    """Nomme un run et son age, pour une raison de saut lisible.
+
+    Un `SkipReason` qui ne nomme que le job est illisible en exploitation : il
+    est identique au tick 1 et au tick 10 000. Nommer le run et son age est ce
+    qui rend un blocage VISIBLE sans delai de garde — et le delai de garde, lui,
+    vit dans `dagster.yaml` (registre 4.15).
+
+    Args:
+        record: Enregistrement de run rendu par `get_run_records`.
+
+    Returns:
+        Une phrase, ou une phrase degradee si l'horodatage manque — un run sans
+        date de debut ne doit pas faire echouer le tick du sensor.
+    """
+    run = getattr(record, "dagster_run", None)
+    identifiant = getattr(run, "run_id", None) or "inconnu"
+    statut = getattr(getattr(run, "status", None), "value", "?")
+    debut = getattr(record, "start_time", None)
+    if not debut:
+        return f"Le run {identifiant} est en {statut}, depuis une date inconnue."
+    age = max(0, int(time.time() - float(debut)))
+    return f"Le run {identifiant} est en {statut} depuis {age} s."
+
+
 def _derniere_ingestion_reussie(instance: DagsterInstance, job_names: Sequence[str]) -> int | None:
     """Repere de la derniere ingestion reussie, ou ``None`` s'il n'y en a pas.
 
@@ -302,11 +328,25 @@ def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
             )
 
         for nom in job_names:
-            if context.instance.get_run_records(
+            en_cours = context.instance.get_run_records(
                 RunsFilter(job_name=nom, statuses=list(STATUTS_EN_COURS)), limit=1
-            ):
+            )
+            if en_cours:
+                # L'ALERTE QUI MANQUAIT (registre 4.15). Cette raison nommait le
+                # job et rien d'autre : un operateur lisait « Ingestion en
+                # cours » a chaque tick, pendant des heures, sans rien qui
+                # distingue « ca travaille » de « c'est gele ». Le run et son age
+                # le distinguent — 111 s est le run le plus long jamais mesure
+                # sur ce corpus, donc un age de plusieurs heures se lit tout
+                # seul.
+                #
+                # Le DELAI DE GARDE, lui, ne peut pas vivre ici : un sensor qui
+                # deciderait qu'un run est mort empieterait sur le travail du
+                # daemon, et il faudrait la meme regle dans chaque sensor. Il vit
+                # dans `dagster.yaml`, ou la famille entiere se ferme d'un geste.
                 return SkipReason(
-                    f"Ingestion en cours ({nom}) : la reindexation attend qu'elle retombe."
+                    f"Ingestion en cours ({nom}) : la reindexation attend qu'elle "
+                    f"retombe. {_decrire_le_run(en_cours[0])}"
                 )
 
         repere = _derniere_ingestion_reussie(context.instance, job_names)
@@ -319,7 +359,13 @@ def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
         derniere_tentative = _dernier_repere(context.instance, REINDEX_JOB_NAME)
         en_vol = _dernier_repere(context.instance, REINDEX_JOB_NAME, STATUTS_EN_COURS)
         if en_vol is not None:
-            return SkipReason("Une reindexation est deja en vol : la suivante attend son issue.")
+            en_vol_records = context.instance.get_run_records(
+                RunsFilter(job_name=REINDEX_JOB_NAME, statuses=list(STATUTS_EN_COURS)), limit=1
+            )
+            details = _decrire_le_run(en_vol_records[0]) if en_vol_records else ""
+            return SkipReason(
+                f"Une reindexation est deja en vol : la suivante attend son issue. {details}"
+            )
 
         # Le fait qui ferme la rafale est un run de reindexation REUSSI, pas une
         # demande emise. Tant qu'il n'existe pas, il reste quelque chose a faire

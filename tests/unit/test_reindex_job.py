@@ -655,3 +655,99 @@ class TestLeCablageReel:
 
         assert defs.resolve_job_def(REINDEX_JOB_NAME) is not None
         assert any(a.key.to_user_string() == "agent/lexical_index" for a in defs.assets)
+
+
+class TestLaClassificationDesStatutsTerminaux:
+    """Registre 4.17 : retirer `CANCELED` de `STATUTS_TERMINES` laissait la
+    suite VERTE, et une ingestion annulee aurait bloque la reindexation POUR
+    TOUJOURS.
+
+    Le test existant (`test_aucun_statut_terminal_ne_bloque`) asserte que les
+    deux ensembles partitionnent `DagsterRunStatus` — vrai des deux cotes du
+    defaut, la soustraction etant faite par le code lui-meme. Ce qui manquait est
+    l'assertion sur le CONTENU, et elle se verifie contre le Dagster EPINGLE.
+    """
+
+    def test_les_trois_statuts_terminaux_sont_nommes(self):
+        assert (
+            frozenset(
+                {
+                    DagsterRunStatus.SUCCESS,
+                    DagsterRunStatus.FAILURE,
+                    DagsterRunStatus.CANCELED,
+                }
+            )
+            == STATUTS_TERMINES
+        )
+
+    def test_ils_sont_exactement_ceux_que_dagster_declare_finis(self):
+        """LE TEMOIN, et c'est lui qui survit a une montee de version.
+
+        Le docstring du module ecrivait « les trois SEULS etats dont un run
+        Dagster ne revient pas » — une phrase d'exhaustivite, qu'une montee de
+        Dagster peut rendre fausse en silence. Cette assertion la remplace par un
+        controle : elle rougit le jour ou Dagster change sa propre liste, au lieu
+        de laisser le sensor reindexer au milieu d'une ingestion.
+        """
+        from dagster import DagsterRunStatus as Statuts
+        from dagster._core.storage.dagster_run import FINISHED_STATUSES
+
+        assert frozenset(FINISHED_STATUSES) == STATUTS_TERMINES, (
+            "la liste des statuts terminaux de Dagster a change : le sensor "
+            "classerait un statut inconnu du mauvais cote"
+        )
+        assert Statuts.CANCELED in STATUTS_TERMINES, (
+            "sans CANCELED, une ingestion ANNULEE bloque la reindexation pour "
+            "toujours : le sensor l'attend indefiniment"
+        )
+
+    def test_un_statut_non_terminal_est_prudemment_compte_en_vol(self):
+        """La soustraction reste le mecanisme : un statut inconnu doit bloquer.
+
+        C'est l'inverse du defaut precedent, et les deux comptent : mal classer
+        un terminal gele la reindexation, mal classer un non-terminal la lance au
+        milieu d'une ingestion.
+        """
+        assert DagsterRunStatus.STARTED in STATUTS_EN_COURS
+        assert DagsterRunStatus.STARTING in STATUTS_EN_COURS
+        assert DagsterRunStatus.QUEUED in STATUTS_EN_COURS
+        assert DagsterRunStatus.CANCELING in STATUTS_EN_COURS
+
+
+class TestLeSensorDitDepuisCombienDeTempsIlAttend:
+    """Registre 4.15 : « Aucun delai de garde, aucune ALERTE ».
+
+    Un run coince en `STARTED` bloque la reindexation indefiniment. Le delai de
+    garde se pose dans `dagster.yaml` — c'est la que la famille entiere se ferme
+    d'un geste. L'ALERTE, elle, est ici : la raison de saut du sensor nommait le
+    job mais pas le run, ni depuis combien de temps il bloque. Un opérateur
+    voyait « Ingestion en cours » a chaque tick, pendant des heures, sans rien
+    qui distingue « ca travaille » de « c'est gele ».
+    """
+
+    def test_la_raison_de_saut_nomme_le_run_qui_bloque(self):
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 1, DagsterRunStatus.STARTED, JOB_INGESTION)
+            resultat = _tick(instance)
+
+        assert isinstance(resultat, SkipReason)
+        message = str(resultat.skip_message)
+        assert JOB_INGESTION in message
+        assert "run " in message, message
+
+    def test_la_raison_de_saut_donne_l_age_du_run_qui_bloque(self):
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 1, DagsterRunStatus.STARTED, JOB_INGESTION)
+            resultat = _tick(instance)
+
+        message = str(resultat.skip_message)
+        assert "depuis" in message, message
+        assert "s" in message, message
+
+    def test_rien_n_est_dit_quand_aucun_run_ne_bloque(self):
+        """LE TEMOIN : l'alerte ne doit pas parler sur le chemin nominal."""
+        with DagsterInstance.ephemeral() as instance:
+            _rafale(instance, 1)
+            resultat = _tick(instance)
+
+        assert isinstance(resultat, RunRequest), resultat
