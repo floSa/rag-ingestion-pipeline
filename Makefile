@@ -22,8 +22,20 @@ install:
 # `make install`, sans activation d'environnement, et toujours aux versions
 # epinglees par uv.lock. Un `ruff` ou un `mypy` trouve au hasard du PATH rendrait
 # un verdict qui n'est celui d'aucune version declaree.
+# La portee est `src/ tests/`, et elle etait bornee a `src/`. C'EST LE MEME ANGLE
+# MORT QUE D7, sur `lint` au lieu de `format-check` : le hook `ruff` voit tout ce
+# qui est INDEXE, donc `tests/`, tandis que cette cible ne voyait que `src/`.
+# `make all` rendait 0 sur un arbre dont le hook refusait le commit, et le
+# message d'echec arrivait au moment du commit, pas au moment du controle. Mesure
+# le 1er septembre 2026 : deux commits du lot 4 ont ete refuses pour des regles
+# (N802, SIM223, E402, I001) que `make all` venait de declarer propres.
+#
+# Les deux gardes voient desormais la meme chose, comme `format` et
+# `format-check` depuis la reparation du lot 3. `typecheck` reste borne : c'est
+# `pyproject.toml` qui exclut `tests/` de `mypy`, un choix declare et non une
+# divergence de portee.
 lint:
-	uv run ruff check src/
+	uv run ruff check src/ tests/
 
 # `format` ECRIT dans le depot. C'est le geste volontaire du developpeur qui
 # decide de reformater, et il n'entre dans aucune porte.

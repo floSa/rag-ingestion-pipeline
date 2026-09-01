@@ -345,7 +345,7 @@ dernier.
 
 ```bash
 uv sync && sh scripts/installer-les-garde-fous.sh \
-  && uv run ruff check src/ && uv run mypy src/ && uv run pytest tests/ \
+  && uv run ruff check src/ tests/ && uv run mypy src/ && uv run pytest tests/ \
   && uv run ruff format --check src/
 ```
 

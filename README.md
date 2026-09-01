@@ -481,6 +481,18 @@ Les deux gestes sont désormais séparés :
 |---|---|---|
 | `make format` | **écrit** — `ruff format src/ tests/` | geste volontaire, dans aucune porte |
 | `make format-check` | **constate** — `ruff format --check src/ tests/` | dernière étape de `make all` |
+| `make lint` | **constate** — `ruff check src/ tests/` | première étape de `make all` |
+
+**`make lint` a porté `src/` seul jusqu'au lot 4, et c'était le MÊME angle mort
+que D7, d'un cran plus loin.** Le hook `ruff` voit tout ce qui est **indexé**,
+donc `tests/` ; la cible ne voyait que `src/`. `make all` rendait donc 0 sur un
+arbre dont le hook refusait le commit, et le développeur apprenait la faute au
+moment du commit, pas au moment du contrôle. `mesuré` le 1er septembre 2026 :
+**deux commits du lot 4 ont été refusés pour des règles — `N802`, `SIM223`,
+`E402`, `I001` — que `make all` venait de déclarer propres.** Les deux gardes
+voient désormais la même chose. `typecheck` reste borné à `src/` : c'est
+`pyproject.toml` qui exclut `tests/` de `mypy`, un choix déclaré et non une
+divergence de portée.
 
 **Cette table a porté `src/` seul pendant quelques heures, et c'était faux.**
 Le commit qui a étendu les deux cibles à `tests/` — pour fermer l'angle mort D7,
