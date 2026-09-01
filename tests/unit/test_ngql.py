@@ -217,6 +217,7 @@ class TestElementVertexValue:
         "id": "0011223344",
         "label": "section_header",
         "page_no": 7,
+        "page_no_end": 7,
         "text": "Chunking",
         "minio_url": "",
         "depth": 2,
@@ -224,7 +225,22 @@ class TestElementVertexValue:
 
     def test_the_depth_reaches_the_values_expression(self):
         rendu = element_vertex_value(self.ELEMENT, max_chars=2000)
-        assert rendu == '"0011223344":("section_header", 7, "Chunking", "", 2)'
+        assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", 2)'
+
+    def test_page_no_end_falls_back_on_page_no_and_not_on_zero(self):
+        """Un element d'une seule page FINIT sur elle.
+
+        Un 0 y dirait « page inconnue », et c'est le meme piege que `depth = 0`
+        pris par l'autre bout : la valeur nominale ressemblerait a une absence.
+        """
+        sans_fin = {k: v for k, v in self.ELEMENT.items() if k != "page_no_end"}
+        rendu = element_vertex_value(sans_fin, max_chars=2000)
+        assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", 2)'
+
+    def test_an_element_spanning_a_page_boundary_writes_its_last_page(self):
+        """Le cas mesure du registre 4.22 : Docling fusionne par-dessus une page."""
+        rendu = element_vertex_value({**self.ELEMENT, "page_no_end": 8}, max_chars=2000)
+        assert rendu == '"0011223344":("section_header", 7, 8, "Chunking", "", 2)'
 
     def test_a_root_heading_writes_zero_and_not_an_empty_value(self):
         """depth = 0 est une VALEUR, pas une absence : un faux None l'effacerait."""
@@ -300,8 +316,19 @@ class TestMissingVertexColumns:
         assert missing_vertex_columns(VERTEX_PROPERTIES) == ()
 
     def test_the_missing_column_is_named(self):
-        lues = ("label", "page_no", "text", "minio_url")
+        lues = ("label", "page_no", "page_no_end", "text", "minio_url")
         assert missing_vertex_columns(lues) == ("depth",)
+
+    def test_a_space_written_before_page_no_end_is_reported_as_incomplete(self):
+        """La migration du schema est en place, celle des DONNEES non.
+
+        Un space ecrit avant ce lot n'a pas la colonne : `ALTER TAG ... ADD` la
+        cree, et `_verifier_les_tags` doit rougir si l'ALTER a ete refuse. C'est
+        exactement le piege que le lot 3 a subi sur `depth` — un `init_schema()`
+        qui rend True alors que onze tags sur douze ont migre.
+        """
+        avant_ce_lot = ("label", "page_no", "text", "minio_url", "depth")
+        assert missing_vertex_columns(avant_ce_lot) == ("page_no_end",)
 
     def test_extra_columns_are_not_a_gap(self):
         """Un space plus riche que le schema courant n'est pas en faute."""

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import FrozenInstanceError
+from typing import Any
 
 import pytest
 
@@ -23,9 +24,13 @@ from src.docling_service.elements import (
     extract_bbox,
     item_label,
     item_text,
+    pages_sans_element,
     tag_for_label,
 )
 from src.pipeline.schemas import DocumentElement
+
+# L'un des deux Preface.html du corpus.
+IDENTITY = document_identity("htms/MLOps with Databricks/Preface.html")
 
 
 class FakeBbox:
@@ -384,3 +389,163 @@ class TestAccumulatorHierarchy:
         para = acc.add_item(FakeItem("text", "Avant tout titre."))
         assert para["reference_id"] == ROOT_REFERENCE
         assert para["depth"] == 0
+
+
+class TestUnElementQuiEnjambeUnePageLeDit:
+    """Registre 4.22 : six pages du PDF n'ont AUCUN element dans le graphe.
+
+    `mesure` : les pages **8, 18, 19, 25, 68, 69** sur 71 sont vides du cote du
+    graphe, alors que PyMuPDF y lit 1 181 a 1 472 caracteres. Le texte n'est pas
+    perdu — 72 316 caracteres ecrits sur 72 326 — il est **attribue a la page
+    PRECEDENTE** : le debut de la page 8 se retrouve dans un element de la page 7.
+    Consequence : toute citation « page 7 » couvre en realite 7 ET 8. Run vert,
+    aucun compteur, aucun signal.
+
+    **LA MESURE QUI A DECIDE, et le registre ne la porte pas.** La cause ecrite
+    est que `page_no` vient de la PREMIERE provenance de l'item et que Docling
+    fusionne un paragraphe qui enjambe une page. Vrai — mais la seconde page
+    n'est pas perdue pour autant : `mesure` le 1er septembre 2026, conversion
+    reelle du PDF du corpus en `page_range=(7, 8)`, l'item `#/texts/3` porte
+    **DEUX provenances, pages [7, 8]**. L'information existe et etait JETEE.
+
+    D'ou la correction : `page_no` garde son sens — la premiere page, celle ou la
+    lecture commence — et `page_no_end` dit ou l'element FINIT.
+
+    **ET C'EST CE QUI REND LA CORRECTION NEUTRE POUR LES `element_id`.**
+    `compute_id` derive de `(cle, page_no, position_in_page, texte[:50])`. Ne pas
+    toucher a `page_no` etait donc la condition pour que ce constat ne tue pas le
+    jeu de questions du lot 6 — ce que le mandat et le registre 4.28.e supposaient
+    inevitable.
+    """
+
+    @staticmethod
+    def _item(pages: list[int], texte: str = "Un paragraphe qui enjambe.") -> Any:
+        """Un item Docling dont les provenances couvrent les pages donnees."""
+
+        class Prov:
+            def __init__(self, page: int) -> None:
+                self.page_no = page
+                self.bbox = None
+
+        class Item:
+            def __init__(self) -> None:
+                self.prov = [Prov(page) for page in pages]
+                self.text = texte
+                self.self_ref = "#/texts/3"
+                self.label = "text"
+
+        return Item()
+
+    def test_un_element_sur_une_seule_page_finit_sur_cette_page(self):
+        accumulateur = DocumentAccumulator(IDENTITY)
+        element = accumulateur.add_item(self._item([7]), None)
+
+        assert element["page_no"] == 7
+        assert element["page_no_end"] == 7, (
+            "un element d'une seule page doit finir sur elle : sans cela, tout "
+            "element paraitrait enjamber quelque chose"
+        )
+
+    def test_un_element_qui_enjambe_porte_sa_page_de_fin(self):
+        accumulateur = DocumentAccumulator(IDENTITY)
+        element = accumulateur.add_item(self._item([7, 8]), None)
+
+        assert element["page_no"] == 7
+        assert element["page_no_end"] == 8, (
+            "la page 8 est dans les provenances de l'item et etait jetee : une "
+            "citation « page 7 » couvre en realite 7 et 8"
+        )
+
+    def test_page_no_reste_la_premiere_page(self):
+        """LE TEMOIN, et il porte tout le poids de la correction.
+
+        Deplacer `page_no` vers la derniere page — ou vers une moyenne — changerait
+        `compute_id`, donc TOUS les `element_id` du corpus, donc le jeu de
+        questions du lot 6. La correction est additive precisement pour cela.
+        """
+        accumulateur = DocumentAccumulator(IDENTITY)
+        element = accumulateur.add_item(self._item([7, 8, 9]), None)
+
+        assert element["page_no"] == 7, "page_no doit rester la page d'ENTREE"
+        assert element["page_no_end"] == 9
+
+    def test_l_identifiant_ne_bouge_pas_quand_un_element_enjambe(self):
+        """LE SECOND TEMOIN : l'identifiant d'un element qui enjambe est le MEME
+        que celui du meme element vu sur sa seule premiere page.
+
+        C'est la propriete qui rend ce constat compatible avec le lot 6, et elle
+        s'asserte plutot que se raisonne.
+        """
+        seul = DocumentAccumulator(IDENTITY).add_item(self._item([7]), None)
+        enjambe = DocumentAccumulator(IDENTITY).add_item(self._item([7, 8]), None)
+
+        assert seul["id"] == enjambe["id"]
+
+    def test_un_element_sans_provenance_reste_en_page_un(self):
+        """Le cas des formats non pagines, inchange."""
+
+        class SansProv:
+            prov: list[Any] = []
+            text = "Du texte."
+            self_ref = "#/texts/0"
+            label = "text"
+
+        element = DocumentAccumulator(IDENTITY).add_item(SansProv(), None)
+
+        assert element["page_no"] == 1
+        assert element["page_no_end"] == 1
+
+
+class TestLesPagesCouvertesParAucunElement:
+    """Le COMPTEUR la ou il y a perte : quelles pages n'ont aucun element ?
+
+    Avec `page_no_end`, une page enjambee cesse d'etre un trou : elle est
+    couverte par un element qui commence avant elle. Ce qui reste apres ce
+    changement est la VRAIE perte — une page que personne ne couvre, ni comme
+    page d'entree ni comme page de fin — et c'est elle qu'il faut compter.
+    """
+
+    # Le cas mesure du corpus, reduit : la page 8 n'a aucun element propre parce
+    # qu'un element de la page 7 l'enjambe.
+    ENJAMBE = [
+        {"page_no": 6, "page_no_end": 6},
+        {"page_no": 7, "page_no_end": 8},
+        {"page_no": 9, "page_no_end": 9},
+    ]
+
+    def test_les_pages_enjambees_ne_comptent_plus_comme_perdues(self):
+        assert pages_sans_element(self.ENJAMBE, total_pages=9, ecartees={1, 2, 3, 4, 5}) == []
+
+    def test_une_page_que_personne_ne_couvre_est_signalee(self):
+        """LE TEMOIN du precedent, et il est indispensable.
+
+        Sans lui, un compteur qui rend toujours la liste vide passerait le test
+        ci-dessus. C'est le cas ou la page 8 est REELLEMENT perdue : aucun
+        element ne commence dessus, et aucun ne l'enjambe.
+        """
+        sans_enjambement = [
+            {"page_no": 6, "page_no_end": 6},
+            {"page_no": 7, "page_no_end": 7},
+            {"page_no": 9, "page_no_end": 9},
+        ]
+
+        assert pages_sans_element(sans_enjambement, total_pages=9, ecartees={1, 2, 3, 4, 5}) == [8]
+
+    def test_les_pages_ecartees_ne_sont_pas_comptees_comme_perdues(self):
+        """Le front/back matter est ECARTE volontairement : le compter comme une
+        perte rendrait le compteur bavard sur chaque PDF, et personne ne lirait
+        plus la ligne."""
+        elements = [{"page_no": 3, "page_no_end": 3}]
+
+        assert pages_sans_element(elements, total_pages=5, ecartees={1, 2, 4, 5}) == []
+
+    def test_un_document_sans_element_signale_toutes_ses_pages(self):
+        assert pages_sans_element([], total_pages=3) == [1, 2, 3]
+
+    def test_un_element_dont_la_fin_precede_le_debut_ne_boucle_pas(self):
+        """Le cas que le code naturel fait mal tourner : des provenances en
+        desordre. `range(7, 6)` est vide, donc la page 7 elle-meme serait perdue.
+        """
+        elements = [{"page_no": 7, "page_no_end": 6}]
+
+        assert 7 not in pages_sans_element(elements, total_pages=7)

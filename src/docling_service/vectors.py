@@ -246,6 +246,7 @@ def build_chunks(
                 language=language,
                 label=str(element.get("label") or ""),
                 page_no=int(element.get("page_no") or 0),
+                page_no_end=int(element.get("page_no_end") or element.get("page_no") or 0),
                 minio_url=str(element.get("minio_url") or ""),
                 reference_id=str(element.get("reference_id") or "DOC"),
                 depth=int(element.get("depth") or 0),

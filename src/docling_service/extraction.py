@@ -35,6 +35,7 @@ from src.docling_service.elements import (
     document_identity,
     extract_bbox,
     item_provenance,
+    pages_sans_element,
 )
 from src.docling_service.markdown import (
     IMAGE_MARKER,
@@ -443,6 +444,7 @@ def _extract_pdf(
     )
 
     accumulator = DocumentAccumulator(identity)
+    pages_couvertes: list[dict[str, Any]] = []
     converter = get_converter(ocr=besoin_ocr)
     total_chunks = 0
     failed_batches: list[str] = []
@@ -492,6 +494,14 @@ def _extract_pdf(
             else:
                 titres_total += comptes[0]
                 titres_replis += comptes[1]
+                # Les plages de pages sont retenues lot par lot : les elements
+                # eux-memes ne survivent pas au lot (ils sont persistes puis
+                # jetes), et le compteur de pages perdues a besoin de la
+                # couverture du DOCUMENT entier.
+                pages_couvertes.extend(
+                    {"page_no": e["page_no"], "page_no_end": e.get("page_no_end")}
+                    for e in batch_elements
+                )
                 if not langue:
                     langue = _detect_document_language(batch_elements, stem)
                 facts = DocumentFacts(
@@ -548,6 +558,39 @@ def _extract_pdf(
             f"stores : l'index ne porte pas d'ouvrage tronque"
         )
 
+    # LE COMPTEUR DU REGISTRE 4.22, et il ne pouvait pas exister avant
+    # `page_no_end`. Une page enjambee n'est PAS une page perdue : elle est
+    # couverte par un element qui commence avant elle. Ce qui reste apres ce
+    # changement est la vraie perte — une page que personne ne couvre — et c'est
+    # elle qu'il faut crier. Sur le corpus, les six pages qui paraissaient vides
+    # (8, 18, 19, 25, 68, 69) sont enjambees, donc ce compteur doit se taire
+    # dessus : il ne parle que d'une perte reelle.
+    perdues = pages_sans_element(pages_couvertes, total_pages, skipped)
+    if perdues:
+        logger.warning(
+            "[%s] %d page(s) sur %d n'ont AUCUN element et ne sont couvertes par "
+            "aucun element voisin : %s. Leur texte n'est ni indexe ni citable, et "
+            "aucun code de sortie ne le dit",
+            stem,
+            len(perdues),
+            total_pages,
+            ", ".join(str(page) for page in perdues),
+        )
+
+    enjambees = sum(
+        1
+        for e in pages_couvertes
+        if e.get("page_no_end") and int(e["page_no_end"]) > int(e["page_no"])
+    )
+    if enjambees:
+        logger.info(
+            "[%s] %d element(s) enjambent une frontiere de page : leur `page_no` "
+            "est la page d'entree, `page_no_end` la page de sortie. Une citation "
+            "« page N » sur ces elements couvre en realite deux pages",
+            stem,
+            enjambees,
+        )
+
     if titres_replis:
         logger.warning(
             "[%s] %d titres sur %d (%.0f %%) ont recu le rang de REPLI et non un "
@@ -571,6 +614,8 @@ def _extract_pdf(
         "type_file": "pdf",
         "headings": titres_total,
         "headings_fallback": titres_replis,
+        "pages_without_element": len(perdues),
+        "pages_spanned": enjambees,
     }
 
 

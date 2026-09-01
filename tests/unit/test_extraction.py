@@ -186,7 +186,19 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
             trace["convertis"].append((start_page, end_page))
             if start_page in lots_qui_echouent:
                 raise RuntimeError(f"page {start_page} illisible")
-            return [{"id": "x", "label": "text"}], object(), (0, 0)
+            # Un element par page du lot, avec ses deux pages : le bouchon doit
+            # rendre la forme que la production rend, sans quoi le compteur de
+            # pages perdues serait teste sur une forme inventee.
+            elements = [
+                {
+                    "id": f"e{page:04d}",
+                    "label": "text",
+                    "page_no": page,
+                    "page_no_end": page,
+                }
+                for page in range(start_page, end_page + 1)
+            ]
+            return elements, object(), (0, 0)
 
         monkeypatch.setattr(extraction, "_convert_batch", convertir)
         monkeypatch.setattr(
