@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         UnresolvedAssetJobDefinition,
     )
 
+from src.docling_service.elements import cleaned_path
 from src.pipeline.cleaning import clean_html_file
 from src.pipeline.media import MinioImageExporter
 from src.pipeline.settings import get_settings
@@ -226,7 +227,7 @@ def _build_html_assets(
         if not source_path.exists():
             raise FileNotFoundError(f"Source file not found: {source_path}")
 
-        dest_path = Path(settings.source_dir) / settings.cleaned_subdir / context.partition_key
+        dest_path = cleaned_path(settings.source_dir, context.partition_key)
 
         exporter: MinioImageExporter | None = None
         if source.cleaning.export_images:

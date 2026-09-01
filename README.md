@@ -298,11 +298,22 @@ docker compose logs -f docling-service
 | `Service Docling toujours pas prêt` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
 | `nGQL rejeté ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
 
-**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro sur **les trois stores** — collection ChromaDB, space NebulaGraph et bucket MinIO —, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et `minio` par leur nom de service) :
+**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et `minio` par leur nom de service) :
 
 ```bash
 docker compose exec docling-service python -m src.wipe_stores
 ```
+
+Il purge **quatre** choses, et non trois. Cette phrase disait « les trois stores — collection ChromaDB, space NebulaGraph et bucket MinIO » : c'était une phrase d'exhaustivité, et le lot 4 l'a rendue fausse en ajoutant la quatrième sans la compter ici. Le compte est `mesuré` sur la sortie du script, qui titre chacune (`--- ChromaDB ---`, `--- MinIO ---`, `--- NebulaGraph ---`, `--- HTML nettoyé ---`) :
+
+| Ce qui est purgé | Pourquoi il y est |
+|---|---|
+| la collection ChromaDB `rag_documents` | les vecteurs |
+| le space NebulaGraph `rag_space` | le graphe |
+| le bucket MinIO `documents` | les crops d'images ; ils survivaient à toute purge avant le lot 4 |
+| `Datas/.cleaned/` | **le piège le plus discret.** Le HTML nettoyé porte les URL MinIO des images, et l'asset `cleaned_html` ne se rematérialise pas si son fichier existe déjà : une purge suivie d'une réingestion repartait du HTML **périmé**, pointant les objets que la purge venait de supprimer |
+
+**Le sous-répertoire `.cleaned` n'est pas configurable, et c'est délibéré.** `CLEANED_SUBDIR` a été un réglage annoncé dans `.env.example`, et il décidait à lui seul de la cible de ce `rmtree`. Quatre valeurs faisaient viser `Datas/` ou son parent, et deux autres, **bien contenues donc acceptées par le garde**, en détruisaient le contenu : `mesuré` sur un faux corpus jetable, `htms` emportait 24 des 25 fichiers du corpus versionné et `database` les cinq stores. Toute valeur autre que le défaut déplaçait de surcroît les `element_id` de tout le corpus, en silence — le nettoyage écrivait selon le réglage, l'identité du document retirait la constante. Le sous-répertoire est désormais une constante du code ; le contrôle de containment, lui, **reste** : `SOURCE_DIR` demeure un réglage, et une racine mal réglée fait toujours sortir le script en 1 plutôt que de supprimer ce qu'elle désigne.
 
 Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
@@ -841,7 +852,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**857 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
+**862 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre

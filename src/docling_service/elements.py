@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from src.docling_service.hierarchy import HeadingStack
@@ -48,7 +49,68 @@ ROOT_REFERENCE = "DOC"
 
 # Dossier ou le pipeline depose les HTML nettoyes ; il double l'arborescence
 # d'origine et ne fait pas partie de l'identite du document.
+#
+# **C'EST UNE CONSTANTE, ET C'ETAIT UN REGLAGE.** `PipelineSettings` portait un
+# champ `cleaned_subdir` expose par `CLEANED_SUBDIR`, annonce a l'operateur dans
+# `.env.example`, et il decidait a lui seul de deux choses qui n'ont pas le meme
+# proprietaire : ou le nettoyage ECRIT, et ce que `wipe_stores` SUPPRIME. Trois
+# consequences mesurees, aucune souhaitable (registre 4.29.a) :
+#
+# - `CLEANED_SUBDIR=htms` est strictement contenu dans la racine, passait donc le
+#   containment livre par le lot 4, et faisait supprimer `Datas/htms/` — 24 des
+#   25 fichiers du corpus versionne. `=database` supprimait les cinq stores ;
+# - toute valeur autre que celle-ci CASSE L'IDENTITE DES DOCUMENTS, en silence.
+#   `document_identity` retire ce segment du chemin pour retrouver la source ; il
+#   le lisait ICI tandis que le nettoyage ecrivait selon le REGLAGE. Les deux
+#   sites pouvaient donc diverger. `mesure` avec `CLEANED_SUBDIR=.propre`, sur le
+#   chemin nettoye d'un chapitre reel : `key` passe de
+#   `htms/MLOps with Databricks/Preface` a `.propre/htms/...`, `collection` passe
+#   de l'ouvrage au dossier de source, et l'`element_id` passe de `fab608f4eb` a
+#   `9d6460cded`. C'est l'exigence 2 du contrat rompue, et l'exigence 3 avec
+#   elle, sans qu'aucune erreur ne soit levee ;
+# - personne ne configure ou une etape intermediaire depose ses fichiers.
+#
+# Le containment de `wipe_stores.purge_cleaned` est CONSERVE : il ne coute rien
+# et il protege desormais contre un `source_dir` mal regle, qui reste un reglage
+# legitime.
 CLEANED_SUBDIR = ".cleaned"
+
+
+def cleaned_root(source_dir: str | Path) -> Path:
+    """Racine des copies nettoyees, sous la racine des donnees.
+
+    SEUL site de cette derivation avec :func:`cleaned_path`, et c'est le point :
+    `wipe_stores` SUPPRIME ce repertoire, l'asset `cleaned_html` y ECRIT, et
+    :func:`document_identity` retire son nom du chemin. Trois lecteurs, une
+    definition.
+
+    Args:
+        source_dir: Racine des donnees, ``PipelineSettings.source_dir``.
+
+    Returns:
+        Le repertoire des copies nettoyees.
+    """
+    return Path(source_dir) / CLEANED_SUBDIR
+
+
+def cleaned_path(source_dir: str | Path, source_path: str) -> Path:
+    """Chemin de la copie nettoyee d'un document.
+
+    L'arborescence d'origine est reproduite telle quelle sous
+    :func:`cleaned_root`, de sorte que retirer ce seul segment rende le chemin
+    source — ce que fait :func:`document_identity`. C'est cet aller-retour qui
+    doit tenir, et un test l'asserte : la copie nettoyee d'un document doit
+    rendre l'identite du document, sans quoi ses `element_id` changent en
+    silence.
+
+    Args:
+        source_dir: Racine des donnees, ``PipelineSettings.source_dir``.
+        source_path: Chemin relatif a la racine — la cle de partition Dagster.
+
+    Returns:
+        Le chemin de la copie nettoyee.
+    """
+    return cleaned_root(source_dir) / source_path
 
 
 def tag_for_label(label: str) -> str:

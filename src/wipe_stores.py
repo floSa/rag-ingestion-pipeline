@@ -18,12 +18,16 @@ du HTML PERIME, pointant des objets que la purge venait de supprimer. `mesure` :
 13 objets dans le bucket, 199 URL referencees dans `Datas/.cleaned/`. Voir
 :func:`purge_cleaned`.
 
-**Ce module SUPPRIME des repertoires, et sa cible vient de la configuration.**
-`CLEANED_SUBDIR` est un reglage annonce dans `.env.example`, et quatre de ses
-valeurs faisaient viser `Datas/` ou son parent — le corpus versionne et les bind
-mounts des stores. `purge_cleaned` REFUSE desormais toute cible qui n'est pas
-strictement contenue dans `source_dir`, et le refus sort en 1. Le detail, les
-quatre valeurs et le motif du refus dur sont a son docstring.
+**Ce module SUPPRIME des repertoires, et sa cible ne vient plus d'un reglage.**
+Elle venait de `CLEANED_SUBDIR`, annonce dans `.env.example` : quatre de ses
+valeurs faisaient viser `Datas/` ou son parent, et une cinquieme famille — toute
+valeur bien contenue mais fausse, `htms`, `database` — passait le containment et
+detruisait le corpus ou les stores. Le sous-repertoire est desormais la constante
+`src.docling_service.elements.CLEANED_SUBDIR` (registre 4.29.a).
+
+`purge_cleaned` GARDE son containment, et il n'est pas devenu inutile : il
+protege contre un `source_dir` mal regle, qui reste un reglage legitime. Le
+detail et le motif du refus dur sont a son docstring.
 
 **Les trois stores, pas deux.** Le bucket MinIO etait laisse intact : les crops
 d'images des ingestions precedentes y survivaient a toute purge. Ce n'est pas
@@ -40,6 +44,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from src.docling_service.elements import CLEANED_SUBDIR, cleaned_root
 from src.docling_service.settings import get_settings
 
 # Les noms de collection et de space vivent dans nebula.py et vectors.py, qui
@@ -139,10 +144,11 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
 
     **CE DOCSTRING AFFIRMAIT « La cible est le SOUS-REPERTOIRE nettoye, JAMAIS
     `Datas/` ». C'ETAIT UNE PHRASE D'EXHAUSTIVITE, ET ELLE ETAIT FAUSSE SOUS
-    CONFIGURATION.** `main()` calcule
+    CONFIGURATION.** `main()` calculait
     `Path(reglages.source_dir) / reglages.cleaned_subdir`, et `CLEANED_SUBDIR`
-    est un reglage annonce a l'operateur (`.env.example:54`). Quatre de ses
-    valeurs faisaient viser la racine ou au-dessus (`mesure`) :
+    etait un reglage annonce a l'operateur. Quatre de ses valeurs faisaient viser
+    la racine ou au-dessus, et deux autres, bien contenues, detruisaient le
+    corpus ou les stores (`mesure`) :
 
     ==================== =========================================
     ``CLEANED_SUBDIR``   Ce que `main()` passait a ce `rmtree`
@@ -151,7 +157,15 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     ``"."``              ``/x/Datas``, apres resolution
     ``".."``             ``/x`` — le PARENT de la racine
     ``"/quelque/part"``  ``/quelque/part`` — un absolu REMPLACE la base
+    ``"htms"``           ``/x/Datas/htms`` — CONTENU, donc accepte : 24 des 25
+                         fichiers du corpus versionne
+    ``"database"``       ``/x/Datas/database`` — CONTENU : les cinq stores
     ==================== =========================================
+
+    **Le reglage n'existe plus** (registre 4.29.a) : la cible est
+    `elements.cleaned_root(source_dir)`, et les six valeurs ci-dessus sont
+    inertes. Ce qui suit decrit donc ce que ce garde protege encore, et il
+    protege encore quelque chose : `source_dir` reste un reglage.
 
     Sur ce poste, `Datas/` porte le corpus VERSIONNE — 25 fichiers,
     57 381 999 octets, dont le contenu entre dans le calcul d'`element_id`
@@ -188,15 +202,15 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     cible = repertoire.resolve()
     base = racine.resolve()
     # `parents` EXCLUT le chemin lui-meme : c'est ce qui rend le containment
-    # STRICT, donc ce qui refuse `CLEANED_SUBDIR=""` et `"."`, dont la cible est
-    # la racine elle-meme.
+    # STRICT, donc ce qui refuse une cible egale a la racine — le cas d'un
+    # `source_dir` qui pointe la ou la constante devrait mener.
     if base not in cible.parents:
         raise CibleHorsRacineError(
-            f"cible {cible} hors de {base} : refus de purger. La cible vient de "
-            f"CLEANED_SUBDIR, et une valeur vide, « . », « .. » ou absolue fait "
-            f"viser la racine ou au-dessus — donc le corpus versionne et les "
-            f"stores de Datas/database/. Reglage attendu : un sous-repertoire "
-            f"relatif, « .cleaned » par defaut"
+            f"cible {cible} hors de {base} : refus de purger. La cible est "
+            f"SOURCE_DIR/{CLEANED_SUBDIR}, et c'est donc SOURCE_DIR qui est mal "
+            f"regle — une racine vide, relative ou pointant ailleurs fait viser "
+            f"un repertoire qui n'est pas le sien, et sous Datas/ vivent le "
+            f"corpus versionne et les stores de Datas/database/"
         )
     if not cible.exists():
         return 0
@@ -265,21 +279,22 @@ def main() -> None:
 
     print("\n--- HTML nettoye ---")
     try:
-        # `source_dir` et `cleaned_subdir` appartiennent a `PipelineSettings` et
-        # non aux reglages du service : les recopier ici en creerait un second
-        # site, donc une divergence possible sur le chemin qu'on s'apprete a
-        # SUPPRIMER. L'import est local pour que ce module reste importable sans
-        # les dependances de l'orchestrateur.
+        # `source_dir` appartient a `PipelineSettings` et non aux reglages du
+        # service : le recopier ici en creerait un second site, donc une
+        # divergence possible sur le chemin qu'on s'apprete a SUPPRIMER. L'import
+        # est local pour que ce module reste importable sans les dependances de
+        # l'orchestrateur.
         from src.pipeline.settings import get_settings as get_pipeline_settings
 
         reglages = get_pipeline_settings()
         # LA RACINE EST PASSEE, ET C'EST CE QUI REND LE REFUS POSSIBLE. La cible
-        # se compose de deux reglages, dont `CLEANED_SUBDIR`, annonce a
-        # l'operateur : quatre de ses valeurs faisaient viser `Datas/` ou son
-        # parent, donc le corpus versionne et les stores. `purge_cleaned` decide,
-        # pas cet appelant — un controle pose ici laisserait la fonction publique
-        # sans garde pour tout autre appelant.
-        nettoye = Path(reglages.source_dir) / reglages.cleaned_subdir
+        # ne se compose plus que d'UN reglage — `source_dir` — et d'une constante.
+        # `cleaned_root` est le seul site de la derivation, partage avec l'asset
+        # qui ECRIT ce repertoire : deux calculs du meme chemin peuvent diverger,
+        # et ici la divergence supprimerait le mauvais. `purge_cleaned` decide du
+        # containment, pas cet appelant — un controle pose ici laisserait la
+        # fonction publique sans garde pour tout autre appelant.
+        nettoye = cleaned_root(reglages.source_dir)
         retires = purge_cleaned(nettoye, Path(reglages.source_dir))
         print(f"{retires} fichiers retires de {nettoye}")
     except Exception as exc:
