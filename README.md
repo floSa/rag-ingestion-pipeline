@@ -783,7 +783,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**820 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
+**825 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -806,7 +806,28 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
-Les modules restants (`vectors.py`, `main.py`) sont des adaptateurs vers ChromaDB et FastAPI : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle. **`nebula.py` et `extraction.py` ont quitté cette liste** : leurs imports de `nebula3` et de `docling` sont différés, donc les deux modules sont importables côté hôte, et `tests/unit/test_nebula.py` et `tests/unit/test_extraction.py` gardent l'identité du document, l'oubli avant réécriture et le retrait d'un document partiel. Aucun module du dépôt n'est plus inimportable côté hôte — c'était la cause mécanique de six angles morts (registre §3.4, §4.4, §4.5, §4.28.d).
+Le module restant, `vectors.py`, est un adaptateur vers ChromaDB : il n'est pas
+couvert en unitaire et se valide par une ingestion réelle. Il garde tout de même
+le contrôle du modèle d'embedding (`tests/unit/test_vectors.py`).
+
+**Trois modules ont quitté cette liste au lot 4**, et pour la même cause
+mécanique : ils étaient **inimportables côté hôte**, donc rien de ce qu'ils
+décident ne pouvait être testé — *ce qu'un test n'importe pas, il ne teste pas*.
+
+| Module | Ce qui l'empêchait | Ce qui le garde désormais |
+|---|---|---|
+| `nebula.py` | `import nebula3` au niveau du module | `test_nebula.py` — l'identité du document, `source_path` et jamais `filename` |
+| `extraction.py` | `import docling` au niveau du module | `test_extraction.py` — l'oubli avant réécriture, le retrait d'un document partiel, la chaîne d'images |
+| `main.py` | `fastapi` absent du venv du dépôt | `test_main.py` — le refus de démarrer hors contrat, par sous-processus |
+
+Les deux premiers ont vu leur import **différé** dans la fonction qui en a besoin
+(le geste de `vectors.get_collection`) ; le troisième est atteint par un bouchon
+`fastapi` posé comme un vrai paquet en tête de `PYTHONPATH` — `main.py` **est**
+l'application FastAPI, différer cet import-là n'aurait aucun sens.
+
+**Aucun module du dépôt n'est plus inimportable côté hôte.** C'était la cause
+mécanique de six angles morts du chantier (registre §3.4, §4.4, §4.5, §4.19,
+§4.28.d), et c'est la même à chaque fois.
 
 ---
 
