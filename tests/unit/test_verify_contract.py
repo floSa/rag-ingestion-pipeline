@@ -22,6 +22,7 @@ import pytest
 from src.docling_service.ngql import DOCUMENT_PROPERTIES
 from src.verify_contract import (
     _lire_les_aretes,
+    _verifier_le_graphe,
     _verifier_le_tag_document,
     _verifier_les_ancres,
     chunks_incoherents,
@@ -405,6 +406,7 @@ class _Session:
     def __init__(self, reponses: dict[str, _Resultat]) -> None:
         self._reponses = reponses
         self.requetes: list[str] = []
+        self.relachee = False
 
     def execute(self, requete: str) -> _Resultat:
         self.requetes.append(requete)
@@ -412,6 +414,11 @@ class _Session:
             if motif in requete:
                 return reponse
         return _Resultat([])
+
+    def release(self) -> None:
+        """Le vrai client la porte, et `_verifier_le_graphe` l'appelle dans son
+        `finally`. Sans elle, le bouchon serait plus etroit que la production."""
+        self.relachee = True
 
 
 class TestUneSequenceAbsenteSeRAPPORTE:
@@ -664,3 +671,174 @@ class TestToutesLesAncresSontVerifieesEtPasUnEchantillon:
         assert _verifier_les_ancres(session, [{"element_id": "a" * 10}]) == [
             "comptage des ancres impossible"
         ]
+
+
+# --- Le site d'appel de `_verifier_le_graphe` ---------------------------------
+#
+# Les contres de ce module sont gardes un par un, en fonctions pures. LEUR SITE
+# D'APPEL ne l'etait pas, et c'est la que se decide s'ils rapportent ou non :
+# `_verifier_le_graphe` lit, compte, et pose l'anomalie. `mesure` : remplacer
+# `sans_fin = sommets_sans_profondeur(fins)` par `sans_fin = 0` laissait la suite
+# entierement verte, alors que ce controle est celui que ce lot AJOUTE.
+#
+# `nebula3` n'est pas dans le venv du depot : il est bouchonne comme un vrai
+# arbre de modules, par `monkeypatch.setitem`, donc REVOQUE a la fin du test —
+# contrairement a un bouchon pose a la main dans `sys.modules`, il ne survit pas
+# et l'ordre des tests ne devient pas significatif.
+
+
+class _PoolBouchonne:
+    """`ConnectionPool` bouchonne, rendant la session qu'on lui a donnee."""
+
+    session: object
+
+    def init(self, adresses: object, config: object) -> bool:
+        return True
+
+    def get_session(self, utilisateur: str, mot_de_passe: str) -> object:
+        return type(self).session
+
+    def close(self) -> None:
+        return None
+
+
+def _bouchonner_nebula3(monkeypatch: pytest.MonkeyPatch, session: _Session) -> None:
+    """Pose un arbre `nebula3` minimal, portant ce que le module importe."""
+    import types
+
+    _PoolBouchonne.session = session
+    racine = types.ModuleType("nebula3")
+    config = types.ModuleType("nebula3.Config")
+    config.Config = type("Config", (), {})  # type: ignore[attr-defined]
+    gclient = types.ModuleType("nebula3.gclient")
+    net = types.ModuleType("nebula3.gclient.net")
+    net.ConnectionPool = _PoolBouchonne  # type: ignore[attr-defined]
+    for nom, module in [
+        ("nebula3", racine),
+        ("nebula3.Config", config),
+        ("nebula3.gclient", gclient),
+        ("nebula3.gclient.net", net),
+    ]:
+        monkeypatch.setitem(sys.modules, nom, module)
+
+
+def _session_dun_graphe_sain(page_no_end: int | None, depth: int | None = 0) -> _Session:
+    """Une session dont TOUS les controles passent, sauf ce qu'on lui fait porter.
+
+    Le graphe rendu est sain de bout en bout — une arete `PARENT_OF` ordonnee, un
+    tag `Document` complet, une image avec son URL, l'ancre presente. Seules les
+    valeurs de `page_no_end` et de `depth` sont a la main de l'appelant.
+
+    Un montage qui rendrait un graphe vide produirait des anomalies pour d'autres
+    raisons, et l'assertion « une seule anomalie, celle-ci » ne vaudrait plus
+    rien.
+    """
+    return _Session(
+        {
+            "PARENT_OF": _Resultat([["docA", "e0000000ab", 0, 1]]),
+            "page_no_end AS valeur": _Resultat([[page_no_end]]),
+            "depth AS valeur": _Resultat([[depth]]),
+            "DESCRIBE TAG Document": _Resultat([[c] for c in DOCUMENT_PROPERTIES]),
+            "minio_url AS url": _Resultat([["http://minio:9000/documents/a.png"]]),
+            "MATCH (v) WHERE id(v) IN": _Resultat([[1]]),
+        }
+    )
+
+
+ANCRES = [{"element_id": "e0000000ab"}]
+
+
+class TestLeControleDePageNoEndEstGardeASonSiteDAppel:
+    """Registre 4.22 : la colonne migre en place, les DONNEES non.
+
+    Un `ALTER TAG ... ADD (page_no_end int)` laisse a NULL tous les sommets deja
+    ecrits, et seule une reingestion les renseigne. Sans ce compteur, l'agent
+    lirait une page de fin sur les sommets recents et NULL sur les anciens, et
+    rien ne distinguerait « cet element tient sur une page » de « on ne sait pas
+    ou il finit ».
+
+    Le controle etait livre. **Rien ne le gardait**, alors que `verify_contract`
+    est importable cote hote depuis le lot 3 et que `test_verify_contract.py`
+    existe : c'est le site d'appel qui manquait, pas la possibilite.
+    """
+
+    def test_un_sommet_sans_page_de_fin_est_rapporte(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """LE GARDE, sur un graphe sain PARTOUT AILLEURS.
+
+        L'assertion porte sur UNE anomalie et une seule : c'est ce qui prouve que
+        celle-ci vient bien du controle de `page_no_end` et non d'un montage
+        approximatif.
+        """
+        _bouchonner_nebula3(monkeypatch, _session_dun_graphe_sain(page_no_end=None))
+
+        anomalies = _verifier_le_graphe(ANCRES)
+
+        assert len(anomalies) == 1, anomalies
+        assert "page_no_end" in anomalies[0], anomalies[0]
+        assert "1 sommets sur 1" in anomalies[0], anomalies[0]
+
+    def test_un_graphe_entierement_migre_ne_rapporte_rien(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE TEMOIN, et sans lui un `sans_fin = len(fins)` passerait le garde."""
+        _bouchonner_nebula3(monkeypatch, _session_dun_graphe_sain(page_no_end=7))
+
+        assert _verifier_le_graphe(ANCRES) == []
+
+    def test_une_page_de_fin_a_zero_est_une_valeur_et_non_une_absence(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Le second temoin, et c'est le piege que la colonne tend.
+
+        Un compteur ecrit `if not fin` — la faute naturelle — rougirait sur un
+        graphe sain. C'est exactement le temoin que `depth` porte deja depuis le
+        lot 3, sur la colonne d'a cote.
+
+        Il dit aussi ce que ce controle NE VOIT PAS, et qui est consigne au
+        registre : un 0 y passe pour une valeur, alors que `ngql.py` ecrit qu'un 0
+        dirait « page inconnue ». Ce test verrouille le comportement livre ; il ne
+        pretend pas que ce comportement soit le dernier mot.
+        """
+        _bouchonner_nebula3(monkeypatch, _session_dun_graphe_sain(page_no_end=0))
+
+        assert _verifier_le_graphe(ANCRES) == []
+
+    def test_le_controle_de_depth_est_garde_au_meme_site(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """La colonne d'a cote, meme site d'appel, meme angle mort.
+
+        `sans_depth = sommets_sans_profondeur(profondeurs)` -> `0` laissait aussi
+        la suite verte. Le controle vient du lot 3, pas de celui-ci ; le garde est
+        ecrit ici parce qu'il partage exactement ce site et que l'y laisser seul
+        aurait ete refaire le defaut d'une colonne.
+        """
+        _bouchonner_nebula3(monkeypatch, _session_dun_graphe_sain(page_no_end=7, depth=None))
+
+        anomalies = _verifier_le_graphe(ANCRES)
+
+        assert len(anomalies) == 1, anomalies
+        assert "depth" in anomalies[0], anomalies[0]
+
+    def test_le_bouchon_rend_bien_ce_que_le_code_de_lecture_attend(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE TEMOIN DU HARNAIS. *Verifie ton harnais avant de croire ton rouge.*
+
+        Si le bouchon ne repondait a AUCUNE des requetes, `_lire` rendrait des
+        listes vides partout : `fins` serait vide, `sans_fin` vaudrait 0, et le
+        temoin « un graphe migre ne rapporte rien » serait vert pour la mauvaise
+        raison — parce que rien n'a ete lu, non parce que tout est renseigne.
+        """
+        session = _session_dun_graphe_sain(page_no_end=7)
+        _bouchonner_nebula3(monkeypatch, session)
+
+        _verifier_le_graphe(ANCRES)
+
+        lues = " ".join(session.requetes)
+        assert "page_no_end AS valeur" in lues, session.requetes
+        assert "depth AS valeur" in lues, session.requetes
+        assert session.relachee, (
+            "la session n'est pas relachee : le `finally` du module ne tourne pas, "
+            "donc le montage ne reproduit pas la sortie reelle"
+        )
