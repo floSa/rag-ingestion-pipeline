@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from src.wipe_stores import purge_bucket, purge_collection, purge_space
+from src.wipe_stores import purge_bucket, purge_cleaned, purge_collection, purge_space
 
 
 class ObjetMinio:
@@ -286,7 +286,7 @@ class ConnectionPool:
 }
 
 
-def _purger(tmp_path: Path, echecs: str = ""):
+def _purger(tmp_path: Path, echecs: str = "", source_dir: str = ""):
     """Lance ``python -m src.wipe_stores`` pour de bon, stores bouchonnes.
 
     Args:
@@ -295,6 +295,9 @@ def _purger(tmp_path: Path, echecs: str = ""):
             poste.
         echecs: Stores qui doivent echouer, separes par des virgules, parmi
             ``chroma``, ``minio`` et ``nebula``.
+        source_dir: Racine des donnees, dont le sous-repertoire ``.cleaned`` est
+            purge. Par defaut un chemin inexistant sous ``tmp_path``, pour
+            qu'aucun test ne touche au corpus du poste.
 
     Returns:
         Le processus termine, et la liste des gestes tracee par les bouchons.
@@ -316,6 +319,8 @@ def _purger(tmp_path: Path, echecs: str = ""):
     # d'attente entre chaque.
     environnement["NEBULA_MAX_ATTEMPTS"] = "1"
     environnement["NEBULA_RETRY_SECONDS"] = "0"
+    # Jamais le `Datas/` du poste : ce sous-processus SUPPRIME un repertoire.
+    environnement["SOURCE_DIR"] = source_dir or str(tmp_path / "datas_absent")
 
     processus = subprocess.run(
         [sys.executable, "-m", "src.wipe_stores"],
@@ -401,3 +406,155 @@ class TestUnePurgePartielleEchoue:
         processus, _ = _purger(tmp_path, echecs="chroma,minio,nebula")
         assert processus.returncode == 1
         assert "PURGE INCOMPLETE : ChromaDB, MinIO, NebulaGraph" in processus.stdout
+
+
+class TestLeHtmlNettoyeEstPurgeAussi:
+    """Registre 4.28.b — LE PIEGE DE CE LOT, et il ne se voit pas.
+
+    `wipe_stores` purgeait les trois stores et laissait `Datas/.cleaned/`. Or le
+    HTML nettoye porte les URL MinIO des images (`cleaning.py` reecrit les
+    `img src`), et l'asset Dagster `cleaned_html` ne se rematerialise pas si son
+    fichier de sortie existe deja.
+
+    La consequence, `mesure` le 1er septembre 2026 : le bucket porte **13**
+    objets, tous des crops du PDF, et `Datas/.cleaned/` reference **199** URL
+    `http://minio:9000/...` d'objets qui n'existent PAS. Une purge suivie d'une
+    reingestion repart donc du HTML nettoye PERIME, et pointe 199 objets absents.
+    **Reextraire ne suffit pas** — seule une execution de `cleaned_html` les
+    restaure, en re-televersant les images depuis les captures.
+
+    Purger `Datas/.cleaned/` est ce qui rend `wipe_stores` idempotent avec la
+    chaine d'images : la purge devient « repartir de zero » et non « repartir de
+    zero sauf le HTML ».
+    """
+
+    def test_le_repertoire_nettoye_est_supprime(self, tmp_path):
+        nettoye = tmp_path / ".cleaned"
+        (nettoye / "htms" / "livre").mkdir(parents=True)
+        (nettoye / "htms" / "livre" / "chapitre.html").write_text("<html/>", encoding="utf-8")
+
+        supprimes = purge_cleaned(nettoye)
+
+        assert supprimes == 1
+        assert not nettoye.exists()
+
+    def test_un_repertoire_absent_ne_leve_pas_et_ne_compte_rien(self, tmp_path):
+        """Le cas nominal d'une pile neuve : il n'y a rien a purger."""
+        assert purge_cleaned(tmp_path / "jamais_cree") == 0
+
+    def test_le_compte_est_celui_des_fichiers_reellement_retires(self, tmp_path):
+        """Le compteur la ou il y a perte : une purge muette ne dit pas si elle a
+        retire un fichier ou vingt-deux."""
+        nettoye = tmp_path / ".cleaned"
+        (nettoye / "a").mkdir(parents=True)
+        for i in range(5):
+            (nettoye / "a" / f"c{i}.html").write_text("<html/>", encoding="utf-8")
+
+        assert purge_cleaned(nettoye) == 5
+
+    def test_le_corpus_source_n_est_jamais_touche(self, tmp_path):
+        """LE TEMOIN, et c'est le plus important du fichier.
+
+        `Datas/.cleaned/` est un SOUS-REPERTOIRE de `Datas/`, qui porte le corpus
+        versionne. Une purge qui viserait `Datas/` detruirait les 25 fichiers du
+        corpus — 57 Mo — et le contenu entre dans le calcul d'`element_id`
+        (contrat, exigences 2 et 3). Aucun garde-fou git ne s'y opposerait :
+        `Datas/.cleaned/` est ignore, le corpus non, mais un `rmtree` ne lit pas
+        `.gitignore`.
+        """
+        datas = tmp_path / "Datas"
+        (datas / "htms" / "livre").mkdir(parents=True)
+        source = datas / "htms" / "livre" / "chapitre.html"
+        source.write_text("<html>le corpus</html>", encoding="utf-8")
+        nettoye = datas / ".cleaned"
+        (nettoye / "htms").mkdir(parents=True)
+        (nettoye / "htms" / "chapitre.html").write_text("<html/>", encoding="utf-8")
+
+        purge_cleaned(nettoye)
+
+        assert source.exists(), "le corpus source a ete detruit par la purge"
+        assert source.read_text(encoding="utf-8") == "<html>le corpus</html>"
+        assert datas.exists()
+
+
+class TestMainPurgeAussiLeHtmlNettoye:
+    """La purge du HTML nettoye est atteinte par `main()`, pas seulement offerte."""
+
+    def test_main_annonce_le_html_nettoye_purge(self, tmp_path):
+        acheve, _ = _purger(tmp_path)
+
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert "HTML nettoye" in acheve.stdout, acheve.stdout
+
+    def test_un_echec_de_purge_du_html_fait_sortir_en_un(self, tmp_path):
+        """Un HTML nettoye qui survit est une reingestion qui repart du perime :
+        c'est une purge INCOMPLETE, et elle doit sortir en 1 comme les autres.
+
+        L'echec est reproduit par un repertoire parent en lecture seule, et ce
+        n'est pas un cas de laboratoire : c'est exactement la panne que ce depot
+        a deja rencontree sur `Datas/database/postgres`, ecrit par Docker en
+        `root` et impossible a copier (mandat §7.1).
+        """
+        datas = tmp_path / "datas_protege"
+        (datas / ".cleaned" / "htms").mkdir(parents=True)
+        (datas / ".cleaned" / "htms" / "c.html").write_text("<html/>", encoding="utf-8")
+        datas.chmod(0o500)
+        try:
+            acheve, _ = _purger(tmp_path, source_dir=str(datas))
+        finally:
+            datas.chmod(0o700)
+
+        assert acheve.returncode == 1, acheve.stdout + acheve.stderr
+        assert "PURGE INCOMPLETE" in acheve.stdout
+        assert "HTML nettoye" in acheve.stdout.split("PURGE INCOMPLETE")[1]
+
+    def test_main_ne_purge_que_le_sous_repertoire_nettoye(self, tmp_path):
+        """LE GARDE LE PLUS DANGEREUX DU FICHIER, et il manquait.
+
+        `mesure` : faire viser `Path(source_dir)` au lieu de
+        `Path(source_dir) / cleaned_subdir` laissait la suite ENTIEREMENT VERTE.
+        Or cette mutation SUPPRIME `Datas/` — les 25 fichiers et 57 Mo du corpus
+        versionne — et le contenu entre dans le calcul d'`element_id` (contrat,
+        exigences 2 et 3). Aucun garde-fou git ne s'y opposerait : `rmtree` ne lit
+        pas `.gitignore`.
+
+        Le test precedent eprouvait `purge_cleaned` avec un chemin QU'IL
+        FOURNISSAIT ; rien n'observait le chemin que `main()` CALCULE. C'est la
+        lecon « mute le producteur, pas le consommateur ».
+        """
+        datas = tmp_path / "datas"
+        corpus = datas / "htms" / "livre"
+        corpus.mkdir(parents=True)
+        (corpus / "chapitre.html").write_text("<html>le corpus</html>", encoding="utf-8")
+        (datas / "pdfs").mkdir()
+        (datas / "pdfs" / "livre.pdf").write_bytes(b"%PDF-1.4 le corpus")
+        nettoye = datas / ".cleaned" / "htms"
+        nettoye.mkdir(parents=True)
+        (nettoye / "chapitre.html").write_text("<html/>", encoding="utf-8")
+
+        acheve, _ = _purger(tmp_path, source_dir=str(datas))
+
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert not (datas / ".cleaned").exists(), "le HTML nettoye devait etre purge"
+        assert (corpus / "chapitre.html").read_text(encoding="utf-8") == "<html>le corpus</html>", (
+            "LE CORPUS A ETE DETRUIT par la purge"
+        )
+        assert (datas / "pdfs" / "livre.pdf").exists(), "LE CORPUS A ETE DETRUIT"
+        assert datas.exists()
+
+    def test_le_html_nettoye_est_reellement_retire_par_main(self, tmp_path):
+        """LE TEMOIN : `main()` ATTEINT la purge, il ne l'annonce pas seulement.
+
+        Sans lui, un `print` sans appel passerait le premier test de cette
+        classe — c'est la forme du defaut que ce chantier traque.
+        """
+        datas = tmp_path / "datas"
+        nettoye = datas / ".cleaned" / "htms"
+        nettoye.mkdir(parents=True)
+        (nettoye / "c.html").write_text("<html/>", encoding="utf-8")
+
+        acheve, _ = _purger(tmp_path, source_dir=str(datas))
+
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert not (datas / ".cleaned").exists(), acheve.stdout
+        assert "1 fichiers retires" in acheve.stdout

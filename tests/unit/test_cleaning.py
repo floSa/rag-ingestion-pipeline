@@ -615,3 +615,46 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
             "un seuil d'alerte sous le plancher d'acceptation ne peut jamais "
             "se declencher : tout candidat accepte le satisfait deja"
         )
+
+
+class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
+    """Registre 4.25 : la forme de l'adresse MinIO avait DEUX sites.
+
+    `images.object_url` et `MinioImageExporter.__call__` la construisaient par
+    deux f-strings identiques. C'est la forme que le CONTRAT publie — l'agent lit
+    `minio_url` — donc deux sites sont deux facons de deriver, sur la seule
+    propriete qu'aucun des deux ne peut verifier chez l'autre.
+
+    `mesure` : faire reconstruire son URL a `media.py` — en `https` au lieu de
+    `http`, par exemple — laissait la suite ENTIEREMENT VERTE.
+    """
+
+    def test_l_url_rendue_est_exactement_celle_du_site_unique(self, monkeypatch):
+        from src.docling_service.images import object_url
+        from src.pipeline.media import MinioImageExporter
+
+        exporteur = MinioImageExporter(doc_key="htms/livre/chapitre")
+        monkeypatch.setattr(
+            exporteur, "_get_client", lambda: type("C", (), {"put_object": lambda *a, **k: None})()
+        )
+
+        rendue = exporteur(b"\x89PNG", "image/png", 0)
+
+        assert rendue == object_url("images/html/htms/livre/chapitre/img_0000.png")
+
+    def test_un_upload_en_echec_ne_rend_aucune_url(self, monkeypatch):
+        """LE TEMOIN : sans lui, un exporteur qui rend toujours une URL passerait,
+        et le graphe porterait des adresses d'objets jamais televerses — le
+        registre 4.28.b, cree a la main."""
+        from src.pipeline.media import MinioImageExporter
+
+        def refuse(*a, **k):
+            raise RuntimeError("minio injoignable")
+
+        exporteur = MinioImageExporter(doc_key="htms/livre/chapitre")
+        monkeypatch.setattr(
+            exporteur, "_get_client", lambda: type("C", (), {"put_object": refuse})()
+        )
+
+        assert exporteur(b"\x89PNG", "image/png", 0) is None
+        assert exporteur.exported == 0

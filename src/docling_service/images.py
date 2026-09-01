@@ -65,7 +65,55 @@ def ensure_bucket(max_attempts: int = 15, wait_seconds: float = 5.0) -> bool:
 
 
 def object_url(object_name: str) -> str:
-    """URL de lecture d'un objet du bucket."""
+    """Adresse d'un objet du bucket — INTERNE et AUTHENTIFIEE, pas publique.
+
+    **La forme stockee n'est pas une URL qu'un navigateur peut ouvrir, et le
+    registre 4.25 demandait de trancher ce qu'elle est.** Trois faits mesures le
+    1er septembre 2026 :
+
+    - les 13 URL portees par le graphe designent des objets qui EXISTENT
+      (`stat_object` avec un client S3 authentifie : 0 URL morte sur 13) ;
+    - un `GET` **anonyme** rend **403 AccessDenied**, et pas seulement hors du
+      reseau Docker : depuis un conteneur DANS `rag_network` aussi. Ce n'est donc
+      pas un probleme de resolution de nom, c'est le bucket qui n'est pas public ;
+    - `minio_endpoint` vaut `minio:9000` par defaut, un nom de service Docker :
+      hors du reseau, il ne resout pas.
+
+    « 0 URL morte » dependait donc entierement de la methode de lecture, et
+    c'etait le vrai defaut du constat : une mesure juste, presentee sans sa
+    condition.
+
+    **CE QUE L'AGENT PEUT EN FAIRE, et c'est la decision.** `rag-agent-chat` se
+    raccroche a `rag_network` et porte `RESTRICT_MEDIA_TO_GRAPH=true` : il ne
+    sert que ce que le graphe reference. Il est donc le PROXY, et cette adresse
+    est faite pour lui : il resout `minio:9000`, lit l'objet avec ses
+    identifiants S3, et le re-sert a son client. Il ne doit jamais passer cette
+    adresse telle quelle a un navigateur.
+
+    **Les deux autres issues ont ete ECARTEES, et pour des motifs mesurables :**
+
+    - *rendre le bucket public en lecture* ferait passer le `GET` anonyme, mais
+      seulement dans le reseau, et rendrait chaque image du corpus lisible par
+      tout ce qui y tourne. Le gain est nul pour l'agent, qui a deja ses
+      identifiants ;
+    - *stocker une URL presignee* la ferait EXPIRER. Un graphe est durable ; une
+      signature ne l'est pas. Le jour de l'expiration, les images cesseraient de
+      s'afficher sans qu'aucune erreur ne le dise — c'est-a-dire exactement la
+      famille de defaut que ce lot ferme, plantee volontairement.
+
+    L'hote reste un reglage (`MINIO_ENDPOINT`) : un deploiement qui expose MinIO
+    sous un autre nom stocke une adresse atteignable de la, sans changer de code.
+
+    **C'est aussi le SEUL site de cette forme.** `pipeline/media.py` la
+    reconstruisait a l'identique par une seconde f-string : deux sites pour la
+    forme que le contrat publie, donc deux facons de deriver.
+
+    Args:
+        object_name: Cle de l'objet dans le bucket.
+
+    Returns:
+        L'adresse interne de l'objet.
+    """
     settings = get_settings()
     return f"http://{settings.minio_endpoint}/{settings.minio_bucket}/{object_name}"
 

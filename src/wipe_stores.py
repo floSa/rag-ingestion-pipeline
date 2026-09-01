@@ -10,6 +10,14 @@ Utile notamment quand la chaine d'extraction change : les identifiants
 d'elements derivent de leur texte, si bien qu'une extraction modifiee produit
 de nouveaux identifiants et laisse les anciens en orphelins.
 
+**Et le HTML nettoye, pas seulement les stores.** `Datas/.cleaned/` n'etait pas
+purge, et c'est le piege le plus discret de cette purge : le HTML nettoye porte
+les URL MinIO des images, et l'asset Dagster `cleaned_html` ne se rematerialise
+pas si son fichier existe deja. Une purge suivie d'une reingestion repartait donc
+du HTML PERIME, pointant des objets que la purge venait de supprimer. `mesure` :
+13 objets dans le bucket, 199 URL referencees dans `Datas/.cleaned/`. Voir
+:func:`purge_cleaned`.
+
 **Les trois stores, pas deux.** Le bucket MinIO etait laisse intact : les crops
 d'images des ingestions precedentes y survivaient a toute purge. Ce n'est pas
 une fuite — l'agent ne sert que les objets references par le graphe
@@ -20,7 +28,9 @@ re-ingestion, et un bucket qu'on ne peut plus lire pour se rassurer.
 
 from __future__ import annotations
 
+import shutil
 import sys
+from pathlib import Path
 from typing import Any
 
 from src.docling_service.settings import get_settings
@@ -97,8 +107,42 @@ def purge_space(session: Any, space: str) -> str:
     return f"DROP SPACE : {result.error_msg()}"
 
 
+def purge_cleaned(repertoire: Path) -> int:
+    """Supprime le HTML nettoye, et c'est LE PIEGE DE CE LOT.
+
+    `Datas/.cleaned/` n'etait PAS purge, et cela ne se voit pas. Le HTML nettoye
+    porte les URL MinIO des images — `cleaning.py` reecrit les `img src` — et
+    l'asset Dagster `cleaned_html` ne se rematerialise pas si son fichier de
+    sortie existe deja.
+
+    `mesure` le 1er septembre 2026 : le bucket porte **13** objets, tous des
+    crops du PDF, et `Datas/.cleaned/` reference **199** URL
+    `http://minio:9000/...` d'objets qui n'existent PAS. Une purge suivie d'une
+    reingestion repart donc du HTML nettoye PERIME et pointe 199 objets absents.
+    **Reextraire ne suffit pas** : seule une execution de `cleaned_html` les
+    restaure, en re-televersant les images depuis les captures (registre 4.28.b).
+
+    La cible est le SOUS-REPERTOIRE nettoye, jamais `Datas/`. `Datas/` porte le
+    corpus versionne — 25 fichiers, 57 Mo — et le contenu entre dans le calcul
+    d'`element_id` (contrat, exigences 2 et 3). Aucun garde-fou git ne s'y
+    opposerait : `rmtree` ne lit pas `.gitignore`.
+
+    Args:
+        repertoire: Repertoire du HTML nettoye.
+
+    Returns:
+        Le nombre de fichiers retires. Une purge muette ne dit pas si elle a
+        retire un fichier ou vingt-deux.
+    """
+    if not repertoire.exists():
+        return 0
+    fichiers = sum(1 for chemin in repertoire.rglob("*") if chemin.is_file())
+    shutil.rmtree(repertoire)
+    return fichiers
+
+
 def main() -> None:
-    """Purge les trois stores et rend compte de chacun."""
+    """Purge les trois stores et le HTML nettoye, et rend compte de chacun."""
     import chromadb
 
     from src.docling_service import images
@@ -154,6 +198,26 @@ def main() -> None:
         echecs.append("NebulaGraph")
     finally:
         writer.close()
+
+    print("\n--- HTML nettoye ---")
+    try:
+        # `source_dir` et `cleaned_subdir` appartiennent a `PipelineSettings` et
+        # non aux reglages du service : les recopier ici en creerait un second
+        # site, donc une divergence possible sur le chemin qu'on s'apprete a
+        # SUPPRIMER. L'import est local pour que ce module reste importable sans
+        # les dependances de l'orchestrateur.
+        from src.pipeline.settings import get_settings as get_pipeline_settings
+
+        reglages = get_pipeline_settings()
+        nettoye = Path(reglages.source_dir) / reglages.cleaned_subdir
+        retires = purge_cleaned(nettoye)
+        print(f"{retires} fichiers retires de {nettoye}")
+    except Exception as exc:
+        # LARGEUR VOULUE, meme motif que les trois stores : le bilan doit se
+        # former. `rmtree` leve `OSError` mais aussi les erreurs de permission
+        # d'un repertoire ecrit par Docker en `root`, cas connu de ce depot.
+        print(f"HTML nettoye : {exc}")
+        echecs.append("HTML nettoye")
 
     print("\nRedemarrer docling-service pour recreer le schema.")
     if echecs:

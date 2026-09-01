@@ -23,6 +23,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from bs4 import BeautifulSoup
+
 if TYPE_CHECKING:
     from docling.document_converter import DocumentConverter
 
@@ -326,6 +328,94 @@ def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[in
         shutil.rmtree(directory, ignore_errors=True)
 
 
+def html_image_urls(chemin: Path) -> list[str]:
+    """URL MinIO des images d'un HTML nettoye, dans l'ordre du document.
+
+    **C'est la seule voie qui reste, et voici pourquoi.** `cleaning.py` reecrit
+    `img src` avec l'URL MinIO, mais Docling ne la rend nulle part : `mesure` le
+    1er septembre 2026 sur 4 chapitres nettoyes convertis dans l'image
+    d'extraction, `item.image` vaut `None` sur **24 items `picture` sur 24**, et
+    `item.source`, `item.references` et `item.meta` sont vides aussi. Le test
+    `item.image.uri.startswith("http")` qui vivait ici n'etait donc JAMAIS
+    atteint : la chaine etait rompue en amont de sa propre garde (registre 3.5).
+
+    Seuls les `src` en `http` sont rendus. Une image restee en `data:` ou en
+    chemin relatif n'a pas d'objet MinIO : la compter decalerait toutes les URL
+    suivantes d'un rang, et chaque image recevrait celle de sa voisine.
+
+    Ne leve jamais : lire ces URL est un confort, et une image sans URL est un
+    defaut connu qui se compte. Un document non ingere, lui, est une perte.
+
+    Args:
+        chemin: Fichier HTML nettoye.
+
+    Returns:
+        Les URL, dans l'ordre du document.
+    """
+    try:
+        html = chemin.read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        logger.warning("HTML nettoye illisible pour les URL d'images (%s) : %s", chemin, exc)
+        return []
+
+    soupe = BeautifulSoup(html, "lxml")
+    return [
+        str(balise.get("src"))
+        for balise in soupe.find_all("img")
+        if str(balise.get("src") or "").startswith("http")
+    ]
+
+
+def propager_les_url_dimages(elements: list[dict[str, Any]], urls: list[str], stem: str) -> int:
+    """Pose les URL sur les elements `picture`, dans l'ordre, ou n'en pose aucune.
+
+    La correspondance est POSITIONNELLE : la n-ieme `<img>` du HTML nettoye est
+    la n-ieme `picture` rendue par Docling. `mesure` le 1er septembre 2026 sur
+    4 chapitres, les deux comptes concordent **4 fois sur 4** — 4/4, 1/1, 9/9,
+    10/10.
+
+    **UNE CORRESPONDANCE POSITIONNELLE EST FRAGILE, DONC ELLE EST GARDEE PAR UN
+    REFUS.** Si les deux comptes divergent, aucune URL n'est posee. Une URL
+    FAUSSE sur une image est pire qu'une URL absente : l'agent servirait
+    l'illustration d'un autre passage, et rien ne le dirait — alors qu'une URL
+    absente est deja comptee par `verify_contract`, qui la rapporte comme une
+    anomalie. Entre une perte bruyante et une erreur muette, on choisit la perte
+    bruyante.
+
+    Seuls les `picture` sont cibles, et non tous les elements visuels : un
+    `table` est visuel mais n'est pas une `<img>` du HTML. Le compter decalerait
+    toutes les URL.
+
+    Args:
+        elements: Elements du document, modifies en place.
+        urls: URL lues dans le HTML nettoye, dans l'ordre.
+        stem: Nom du document, pour le journal.
+
+    Returns:
+        Le nombre d'URL reellement posees.
+    """
+    cibles = [element for element in elements if str(element.get("label")) == "picture"]
+    if not cibles and not urls:
+        return 0
+
+    if len(cibles) != len(urls):
+        logger.warning(
+            "[%s] %d image(s) rendues par Docling pour %d URL dans le HTML "
+            "nettoye : AUCUNE URL n'est posee. La correspondance est "
+            "positionnelle, et une URL fausse servirait l'illustration d'un "
+            "autre passage sans qu'aucune erreur ne le dise. Les images "
+            "resteront sans URL, et verify_contract les comptera",
+            stem,
+            len(cibles),
+            len(urls),
+        )
+        return 0
+
+    for cible, url in zip(cibles, urls, strict=True):
+        cible["minio_url"] = url
+    return len(cibles)
+
+
 def _extract_flat(
     path: Path,
     identity: DocumentIdentity,
@@ -339,6 +429,10 @@ def _extract_flat(
     report(pages_total=1, pages_done=0, elements=0, chunks=0)
 
     with _prepared_source(path, type_file) as (source_path, image_urls):
+        # Le chemin REELLEMENT converti : pour le HTML c'est le fichier nettoye,
+        # celui dont `cleaning.py` a reecrit les `img src`. Le lire est la seule
+        # facon de recuperer les URL, Docling ne les rendant nulle part.
+        source_path_utilise = source_path
         result = get_converter().convert(str(source_path))
 
     document = result.document
@@ -360,12 +454,21 @@ def _extract_flat(
             if url:
                 element["minio_url"] = url
 
-        # Les images des captures HTML sont deja sur MinIO (src reecrit par le
-        # nettoyage) : on propage l'URL sur le noeud Picture.
-        uri = getattr(getattr(item, "image", None), "uri", None)
-        if uri and str(uri).startswith("http"):
-            element["minio_url"] = str(uri)
         elements.append(element)
+
+    # LES IMAGES DES CAPTURES HTML. Ce bloc testait
+    # `item.image.uri.startswith("http")`, et ce test n'etait JAMAIS atteint :
+    # `item.image` vaut `None` sur tous les `picture` rendus depuis un HTML
+    # (`mesure`, 0/24). Les 199 images du corpus n'avaient donc aucune
+    # `minio_url`, et l'agent ne sert que ce que le graphe reference — elles
+    # etaient payees en place et en temps, et inatteignables (registre 3.5).
+    #
+    # L'URL est desormais lue dans le HTML nettoye, ou `cleaning.py` l'a ecrite,
+    # et posee par correspondance positionnelle — gardee par un refus.
+    if type_file == "html":
+        posees = propager_les_url_dimages(elements, html_image_urls(source_path_utilise), stem)
+        if posees:
+            logger.info("[%s] %d URL d'images posees sur les noeuds Picture", stem, posees)
 
     langue = _detect_document_language(elements, stem)
     facts = DocumentFacts(

@@ -102,6 +102,12 @@ class ChunkMetadata(BaseModel):
     # des que les deux diffèrent (registre 4.22).
     page_no: int = 0
     page_no_end: int = 0
+    # Adresse de l'objet MinIO — INTERNE et AUTHENTIFIEE, jamais publique. Un
+    # `GET` anonyme y rend **403**, y compris depuis un conteneur du reseau
+    # `rag_network` (`mesure`), et l'hote est un nom de service Docker qui ne
+    # resout pas au-dehors. L'agent est le PROXY : il lit l'objet avec ses
+    # identifiants S3 et le re-sert. Il ne passe jamais cette adresse a un
+    # navigateur. Registre 4.25, et `images.object_url` en est le seul site.
     minio_url: str = ""
     reference_id: str = "DOC"
     # Profondeur dans la hierarchie des titres. C'est le nombre d'aretes

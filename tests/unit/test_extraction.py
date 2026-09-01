@@ -23,6 +23,7 @@ Ce qu'il garde, et que rien ne gardait :
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -296,3 +297,254 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
         message = str(leve.value)
         assert "page 6 illisible" in message, message
         assert "N'A PAS PU" in message and "graphd injoignable" in message, message
+
+
+class TestLesUrlDImagesHtmlAtteignentLeGraphe:
+    """Registre 3.5 : 199 images de capture HTML sans `minio_url` dans le graphe.
+
+    `cleaning.py` reecrit `img src` avec l'URL MinIO ; `extraction.py` ne
+    propageait cette URL que si `item.image.uri` commence par `http`. Cette
+    description du code est exacte et TROMPEUSE comme cause : le test du prefixe
+    n'est JAMAIS atteint, parce que `item.image` vaut `None`.
+
+    Remesure de mes mains le 1er septembre 2026, conversion reelle de 4 chapitres
+    nettoyes dans l'image d'extraction : `item.image` non `None` sur **0 / 24**.
+    `item.source`, `item.references` et `item.meta` sont vides aussi — l'URL
+    n'atterrit nulle part d'exploitable. Le registre est reproduit.
+
+    **LA MESURE QUI DECIDE DE LA FORME DU CORRECTIF.** Le HTML nettoye porte les
+    URL, dans l'ordre du document ; Docling rend ses `picture` dans le meme
+    ordre. Mesure sur 4 chapitres : `img` en `http` = `picture` rendus, **4
+    chapitres sur 4** — 4/4, 1/1, 9/9, 10/10. La correspondance est donc
+    POSITIONNELLE, et c'est la seule voie qui reste.
+
+    Une correspondance positionnelle est fragile par nature : elle est donc
+    GARDEE par un refus. Si les deux comptes divergent, aucune URL n'est posee —
+    une URL fausse sur une image est pire qu'une URL absente, parce que l'agent
+    servirait l'illustration d'un autre passage sans qu'aucune erreur ne le dise.
+    """
+
+    HTML_NETTOYE = (
+        "<html><body><h1>Chapitre</h1>"
+        '<p>Avant.</p><img src="http://minio:9000/documents/images/html/livre/img_0000.png"/>'
+        '<p>Milieu.</p><img src="http://minio:9000/documents/images/html/livre/img_0001.png"/>'
+        "<p>Apres.</p></body></html>"
+    )
+
+    def test_les_url_sont_lues_dans_l_ordre_du_document(self, tmp_path: Path) -> None:
+        chemin = tmp_path / "chapitre.html"
+        chemin.write_text(self.HTML_NETTOYE, encoding="utf-8")
+
+        assert extraction.html_image_urls(chemin) == [
+            "http://minio:9000/documents/images/html/livre/img_0000.png",
+            "http://minio:9000/documents/images/html/livre/img_0001.png",
+        ]
+
+    def test_les_src_qui_ne_sont_pas_des_url_sont_ignores(self, tmp_path: Path) -> None:
+        """Une image restee en `data:` ou en chemin relatif n'a pas d'objet MinIO.
+
+        La compter fausserait la correspondance positionnelle et decalerait
+        toutes les URL suivantes d'un rang.
+        """
+        chemin = tmp_path / "chapitre.html"
+        chemin.write_text(
+            '<html><body><img src="data:image/png;base64,AAAA"/>'
+            '<img src="http://minio:9000/documents/images/html/livre/img_0000.png"/>'
+            '<img src="../images/local.png"/></body></html>',
+            encoding="utf-8",
+        )
+
+        assert extraction.html_image_urls(chemin) == [
+            "http://minio:9000/documents/images/html/livre/img_0000.png"
+        ]
+
+    def test_un_html_sans_image_rend_une_liste_vide(self, tmp_path: Path) -> None:
+        chemin = tmp_path / "chapitre.html"
+        chemin.write_text("<html><body><p>Rien.</p></body></html>", encoding="utf-8")
+
+        assert extraction.html_image_urls(chemin) == []
+
+    def test_un_fichier_illisible_rend_une_liste_vide_et_ne_leve_pas(self, tmp_path: Path) -> None:
+        """La lecture des URL est un confort : elle ne doit jamais empecher une
+        ingestion. Une image sans URL est un defaut connu et compte ; un document
+        non ingere est une perte."""
+        assert extraction.html_image_urls(tmp_path / "absent.html") == []
+
+
+class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
+    """Le garde qui rend la correspondance positionnelle defendable."""
+
+    URLS = ["http://minio:9000/a.png", "http://minio:9000/b.png"]
+
+    def test_les_url_sont_posees_dans_l_ordre_quand_les_comptes_concordent(self) -> None:
+        elements = [
+            {"label": "text", "minio_url": ""},
+            {"label": "picture", "minio_url": ""},
+            {"label": "text", "minio_url": ""},
+            {"label": "picture", "minio_url": ""},
+        ]
+        posees = extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
+
+        assert posees == 2
+        assert [e["minio_url"] for e in elements] == ["", self.URLS[0], "", self.URLS[1]]
+
+    def test_aucune_url_n_est_posee_quand_les_comptes_divergent(self) -> None:
+        """LE GARDE, et c'est lui qui rend la methode defendable.
+
+        Une URL fausse sur une image est PIRE qu'une URL absente : l'agent
+        servirait l'illustration d'un autre passage, et rien ne le dirait. Devant
+        un desaccord, on refuse plutot que de deviner.
+        """
+        elements = [
+            {"label": "picture", "minio_url": ""},
+            {"label": "picture", "minio_url": ""},
+            {"label": "picture", "minio_url": ""},
+        ]
+        posees = extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
+
+        assert posees == 0
+        assert all(e["minio_url"] == "" for e in elements), (
+            "trois images pour deux URL : poser les deux premieres attribuerait "
+            "une illustration au mauvais passage"
+        )
+
+    def test_un_desaccord_est_journalise_avec_ses_deux_comptes(self, caplog) -> None:
+        elements = [{"label": "picture", "minio_url": ""} for _ in range(3)]
+
+        with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
+            extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
+
+        messages = [e.getMessage() for e in caplog.records]
+        assert any("3" in m and "2" in m for m in messages), messages
+
+    def test_le_chemin_nominal_ne_journalise_rien(self, caplog) -> None:
+        """LE TEMOIN : une alerte a chaque chapitre rendrait la vraie invisible."""
+        elements = [{"label": "picture", "minio_url": ""} for _ in range(2)]
+
+        with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
+            extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
+
+        assert [e.getMessage() for e in caplog.records] == []
+
+    def test_les_tables_ne_recoivent_pas_les_url_des_images(self) -> None:
+        """Un `table` est un element VISUEL mais n'est pas une `<img>` du HTML.
+
+        Le compter parmi les cibles decalerait toutes les URL, et la premiere
+        image recevrait l'URL destinee a la table.
+        """
+        elements = [
+            {"label": "table", "minio_url": ""},
+            {"label": "picture", "minio_url": ""},
+            {"label": "picture", "minio_url": ""},
+        ]
+        posees = extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
+
+        assert posees == 2
+        assert elements[0]["minio_url"] == ""
+        assert elements[1]["minio_url"] == self.URLS[0]
+
+    def test_aucune_url_du_tout_ne_journalise_pas_et_ne_pose_rien(self, caplog) -> None:
+        """Un chapitre sans image : le cas nominal de la moitie du corpus."""
+        elements = [{"label": "text", "minio_url": ""}]
+
+        with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
+            assert extraction.propager_les_url_dimages(elements, [], "chapitre") == 0
+
+        assert [e.getMessage() for e in caplog.records] == []
+
+
+class TestLaCompositionEstGardee:
+    """Les deux fonctions ci-dessus sont ATTEINTES par `_extract_flat`.
+
+    **`mesure` : sans cette classe, retirer l'appel de `_extract_flat` laissait
+    la suite ENTIEREMENT VERTE.** Les deux fonctions etaient gardees prises
+    isolement, et la composition ne l'etait pas — c'est mot pour mot le defaut
+    que l'audit du lot 3 a trouve sur `verify_contract.racine_de_chaque_element`,
+    et le registre 4.4 le dit : « le garde asserte la COMPOSITION, et pas la
+    fonction seule ».
+
+    Une fonction pure qui propage des URL a l'air d'une commodite. Ce qui compte
+    est qu'elle TOURNE sur le chemin du document.
+    """
+
+    HTML_NETTOYE = (
+        "<html><body><h1>Chapitre</h1>"
+        '<img src="http://minio:9000/documents/images/html/livre/img_0000.png"/>'
+        "</body></html>"
+    )
+
+    def _convertir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, labels: list[str]
+    ) -> list[dict[str, Any]]:
+        """Fait tourner `_extract_flat` sur un HTML nettoye, stores bouchonnes."""
+        chemin = tmp_path / "chapitre.html"
+        chemin.write_text(self.HTML_NETTOYE, encoding="utf-8")
+
+        class Item:
+            def __init__(self, label: str) -> None:
+                self.label = label
+                self.text = f"contenu {label}"
+                self.self_ref = f"#/texts/{label}"
+                self.prov: list[Any] = []
+
+        class Document:
+            def iterate_items(self, **_: Any) -> Any:
+                return [(Item(label), 0) for label in labels]
+
+        monkeypatch.setattr(
+            extraction,
+            "get_converter",
+            lambda ocr=False: type(
+                "C", (), {"convert": lambda s, p: type("R", (), {"document": Document()})()}
+            )(),
+        )
+        monkeypatch.setattr(extraction.ranking, "flat_rank", lambda item, doc: None)
+        monkeypatch.setattr(extraction, "_detect_document_language", lambda *a, **k: "en")
+
+        ecrits: list[list[dict[str, Any]]] = []
+        monkeypatch.setattr(
+            extraction.storage,
+            "persist",
+            lambda elements, identity, facts, doc: ecrits.append(list(elements)) or 1,
+        )
+
+        identity = extraction.document_identity("htms/livre/chapitre.html")
+        extraction._extract_flat(chemin, identity, "html", "empreinte", lambda **k: None)
+        assert ecrits, "le cas voulu n'est pas atteint : rien n'a ete persiste"
+        return ecrits[0]
+
+    def test_l_url_atteint_l_element_persiste(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        elements = self._convertir(tmp_path, monkeypatch, ["text", "picture"])
+
+        images = [e for e in elements if e["label"] == "picture"]
+        assert images, elements
+        assert images[0]["minio_url"] == (
+            "http://minio:9000/documents/images/html/livre/img_0000.png"
+        ), (
+            "l'URL du HTML nettoye n'atteint pas le sommet Picture : c'est le "
+            "registre 3.5, et les 199 images du corpus etaient dans ce cas"
+        )
+
+    def test_un_element_qui_n_est_pas_une_image_ne_recoit_pas_d_url(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE TEMOIN : une URL posee partout serait vraie du premier test."""
+        elements = self._convertir(tmp_path, monkeypatch, ["text", "picture"])
+
+        textes = [e for e in elements if e["label"] == "text"]
+        assert textes and all(not e.get("minio_url") for e in textes), elements
+
+    def test_un_desaccord_de_comptes_laisse_les_images_sans_url(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Le refus est atteint lui aussi : deux images pour une seule URL."""
+        elements = self._convertir(tmp_path, monkeypatch, ["picture", "picture"])
+
+        images = [e for e in elements if e["label"] == "picture"]
+        assert len(images) == 2
+        assert all(not e.get("minio_url") for e in images), (
+            "devant un desaccord, aucune URL ne doit etre posee : une URL fausse "
+            "servirait l'illustration d'un autre passage"
+        )
