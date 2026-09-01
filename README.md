@@ -479,8 +479,15 @@ Les deux gestes sont désormais séparés :
 
 | Cible | Ce qu'elle fait | Où elle vit |
 |---|---|---|
-| `make format` | **écrit** — `ruff format src/` | geste volontaire, dans aucune porte |
-| `make format-check` | **constate** — `ruff format --check src/` | dernière étape de `make all` |
+| `make format` | **écrit** — `ruff format src/ tests/` | geste volontaire, dans aucune porte |
+| `make format-check` | **constate** — `ruff format --check src/ tests/` | dernière étape de `make all` |
+
+**Cette table a porté `src/` seul pendant quelques heures, et c'était faux.**
+Le commit qui a étendu les deux cibles à `tests/` — pour fermer l'angle mort D7,
+où `test_wipe_stores.py` n'était vu par aucune des deux — a changé le `Makefile`
+sans changer la table qui le décrit. Le lot 5 s'appelle « la documentation contre
+le code » : le défaut qu'il doit chasser est né dans le commit qui fermait un
+angle mort, ce qui est exactement la façon dont ce défaut-là naît.
 
 **`make all` rend 0, et l'exception « rc=2 est le rouge attendu » n'existe
 plus.** Elle a vécu du lot 0b au lot 3 : le dépôt portait quatre fichiers pliés
@@ -495,7 +502,7 @@ L'état, `mesuré` sur cette révision :
 uv run ruff format --check src/ tests/
 ```
 
-→ « 66 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+→ « 67 files already formatted », `rc=0`. Et `make all` → `rc=0`.
 
 **Ce que le prochain développeur doit en faire : un rc non nul est un défaut,
 sans exception à connaître.** C'est tout l'intérêt du geste. Le détail de ce
