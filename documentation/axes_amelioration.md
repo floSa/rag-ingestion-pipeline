@@ -1550,8 +1550,19 @@ l'ingestion.
 sans élément, leur texte attribué à la page précédente) et §4.6 / §4.7 (le
 nettoyage) sont **tous au lot 4**, et **tous peuvent déplacer `page_no` et
 `text`** — donc les `element_id`, donc **tuer un jeu de questions écrit avant
-eux**. Écrire les 30 questions avant le lot 4 est un travail à refaire. Le pilote
-tranche ; le fait est ici.
+eux**. Écrire les 30 questions avant le lot 4 est un travail à refaire.
+
+**TRANCHÉ par le pilote le 1er septembre 2026 : les 30 questions attendent le lot
+4.** Le fait ci-dessus décide seul, et il n'y avait rien à arbitrer au-delà de lui.
+Deux points à garder, parce qu'ils ne se déduisent pas du fait :
+
+1. **ce qui est acquis l'est vraiment.** Le corpus complet est indexé et les deux
+   instruments ont rendu leur verdict dessus — c'est l'antécédent mesuré du lot 4,
+   et il n'aurait pas été gratuit à produire. L'accident a rendu service ;
+2. **le piège est d'écrire les questions *quand même*, pour avancer.** Elles
+   paraîtraient bonnes jusqu'à la réingestion — un jeu de questions ne rougit pas,
+   il devient faux en silence. C'est le motif de tout ce chantier, appliqué à son
+   propre plan.
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
@@ -1606,6 +1617,19 @@ donc le seul testable sans graphd — et c'est ce qui permet aux gardes de §4.1
 d'exister comme tests unitaires plutôt que comme intentions.
 
 ### 5.4 → FERMÉ par la réparation du lot 3 — les quatre fichiers sont format-propres, et `make all` rend 0
+
+**Et le commit qui l'a fermé a créé deux affirmations fausses dans le même geste.**
+`mesuré` par le pilote le 1er septembre 2026, après fusion : `9d2e341` a étendu
+`format` et `format-check` à `src/ tests/` — le bon geste, celui qui ferme l'angle
+mort D7 — mais le `README.md` a gardé une table décrivant `ruff format src/`, et un
+« 66 files already formatted » là où la mesure rend **67**. Corrigé sur `main` par
+le pilote, sans troisième tour de réparation : la porte était verte et le juge
+passé.
+
+**Ce que ça dit du lot 5**, qui s'appelle « la documentation contre le code » : son
+gibier naît dans les commits qui font **bien** leur travail. C'est là que personne
+ne relit la phrase qui décrivait l'état d'avant. Ni le lot ni son audit ne l'ont
+vu, et le diff faisait 25 lignes de `README.md`.
 
 **Le constat, tel qu'il était ouvert.** `ruff format --check src/` signalait
 **3 fichiers** sur `main` — `extraction.py:412`, `:442`, `:479` ;
@@ -1826,7 +1850,20 @@ un chantier, pas un correctif.
 ## 8. Traité
 
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
-pas. Le lot 0 a été fusionné dans `main` le 29 août 2026 par la fusion `--no-ff`
+pas.
+
+**Le lot 3 a été fusionné dans `main` le 1er septembre 2026** par la fusion
+`--no-ff` `4e28594` : 11 commits de livraison, puis 6 de réparation exigés par le
+pilote après l'audit indépendant. Les 11 SHA d'origine sont **intacts** —
+`22c782e` est ancêtre de `7eb0922`, zéro réécriture, vérifié avant fusion. Il
+ferme §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24, §5.3 et §5.4, et laisse
+**deux mutations survivantes** (§4.12, §4.28.d) et **cinq constats** au lot 4
+(§4.28). Le juge de sa réparation, remesuré par le pilote : la mutation « groupes
+anonymes comptés comme des titres » (`ranking.py:68` → `if True`) rend
+`test_non_platitude.py` **rouge**, là où elle le laissait vert avant réparation.
+`make all` rend **0** sur `main`, 708 tests, balayage de graines **26/26 vertes**.
+
+Le lot 0 a été fusionné dans `main` le 29 août 2026 par la fusion `--no-ff`
 `b59bf38` : 8 commits de livraison, puis 6 de réparation exigés par le pilote
 après l'audit indépendant. Tous les commits cités sont désormais dans `main`.
 
