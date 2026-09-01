@@ -680,23 +680,15 @@ avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
 désormais **au site**, avec sa justification, par un commentaire
 `# pragma: allowlist secret`.
 
-Le dépôt en porte **6** au 1er septembre 2026 (`mesuré` :
-`grep -rn 'pragma: allowlist secret' --include='*.py' .`, six lignes
+Le dépôt en porte **3** au 31 août 2026 (`mesuré` :
+`grep -rn 'pragma: allowlist secret' --include='*.py' .`, trois lignes
 *porteuses* — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et
-`:92`, `src/docling_service/settings.py:34`, `tests/unit/test_nebula.py:201` et
-`tests/unit/test_verify_data.py:246`, les autres occurrences étant les
-commentaires qui les justifient). Dans chaque cas, le scanner lit un **nom** de
-variable — `API_KEY`, `NEBULA_PASSWORD` — sans regarder sa valeur : les trois
-derniers portent les identifiants publics du graphd de développement, ceux de
-`docker-compose.yml`. Le compte est passé de 2 à 3 puis à 6, et jamais parce
-qu'un secret était apparu : à 3, la troisième ligne était née du piège de
-déduplication décrit au registre. Ne recopie pas ce compte : le scan complet du
-dépôt versionné se relance en une commande, et c'est lui qui fait foi.
-
-**Le pragma doit annoter la ligne qui porte la VALEUR**, pas la ligne qui ouvre
-le dictionnaire ou l'appel : posé une ligne trop haut, il ne filtre rien et le
-commit est refusé sans que le message dise pourquoi (`mesuré` le 1er septembre
-2026, deux refus consécutifs sur `tests/unit/test_verify_data.py`).
+`:92`, les autres occurrences étant les commentaires qui les justifient). Dans les
+deux fichiers, le scanner lit un **nom** de variable — `API_KEY` — sans regarder
+sa valeur. Le compte était annoncé à 2 : la troisième ligne était née du piège de
+déduplication décrit au registre, et n'avait pas été recomptée. Ne recopie pas ce
+compte : le scan complet du dépôt versionné se relance en une commande, et c'est
+lui qui fait foi.
 
 ```bash
 git ls-files -z -- ':!Datas/' | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
@@ -779,7 +771,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**747 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
+**764 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -802,7 +794,7 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
-Les modules restants (`vectors.py`, `extraction.py`, `main.py`) sont des adaptateurs vers Docling et ChromaDB : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle. `nebula.py` a quitté cette liste : son import de `nebula3` est différé, donc le module est importable côté hôte et `tests/unit/test_nebula.py` garde l'identité du document.
+Les modules restants (`vectors.py`, `main.py`) sont des adaptateurs vers ChromaDB et FastAPI : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle. **`nebula.py` et `extraction.py` ont quitté cette liste** : leurs imports de `nebula3` et de `docling` sont différés, donc les deux modules sont importables côté hôte, et `tests/unit/test_nebula.py` et `tests/unit/test_extraction.py` gardent l'identité du document, l'oubli avant réécriture et le retrait d'un document partiel. Aucun module du dépôt n'est plus inimportable côté hôte — c'était la cause mécanique de six angles morts (registre §3.4, §4.4, §4.5, §4.28.d).
 
 ---
 

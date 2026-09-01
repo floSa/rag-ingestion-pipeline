@@ -231,6 +231,39 @@ def build_chunks(
     return ids, texts, metadatas
 
 
+def delete_document(identity: DocumentIdentity, collection: Any = None) -> int:
+    """Retire de l'index vectoriel tous les chunks d'un document.
+
+    **Le pendant de ``NebulaWriter.delete_document``, et il n'existait pas.**
+    Les identifiants derivent du TEXTE (``elements.py``) : un texte modifie
+    produit de nouveaux identifiants, et `upsert` ecrit les nouveaux sans
+    toucher aux anciens, qui survivent en orphelins. Le capteur Dagster
+    declenchant sur ``mtime``, mettre a jour un document est le chemin NOMINAL
+    (registre 4.2).
+
+    La suppression vise ``source_path`` et jamais ``filename`` : ``source_path``
+    est l'identite d'un document (contrat, exigence 3), et le corpus porte deux
+    ``Preface.html``. Une purge par nom emporterait les deux.
+
+    Args:
+        identity: Identite du document a purger.
+        collection: Collection ChromaDB. Ouverte au besoin ; l'argument existe
+            pour que la decision soit eprouvable sans ChromaDB.
+
+    Returns:
+        Nombre de chunks retires. C'est un compteur la ou il y a perte : une
+        purge muette ne dit pas si elle a retire trois chunks ou trois mille.
+    """
+    cible = get_collection() if collection is None else collection
+    clause = {"source_path": identity.source_path}
+    presents = cible.get(where=clause, include=[])
+    nombre = len(presents.get("ids") or [])
+    if nombre:
+        cible.delete(where=clause)
+        logger.info("ChromaDB: %d chunks retires pour %s", nombre, identity.source_path)
+    return nombre
+
+
 def write_elements(
     elements: Sequence[dict[str, Any]],
     identity: DocumentIdentity,

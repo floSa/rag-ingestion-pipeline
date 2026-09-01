@@ -30,10 +30,38 @@ from typing import Any
 
 import pytest
 
+from src.docling_service.elements import DocumentIdentity
 from src.docling_service.embedding import CONTRACT_MODEL, HF_ORG_PREFIX, EmbeddingContractError
-from src.docling_service.vectors import COLLECTION_NAME, _inscrire_le_modele
+from src.docling_service.vectors import (
+    COLLECTION_NAME,
+    _inscrire_le_modele,
+    delete_document,
+)
 
 RACINE_DEPOT = Path(__file__).resolve().parents[2]
+
+# Le chemin d'un des deux Preface.html du corpus : le cas d'ecole de l'exigence 3.
+IDENTITE = DocumentIdentity(
+    source_path="htms/MLOps with Databricks/Preface.html",
+    key="htms/MLOps with Databricks/Preface",
+    filename="Preface",
+    collection="MLOps with Databricks",
+)
+
+
+class CollectionEspionne:
+    """Collection ChromaDB bouchonnee qui retient les clauses de suppression."""
+
+    def __init__(self, chunks: list[str] | None = None) -> None:
+        self._chunks = ["0123456789#0", "0123456789#1", "abcdef0123"] if chunks is None else chunks
+        self.suppressions: list[dict[str, Any]] = []
+
+    def get(self, where: dict[str, Any], include: list[str] | None = None) -> dict[str, Any]:
+        return {"ids": list(self._chunks)}
+
+    def delete(self, where: dict[str, Any]) -> None:
+        self.suppressions.append(dict(where))
+        self._chunks = []
 
 
 class _Collection:
@@ -163,3 +191,45 @@ class TestLeModuleResteImportableSansChromadb:
         )
         assert processus.returncode == 0, processus.stderr
         assert COLLECTION_NAME in processus.stdout
+
+
+class TestLaPurgeDUnDocumentDansLIndexVectoriel:
+    """Registre 4.2 : les identifiants derivent du texte, donc un texte modifie
+    laisse les ANCIENS chunks derriere lui.
+
+    `NebulaWriter.delete_document` existait pour le graphe et n'avait aucun
+    appelant ; cote ChromaDB, il n'existait meme pas. Or le capteur Dagster
+    declenche sur `mtime` : mettre a jour un document est le chemin NOMINAL.
+    """
+
+    def test_la_purge_supprime_par_source_path_et_non_par_nom(self):
+        collection = CollectionEspionne()
+        supprimes = delete_document(IDENTITE, collection=collection)
+
+        assert collection.suppressions == [{"source_path": IDENTITE.source_path}], (
+            "la purge doit viser `source_path`, l'identite d'un document "
+            "(contrat, exigence 3) : le corpus porte deux Preface.html, et une "
+            "purge par `filename` emporterait les deux"
+        )
+        assert supprimes == 3
+
+    def test_la_purge_ne_vise_jamais_le_filename(self):
+        """LE TEMOIN du precedent."""
+        collection = CollectionEspionne()
+        delete_document(IDENTITE, collection=collection)
+
+        for clause in collection.suppressions:
+            assert "filename" not in clause, clause
+
+    def test_une_purge_sur_un_document_absent_ne_leve_pas(self):
+        """Le cas nominal d'une PREMIERE ingestion : il n'y a rien a purger."""
+        collection = CollectionEspionne(chunks=[])
+
+        assert delete_document(IDENTITE, collection=collection) == 0
+
+    def test_la_purge_compte_ce_qu_elle_a_reellement_retire(self):
+        """Le compteur la ou il y a perte : une purge muette ne dit pas si elle
+        a retire 3 chunks ou 3 000."""
+        collection = CollectionEspionne(chunks=["a", "b", "c", "d", "e"])
+
+        assert delete_document(IDENTITE, collection=collection) == 5

@@ -21,11 +21,10 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
+if TYPE_CHECKING:
+    from docling.document_converter import DocumentConverter
 
 from src.docling_service import images, language, matter, ranking, storage
 from src.docling_service.elements import (
@@ -83,6 +82,17 @@ def get_converter(ocr: bool = False) -> DocumentConverter:
     Construit paresseusement pour que le module reste importable (et le service
     demarrable) meme si le chargement des modeles est lent.
 
+    **`docling` est importe ICI et non au niveau du module.** Il n'est pas dans
+    le venv du depot — les deps lourdes d'extraction vivent dans
+    `Dockerfile.docling` — donc un import de module rendait
+    `src.docling_service.extraction` INIMPORTABLE cote hote, et tout ce qu'il
+    decide intestable : c'est ce qui laissait le contrat de `page_batches` sans
+    garde (registre 4.14), et c'est ce qui laisserait sans garde les deux appels
+    a `storage.forget_document` (4.1 et 4.2). C'est le meme geste que
+    `vectors.get_collection`, `nebula._connect` et le `import fitz` local de ce
+    fichier meme — sur le sixieme et dernier module dans ce cas.
+    *Ce qu'un test n'importe pas, il ne teste pas.*
+
     Args:
         ocr: Activer la reconnaissance de caracteres. Reserve aux documents
             scannes : elle multiplie le temps de conversion, et un PDF normal
@@ -92,6 +102,10 @@ def get_converter(ocr: bool = False) -> DocumentConverter:
         Le convertisseur correspondant. Les deux variantes sont conservees,
         pour ne pas recharger les modeles a chaque bascule.
     """
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+
     logger.info("Chargement des modeles Docling (ocr=%s)...", ocr)
     # Docling active l'OCR et la reconstruction de structure des tables par
     # defaut : sur un livre de plusieurs centaines de pages, cela multiplie le
@@ -139,6 +153,20 @@ def extract(path: Path, source_path: str = "", report: Reporter = _noop) -> dict
             "duplicate_of": deja_ingere,
             "type_file": suffix.lstrip("."),
         }
+
+    # REGISTRE 4.2 : le document est OUBLIE avant d'etre reecrit. Les
+    # identifiants derivent du texte, donc un texte modifie produit de nouveaux
+    # identifiants et `upsert` laisse les anciens derriere lui, en orphelins,
+    # dans les deux stores. Le capteur declenchant sur `mtime`, mettre a jour un
+    # document est le chemin NOMINAL : c'est lui qui cassait.
+    #
+    # La purge vient APRES le controle de doublon, et l'ordre compte : un doublon
+    # exact sort plus haut sans rien toucher, donc reingerer un fichier
+    # inchange ne detruit rien pour le reecrire a l'identique.
+    #
+    # Elle leve si un store resiste : reecrire par-dessus une purge a moitie
+    # faite est exactement ce que 4.2 decrit.
+    storage.forget_document(identity)
 
     if suffix in PDF_SUFFIXES:
         return _extract_pdf(path, identity, content_hash, report)
@@ -431,8 +459,11 @@ def _extract_pdf(
     langue = ""
 
     # Le decoupage en lots vit dans matter.page_batches et non ici : le contrat
-    # « pas de chevauchement » etait realise par un « + 1 » que rien ne gardait,
-    # et ce module n'est pas importable sans docling, donc pas testable.
+    # « pas de chevauchement » etait realise par un « + 1 » que rien ne gardait.
+    # Le motif d'origine ajoutait « et ce module n'est pas importable sans
+    # docling, donc pas testable » : ce n'est plus vrai, l'import de `docling`
+    # etant descendu dans `get_converter`. Le decoupage reste ici parce que
+    # `matter.py` porte deja `kept_ranges`, dont il est la suite.
     lots = matter.page_batches(ranges, settings.pdf_batch_pages)
 
     # Le PDF est ouvert UNE fois pour tous les crops du document.
@@ -482,9 +513,39 @@ def _extract_pdf(
             )
 
     if failed_batches:
+        # REGISTRE 4.1 : le document PARTIEL est retire avant qu'on ne leve.
+        # Sans ce retrait, la partition Dagster est rouge ET l'ouvrage est dans
+        # l'index, tronque, sans que rien ne l'en sorte — le pire des deux
+        # etats, parce qu'il ressemble a des stores vides. `verify_contract` ne
+        # peut pas le voir : les `element_id` ecrits sont parfaitement valides,
+        # ce sont les pages manquantes qui ne laissent aucune trace.
+        #
+        # L'invariant devient : un document est entierement dans les stores, ou
+        # pas du tout.
+        logger.error(
+            "[%s] %d lot(s) sur %d en echec : le document partiel est retire des "
+            "stores. %d elements et %d chunks deja ecrits sont annules",
+            stem,
+            len(failed_batches),
+            len(lots),
+            accumulator.count,
+            total_chunks,
+        )
+        try:
+            storage.forget_document(identity)
+        except Exception as exc:
+            # LARGEUR VOULUE : l'echec d'extraction est la cause premiere et
+            # doit rester la cause levee. Un `raise` depuis ce bloc masquerait
+            # les pages manquantes derriere une panne de store. On chaine.
+            raise BatchExtractionError(
+                f"{len(failed_batches)} batch(s) non convertis pour {stem} : "
+                f"{'; '.join(failed_batches)}. ET LE DOCUMENT PARTIEL N'A PAS PU "
+                f"ETRE RETIRE ({exc}) : l'index porte un ouvrage tronque"
+            ) from exc
         raise BatchExtractionError(
             f"{len(failed_batches)} batch(s) non convertis pour {stem} : "
-            f"{'; '.join(failed_batches)}"
+            f"{'; '.join(failed_batches)}. Le document partiel a ete retire des "
+            f"stores : l'index ne porte pas d'ouvrage tronque"
         )
 
     if titres_replis:
