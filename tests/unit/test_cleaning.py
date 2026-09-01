@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import base64
+import logging
 
 from src.pipeline.cleaning import (
     PRECLEANED_FALLBACK,
+    SemanticContainerStrategy,
+    TrafilaturaStrategy,
     clean_html,
     clean_html_file,
     preclean_html,
@@ -397,3 +400,97 @@ class TestCleanHtmlFile:
         assert dest.exists()
         assert "paragraphe numero 5" in dest.read_text(encoding="utf-8")
         assert report.cleaned_bytes == len(dest.read_bytes())
+
+
+class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
+    """Registre 4.7 : `except Exception: candidate = None`, sans une ligne.
+
+    C'etait le plus grave des quatre `except` muets du depot. `cleaning.py`
+    n'avait AUCUN logger : une strategie d'extraction qui levait devenait un
+    non-candidat, indistinguable d'une strategie qui n'a rien trouve. Le
+    document repartait sur un candidat moins bon, ou sur le repli
+    pre-nettoye — c'est-a-dire avec son boilerplate — et rien ne le disait.
+    """
+
+    HTML = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<nav>menu</nav><article><h1>Un chapitre</h1><p>"
+        + "Du contenu reel qui doit survivre au nettoyage. " * 20
+        + "</p></article></body></html>"
+    )
+
+    def test_la_levee_d_une_strategie_est_journalisee_avec_son_nom(self, monkeypatch, caplog):
+        def leve(self, html):
+            raise RuntimeError("lxml a rendu l'ame")
+
+        monkeypatch.setattr(TrafilaturaStrategy, "extract", leve)
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            clean_html(self.HTML, CleaningOptions())
+
+        messages = [enregistrement.getMessage() for enregistrement in caplog.records]
+        assert any("TrafilaturaStrategy" in message for message in messages), messages
+        assert any("lxml a rendu l'ame" in message for message in messages), messages
+
+    def test_les_autres_strategies_gagnent_quand_une_leve(self, monkeypatch, caplog):
+        """LE TEMOIN. Sans lui, un `except` qui laisserait tout tomber passerait.
+
+        La largeur de l'`except` est VOULUE, et c'est ce test qui dit pourquoi :
+        une strategie sur trois qui plante ne doit pas condamner le document.
+        """
+
+        def leve(self, html):
+            raise RuntimeError("lxml a rendu l'ame")
+
+        monkeypatch.setattr(TrafilaturaStrategy, "extract", leve)
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            _, bilan = clean_html(self.HTML, CleaningOptions())
+
+        assert bilan.strategy != PRECLEANED_FALLBACK, (
+            "une seule strategie a leve : le document ne doit pas retomber sur "
+            "son HTML pre-nettoye, qui porte encore le boilerplate"
+        )
+        assert "menu" not in _
+
+    # HTML sans conteneur semantique : `SemanticContainerStrategy` y rend `None`
+    # sans lever, ce qui est son cas NOMINAL. C'est le cas qu'il faut atteindre
+    # pour distinguer « une strategie n'a rien trouve » de « une strategie a
+    # plante », et le test ci-dessous prouve qu'il l'atteint.
+    HTML_SANS_ARTICLE = (
+        "<html><head><title>Un chapitre</title></head><body>"
+        "<div><h1>Un chapitre</h1><p>"
+        + "Du contenu reel qui doit survivre au nettoyage. " * 20
+        + "</p></div></body></html>"
+    )
+
+    def test_une_strategie_qui_ne_trouve_rien_n_est_pas_journalisee(self, caplog):
+        """LE SECOND TEMOIN : le garde ne doit pas crier sur le chemin nominal.
+
+        Sans lui, un journal pose a tort — sur le simple `candidate is None`,
+        qui est le cas nominal d'une strategie qui n'a rien trouve — noierait le
+        signal reel : un avertissement a chaque document rendrait celui qui
+        compte invisible.
+
+        `mesure` : ce temoin a d'abord ete ecrit sur `HTML`, qui porte un
+        `<article>`. Aucune strategie n'y rend `None`, donc le journal mal place
+        ne se declenchait jamais et le temoin restait VERT sous la mutation —
+        il etait creux. C'est la lecon « un test qui choisit lui-meme son cas
+        doit prouver qu'il l'a atteint », et la preuve est la premiere
+        assertion.
+        """
+        precleaned = preclean_html(self.HTML_SANS_ARTICLE, CleaningOptions())
+        assert (
+            SemanticContainerStrategy(min_chars=CleaningOptions().min_text_chars).extract(
+                precleaned
+            )
+            is None
+        ), "le cas voulu n'est pas atteint : une strategie doit rendre None sans lever"
+
+        with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
+            clean_html(self.HTML_SANS_ARTICLE, CleaningOptions())
+
+        levees = [
+            enregistrement.getMessage()
+            for enregistrement in caplog.records
+            if "a leve" in enregistrement.getMessage()
+        ]
+        assert levees == [], levees

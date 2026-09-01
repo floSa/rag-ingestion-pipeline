@@ -114,6 +114,15 @@ def main() -> None:
         purge_collection(client, COLLECTION_NAME)
         print(f"collection {COLLECTION_NAME} supprimee")
     except Exception as exc:
+        # LARGEUR VOULUE : les trois stores doivent etre TENTES, meme si le
+        # premier est a terre. Une purge qui s'arreterait a la premiere panne
+        # laisserait les deux autres peuples, et c'est l'etat exact que ce
+        # script existe pour eviter. `chromadb` leve par ailleurs ses propres
+        # types selon la couche qui echoue — HTTP, protocole, collection
+        # absente — sans base commune sur laquelle se raccrocher.
+        #
+        # La consequence n'est PAS avalee : le store est nomme, et `echecs`
+        # fait sortir en 1 plus bas. Ce qui manquait etait cette phrase.
         print(f"ChromaDB : {exc}")
         echecs.append("ChromaDB")
 
@@ -122,6 +131,9 @@ def main() -> None:
         supprimes = purge_bucket(images.get_client(), settings.minio_bucket)
         print(f"{supprimes} objets supprimes du bucket {settings.minio_bucket}")
     except Exception as exc:
+        # LARGEUR VOULUE, meme motif que ci-dessus : le graphe doit encore etre
+        # tente. `minio` leve `S3Error`, mais aussi les erreurs reseau de
+        # `urllib3` qui n'en descendent pas. L'echec est nomme et compte.
         print(f"MinIO : {exc}")
         echecs.append("MinIO")
 
@@ -133,6 +145,11 @@ def main() -> None:
         with writer.session(use_space=False) as session:
             print(purge_space(session, SPACE))
     except Exception as exc:
+        # LARGEUR VOULUE : c'est le dernier des trois, mais l'`except` doit
+        # rester large pour que le `finally` ferme le pool et que le bilan
+        # s'affiche. `NebulaWriter.session` leve `NebulaError`, et le pool
+        # sous-jacent leve ses propres types de transport avant meme d'y
+        # arriver. L'echec est nomme et compte.
         print(f"NebulaGraph : {exc}")
         echecs.append("NebulaGraph")
     finally:

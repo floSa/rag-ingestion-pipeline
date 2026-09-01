@@ -24,6 +24,7 @@ from __future__ import annotations
 import base64
 import binascii
 import html as html_module
+import logging
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -36,6 +37,11 @@ from bs4.element import NavigableString
 from readability import Document
 
 from src.pipeline.sources import CleaningOptions, ExtractionProfile
+
+# Ce module n'avait AUCUN logger, et c'est ce qui rendait ses deux pertes
+# silencieuses : une strategie d'extraction qui leve (registre 4.7) et un
+# nettoyage qui jette la quasi-totalite du texte (4.6).
+logger = logging.getLogger(__name__)
 
 # Balises qui ne portent jamais de contenu a ingerer.
 NOISE_TAGS: list[str] = [
@@ -485,7 +491,28 @@ def clean_html(
     for strategy in strategies:
         try:
             candidate = strategy.extract(precleaned)
-        except Exception:
+        except Exception as exc:
+            # LARGEUR VOULUE, ET VOICI POURQUOI. `trafilatura` et
+            # `readability-lxml` sont des extracteurs tiers lances sur du HTML
+            # de capture, souvent malforme : ils peuvent lever n'importe quoi,
+            # et `lxml` remonte des exceptions qui ne descendent pas d'une base
+            # commune utile. Une strategie sur trois qui plante ne doit pas
+            # condamner le document — les deux autres concourent encore.
+            #
+            # CE QUI MANQUAIT ETAIT LA TRACE, et c'etait le plus grave des
+            # quatre `except` muets du depot : ce module n'avait aucun logger,
+            # si bien qu'une strategie qui LEVE etait indistinguable d'une
+            # strategie qui n'a RIEN TROUVE. Le document repartait sur un
+            # candidat moins bon, voire sur son HTML pre-nettoye — donc avec son
+            # boilerplate — et aucun code de sortie ne le disait.
+            logger.warning(
+                "%s a leve sur %s : %s. Cette strategie ne concourt pas ; le "
+                "candidat retenu sera le meilleur des autres, ou le repli "
+                "pre-nettoye si aucune ne passe les seuils",
+                type(strategy).__name__,
+                _page_title(precleaned) or "un document sans titre",
+                exc,
+            )
             candidate = None
         if candidate is None:
             continue
