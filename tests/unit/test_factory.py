@@ -13,7 +13,8 @@ from dagster import (
     sensor,
 )
 
-from src.pipeline.factory import build_source
+from src.docling_service.jobs import Job
+from src.pipeline.factory import _record_metadata, build_source
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig, load_sources
 
@@ -375,3 +376,112 @@ class TestLeNettoyagePublieCeQuIlAJete:
 
         attendu = contexte.metadonnees["text_chars"] / contexte.metadonnees["precleaned_text_chars"]
         assert contexte.metadonnees["text_ratio"] == attendu
+
+
+class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
+    """Registre 4.10 : un doublon exact rendait une partition VERTE a zero element.
+
+    `extraction.extract` retourne `{"elements": 0, "chunks": 0, "duplicate_of":
+    ...}` quand il reconnait un fichier deja ingere. Mais `_record_metadata` ne
+    publiait que `elements`, `chunks`, `pages` et `elapsed_seconds` : dans
+    l'interface Dagster, un document ECARTE et un document ingere VIDE affichaient
+    exactement la meme chose — quatre zeros. Le premier est le comportement voulu,
+    le second est une panne, et rien ne les distinguait.
+
+    Le constat nomme cinq cles absentes : `duplicate_of`, `pages_skipped`, `ocr`,
+    `language` et `failed_batches`. Les cinq sont publiees.
+    """
+
+    # LA FORME EST CELLE QUE LA PRODUCTION FABRIQUE, et elle a failli m'echapper.
+    # `main._run_extraction` fait `job.report(**result)`, et `Job.report` met tout
+    # dans `progress` : les cinq cles du constat arrivent donc DANS `progress` et
+    # non au premier niveau du `snapshot()`. Une fixture qui les aurait posees au
+    # premier niveau aurait rendu ce garde VERT sur un chemin de production casse.
+    # D'ou `_snapshot_reel` ci-dessous, qui construit la forme par le vrai `Job`.
+    BILAN_DOUBLON_RENDU_PAR_EXTRACT = {
+        "elements": 0,
+        "chunks": 0,
+        "pages": 0,
+        "duplicate_of": "htms/MLOps with Databricks/Preface.html",
+        "type_file": "html",
+    }
+    BILAN_PDF_RENDU_PAR_EXTRACT = {
+        "elements": 3750,
+        "chunks": 4365,
+        "pages": 71,
+        "pages_skipped": 6,
+        "ocr": False,
+        "language": "en",
+        "failed_batches": ["31-35 (RuntimeError: page illisible)"],
+        "type_file": "pdf",
+    }
+
+    @staticmethod
+    def _snapshot_reel(bilan: dict[str, object]) -> dict[str, object]:
+        """Le bilan tel que Dagster le recoit, fabrique par le vrai `Job`.
+
+        C'est la composition qui compte : `_record_metadata` lit un `snapshot()`,
+        pas le retour d'`extract`. Les tester separement laisserait passer un
+        desaccord sur l'emplacement des cles.
+        """
+        job = Job(id="essai", filepath="/opt/dagster/app/Datas/x")
+        job.report(**bilan)
+        return job.snapshot()
+
+    def test_un_doublon_est_nomme_dans_les_metadonnees(self):
+        contexte = ContexteEspion("livre/chapitre.html")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_DOUBLON_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees.get("duplicate_of") == (
+            "htms/MLOps with Databricks/Preface.html"
+        ), contexte.metadonnees
+
+    def test_un_document_ingere_ne_porte_pas_de_duplicate_of(self):
+        """LE TEMOIN. Sans lui, publier `duplicate_of` en dur passerait.
+
+        La cle ne doit apparaitre que sur un document reellement ecarte : une
+        cle presente et vide sur les 23 documents redonnerait exactement le
+        defaut, par l'autre bout.
+        """
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert "duplicate_of" not in contexte.metadonnees, contexte.metadonnees
+
+    def test_les_quatre_autres_cles_du_constat_sont_publiees(self):
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees["pages_skipped"] == 6
+        assert contexte.metadonnees["ocr"] is False
+        assert contexte.metadonnees["language"] == "en"
+        assert contexte.metadonnees["failed_batches"] == 1
+
+    def test_les_lots_en_echec_sont_comptes_et_nommes(self):
+        """Un lot PDF en echec doit se voir dans les metadonnees, pas seulement
+        dans le rouge du run : c'est le compteur du 4.1, cote Dagster."""
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees["failed_batches"] == 1
+        assert "31-35" in str(contexte.metadonnees["failed_batches_detail"])
+
+    def test_les_quatre_metadonnees_historiques_survivent(self):
+        """LE TEMOIN : ajouter cinq cles ne doit pas en retirer quatre."""
+        contexte = ContexteEspion("pdfs/livre.pdf")
+        _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
+
+        assert contexte.metadonnees["elements"] == 3750
+        assert contexte.metadonnees["chunks"] == 4365
+        assert contexte.metadonnees["pages"] == 71
+        assert contexte.metadonnees["elapsed_seconds"] >= 0.0
+
+    def test_un_bilan_minimal_ne_leve_pas(self):
+        """Le cas que le code naturel fait planter : un bilan sans aucune des
+        cles optionnelles — c'est celui d'un HTML nominal."""
+        contexte = ContexteEspion("livre/chapitre.html")
+        _record_metadata(contexte, self._snapshot_reel({"elements": 12, "chunks": 30}))
+
+        assert contexte.metadonnees["elements"] == 12
+        assert "duplicate_of" not in contexte.metadonnees
+        assert contexte.metadonnees["failed_batches"] == 0
