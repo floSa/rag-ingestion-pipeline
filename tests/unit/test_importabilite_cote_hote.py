@@ -38,6 +38,7 @@ import json
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 RACINE_DEPOT = Path(__file__).resolve().parents[2]
@@ -74,7 +75,20 @@ print(json.dumps({"modules": modules, "importes": importes, "inimportables": ini
 """
 
 
-def _explorer() -> dict[str, object]:
+@dataclass(frozen=True)
+class _Releve:
+    """Ce que le sous-processus a trouve, sous une forme TYPEE.
+
+    Un `dict[str, object]` aurait demande une assertion de type a chaque lecture,
+    et la regle du depot interdit `type: ignore` : la forme porte le type.
+    """
+
+    modules: list[str]
+    importes: list[str]
+    inimportables: dict[str, str]
+
+
+def _explorer() -> _Releve:
     """Importe chaque module de ``src/`` dans un sous-processus propre."""
     environnement = dict(os.environ)
     environnement["PYTHONPATH"] = str(RACINE_DEPOT)
@@ -87,7 +101,12 @@ def _explorer() -> dict[str, object]:
         timeout=300,
     )
     assert acheve.returncode == 0, acheve.stdout + acheve.stderr
-    return json.loads(acheve.stdout.strip().splitlines()[-1])
+    brut = json.loads(acheve.stdout.strip().splitlines()[-1])
+    return _Releve(
+        modules=list(brut["modules"]),
+        importes=list(brut["importes"]),
+        inimportables=dict(brut["inimportables"]),
+    )
 
 
 class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
@@ -103,10 +122,10 @@ class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
         """
         releve = _explorer()
 
-        modules = releve["modules"]
-        assert isinstance(modules, list)
-        assert len(modules) >= 30, f"le balayage n'a trouve que {len(modules)} modules"
-        assert TEMOIN in releve["importes"], (  # type: ignore[operator]
+        assert len(releve.modules) >= 30, (
+            f"le balayage n'a trouve que {len(releve.modules)} modules"
+        )
+        assert TEMOIN in releve.importes, (
             f"{TEMOIN} n'a pas ete importe : le balayage n'importe rien"
         )
 
@@ -117,9 +136,7 @@ class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
         `fastapi` entre au venv, `main.py` devient importable, et ce n'est pas une
         regression — c'est la fin de l'exception.
         """
-        releve = _explorer()
-        inimportables = releve["inimportables"]
-        assert isinstance(inimportables, dict)
+        inimportables = _explorer().inimportables
 
         inattendus = set(inimportables) - EXCEPTIONS_CONNUES
         assert inattendus == set(), (
@@ -138,9 +155,7 @@ class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
         `main.py` devient importable, ce test le dit — et il faudra retirer
         l'entree plutot que la garder « au cas ou ».
         """
-        releve = _explorer()
-        inimportables = releve["inimportables"]
-        assert isinstance(inimportables, dict)
+        inimportables = _explorer().inimportables
 
         if "src.docling_service.main" not in inimportables:
             raise AssertionError(

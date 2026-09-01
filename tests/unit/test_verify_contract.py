@@ -704,20 +704,18 @@ class _PoolBouchonne:
 
 def _bouchonner_nebula3(monkeypatch: pytest.MonkeyPatch, session: _Session) -> None:
     """Pose un arbre `nebula3` minimal, portant ce que le module importe."""
-    import types
+    from types import SimpleNamespace
 
     _PoolBouchonne.session = session
-    racine = types.ModuleType("nebula3")
-    config = types.ModuleType("nebula3.Config")
-    config.Config = type("Config", (), {})  # type: ignore[attr-defined]
-    gclient = types.ModuleType("nebula3.gclient")
-    net = types.ModuleType("nebula3.gclient.net")
-    net.ConnectionPool = _PoolBouchonne  # type: ignore[attr-defined]
+    # `SimpleNamespace` et non `ModuleType` : l'import `from nebula3.Config import
+    # Config` ne fait qu'une lecture d'attribut sur l'entree de `sys.modules`, et
+    # un espace de noms porte ses attributs dans son type — donc ni `setattr`, que
+    # `ruff` refuse, ni `type: ignore`, que la regle du depot interdit.
     for nom, module in [
-        ("nebula3", racine),
-        ("nebula3.Config", config),
-        ("nebula3.gclient", gclient),
-        ("nebula3.gclient.net", net),
+        ("nebula3", SimpleNamespace()),
+        ("nebula3.Config", SimpleNamespace(Config=type("Config", (), {}))),
+        ("nebula3.gclient", SimpleNamespace()),
+        ("nebula3.gclient.net", SimpleNamespace(ConnectionPool=_PoolBouchonne)),
     ]:
         monkeypatch.setitem(sys.modules, nom, module)
 
