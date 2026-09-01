@@ -11,8 +11,8 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 1er septembre 2026, après la fusion du lot 3**
-> (`4e28594`). L'action suivante est le **lot 4**, et son prompt est en annexe A.
+> **Dernière mise à jour : 2 septembre 2026, après la fusion du lot 4**
+> (`79cd2bc`). L'action suivante est le **lot 5**, et son prompt est en annexe A.
 > Toute valeur chiffrée ci-dessous porte son étiquette `mesuré`, `calculé` ou
 > `supposé`. Une valeur non remesurée ne se recopie pas : on renvoie à son site
 > canonique.
@@ -577,6 +577,11 @@ branches et leurs arbres de travail — les deux du lot 3 et les trois des lots 
 3 qui ne portaient plus rien hors `main`. Un clone frais ne voit qu'une seule
 branche et un tag (`mesuré`, 1er septembre 2026).
 
+**Le lot 4 a été fusionné le 2 septembre 2026** (`--no-ff`, `79cd2bc`) : 14
+commits de livraison, 11 de réparation, `e9ebe43` intact comme ancêtre — zéro
+réécriture. Ses trois arbres de travail et ses deux branches ont été supprimés,
+la branche du lot des deux côtés. **Aucun lot n'est en vol.**
+
 **Un répertoire d'arbre de travail a résisté, et il faut le savoir.**
 `.claude/worktrees/lot-1-observation-b12761` — 484 Mo — porte un
 `Datas/database/` écrit par Docker en `root` : `git worktree remove` rend
@@ -779,6 +784,47 @@ portait que les nœuds de contenu. **Quand un test rejoue un parcours, sa fixtur
 doit porter le graphe complet, pas seulement les nœuds qui l'intéressent** — et
 la seule façon de le savoir est de compter ce qu'on jette.
 
+### 5.1 quinquies Le lot 4 : livré, audité, réparé, fusionné
+
+Quatorze commits de livraison, onze de réparation, fusionnés le 2 septembre 2026
+(`--no-ff`, `79cd2bc`). Le détail vit au registre ; §4.29 porte ce qu'il laisse.
+
+**Ce que le pilote a remesuré de ses mains avant de trancher** (`mesuré` le
+2 septembre 2026) :
+
+| Ce qui décidait | Mesure du pilote |
+|---|---|
+| `e9ebe43` sous la réparation | ancêtre de `a845736`, 11 commits, **zéro réécriture**, 0 fusion dans la plage |
+| l'arbre de la fusion d'essai | **identique** à celui de la pointe, 0 conflit — la branche était descendante linéaire |
+| `make all` sur le résultat de la fusion d'essai | **rc=0**, 857 tests, 74 fichiers formatés |
+| balayage de graines sur ce résultat — graine 0 plus 25 aléatoires | **26/26 vertes** |
+| les sept juges de B1 et B2.a à B2.d | **tous rouges** : 9, 1, 2, 2, 3, 1, 1 |
+| le juge de B6 — un septième module rendu inimportable | **rouge** |
+| B3 — le repli du §2.4 contre le `Makefile` | aligné, **cible par cible** |
+| B4 — le compte des `pragma` porteurs | **11** (7 en Python, 4 dans la capture YAML), exact |
+| le reste de B1 — `CLEANED_SUBDIR=htms` sur un faux corpus | **corpus détruit** ; `=database` détruit les stores |
+| corpus | 25 fichiers, 57 381 999 octets, **non touché par le diff** |
+
+**Le renversement de plan, et il est double.** Le lot a mesuré que ses
+`element_id` ne bougent pas ; l'audit l'a reproduit indépendamment — 15 173 des
+deux côtés, différence symétrique nulle, et les 3 750 identifiants de l'index
+vivant sont un sous-ensemble strict des deux ; le pilote l'a confirmé
+**statiquement** : `main` faisait `prov[0].page_no`, le lot fait `pages[0]`, la
+même valeur par construction. **§4.22 ne tue donc plus le jeu de questions du lot
+6** — ce que le §6 et le registre §4.28.e affirmaient. Mais **l'ordre tient quand
+même**, pour deux raisons neuves : le jeu de *chunks* change (4 365 → 4 367) et
+`page_no_end` demande une réingestion pour exister. La conclusion survit à
+l'effondrement de son motif, et c'est la seule raison pour laquelle elle n'a pas
+coûté un lot.
+
+**La leçon de ce lot, et elle est nouvelle.** Le lot a trouvé et fermé **cinq de
+ses propres gardes creux** en rejouant ses mutations, l'a déclaré, et son audit en
+a trouvé **quatre autres**. Personne n'a menti, aucun chiffre n'était faux — et
+neuf gardes décoratifs ont quand même failli être livrés. **Un garde ne se juge
+jamais à sa lecture, seulement à la mutation qui doit le faire rougir**, et le
+motif commun des neuf est unique : *le test observe ce qu'il a lui-même fourni, ou
+observe une absence.*
+
 ### 5.2 Le lot 0 : livré, audité, réparé, fusionné
 
 Le détail complet — les six points de réparation, la conception retenue pour
@@ -870,9 +916,13 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **1** | **Observer sans corriger.** Monter la pile, reconstruire l'image Docling, ingérer 1 chapitre par ouvrage + le PDF. Trois questions : profondeur réelle du graphe (§3.2), `minio_url` sur les images HTML (§3.5), troncature réelle à l'embedding (§3.4) | contrainte **6** | ✅ **mesuré le 31 août 2026**, sans aucun commit — et son audit indépendant a élargi la mesure de 2 chapitres à **22**. Résultats au registre §3.2, §3.4, §3.5 et §4.21 à §4.27 |
 | **2** | ~~La hiérarchie des titres~~ | — | ❌ **SUPPRIMÉ le 31 août 2026.** Pas parce que le graphe est imbriqué — il l'est à 21/22 — mais parce que **la correction qu'il portait est un no-op** : `level` est absent sur les titres concernés et `elements.py:272` fait `heading_rank or 0`, donc le rang reste 0 (registre §3.2). §3.3 est **retourné** : les deux tests qu'il fallait « amender ensemble » assertent le comportement juste. §4.11 en sort vivant et monte au lot 3 ; §4.12 reste consigné inerte avec sa vraie condition d'activation — l'entrée d'un Markdown au corpus |
 | **3** | ✅ **FUSIONNÉ le 1er septembre 2026** (`--no-ff`, `4e28594`). **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — **onze** commits, **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24 et §5.3. **Audité, puis RÉPARÉ, puis fusionné** : l'audit n'a trouvé aucune régression et a reproduit tous ses chiffres, mais cinq bloquants — dont la fixture du test de non-platitude, qui assertait 39 titres là où la production en produit 41. Les cinq sont fermés, le juge de la réparation est passé sous la main du pilote, et `make all` rend **0** sur `main`. Voir §5.1 quater. Il laisse **deux mutations survivantes** consignées et non fermées (§4.12, §4.28.d) et **cinq constats** au lot 4 (§4.28). *(Cette case portait « dix commits » : un compte ne peut pas s'inclure lui-même, et le lot 0b s'était fait prendre pareil. Elle portait aussi « il a fermé §6.16 » : le registre le garde **ouvert**, et le registre a raison — la moitié « écrire au contrat côté agent » n'est pas faite. Le compte de tests a été retiré : son site canonique est `README.md`, section Tests.)*
-| **4** | La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme). **Plus les cinq constats que la réparation du lot 3 lui a versés, §4.28** : `chunk_count` mensonger (a), les 199 images HTML absentes du bucket **et** `Datas/.cleaned/` que `wipe_stores` ne purge pas — à lire **avant** d'attaquer §3.5 (b), le daemon arrêté et l'exigence 5 inéprouvable (c), et le déverrouillage de `nebula.py` pour que `document_vid` soit enfin gardé (d) | la certitude que le corpus ingéré est le corpus complet | **à faire — c'est l'action suivante, §7** |
-| **5** | Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre | la lisibilité, et l'arrêt des faux réglages | à faire |
-| **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché par le pilote le 1er septembre 2026 : les 30 questions attendent le lot 4, et l'ordre n'est pas négociable.** `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])` ; §4.22 déplace `page_no` et §4.6 / §4.7 déplacent `text` — tous trois au lot 4. Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion. Ce qui est acquis en revanche l'est vraiment : le corpus complet est indexé et les deux instruments ont rendu leur verdict dessus, ce qui donne au lot 4 son antécédent mesuré |
+| **4** | ✅ **FUSIONNÉ le 2 septembre 2026** (`--no-ff`, `79cd2bc`) — 16 constats fermés, 857 tests, neuf constats versés au §4.29. La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme). **Plus les cinq constats que la réparation du lot 3 lui a versés, §4.28** : `chunk_count` mensonger (a), les 199 images HTML absentes du bucket **et** `Datas/.cleaned/` que `wipe_stores` ne purge pas — à lire **avant** d'attaquer §3.5 (b), le daemon arrêté et l'exigence 5 inéprouvable (c), et le déverrouillage de `nebula.py` pour que `document_vid` soit enfin gardé (d) | la certitude que le corpus ingéré est le corpus complet | **à faire — c'est l'action suivante, §7** |
+| **5** | Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre. **Plus, en PREMIER point et tranché par le pilote le 2 septembre 2026 : `CLEANED_SUBDIR` cesse d'être un réglage** (§4.29.a). Personne ne configure où l'étape de nettoyage écrit — c'est un détail d'implémentation — et c'est le seul chemin par lequel un outil de purge peut viser le corpus versionné ou les bind mounts des stores. `mesuré` sur un faux corpus : `CLEANED_SUBDIR=htms` passe le containment livré par le lot 4 et détruit 24 des 25 fichiers ; `=database` détruit les stores. **Un réglage annoncé à l'opérateur dont trois valeurs sur quatre détruisent le corpus coûte plus qu'il ne rend, et une configuration que rien ne configure est de la configuration morte** — c'est le périmètre de ce lot au mot près. **Plus les huit autres constats du §4.29** que le lot 4 a versés | la lisibilité, et l'arrêt des faux réglages | **à faire — c'est l'action suivante, §7** |
+| **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché le 1er septembre 2026 : les 30 questions attendent le lot 4. La conclusion tient toujours, mais SON MOTIF EST TOMBÉ — et c'est instructif.** Le motif était : `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`, donc §4.22, §4.6 et §4.7 déplaceraient les `element_id`. **Mesuré trois fois — par le lot 4, reproduit par son audit, confirmé statiquement par le pilote — c'est FAUX** : les ensembles d'`element_id` sont rigoureusement égaux de part et d'autre du lot 4, 15 173 des deux côtés, différence symétrique nulle, parce que `page_no_end` est **additif** et que `pages[0]` vaut exactement ce que valait `prov[0].page_no`.
+
+L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'existe pas encore dans le graphe** — `DESCRIBE TAG` sur le space vivant ne le porte pas, donc une réingestion est requise. Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
+
+**Ce que le chantier doit retenir de cet épisode** : une conclusion juste peut reposer sur un raisonnement faux, et alors elle ne survit que par chance. Le motif ici était un raisonnement sur le code — plausible, jamais mesuré — et il a fallu trois mesures indépendantes pour le renverser. **Étiquette `supposé` tout ce qui n'a pas été mesuré, même quand ta conclusion te paraît sûre** : c'est cette étiquette qui a déjà économisé un lot entier au §6, et son absence ici a failli en coûter un. Ce qui est acquis en revanche l'est vraiment : le corpus complet est indexé et les deux instruments ont rendu leur verdict dessus, ce qui donne au lot 4 son antécédent mesuré |
 
 **Le lot 1 a payé son pari, et pas comme prévu.** Il n'a rien corrigé, il n'a
 produit aucun commit, il a coûté quelques minutes d'ingestion — et il a
@@ -900,54 +950,52 @@ correction était un no-op. Un constat étiqueté `supposé` et traité comme te
 
 ## 7. L'action suivante
 
-**Livrer le lot 4 — la perte silencieuse.** Le prompt prêt à distribuer est en
-**annexe A**, et il va à une conversation NEUVE.
+**Livrer le lot 5 — le code mort et la documentation contre le code.** Le prompt
+prêt à distribuer est en **annexe A**, et il va à une conversation NEUVE.
 
-C'est le lot le plus lourd du plan, et il l'est devenu : il portait déjà onze
-constats, la réparation du lot 3 lui en a versé cinq de plus (§4.28), et il touche
-`extraction.py` quatre fois, `cleaning.py` deux fois, `nebula.py`, `factory.py` et
-`dagster.yaml`. **Son fil conducteur est unique : le pipeline perd du texte, des
-images et des documents sans qu'aucun code de sortie ne le dise.** Tous ses
-constats sont de cette famille, et c'est pourquoi ils vont ensemble.
+C'est le lot le plus ingrat du plan et celui dont le chantier a le plus besoin.
+Ingrat parce qu'il ne corrige presque aucun comportement : il retire du code que
+rien n'appelle, des réglages que rien ne configure, et des phrases qui décrivent
+un état d'avant. Nécessaire parce que **ce chantier a passé quatre lots à
+découvrir que sa propre documentation mentait** — le « seul chapitre sans `<h2>` »
+qui a vécu du lot 1 au lot 3 en étant recopié par trois conversations dont le
+pilote, les « 66 » puis « 67 » fichiers formatés, la table des cibles restée à
+`src/`, le repli du §2.4 corrigé de moitié. Chaque fois, la mesure était juste et
+la phrase avait survécu au code.
 
-**Ce que le lot 4 déverrouille au-delà de lui-même** : les `element_id` bougeront
-(§4.22 déplace `page_no`, §4.6 et §4.7 déplacent `text`), donc c'est lui qui rend
-le lot 6 écrivable — voir §6. Rien ne sert d'écrire les 30 questions avant.
+**Son premier point est tranché et n'est pas cosmétique** : `CLEANED_SUBDIR` cesse
+d'être un réglage (§4.29.a). C'est le seul chemin par lequel un outil de ce dépôt
+peut viser le corpus versionné ou les bind mounts des stores, et le containment
+livré par le lot 4 ne suffit pas — `mesuré`, une cible contenue mais fausse passe.
 
-**Et il hérite d'un devoir de mesure**, parce que l'index vivant a été produit par
-le code du lot 3 : toute mesure d'antécédent est déjà prise, à la ligne près, dans
-le registre §4.28 et au §7.2 ci-dessous. **Ne les redérive pas, remesure-les** —
-c'est le principe du chantier, et il vaut aussi pour les chiffres que le chantier
-a lui-même écrits.
+**Ce que le lot 5 déverrouille** : le lot 6, et rien d'autre. Après lui il ne
+reste qu'à réingérer et à écrire les 30 questions. C'est donc le dernier lot avant
+la première campagne de référence, et **c'est lui qui décide de la qualité de ce
+qu'on mesurera** : un chiffre faux dans le `README` au moment d'écrire les
+questions est un chiffre qui entrera dans le jeu.
 
 Puis, dans l'ordre invariable :
 
 1. lire le rapport ;
-2. **faire auditer par une conversation qui n'en a écrit aucune ligne.** En dix
-   passages, l'audit indépendant n'a **jamais** rien manqué — y compris sur un lot
-   qui n'avait produit aucun commit ;
+2. **faire auditer par une conversation qui n'en a écrit aucune ligne.** En douze
+   passages, l'audit indépendant n'a **jamais** rien manqué ;
 3. lire le diff soi-même et faire tourner `make all` de ses mains, **y compris
    sur le résultat de la fusion** ;
 4. **alors seulement**, trancher la fusion ;
 5. si fusion : `--no-ff`, jamais `--ff-only`, jamais de rebase. Puis **relancer
    `make install` depuis le clone principal**, et **vérifier qu'aucun projet
    Compose ni bind mount n'ancre l'arbre de travail** avant de supprimer quoi que
-   ce soit. Alors seulement, supprimer la branche, local **et distant** ;
+   ce soit. Alors seulement, supprimer la branche, local **et distant** — et
+   **relancer `make install` une fois de plus après la suppression de l'arbre**,
+   parce que le hook y avait peut-être figé son interpréteur (§11) ;
 6. mettre le registre à jour ;
 7. écrire le prompt du lot suivant — et **relire l'annexe A contre `git`**, pas
    contre sa mémoire.
 
-**Une leçon de rédaction de prompt, payée par le lot 1.** Son prompt annonçait le
-chiffre attendu (« le rapport annoncera 0 % de troncature »). La mesure valait
-1,0 %, et un développeur qui cherchait à confirmer aurait lu ce 1,0 % comme un
-bruit d'arrondi et raté le défaut le plus intéressant des trois. **N'annonce
-jamais le résultat attendu d'une mesure que tu commandes** — donne le mécanisme,
-pas le chiffre.
-
-**Ce que l'audit du lot 3 avait à regarder, et qui est désormais de l'histoire**
-— trois renversements de plan qu'il a tranchés et deux écarts au mandat qu'il a
-validés — vit au registre (§4.11, §4.14, §5.4) et au §5.1 quater. Ne le recopie
-pas ici : cette section dit l'action **suivante**, pas la précédente.
+**N'annonce jamais le résultat attendu d'une mesure que tu commandes** — donne le
+mécanisme, pas le chiffre. Le prompt du lot 1 annonçait « le rapport annoncera 0 %
+de troncature » ; la mesure valait 1,0 %, et un développeur qui cherchait à
+confirmer aurait lu ce 1,0 % comme un bruit d'arrondi.
 
 ### 7.1 L'état de la pile — §4.26 est TRAITÉ
 
@@ -981,7 +1029,26 @@ comportement voulu — mais c'est un effet à connaître avant de remonter la pi
 Il en est sorti un bénéfice : le lot 3 a mesuré ses antécédents sur le **corpus
 complet** ingéré par le code de `main`, et non sur les 3 documents du lot 1.
 
-### 7.2 Ce que le lot 3 laisse au poste
+### 7.2 Ce que les lots 3 et 4 laissent au poste
+
+**LE GESTE À FAIRE AVANT TOUTE RÉINGESTION, ET IL N'EST PAS INTUITIF :
+redémarrer `docling-service`.** C'est `init_schema()`, joué **au démarrage** du
+service, qui exécute l'`ALTER TAG … ADD (page_no_end int)` livré par le lot 4.
+`DESCRIBE TAG` sur le space vivant ne porte pas encore cette colonne (`mesuré`) :
+une réingestion lancée sans ce redémarrage écrirait contre un tag qui n'a pas la
+colonne. Le message d'anomalie de `verify_contract` ne dit pas cette moitié — c'est
+le §4.29.e, consigné.
+
+**`verify_contract` sort désormais en 1 avec QUATRE anomalies**, et c'est le
+verdict juste : l'index vivant a été écrit par le code du lot 3. Deux sont
+anciennes — les 2 éléments au jeu de chunks troué, les 251 sommets visuels sur 264
+sans URL — et **deux sont neuves et attendues** : `page_no_end` NULL sur
+15 173/15 173 et sa clé absente des métadonnées ChromaDB. L'instrument dit
+honnêtement « le schéma a migré, les données non ». Les quatre se ferment à la
+réingestion, sauf les 251 images qui demandent **en plus** une exécution de l'asset
+`cleaned_html` : réextraire ne suffit pas (§4.28.b).
+
+Ce que le lot 3 laisse, et qui vaut toujours :
 
 - **`verify_contract` sort en 1, et c'est le verdict juste.** `mesuré` par le
   pilote le 1er septembre 2026, dans le conteneur, avec le code de `main`
@@ -1002,6 +1069,14 @@ complet** ingéré par le code de `main`, et non sur les 3 documents du lot 1.
   mesurent pas la même chose et le second est celui que l'instrument rend. Il
   redeviendra vert quand le lot 4 aura réparé la chaîne d'images et qu'une
   réingestion aura inscrit le modèle ;
+- **`run_monitoring` est livré mais n'a JAMAIS été observé en action**, et
+  personne ne peut le voir sans démarrer le daemon — ce qui relancerait
+  l'ingestion. Ce qui est prouvé : la configuration se charge pour le Dagster
+  épinglé (1.13.16), les cinq clés existent, et Dagster **refuse** une clé inconnue
+  (`DagsterInvalidConfigError`) plutôt que de l'ignorer — donc fail-closed. Et une
+  réserve mesurée qu'il faut connaître : `run_monitoring` couvre `STARTING`,
+  `NOT_STARTED` et `STARTED`, **jamais `QUEUED`** — précisément l'état du run
+  bloqué de ce poste ;
 - **`dagster-daemon` est arrêté, et il l'est RESTÉ à travers le redémarrage de
   l'instance** (`mesuré` le 1er septembre 2026 : `exited`, les neuf autres
   services debout). Un service arrêté par `docker compose stop` ne repart pas au
@@ -1229,6 +1304,15 @@ relire.**
   L'annexe A portait « `main` = 77d4f5b, avance rapide possible » — vrai le jour
   où elle a été écrite, faux dès que `main` a bougé. Un prompt prêt à
   distribuer périme : relis-le contre `git`, pas contre ta mémoire.
+- **Supprimer un arbre de travail sans relancer `make install` depuis le clone
+  principal.** Le §2.1 le prescrit noir sur blanc — le hook `pre-commit` fige un
+  chemin absolu vers le `.venv` de l'arbre **d'où l'installation a été lancée**, et
+  `.git/hooks` est partagé par tout le clone. Le pilote a retiré l'arbre du lot 4
+  pour libérer sa branche, sans relancer : **le premier commit du réparateur a été
+  refusé**, sur le message « `pre-commit` not found » qui ne nomme ni la cause ni
+  le remède. C'est fail-closed, donc sans dégât — et c'est le piège F6, que le
+  pilote avait lu, cité dans son propre prompt, et n'a pas appliqué. **Une règle
+  qu'on écrit pour les autres vaut pour soi.**
 - **Accepter le verdict d'un auditeur sur sa sévérité.** L'audit du lot 0
   qualifiait la perte de réindexation de « troc net-positif à consigner ».
   C'était une régression. Un rapport excellent peut sous-appeler sa propre
@@ -1253,14 +1337,14 @@ chiffre. Relis le code avant d'affirmer ce qu'il fait.
 
 ---
 
-# Annexe A — Prompt prêt à distribuer : le lot 4
+# Annexe A — Prompt prêt à distribuer : le lot 5
 
-> **Routage : ceci va à une conversation NEUVE, à nommer `Conv' 11 LOT-4`.
+> **Routage : ceci va à une conversation NEUVE, à nommer `Conv' <n> LOT-5`.
 > Rien d'autre à envoyer, à personne.**
 >
-> Les prompts des lots 0, 0b, 1 et 3 sont consommés. Ce qu'ils ont produit vit au
-> registre §8 et aux §5.1 bis, 5.1 ter, 5.1 quater, 5.2 et 5.3 ci-dessus. **Le lot
-> 2 a été supprimé du plan** : voir §6.
+> Les prompts des lots 0, 0b, 1, 3 et 4 sont consommés. Ce qu'ils ont produit vit
+> au registre §8 et aux §5.1 bis à 5.1 quinquies ci-dessus. **Le lot 2 a été
+> supprimé du plan** : voir §6.
 >
 > **Relis cette annexe contre `git` avant de la coller.** La pointe de `main`, le
 > chemin du dépôt, la présence de `make` et l'état de la pile sont des faits de
@@ -1269,147 +1353,170 @@ chiffre. Relis le code avant d'affirmer ce qu'il fait.
 
 ---
 
-Tu livres le **lot 4 du chantier de refonte de `rag-ingestion-pipeline` : la perte
-silencieuse**.
+Tu livres le **lot 5 du chantier de refonte de `rag-ingestion-pipeline` : le code
+mort, et la documentation contre le code**.
 
 ## Avant d'écrire une ligne
 
 Lis **en entier** `documentation/pilotage_du_chantier.md` et
 `documentation/axes_amelioration.md`, à la pointe de `main`. Ils sont
 autosuffisants : le rôle, le contrat avec `rag-agent-chat`, le plan de lots, les
-conventions de commit, les règles imposées, les leçons qui ont trouvé les défauts.
-**Ne me demande pas de contexte que ces deux fichiers portent.**
+conventions de commit, les règles imposées, les pièges de mesure du §4.27, et les
+leçons qui ont trouvé les défauts.
 
 Puis **mesure l'état du poste au lieu de le lire** : la pointe de `main`, la
-présence de `make`, l'état de la pile Docker, la porte qualité. Le mandat §2 dit
-pourquoi : un poste a déjà été repris en croyant sur parole qu'il était le poste
-d'origine.
+présence de `make`, l'état de la pile Docker, la porte qualité.
 
-## Le fil conducteur, et il est unique
+## Pourquoi ce lot existe, et pourquoi il n'est pas cosmétique
 
-**Le pipeline perd du texte, des images et des documents sans qu'aucun code de
-sortie ne le dise.** Chaque constat de ce lot est de cette famille. Ce n'est pas
-une liste de corrections indépendantes : c'est un seul défaut de conception —
-*l'absence de compteur là où il y a perte* — vu sous seize angles.
+Ce chantier a passé quatre lots à découvrir que **sa propre documentation
+mentait**. Le « seul chapitre sans `<h2>` » a vécu du lot 1 au lot 3, recopié par
+trois conversations dont le pilote, jusque dans le nom d'un test. Le `README` a
+annoncé 66 fichiers formatés puis 67 quand la mesure en rendait 73. La table des
+cibles décrivait `src/` quand le `Makefile` disait `src/ tests/`. La séquence de
+repli du §2.4 a été corrigée de moitié par le commit qui prétendait l'aligner.
+**Chaque fois, la mesure était juste et la phrase avait survécu au code.**
+
+Ton lot est celui qui ferme cette famille. Et il est le **dernier avant la
+première campagne de référence** : après toi il ne reste qu'à réingérer et à
+écrire les 30 questions du lot 6. **Un chiffre faux dans le `README` au moment
+d'écrire ces questions est un chiffre qui entre dans le jeu.**
 
 ## Le périmètre, et il est fermé
 
-Aux sections du registre, et à elles seules :
+**1 — `CLEANED_SUBDIR` cesse d'être un réglage. C'est ton PREMIER point, il est
+tranché par le pilote, et tu ne le rediscutes pas** (registre §4.29.a).
 
-**La perte de texte**
-- **§4.1** — un lot PDF en échec laisse un document **partiel écrit dans les
-  stores**, partition rouge, index pollué, et `verify_contract` ne peut pas le
-  voir parce que les `element_id` écrits sont valides ;
-- **§4.6** — `min_text_ratio = 0.05` : un nettoyage peut jeter **95 %** du texte
-  sans journal ni métadonnée Dagster ;
-- **§4.7** et **§5.6** — quatre `except Exception` muets, sans justification
-  écrite au site : `cleaning.py` (le plus grave, une stratégie qui plante devient
-  un non-candidat silencieux) et les trois de `wipe_stores.py`. **À traiter d'une
-  seule main** ;
-- **§4.22** — six pages du PDF (8, 18, 19, 25, 68, 69 sur 71) n'ont **aucun**
-  élément : leur texte est attribué à la **page précédente**. Toute citation
-  « page 7 » couvre en réalité 7 et 8 ;
-- **§4.28.a** — `chunk_count` est **mensonger** : il est fixé avant le filtrage
-  des chunks. Deux éléments perdent un morceau, et l'agent reconstitue un texte
-  troué. **Le contrôle est déjà livré** (§4.4) ; ce qui te revient est la
-  **cause** — décider si `chunk_count` se recalcule après filtrage, ou si les
-  chunks filtrés doivent cesser de l'être. Tranche, et écris pourquoi.
+Personne ne configure où l'étape de nettoyage écrit : c'est un détail
+d'implémentation. Et c'est le seul chemin par lequel un outil de ce dépôt peut
+viser le corpus versionné ou les bind mounts des stores. Le lot 4 a livré un
+containment strict qui refuse `""`, `"."`, `".."` et un chemin absolu — **et une
+cible contenue mais fausse passe encore** : `mesuré` sur un faux corpus jetable,
+`CLEANED_SUBDIR=htms` détruit 24 des 25 fichiers du corpus, `=database` détruit
+les stores.
 
-**La perte d'images**
-- **§3.5** et **§4.28.b** — la chaîne d'images HTML est rompue, et **§4.28.b
-  d'abord** : les images ne sont pas seulement absentes du graphe, elles sont
-  absentes du **bucket**. `Datas/.cleaned/` référence encore des URL MinIO
-  d'objets inexistants, et **`wipe_stores` ne purge pas `Datas/.cleaned/`** — donc
-  une purge suivie d'une réingestion repart du HTML nettoyé périmé. Seule une
-  exécution Dagster de l'asset `cleaned_html` les restaure. **Réextraire ne suffit
-  pas, et c'est le piège de ce lot** ;
-- **§4.25** — les URL du graphe rendent **403 en GET anonyme** : la forme stockée
-  est `http://minio:9000/…`, inutilisable hors du réseau Docker. À trancher, en
-  écrivant ce que l'agent peut en faire.
+Retire le réglage : de `.env.example`, de `PipelineSettings`, et de toute
+documentation qui l'annonce à l'opérateur. Le sous-répertoire devient une
+constante. **Garde le containment du lot 4** — il ne coûte rien et il protège
+contre un `source_dir` mal réglé, qui reste un réglage légitime. **Éprouve-le sur
+un faux corpus jetable, jamais sur `Datas/`.**
 
-**La perte de documents**
-- **§4.2** — une réingestion d'un document modifié laisse des **orphelins** :
-  `delete_document` existe et **n'a aucun appelant**, alors que le sensor déclenche
-  sur `mtime`. Le chemin nominal est celui qui casse ;
-- **§4.10** — un doublon exact rend une partition **verte avec zéro élément** :
-  dans l'interface Dagster, un document écarté ressemble à un document ingéré vide ;
-- **§4.28.d** — `document_vid` reçoit la bonne clé de ses trois appelants, mais
-  **aucun test ne le garde** : `document_vid(identity.key)` →
-  `document_vid(identity.filename)` laisse la suite entièrement verte, et ferait
-  collisionner les deux `Preface.html` sur un seul sommet. La cause est mécanique :
-  `nebula.py` importe `nebula3` au niveau du module, donc aucun test ne peut
-  l'importer côté hôte. **C'est le cinquième module dans ce cas, et le seul qui
-  reste. Déverrouille-le** — les quatre autres l'ont été aux lots 3 et 3-réparé,
-  et le geste est écrit dans `vectors.py`.
+**2 — le code mort** : §5.1 (trois valeurs pour un réglage qui n'existe pas —
+`chunk_size`, `chunk_overlap`, `chunk_text`, `chunk_ids`, sans aucun appelant en
+production, et une documentation qui les présente comme effectives), §5.2
+(`blocks.py`, une doctrine de 33 lignes que la production n'applique plus, et deux
+documents qui affirment l'inverse l'un de l'autre), §5.7 (`metadata_value` et sa
+branche devenue morte — le registre porte l'argument de celui qui a refusé de
+l'amputer, lis-le avant de trancher).
 
-**La famine : un run bloqué gèle tout**
-- **§4.15 à §4.17** et **§4.28.c** — un run coincé en `STARTED` bloque la
-  réindexation **indéfiniment**, sans délai de garde ni alerte. Le *run monitoring*
-  de Dagster est **absent de `dagster.yaml`** : c'est là que la famille entière se
-  ferme d'un geste, plutôt qu'au cas par cas dans chaque sensor. §4.28.c dit l'état
-  réel du poste : daemon arrêté, un run `QUEUED`, **67 `ReindexError`** dans
-  l'historique, et **l'exigence 5 du contrat n'est pas éprouvable en l'état** ;
-- **§4.19** — le refus de démarrer hors contrat n'est prouvé par **aucun test** :
-  retirer la ligne, ou la déplacer dans le `try`, laisse la suite verte. C'est le
-  *fail-fast* que le `README.md` vend qui repose sur une relecture ;
-- **§4.3** — `nebula.py:125` code en dur `("root", "nebula")`. `NEBULA_USER` et
-  `NEBULA_PASSWORD` existent dans `.env.example` et ne sont exposés par **aucun**
-  settings : le `.env` mentait sur ce qui est lu. Trois sites.
+**3 — la documentation contre le code** : tout le §6 du registre. Deux points en
+portent le poids — **§6.17**, chiffres et renvois faux, et **§6.18**, les deux
+blocs de schéma documentés dont le lot 3 n'a corrigé que ce que son code rendait
+faux, périmètre strict, en laissant les erreurs préexistantes du même bloc.
 
-**Ce qui n'est PAS de ce lot** : §5.1 à §5.3, §5.7, §5.8 et tout le §6 sont au lot
-5 ; les 30 questions sont au lot 6 et **elles attendent ce lot-ci** — voir §6 du
-mandat. Ne les écris pas.
+**4 — §6.16, et lis bien où s'arrête ta main.** Le garde est écrit et mesuré : 0
+inversion sur 15 173 arêtes. Ce qui reste est d'écrire les **trois réserves** sur
+la façon dont l'agent LIT `sequence` — et leur site est la documentation de
+`rag-agent-chat`, **l'autre dépôt**. Tu ne peux donc pas les y écrire. Ce que tu
+peux faire est de les rendre trouvables depuis ici, en un seul endroit nommé, et
+de dire explicitement ce qui reste à faire ailleurs. Ne fais pas semblant de
+fermer §6.16.
 
-## Le devoir de mesure, et il est particulier ici
+**5 — les deux docstrings de `vectors.py`** qui promettent « plus de troncature »
+alors que 8 chunks sortent de la fenêtre.
 
-**L'index vivant a été produit par le code du lot 3, et il est intact.** Tes
-antécédents sont donc déjà mesurés, à la ligne près, au registre §4.28 et au §7.2
-du mandat. **Ne les recopie pas : remesure-les de tes mains, puis dis si tu
-retrouves le chiffre.** Un chiffre du chantier qu'on reprend sans le remesurer est
-la façon dont « le seul chapitre sans `<h2>` » a vécu du lot 1 au lot 3, recopié
-par trois conversations dont le pilote.
+**6 — §5.8, et c'est un point à NE PAS traiter** : un message de commit porte une
+affirmation devenue fausse, le commit n'a pas été réécrit, et la règle du chantier
+l'interdit pour un gain cosmétique. La divergence est permanente et assumée.
+Vérifie seulement qu'elle est toujours écrite au registre pour que personne ne la
+redécouvre comme un défaut.
 
-Et prends les pièges de mesure du registre **§4.27** avant ta première commande.
-Trois d'entre eux ont déjà attrapé quelqu'un ; le pilote s'est fait prendre par
-deux.
+**7 — les huit autres constats du §4.29**, versés par le lot 4. Traite ceux qui
+sont de ta famille — le message d'anomalie qui égare (§4.29.e), le test qui asserte
+sur un commentaire (§4.29.g), la déclaration d'écart surdite (§4.29.h), et les
+deux invariants écrits au site que rien ne garde (§4.29.b, §4.29.c). **Consigne les
+autres si tu les juges hors périmètre, en disant pourquoi.**
+
+**Ce qui n'est PAS de ce lot** : les 30 questions sont au lot 6 et elles attendent
+une réingestion — voir §6 du mandat. Ne les écris pas.
+
+## Le piège de ce lot, et il est sévère
+
+**Tu vas écrire des dizaines de chiffres et de renvois. Chacun est une occasion de
+créer le défaut que tu répares.** Le chantier l'a mesuré trois fois : le commit
+qui fermait un angle mort a créé un mensonge de documentation dans le même geste,
+et ni le lot ni son audit ne l'ont vu.
+
+Trois conséquences pratiques :
+
+- **remesure tout chiffre que tu écris, même repris du registre.** Un chiffre
+  recopié sans remesure est la façon dont trois faussetés ont survécu à quatre
+  lots. Étiquette-le `mesuré`, `calculé` ou `supposé`, et donne la commande ;
+- **un chiffre n'a qu'un site canonique.** Le compte de tests vit dans
+  `README.md`, section Tests, et nulle part ailleurs. Si tu dois le citer, renvoie ;
+- **traque les phrases d'exhaustivité** — « le seul », « aucun », « les trois »,
+  « il n'y a plus ». Ce chantier en a trouvé cinq fausses, dont une écrite par le
+  pilote avec le tableau des mesures sous les yeux. **Une phrase d'exhaustivité est
+  un défaut en attente** : ou tu la bornes, ou tu écris le test qui la garde.
 
 ## Ce que je juge à la lecture de ton rapport
 
-1. **Chaque garde neuf rougit à la mutation du code livré.** Pas « un test
-   existe » : la mutation, le site, le `rc`, le nombre de rouges. Un garde qui
-   reste vert quand on casse ce qu'il garde ne compte pas, et trois s'étaient
-   glissés ainsi dans le lot 3 ;
-2. **rouge d'abord.** Le test échoue avant la correction, et tu montres les deux
-   états ;
-3. **`make all` rend 0**, et il n'y a **plus aucune exception à connaître** — le
-   « rc=2 attendu » est mort avec la réparation du lot 3. Un `rc` non nul est un
-   défaut. Plus le balayage de graines `PYTHONHASHSEED` (0 plus ≥ 25 aléatoires) ;
-4. **tes écarts au mandat, déclarés comme écarts au moment où tu les prends**, pas
-   découverts par l'audit. Le lot 3 en a déclaré deux et le pilote lui a donné
-   raison sur les deux ;
-5. **ce que tu consignes sans traiter**, avec la forme du garde à écrire. Trouver
-   et laisser en le disant vaut mieux que corriger hors périmètre.
+1. **chaque garde neuf rougit à la mutation du code livré** : la mutation, le
+   site, le `rc`, le nombre de rouges. Et **vérifie que le texte a changé avant de
+   croire un 0 rouge** — un `sed` qui ne matche rien après un `ruff format`
+   ressemble à un garde qui ne voit rien. Ce piège a produit la pire faute de ce
+   chantier, et il a pris le lot 4 **et** son audit ;
+2. **rouge d'abord**, les deux états montrés ;
+3. **pour ce qui n'est pas gardable par un test — et il y en aura beaucoup dans ce
+   lot — le juge est une MESURE, et tu la donnes avec sa commande.** Dis-le quand
+   c'est le cas : F7 reste ouvert, aucun test de ce dépôt ne lit le `Makefile` ni
+   les documents. Une preuve qui est une mesure vaut, à condition d'être nommée
+   comme telle ;
+4. **`make all` rend 0 sur chacun de tes commits**, plus le balayage de graines
+   `PYTHONHASHSEED` (0 plus ≥ 25 aléatoires). Aucune exception à connaître : un
+   `rc` non nul est un défaut. Et **ne filtre pas la sortie d'une porte** — un
+   `grep` sur la sortie de `make all` a déjà masqué un `rc=2` sur ce lot ;
+5. **retirer du code, c'est retirer ses tests** : dis combien de tests
+   disparaissent et pourquoi ce n'est pas une perte de couverture. Un compte de
+   tests qui baisse n'est pas un défaut ; un compte qui baisse sans explication
+   l'est ;
+6. **tes écarts au mandat, déclarés au moment où tu les prends, et à leur taille
+   exacte.** Un écart surdéclaré coûte la confiance dans les autres.
 
-## Les règles, et elles ne se négocient pas
+## Les règles, et deux mises en garde payées par le lot 4
 
-Elles sont au **§9 du mandat**, en entier. Les quatre qui coûtent le plus cher
-quand on les oublie :
+Les règles sont au **§9 du mandat**, en entier. Les quatre plus coûteuses :
 
 - **l'identité git se vérifie sur l'ADRESSE, jamais sur le nom** — deux identités
   portent le même nom, et sept commits partis avec la mauvaise adresse ont coûté
   un dépôt entier. Jamais de `--no-verify` ;
-- **aucune mention** de Claude, Claude Code, Anthropic, Copilot ou ChatGPT nulle
-  part — code, documentation, messages de commit. Aucun trailer `Co-Authored-By` ;
+- **aucune mention** d'un assistant de génération de code nulle part — code,
+  documentation, messages de commit. Aucun trailer `Co-Authored-By` ;
 - **ne modifie jamais le corpus.** Si une mesure y touche, restaure et vérifie le
   sha. `source_path` et le contenu entrent dans le calcul d'`element_id` ;
 - **aucun test désactivé**, aucun `skip`, `xfail`, `type: ignore`, `noqa`, aucune
   règle `ruff`/`mypy` relâchée, aucun `except` élargi sans justification écrite au
-  site. C'est le lot qui en **retire** quatre : n'en ajoute pas.
+  site. Et sache ceci, mesuré par le lot 4 : un `# type: ignore` dans `tests/` est
+  **à la fois interdit et sans effet**, `make typecheck` ne lisant que `src/`. Si
+  tu en as besoin, c'est la forme du code qu'il faut changer — et **une règle
+  relâchée pour satisfaire l'autre n'est pas une correction**.
+
+Et deux pièges que le lot 4 a payés :
+
+- **`git checkout <branche> -- .` dans un arbre portant des commits écrase sans
+  avertir.** Cela a coûté au lot 4 le contenu d'un commit entier, et un `make all`
+  vert ne pouvait pas le montrer. Pour lire un fichier d'une autre révision :
+  `git show <rev>:<fichier>` ;
+- **ne lance PAS `make install` depuis un arbre de travail temporaire.**
+  `pre-commit install` y grave le `.venv` de cet arbre dans `.git/hooks`, partagé
+  par tout le clone. `uv sync` seul suffit. Si un commit t'est refusé sur
+  « `pre-commit` not found », c'est ce piège : relance `make install` **depuis le
+  clone principal**.
 
 Travaille sur une branche à toi. **Ne fusionne rien** : tu livres, une conversation
-qui n'a écrit aucune de tes lignes t'audite, et le pilote tranche. En dix passages,
-l'audit indépendant n'a jamais rien manqué.
+qui n'a écrit aucune de tes lignes t'audite, et le pilote tranche. En douze
+passages, l'audit indépendant n'a jamais rien manqué.
 
-Quand tu as fini : un rapport, et **estime honnêtement le temps** — le réparateur
-du lot 3 a annoncé dix minutes et il en a fallu vingt, le balayage de graines
-étant relancé à chaque commit.
+Quand tu as fini : un rapport, et **estime honnêtement le temps**. Le poste que
+tout le monde sous-estime est le **balayage de graines relancé à chaque commit** —
+il a pesé un tiers du total du lot 4.

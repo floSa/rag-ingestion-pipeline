@@ -1620,8 +1620,35 @@ pas à une branche de réécrire le plan.
 par un antécédent faux, et personne ne l'a vu parce que la conclusion, elle,
 était vérifiable. **Une conclusion juste ne valide pas sa prémisse.**)*
 
-**TRANCHÉ par le pilote le 1er septembre 2026 : les 30 questions attendent le lot
-4.** Le fait ci-dessus décide seul, et il n'y avait rien à arbitrer au-delà de lui.
+**RETOURNÉ le 2 septembre 2026 : le fait ci-dessus est FAUX, et la conclusion tient
+quand même.** C'est le seul épisode du chantier où une conclusion a survécu à
+l'effondrement de son motif, et il vaut d'être lu en entier.
+
+Le motif était un **raisonnement sur le code, jamais mesuré** : puisque `compute_id`
+dérive de `page_no` et de `text`, et puisque §4.22, §4.6 et §4.7 les touchent, les
+`element_id` bougeraient. Mesuré trois fois — par le lot 4, reproduit
+indépendamment par son audit, confirmé **statiquement** par le pilote — les
+ensembles d'`element_id` sont **rigoureusement égaux** de part et d'autre du lot 4 :
+15 173 des deux côtés, différence symétrique nulle, et les 3 750 identifiants de
+l'index vivant sont un sous-ensemble strict des deux. La cause se lit dans le code :
+`page_no_end` est **additif**, et `pages[0]` vaut exactement ce que valait
+`prov[0].page_no`.
+
+**L'ordre reste forcé, pour deux raisons neuves et mesurées** : le jeu de *chunks*
+change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'existe pas encore dans le
+graphe** — `DESCRIBE TAG` sur le space vivant ne le porte pas, donc une réingestion
+est requise, précédée d'un redémarrage de `docling-service` (§4.29.e). Les 30
+questions attendent donc toujours, mais pas pour la raison écrite ici.
+
+**Ce que le chantier doit en retenir** : ce paragraphe portait un raisonnement
+plausible et non mesuré, sans étiquette `supposé`, et il a servi de fondement à une
+décision de plan. Il a fallu trois mesures indépendantes pour le renverser.
+**Étiquette `supposé` tout ce qui n'a pas été mesuré, même quand ta conclusion te
+paraît sûre** — c'est cette étiquette qui a économisé le lot 2 au §6, et son absence
+ici a failli coûter un lot entier de travail à refaire.
+
+*(Décision d'origine, conservée parce qu'elle dit comment on s'est trompé :)* le
+fait ci-dessus décide seul, et il n'y avait rien à arbitrer au-delà de lui.
 Deux points à garder, parce qu'ils ne se déduisent pas du fait :
 
 1. **ce qui est acquis l'est vraiment.** Le corpus complet est indexé et les deux
@@ -1666,7 +1693,30 @@ déjà en négatif : remettre le cas `("htms", …)` dans la paramétrisation de
 
 **Et la question qui décide n'est pas technique** : `CLEANED_SUBDIR` doit-il
 rester un réglage ? Un réglage annoncé dont trois valeurs sur quatre détruisent le
-corpus est un réglage qui coûte plus qu'il ne rend. **À trancher.**
+corpus est un réglage qui coûte plus qu'il ne rend.
+
+**TRANCHÉ par le pilote le 2 septembre 2026 : non. `CLEANED_SUBDIR` cesse d'être un
+réglage, et le geste va au lot 5, en PREMIER point.** Personne ne configure où
+l'étape de nettoyage écrit — c'est un détail d'implémentation — et une configuration
+que rien ne configure est de la configuration morte, ce qui est le périmètre de ce
+lot au mot près. Le sous-répertoire devient une constante ; **le containment livré
+par le lot 4 reste**, parce qu'il protège en plus contre un `source_dir` mal réglé,
+qui demeure un réglage légitime.
+
+**Et ce constat n'a PAS bloqué la fusion du lot 4, délibérément.** Le pilote a
+remesuré le reste de lui-même, sur un faux corpus jetable : `CLEANED_SUBDIR=htms`
+détruit le corpus, `=database` détruit les stores. Il ne bloque pas pour deux
+raisons, et elles sont dites pour que personne ne les redécouvre comme une
+négligence : le corpus est **versionné** depuis `a005172`, donc récupérable par un
+`git restore` — c'est précisément ce que le versionnement a acheté (§2.2) — et
+`Datas/database/` est ce que `wipe_stores` **existe** pour effacer. Le pire cas est
+un geste de récupération connu, pas une perte. Le chantier décide l'ordre au coût de
+l'attente, pas à la sévérité (§6).
+
+**Le réparateur a eu raison de consigner plutôt que d'étendre la décision de sa
+main**, et c'est à son crédit : son test rougissait déjà sur le code livré, il l'a
+retiré du juge et l'a écrit ici. Un développeur qui élargit un périmètre tranché
+« parce que c'est mieux » retire au pilote la décision qu'il a prise.
 
 #### 4.29.b `media.py` : un site de dérivation fermé, un autre ouvert
 
@@ -2213,6 +2263,20 @@ un chantier, pas un correctif.
 
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
 pas.
+
+**Le lot 4 a été fusionné dans `main` le 2 septembre 2026** par la fusion
+`--no-ff` `79cd2bc` : 14 commits de livraison, puis 11 de réparation exigés par le
+pilote après l'audit indépendant. `e9ebe43` est **intact** comme ancêtre de
+`a845736` — zéro réécriture, vérifié avant fusion. Il ferme §3.5, §4.1, §4.2,
+§4.3, §4.6, §4.7, §4.10, §4.15, §4.17, §4.19, §4.22, §4.25, §4.28.a à §4.28.d et
+§5.6, et laisse **neuf constats au §4.29**.
+
+Les neuf juges de sa réparation ont été rejoués par le pilote et rougissent tous :
+le containment de la purge désarmé (9 rouges), l'âge du run bloqué, le compteur du
+§4.22 rendu inerte à son site d'appel, le `page_no_end` des chunks mis à 0, les
+deux contrôles de `verify_contract`, et un septième module rendu inimportable.
+`make all` rend **0** sur le résultat de la fusion d'essai, **857 tests**, balayage
+de graines **26/26 vertes**, corpus intact à l'octet.
 
 **Le lot 3 a été fusionné dans `main` le 1er septembre 2026** par la fusion
 `--no-ff` `4e28594` : 11 commits de livraison, puis 6 de réparation exigés par le
