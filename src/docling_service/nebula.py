@@ -19,10 +19,10 @@ import threading
 import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nebula3.Config import Config
-from nebula3.gclient.net import ConnectionPool
+if TYPE_CHECKING:
+    from nebula3.gclient.net import ConnectionPool
 
 from src.docling_service.elements import (
     ROOT_REFERENCE,
@@ -71,7 +71,21 @@ class NebulaWriter:
     # ── Connexion ────────────────────────────────────────────────────────────
 
     def _connect(self, max_attempts: int, wait_seconds: float) -> ConnectionPool:
-        """Ouvre un pool, avec retry (le graphd met du temps a etre pret)."""
+        """Ouvre un pool, avec retry (le graphd met du temps a etre pret).
+
+        ``nebula3`` est importe ICI et non au niveau du module, et ce n'est pas
+        un detail de style. Il n'est pas dans le venv du depot — les deps
+        lourdes d'extraction vivent dans ``Dockerfile.docling`` — donc un import
+        de module rendait ``src.docling_service.nebula`` INIMPORTABLE cote hote,
+        et tout ce qu'il porte intestable : c'est ainsi que la mutation
+        ``document_vid(identity.key)`` -> ``document_vid(identity.filename)``
+        laissait la suite entierement verte (registre 4.28.d). C'est le meme
+        geste que ``vectors.get_collection``, sur le cinquieme et dernier module
+        dans ce cas. *Ce qu'un test n'importe pas, il ne teste pas.*
+        """
+        from nebula3.Config import Config
+        from nebula3.gclient.net import ConnectionPool
+
         settings = get_settings()
         for attempt in range(1, max_attempts + 1):
             pool = ConnectionPool()

@@ -771,7 +771,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**708 tests verts** (`mesuré` le 31 août 2026 par `make test` sur cette
+**713 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -794,7 +794,7 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
-Les modules restants (`nebula.py`, `vectors.py`, `extraction.py`, `main.py`) sont des adaptateurs vers Docling, NebulaGraph et ChromaDB : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle.
+Les modules restants (`vectors.py`, `extraction.py`, `main.py`) sont des adaptateurs vers Docling et ChromaDB : ils ne sont pas couverts en unitaire et se valident par une ingestion réelle. `nebula.py` a quitté cette liste : son import de `nebula3` est différé, donc le module est importable côté hôte et `tests/unit/test_nebula.py` garde l'identité du document.
 
 ---
 
