@@ -692,15 +692,52 @@ avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
 désormais **au site**, avec sa justification, par un commentaire
 `# pragma: allowlist secret`.
 
-Le dépôt en porte **3** au 31 août 2026 (`mesuré` :
-`grep -rn 'pragma: allowlist secret' --include='*.py' .`, trois lignes
-*porteuses* — `src/pipeline/reindex.py:69`, `tests/unit/test_reindex.py:91` et
-`:92`, les autres occurrences étant les commentaires qui les justifient). Dans les
-deux fichiers, le scanner lit un **nom** de variable — `API_KEY` — sans regarder
-sa valeur. Le compte était annoncé à 2 : la troisième ligne était née du piège de
-déduplication décrit au registre, et n'avait pas été recomptée. Ne recopie pas ce
-compte : le scan complet du dépôt versionné se relance en une commande, et c'est
-lui qui fait foi.
+**Distingue les lignes qui PORTENT le pragma de celles qui le citent en prose :
+les deux comptes ne sont pas le même.** Une ligne porteuse annote une valeur, et
+c'est celle-là que `detect-secrets` lit ; les autres sont les commentaires qui la
+justifient, cette section, et la ligne de `scripts/capturer-larbre-docling.py`
+qui *écrit* le pragma dans la capture YAML.
+
+Les porteuses se comptent ainsi (`mesuré` le 1er septembre 2026) :
+
+```bash
+git ls-files -z -- '*.py' '*.yaml' | xargs -0 grep -nE '#[[:space:]]*pragma: allowlist secret$'
+```
+
+Elle en rend **11** — **7** en Python et **4** dans la capture YAML —, contre
+**25** occurrences si l'on compte toute mention dans tout fichier versionné :
+
+| Site | Ce que le scanner y lit |
+|---|---|
+| `src/pipeline/reindex.py:69` | `API_KEY_HEADER`, dont la valeur est un **nom** d'en-tête HTTP |
+| `src/docling_service/settings.py:34` | `NEBULA_PASSWORD`, le mot de passe **public** du graphd de développement, celui de `docker-compose.yml` |
+| `tests/unit/test_reindex.py:91` et `:92` | l'argument `api_key`, dont la valeur d'essai est le mot « secret » lui-même |
+| `tests/unit/test_nebula.py:201`, `tests/unit/test_verify_data.py:246`, `tests/unit/test_init_nebula.py:186` | les mêmes identifiants publics, posés en variables d'environnement d'essai |
+| `tests/fixtures/arbres_docling.yaml`, 4 lignes | les empreintes SHA-256 des captures, lues comme des « Hex High Entropy String » |
+
+Le compte est passé de 2 à 3, puis à 6, puis à 11, et **jamais parce qu'un secret
+était apparu** : à 3, la troisième ligne était née du piège de déduplication
+décrit au registre ; les suivantes sont les identifiants du graphd exposés en
+réglages et les empreintes de la capture. Ne recopie pas ce compte : la commande
+ci-dessus se relance, et c'est elle qui fait foi.
+
+**La commande porte `'*.py' '*.yaml'` et non `--include='*.py'`, et c'est un
+correctif.** Bornée aux fichiers Python, elle ne voyait pas les 4 porteuses de la
+capture YAML — elle annonçait donc un dépôt plus propre qu'il n'est, sur la
+mesure même qui existe pour compter les exceptions.
+
+**Le pragma doit annoter la ligne qui porte la VALEUR**, pas la ligne qui ouvre le
+dictionnaire ou l'appel : posé une ligne trop haut, il ne filtre rien et le commit
+est refusé sans que le message dise pourquoi (`mesuré` le 1er septembre 2026, deux
+refus consécutifs sur `tests/unit/test_verify_data.py`).
+
+> Cette section a été perdue une fois, et c'est consigné plutôt que tu. Le commit
+> `0217bab` l'avait écrite ; `a54636c`, juste après la réparation d'un incident de
+> procédé — un `git checkout <branche> -- .` dans un arbre portant des commits —,
+> a réintroduit le texte de `main` par-dessus. Un `make all` vert ne pouvait pas
+> le montrer : rien de ce qui se perd dans un document ne rougit. Le geste pour
+> lire un fichier d'une autre révision est `git show <rev>:<fichier>`, et rien
+> d'autre.
 
 ```bash
 git ls-files -z -- ':!Datas/' | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
