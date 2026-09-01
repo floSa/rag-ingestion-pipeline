@@ -31,11 +31,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-RACINE = Path(__file__).resolve().parents[2]
-
 # Le modele du contrat, lu depuis son site canonique : le recopier ici en ferait
 # un second site, donc une divergence possible avec ce que le code exige.
-from src.docling_service.embedding import CONTRACT_MODEL  # noqa: E402
+from src.docling_service.embedding import CONTRACT_MODEL
+
+RACINE = Path(__file__).resolve().parents[2]
 
 # Un modele anglais, celui-la meme qu'un `.env` de juin portait face a un agent
 # multilingue (contrat, exigence 1). Les deux rendent 384 dimensions : ChromaDB
