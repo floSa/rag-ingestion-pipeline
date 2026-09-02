@@ -36,7 +36,7 @@ remesurer. Voici les cinq, `mesuré` le 2 septembre 2026 avant tout geste.
 | Point du §7.2 | Ce qu'il annonçait | Mesuré |
 |---|---|---|
 | `dagster-daemon` arrêté | arrêté | **vrai** — `Exited (0) 3 hours ago` (`docker compose ps -a`) |
-| index vivant du code du lot 3 | 4 365 chunks, 15 196 sommets, 15 374 arêtes, 23 documents, 13 objets MinIO | **4 365 / 15 196 / 15 173 `PARENT_OF` / 23 / 13**. Le 15 374 du mandat compte **toutes** les arêtes ; les `PARENT_OF` seules sont 15 173, et c'est ce nombre que `verify_contract` examine |
+| index vivant du code du lot 3 | 4 365 chunks, 15 196 sommets, 15 374 arêtes, 23 documents, 13 objets MinIO | **4 365 / 15 196 / 15 173 `PARENT_OF` / 23 / 13**. Les deux chiffres d'arêtes sont justes et ne comptent pas la même chose, et c'est **mesuré** : 15 173 `PARENT_OF` **plus 201 `LINKED_TO` font exactement 15 374**. Le mandat donne le total, `verify_contract` examine les `PARENT_OF` seules |
 | `verify_contract` sort en 1 sur **quatre** anomalies | quatre | **vrai, et les quatre sont exactement celles annoncées** |
 | `verify_data` / `verify_contract` ne tournent pas côté hôte | vrai | non rejoué : le geste du §4.27 a été employé d'emblée |
 | répertoire mort `lot-1-observation-b12761` | subsiste, 484 Mo | **subsiste** — non touché, il ne relève pas de ce lot |
@@ -415,7 +415,7 @@ d'environ cinq pages du PDF**, comme la spécification le prescrit :
 
 Le motif du choix : le chapitre 4 et le chapitre 8 traitent tous deux du
 déploiement et du service de modèles dans les deux ouvrages — ce sont les
-« sosies plausibles » que le registre §4 annonce comme voulus ; le chapitre 7 est
+« sosies plausibles » que le **mandat** §4 annonce comme voulus ; le chapitre 7 est
 le plus profondément imbriqué du corpus ; et les pages 41–45 du PDF
 (« Response Quality and Reduced Hallucinations » et ses quatre raisons, plus
 « High Latency ») sont voisines thématiquement des deux, ce qui rend possibles des
@@ -689,3 +689,200 @@ alors que le hook `ruff` voit tout ce qui est indexé. C'est la divergence de
 portée de la famille D7, une nouvelle fois, et ce lot y ajoute deux fichiers.
 Les deux scripts livrés passent `ruff check` et `ruff format --check` — mesuré,
 et la porte ne le dira pas à ma place.
+
+---
+
+## 10. L'état dans lequel la pile est laissée
+
+`mesuré` le 2 septembre 2026 à 13:32 UTC, `docker compose ps -a`.
+
+**Les neuf services sont debout**, dans le projet Compose
+`rag-ingestion-pipeline`, monté depuis le clone principal : `graphd`, `metad`,
+`storaged`, `chromadb`, `minio`, `nebula-studio`, `postgres-dagster`,
+`dagster-webserver`, `docling-service` (celui-ci `healthy`, redémarré deux fois
+par cette campagne). Aucun bind mount ne pointe vers un arbre de travail. La
+pile n'est **pas** démontée.
+
+**`dagster-daemon` est arrêté, et c'est un acte déclaré.** Il a été démarré à
+12:51:57 UTC pour l'étape 1 — le seul lot qui en a le droit — et arrêté à
+13:32:31 UTC, `rc=0`, **aucun run en vol au moment de l'arrêt** (91 runs depuis
+le démarrage, tous terminaux : 23 `SUCCESS` d'ingestion et **68** `FAILURE` de
+réindexation). Le motif de l'arrêt est mesuré et il est double : chaque tick de
+30 s produit un run rouge de plus, et à 68 en quarante minutes l'historique de
+runs cesse d'être lisible pour le lot suivant ; et l'index redevient à l'abri
+d'un tick. Le §4.31.N du registre note qu'un daemon laissé tourner quatre heures
+avait déjà dû être arrêté par le pilote pour protéger l'antécédent.
+
+**L'index laissé au poste**, `mesuré` après l'arrêt du daemon :
+
+| | |
+|---|---|
+| chunks ChromaDB | **4 367** |
+| sommets | **15 196** |
+| arêtes `PARENT_OF` | **15 173** |
+| arêtes `LINKED_TO` (légende → illustration) | **201** |
+| arêtes, toutes | **15 374** |
+| documents | **23** |
+| objets MinIO | **212** |
+| sommets `Paragraph` | 7 251, dont **0** à `page_no_end` NULL |
+| modèle inscrit sur la collection | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `verify_contract` | **`rc=1`**, une seule anomalie : les 52 tables HTML (§4.2) |
+
+**Une stabilité mesurée qui mérite d'être relevée.** La réingestion complète —
+purge des quatre stores puis réécriture par le même code — rend **exactement**
+les mêmes comptes structurels que l'index d'avant : 15 196 sommets, 15 173
+arêtes, 3 750 ancres, 7 251 `Paragraph`. Seul le jeu de *chunks* a bougé, de
+4 365 à 4 367, et pour la cause connue. **Ce que cela établit, à sa taille
+exacte :** les comptes sont identiques, et **deux** `element_id` nommés au
+registre §4.28.a depuis l'ancien index — `aa3de10738` et `eb52c4ec8f` — sont
+présents dans le nouveau. L'égalité des **ensembles** de 3 750 identifiants
+n'est **pas** mesurée : elle demanderait un instantané de l'ancien ensemble, qui
+n'a pas été pris avant la purge. C'est deux identifiants prouvés, pas 3 750, et
+l'écrire autrement serait la faute du §4.28.e.
+
+**Ce qui subsiste et ne relève pas de ce lot** : le répertoire mort
+`.claude/worktrees/lot-1-observation-b12761`, 484 Mo, que git ne connaît plus et
+que rien n'ancre — il se retire en `sudo` à l'occasion. Et un arbre de travail
+dédié au balayage de graines, `/home/ubuntu/RAG/lot6-graines`, en `HEAD` détaché,
+**sans `make install`** (`uv sync` seul, §9), à retirer avec la branche.
+
+---
+
+## 11. Deux pièges de mesure rencontrés, et la façon dont ils ont été pris
+
+Ils ne sont pas des défauts du dépôt : ce sont deux erreurs de ma main, corrigées
+avant d'entrer dans un chiffre. Elles sont écrites parce que la seconde est un
+piège que le registre nomme déjà, et que je l'ai commise quand même.
+
+**1 — un `rc` lu derrière un `grep`.** La première mesure du code de sortie de
+`verifier-le-jeu-de-questions.py` sous mutation le lisait derrière un
+`| grep -v telemetry`. Elle rendait **`rc=0` sur les trois mutations qui
+échouent**, parce que `${PIPESTATUS[0]}` après l'appel d'une fonction dont la
+dernière commande est un `grep` rend le statut du `grep`. C'est le piège **F3**
+du registre — « le code de retour d'un `cmd | tail` est celui de `tail` » — et
+c'est ce que le mandat interdit en une ligne : *ne filtre pas la sortie d'une
+porte*. Remesuré sans aucun tube, la sortie redirigée vers un fichier : `rc=1`
+sur les trois, `rc=0` sur le témoin. **Le chiffre faux n'est jamais entré dans ce
+fichier**, mais il avait été affiché.
+
+**2 — un faux rouge fabriqué par ma propre sonde.** Le harnais du balayage de
+graines écrit le journal de chaque graine puis **le supprime si elle est verte**.
+Un `ls` lancé pendant le balayage a donc trouvé un journal — celui de la graine
+**en cours** — et je l'ai lu comme un rouge. Le fichier avait disparu deux
+secondes plus tard. *Un harnais de mesure peut muter ce qu'il observe*, et une
+sonde qui l'observe pendant qu'il tourne peut lire un état transitoire pour un
+résultat. Le seul signal fiable est la ligne de bilan écrite **après** la boucle,
+et c'est elle qui est rapportée au §12 de ce fichier.
+
+---
+
+## 12. La porte qualité et le balayage de graines, commit par commit
+
+`mesuré` du 2 septembre 2026 13:31:22 UTC au 14:03:17 UTC, **dans un arbre de
+travail dédié** — `/home/ubuntu/RAG/lot6-graines`, en `HEAD` détaché, `uv sync`
+seul et **jamais** `make install`, le §2.1 du mandat gravant sinon dans
+`.git/hooks` partagé un interpréteur qui mourrait avec cet arbre.
+
+L'arbre est basculé **une fois, avant** les mesures de chaque commit, et jamais
+pendant : un audit s'est fabriqué un faux rouge en basculant le sien pendant que
+son balayage tournait. La propreté de l'arbre est constatée **avant et après**
+chaque commit, parce qu'un rouge sur un arbre sale ne prouve rien.
+
+Les 26 graines — **la graine 0**, qui désactive la randomisation du hachage et
+est donc un cas distinct, **plus 25 aléatoires** tirées une seule fois et
+gardées identiques pour les trois commits, ce qui rend les trois colonnes
+comparables.
+
+| Commit | arbre sale avant | `make all` | tests | `mypy` | format | graines | arbre sale après |
+|---|---|---|---|---|---|---|---|
+| `6f81c8e` le jeu de questions et ses gardes | **0** | **rc=0** | **884** | 35 fichiers, 0 erreur | 74 formatés | **26 / 26 vertes** | **0** |
+| `d5f4bc4` le compte rendu et le script de rappel | **0** | **rc=0** | **884** | idem | 74 | **26 / 26 vertes** | **0** |
+| `4d366f7` le registre | **0** | **rc=0** | **884** | idem | 74 | **26 / 26 vertes** | **0** |
+
+**78 exécutions de la suite sous graine, 78 vertes, zéro rouge.** Aucune sortie
+de porte n'a été filtrée : `make all` écrit dans un fichier et son `rc` est lu
+directement, jamais derrière un tube — voir le §11, où l'erreur inverse a été
+commise puis corrigée.
+
+**Et la borne de cette table, parce qu'un compte ne peut pas s'inclure
+lui-même.** Elle couvre les **trois** commits qui existaient quand elle a été
+écrite. Le commit qui porte cette section — le quatrième, qui n'ajoute que ce
+fichier — passe la même porte et le même balayage, mais **son résultat ne peut
+pas figurer ici** : il serait écrit avant d'être mesuré. Il est rapporté au
+pilote dans le message de livraison. Le lot 0b s'est fait prendre exactement
+ainsi, en annonçant « dix commits » dans le dixième.
+
+**Une réserve de lecture sur le « 74 formatés ».** `make format-check` porte sur
+`src/ tests/` et voit 74 fichiers ; la même commande étendue à `scripts/` en voit
+**77**. Les trois fichiers d'écart sont les scripts, que la porte ne contrôle pas
+et que le hook `ruff` contrôle. C'est le §4.32.c du registre, et les deux scripts
+livrés passent `ruff check` et `ruff format --check` (`mesuré`).
+
+**Hygiène, `mesuré` sur les trois commits.** Auteur et committer :
+`florian.horellou@gmail.com` sur les trois, adresse de la liste blanche —
+vérifiée sur l'**adresse**, jamais sur le nom. Aucun trailer, aucune signature.
+Aucun `--no-verify` : les huit hooks ont tourné et sont passés à chaque commit.
+Aucun `skip`, `xfail`, `type: ignore`, `noqa`, aucune règle relâchée, aucun
+`except` élargi. `git diff main..HEAD --stat -- src/` et `-- Datas` rendent tous
+deux le **vide** : aucune ligne de production touchée, corpus hors du diff. Et le
+corpus **sur le disque** est intact à l'octet dans les deux arbres, même
+empreinte qu'avant le premier geste.
+
+**Deux occurrences de « claude » et « ChatGPT » subsistent dans le diff, et
+aucune n'est une attribution** : `claude/session-c608cd` est un nom de branche
+créé par l'outillage, que le §9 du mandat borne explicitement comme n'attribuant
+rien ; et « ChatGPT » est **cité dans le corpus lui-même**, dans la réponse
+attendue de `q20` — le PDF écrit que les utilisateurs attendent une latence
+« comparable to those of the publicly available ChatGPT ». Recopier fidèlement une
+phrase du corpus n'attribue pas ce dépôt à quiconque.
+
+---
+
+## Annexe — le rappel dense, question par question
+
+`mesuré` le 2 septembre 2026, `scripts/campagne/mesurer-le-rappel-vectoriel.py`
+sur les 4 367 chunks. **Lire cette table avec la réserve du §6.4** : c'est un
+plancher dense, sans BM25, sans graphe, sans reranker, sans abstention. Les
+quatre questions sans réponse n'ont pas de rappel — leur colonne de distance dit
+seulement de quoi le système les rapprocherait.
+
+| question | strate | ancrages | r@5 | r@10 | r@20 | distance L2 du 1er voisin |
+|---|---|---|---|---|---|---|
+| `q01` | multi-passages | 3 | 1/3 | 1/3 | 3/3 | 9.85 |
+| `q02` | multi-passages | 3 | 3/3 | 3/3 | 3/3 | 11.42 |
+| `q03` | multi-passages | 2 | 2/2 | 2/2 | 2/2 | 9.38 |
+| `q04` | multi-passages | 2 | 1/2 | 1/2 | 1/2 | 10.52 |
+| `q05` | multi-passages | 3 | 1/3 | 2/3 | 2/3 | 11.23 |
+| `q06` | multi-passages | 3 | 2/3 | 3/3 | 3/3 | 8.16 |
+| `q07` | multi-passages | 2 | 1/2 | 2/2 | 2/2 | 7.38 |
+| `q08` | multi-passages | 3 | 1/3 | 1/3 | 1/3 | 8.99 |
+| `q09` | multi-passages | 3 | 0/3 | 0/3 | 1/3 | 8.93 |
+| `q10` | multi-passages | 2 | 0/2 | 0/2 | 0/2 | 8.79 |
+| `q11` | multi-passages | 3 | 1/3 | 1/3 | 3/3 | 10.09 |
+| `q12` | multi-passages | 2 | 2/2 | 2/2 | 2/2 | 12.33 |
+| `q13` | simple | 1 | 1/1 | 1/1 | 1/1 | 7.69 |
+| `q14` | simple | 1 | 1/1 | 1/1 | 1/1 | 8.80 |
+| `q15` | simple | 1 | 1/1 | 1/1 | 1/1 | 6.11 |
+| `q16` | simple | 1 | 1/1 | 1/1 | 1/1 | 7.08 |
+| `q17` | simple | 1 | 1/1 | 1/1 | 1/1 | 8.06 |
+| `q18` | simple | 1 | 1/1 | 1/1 | 1/1 | 7.40 |
+| `q19` | simple | 1 | 1/1 | 1/1 | 1/1 | 9.79 |
+| `q20` | simple | 1 | 1/1 | 1/1 | 1/1 | 10.18 |
+| `q21` | sans-reponse | 0 | — | — | — | 13.11 |
+| `q22` | sans-reponse | 0 | — | — | — | 8.73 |
+| `q23` | sans-reponse | 0 | — | — | — | 11.44 |
+| `q24` | sans-reponse | 0 | — | — | — | 14.86 |
+| `q25` | de-suivi | 2 | 0/2 | 0/2 | 0/2 | 14.62 |
+| `q26` | de-suivi | 1 | 0/1 | 0/1 | 0/1 | 20.01 |
+| `q27` | de-suivi | 1 | 1/1 | 1/1 | 1/1 | 15.68 |
+| `q28` | de-suivi | 1 | 0/1 | 0/1 | 0/1 | 15.94 |
+| `q29` | reformulee | 1 | 0/1 | 0/1 | 0/1 | 17.34 |
+| `q30` | reformulee | 2 | 2/2 | 2/2 | 2/2 | 9.64 |
+
+**Les cinq lignes à zéro, et aucune n'est un défaut de l'index.** `q10` demande
+la taille d'un jeu d'évaluation dans deux ouvrages qui l'expriment en mots très
+différents ; `q25`, `q26` et `q28` sont des questions **de suivi**, encodées ici
+sans leur `chat_history`, donc privées de leur antécédent ; `q29` est
+délibérément reformulée jusqu'à ne plus partager de vocabulaire avec son
+passage. Ce sont les quatre strates dures faisant leur travail — et le plancher
+de contrôle, lui, tient à 8 sur 8.
