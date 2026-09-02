@@ -294,8 +294,8 @@ A contenu egal, quarante-six chunks de moins, chacun portant davantage de contex
 
 **Le plancher reste, ET IL EST BORNE.** Un chunk sans caractere alphanumerique, ou plus
 court que `MIN_CHUNK_CHARS`, est ecarte de l'index — il demeure dans le graphe. Mais ce
-rejet ne s'applique qu'a un chunk qui est le **seul** de son element (`vectors.py:230`,
-`mesure`). Une fenetre du MILIEU d'un texte continu est conservee meme courte : sans cette
+rejet ne s'applique qu'a un chunk qui est le **seul** de son element
+(`vectors.build_chunks`, `mesure`). Une fenetre du MILIEU d'un texte continu est conservee meme courte : sans cette
 borne, l'agent concatene les chunks d'un element et obtient un texte troue, ce qui est
 arrive sur deux elements de l'index (registre 4.28.a). Le motif ecrit du plancher — « trop
 court pour porter du sens » — suppose un chunk autonome, et cette supposition est fausse

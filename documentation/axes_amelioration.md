@@ -2171,6 +2171,45 @@ c'est la mesure de la difficulté du travail. Le lot s'est fait prendre deux foi
 de son propre aveu (§4.30.b, §4.30.i), son audit en a trouvé deux de plus, et le
 pilote en a créé un lui-même il y a deux jours (§5.4).
 
+#### 4.31.B1 Cinq renvois `mesuré` que le lot a rendus faux LUI-MÊME
+
+Il écrivait `mesuré à src/docling_service/vectors.py:230` à **cinq sites** : le
+docstring de `chunking.has_content`, `base_vectorielle.md`,
+`extraction_donnees.md`, `llm_integration_plan.md` et `services/chromadb.md`.
+
+*Le juge est une mesure*, `mesuré` le 2 septembre 2026 sur la pointe du lot :
+
+```bash
+sed -n '230p' src/docling_service/vectors.py   # -> `ids: list[str] = []`
+grep -n 'autonome' src/docling_service/vectors.py   # -> 267, 268
+```
+
+Le filtre vit donc à **267-268**, et non à 230. Le commit `765f5ee` a ajouté
+~37 lignes au docstring de `build_chunks` et l'a déplacé : **le renvoi est devenu
+faux un commit après avoir été écrit, dans le lot dont c'est le sujet.**
+
+C'est le §4.30.i au mot près — « un renvoi `fichier:ligne` est une mesure dont la
+provenance comprend la révision » — et le §6.17 prescrivait déjà le remède : **le
+geste durable est de désigner un SYMBOLE et non une ligne.** Les cinq sites
+nomment désormais `vectors.build_chunks`.
+
+##### Le balayage complet des renvois `fichier:ligne` du diff, avec son critère
+
+Corriger cinq renvois ne dit rien des autres. Le balayage porte sur **toute ligne
+ajoutée** par `git diff main..HEAD -U0` contenant un motif
+`<chemin>.<py|md|yml|yaml|toml|sh>:<n>[-<m>]`, le fichier visé étant cherché tel
+quel puis sous `src/`, `src/docling_service/`, `src/pipeline/`, `tests/unit/` et
+`documentation/`. Un balayage dont le critère n'est pas écrit n'est pas
+reproductible.
+
+`mesuré` le 2 septembre 2026 : **10 renvois distincts**, 0 fichier introuvable.
+
+| Renvoi | État |
+|---|---|
+| `vectors.py:230` (5 sites) | **FAUX** — corrigé ci-dessus, par le symbole |
+| `ranking.py:56-71`, `ranking.py:83-84` | **justes** — vérifiés ligne à ligne : ce sont bien les corps de `docling_parent_rank` et `docling_level_rank` |
+| `README.md:317`, `extraction.py:335-337`, `index_report.py:75-84`, `nebula.py:49`, `nebula.py:160`, `schemas.py:94-95` | **citations, pas des renvois** : ils vivent dans le tableau du §6.17 qui les déclare périmés ou dérivés, et ce tableau existe pour dire qu'ils le sont. Les corriger en `fichier:ligne` neuf serait refaire le défaut à trois jours près |
+
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 
 `verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans

@@ -21,7 +21,7 @@ Un point important : **la collection ne contient pas un vecteur par élément du
 
 > **Les fragments isolés ne sont pas « absorbés dans leur paragraphe d'origine ».** Cette phrase décrivait `build_blocks`, un regroupement maison retiré du dépôt : sa doctrine était « fusionner plutôt que jeter », et `blocks.py` affirmait au même moment que `HybridChunker` « n'a pas de `min_tokens` : les fragments isolés y survivent ». Les deux ne pouvaient pas être vrais ensemble, et aucun des deux ne décrivait le code (registre §5.2).
 >
-> Ce que la production fait, `mesuré` à `src/docling_service/vectors.py:230` : `HybridChunker` fusionne les pairs de même métadonnée (`merge_peers`), puis un chunk est **écarté** — pas absorbé — s'il n'a aucun caractère alphanumérique ou s'il est plus court que `MIN_CHUNK_CHARS`.
+> Ce que la production fait, `mesuré` dans `vectors.build_chunks` : `HybridChunker` fusionne les pairs de même métadonnée (`merge_peers`), puis un chunk est **écarté** — pas absorbé — s'il n'a aucun caractère alphanumérique ou s'il est plus court que `MIN_CHUNK_CHARS`.
 >
 > **Et ce rejet est borné, ce qui compte autant que le rejet lui-même.** Il ne s'applique qu'à un chunk qui est le **seul** de son élément. Une fenêtre du *milieu* d'un texte continu est conservée même courte : sans cette borne, l'agent concaténerait les chunks d'un élément et obtiendrait un texte troué, ce qui est arrivé sur deux éléments de l'index (registre §4.28.a).
 

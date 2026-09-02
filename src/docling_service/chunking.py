@@ -157,7 +157,7 @@ def has_content(text: str) -> bool:
     `blocks.py` ouvrait sur « la reponse retenue suit l'etat de l'art du
     decoupage pour RAG : **fusionner plutot que jeter** », doctrine de 33 lignes
     qui decrivait `build_blocks` — sans appelant depuis que `HybridChunker` l'a
-    remplace. Ce que la production fait, `mesure` a `vectors.py:230` :
+    remplace. Ce que la production fait, `mesure` dans `vectors.build_chunks` :
 
         autonome = ancre.count == 1
         if autonome and (not has_content(texte) or len(texte) < min_chunk_chars):
