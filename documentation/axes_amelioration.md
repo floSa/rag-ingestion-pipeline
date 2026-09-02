@@ -2285,9 +2285,29 @@ sed -n '230p' src/docling_service/vectors.py   # -> `ids: list[str] = []`
 grep -n 'autonome' src/docling_service/vectors.py   # -> 267, 268
 ```
 
-Le filtre vit donc à **267-268**, et non à 230. Le commit `765f5ee` a ajouté
-~37 lignes au docstring de `build_chunks` et l'a déplacé : **le renvoi est devenu
-faux un commit après avoir été écrit, dans le lot dont c'est le sujet.**
+Le filtre vit donc à **267-268**, et non à 230.
+
+**La chronologie est mesurée, commit par commit**, et elle est plus instructive
+que le fait :
+
+```bash
+for c in $(git rev-list --reverse main..e5103cf); do
+  git show "$c:src/docling_service/vectors.py" | grep -n 'if autonome and'
+done
+git show --numstat --format= 765f5ee -- src/docling_service/vectors.py
+git log --oneline -S 'vectors.py:230' main..e5103cf
+```
+
+| | ligne du `if autonome and …` |
+|---|---|
+| `main` (`27a6304`) et les trois premiers commits du lot | **230** |
+| **`765f5ee`** et les huit suivants | **268** |
+
+Le renvoi a été écrit par **`c563f45`**, le troisième commit du lot, et il était
+**exact ce jour-là**. **`765f5ee` — le commit SUIVANT — l'a rendu faux** en
+portant `vectors.py` de +46/−8 lignes, soit un décalage net de 38 qui est
+exactement `268 − 230`. *Le renvoi n'a donc pas vieilli : il a été tué par le
+commit d'après, dans le lot dont c'est le sujet.*
 
 C'est le §4.30.i au mot près — « un renvoi `fichier:ligne` est une mesure dont la
 provenance comprend la révision » — et le §6.17 prescrivait déjà le remède : **le
