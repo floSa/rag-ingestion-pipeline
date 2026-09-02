@@ -698,10 +698,6 @@ def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
     (``ngql.missing_vertex_columns``) : il manquait a ce controle-ci, qui
     comptait des NULL sans jamais demander au graphe si la colonne etait la.
 
-    Args:
-        session: Session NebulaGraph.
-        colonne: Nom de la colonne cherchee.
-
     **CET INVARIANT ETAIT ENONCE ICI ET GARDE PAR RIEN — le treizieme garde
     creux du chantier** — le compte est derive au registre 4.31.B4, il ne se
     recopie pas. `mesure` le 2 septembre 2026 sur le code livre, AVANT ce garde :
@@ -714,6 +710,10 @@ def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
     le commit qui le ferme. Le garde est
     `TestUnDescribeEnEchecCompteCommeUneColonneAbsente`, et il rougit a
     3 tests sous cette mutation.
+
+    Args:
+        session: Session NebulaGraph.
+        colonne: Nom de la colonne cherchee.
 
     Returns:
         Les tags qui ne la portent pas, dans l'ordre. Un ``DESCRIBE`` en echec
