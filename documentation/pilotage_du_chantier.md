@@ -928,6 +928,17 @@ L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **c
 
 **Ce que le chantier doit retenir de cet épisode** : une conclusion juste peut reposer sur un raisonnement faux, et alors elle ne survit que par chance. Le motif ici était un raisonnement sur le code — plausible, jamais mesuré — et il a fallu trois mesures indépendantes pour le renverser. **Étiquette `supposé` tout ce qui n'a pas été mesuré, même quand ta conclusion te paraît sûre** : c'est cette étiquette qui a déjà économisé un lot entier au §6, et son absence ici a failli en coûter un. Ce qui est acquis en revanche l'est vraiment : le corpus complet est indexé et les deux instruments ont rendu leur verdict dessus, ce qui donne au lot 4 son antécédent mesuré |
 
+**Après le lot 6, un item et un seul est déjà au plan : la bascule à clé
+provisoire** (registre §4.29.i, tranché le 2 septembre 2026). Le comportement
+retenu est celui que le lot 4 a livré — *entre un index qui sert un document
+périmé et un index qui n'en sert aucun, le second* — parce qu'une perte
+silencieuse coûte plus qu'une panne bruyante. Écrire sous une clé provisoire puis
+basculer serait **strictement meilleur** : absence de perte silencieuse **et**
+continuité de service. Ce n'est pas fait avant, faute d'antécédent : personne ne
+sait à quelle fréquence une conversion échoue durablement sur ce corpus, et
+**c'est la première campagne qui le dira**. Décider avant serait décider sur un
+`supposé`.
+
 **Le lot 1 a payé son pari, et pas comme prévu.** Il n'a rien corrigé, il n'a
 produit aucun commit, il a coûté quelques minutes d'ingestion — et il a
 **supprimé un lot entier du plan** tout en faisant naître sept constats

@@ -2017,6 +2017,38 @@ d'abord trancher lequel des deux états on préfère : *un index qui sert un doc
 périmé* ou *un index qui n'en sert aucun*. Le lot a choisi le second et l'a écrit ;
 le choix n'est pas évident et il n'a pas été posé au pilote.
 
+#### TRANCHÉ par le pilote le 2 septembre 2026 : le second, et le troc est bon
+
+**Entre un index qui sert un document périmé et un index qui n'en sert aucun, le
+second est retenu.** Le comportement livré par le lot 4 est donc confirmé, pas
+toléré.
+
+**Le motif est la doctrine de ce chantier, et il tient en une opposition.** Un
+document périmé servi avec des citations d'apparence valide est une perte
+**silencieuse** : l'agent rend des passages, l'utilisateur les lit, les
+`element_id` sont bien formés, `verify_contract` ne voit rien — *personne ne peut
+la voir*. Une absence est **bruyante** : la partition Dagster rougit,
+`index_report` compte les documents et en annoncerait **22 là où le corpus en
+porte 23** (`calculé` — le corpus versionné porte 23 documents, §2), et
+`verify_contract` le dit. Le chantier a passé quatre lots à apprendre que la
+perte silencieuse coûte plus que la panne bruyante ; il n'allait pas trancher
+dans l'autre sens.
+
+**Ce que la décision NE dit pas, et il faut l'écrire aussi.** Elle ne dit pas que
+le comportement actuel est le meilleur possible. **La conception « écrire sous une
+clé provisoire puis basculer » serait strictement meilleure** — elle donne
+l'absence de perte silencieuse *et* la continuité de service — et elle **va au
+plan, après le lot 6**. Elle n'y va pas avant, pour une raison mesurable : rien
+ne dit aujourd'hui à quelle fréquence une conversion échoue durablement sur ce
+corpus, et **c'est la première campagne de référence qui le dira**. Un chantier
+de bascule à clé provisoire décidé avant cette mesure serait décidé sur un
+antécédent `supposé` — la faute que le §3.2 et le §4.28.e ont chacune coûté un
+raisonnement au chantier.
+
+**Décision datée, pas question ouverte.** Ce paragraphe remplace « le choix n'est
+pas évident et il n'a pas été posé au pilote » : il a été posé, et il est
+tranché.
+
 **LE LOT 5 NE LE TRAITE PAS, ET C'EST LE SEUL DES NEUF QU'IL NE POUVAIT PAS
 TRAITER.** Ce constat n'est ni du code mort, ni un écart entre la documentation
 et le code : le code fait ce que sa documentation dit, et le comportement est
