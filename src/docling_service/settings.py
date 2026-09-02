@@ -86,7 +86,15 @@ class DoclingSettings(BaseSettings):
 
     # ── Graphe ───────────────────────────────────────────────────────────────
     # Le graphe porte la structure, pas le corpus : on y stocke un apercu du
-    # texte. Le texte integral vit dans ChromaDB, decoupe et sans troncature.
+    # texte. Le texte integral vit dans ChromaDB, decoupe.
+    #
+    # Cette ligne ajoutait « et SANS TRONCATURE ». C'est faux, et deux fois : le
+    # texte STOCKE dans ChromaDB est bien integral, mais le VECTEUR ne l'est pas
+    # — le modele tronque ce qui depasse sa fenetre, et le chiffre est a
+    # `vectors.get_chunker`. Quant au graphe, il coupe a cette limite-ci, ce qui
+    # fait diverger les deux stores en silence sur les elements concernes
+    # (registre 4.23) : `nebula.write_elements` compte desormais les coupes et
+    # emet un avertissement.
     graph_text_max_chars: int = 2000
 
     # ── File de jobs ─────────────────────────────────────────────────────────

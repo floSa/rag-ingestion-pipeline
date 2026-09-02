@@ -9,6 +9,7 @@ ne comptait pas (registre 3.4).
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,8 @@ from pathlib import Path
 import pytest
 
 from src.index_report import FenetreMesuree, compter_les_documents, mesurer_la_fenetre
+
+RACINE = Path(__file__).resolve().parents[2]
 
 
 def compter_les_mots(texte: str) -> int:
@@ -169,3 +172,130 @@ class TestCompterLesDocuments:
             {"filename": "1. Introduction", "source_path": "htms/livre B/1. Introduction.html"},
         ]
         assert compter_les_documents(metas) == 2
+
+
+class TestLaFenetreRapporteeEstCelleDuModele:
+    """LE GARDE QUI MANQUAIT, et son jumeau documentaire etait FAUX deux fois.
+
+    La fenetre du modele est le denominateur de tout ce que cet instrument dit
+    sur la troncature. Elle **n'est pas un reglage** : aucun `settings.py` ne la
+    porte, elle est lue au runtime sur le modele du contrat
+    (`modele.max_seq_length`). Or `services/chromadb.md` et
+    `llm_integration_plan.md` l'annoncaient tous deux a **256** tokens quand elle
+    vaut **128** (registre 6.2), et `extraction_donnees.md` batissait un
+    pourcentage dessus.
+
+    `mesure` le 2 septembre 2026 sur le code livre par le lot 4 : remplacer
+    `limite = int(model.max_seq_length)` par `limite = 256` — le nombre meme qui
+    etait faux dans la documentation — laisse la suite ENTIEREMENT VERTE, 834
+    tests. L'instrument pouvait donc rapporter une fenetre fabriquee, et le
+    chiffre de troncature avec elle, sans que rien ne bronche.
+
+    Le garde asserte **depuis le cote qui produit** : `main()` est lance pour de
+    bon en sous-processus, avec un modele bouchonne dont la fenetre vaut une
+    valeur qu'aucun defaut du depot ne porte. Un `128` ou un `256` en dur ne peut
+    pas la reproduire par hasard.
+
+    Le montage bouchonne `chromadb` et `sentence_transformers` **comme de vrais
+    paquets en tete de PYTHONPATH**, et non dans `sys.modules` : sinon les
+    bouchons survivraient au test et l'ordre des tests deviendrait significatif.
+    C'est le montage de `test_verify_data.py` et de `test_wipe_stores.py`.
+    """
+
+    FENETRE_BOUCHON = 777
+
+    BOUCHONS = {
+        "chromadb.py": """
+class _Collection:
+    def get(self, include=None):
+        return {
+            "documents": ["un texte de chunk assez long pour compter"],
+            "metadatas": [{"source_path": "htms/Livre/Chapitre.html", "block_size": 1}],
+        }
+
+
+class _Client:
+    def get_or_create_collection(self, name):
+        return _Collection()
+
+
+def HttpClient(host=None, port=None):
+    return _Client()
+""",
+        "sentence_transformers.py": """
+class _Tokenizer:
+    def encode(self, texte, add_special_tokens=True):
+        # Un token par caractere : le compte n'a pas d'importance ici, seule la
+        # LIMITE rapportee est sous test.
+        return list(texte)
+
+
+class SentenceTransformer:
+    def __init__(self, *a, **k):
+        self.max_seq_length = FENETRE
+        self.tokenizer = _Tokenizer()
+
+    def get_sentence_embedding_dimension(self):
+        return 384
+
+    def encode(self, *a, **k):
+        return []
+""",
+    }
+
+    def _rapport(self, tmp_path: Path, fenetre: int) -> str:
+        """Lance `python -m src.index_report` pour de bon, stores bouchonnes."""
+        bouchons = tmp_path / "bouchons"
+        bouchons.mkdir()
+        for nom, source in self.BOUCHONS.items():
+            (bouchons / nom).write_text(source.replace("FENETRE", str(fenetre)), encoding="utf-8")
+
+        environnement = dict(os.environ)
+        environnement["PYTHONPATH"] = os.pathsep.join([str(bouchons), str(RACINE)])
+        acheve = subprocess.run(
+            [sys.executable, "-m", "src.index_report"],
+            cwd=tmp_path,
+            env=environnement,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        return acheve.stdout
+
+    def test_le_montage_a_bien_atteint_le_rapport(self, tmp_path):
+        """LE TEMOIN, ET IL PASSE EN PREMIER.
+
+        Un sous-processus qui sortirait en 0 sans rien imprimer rendrait les
+        assertions suivantes vraies d'un rapport qui n'a jamais tourne.
+        """
+        sortie = self._rapport(tmp_path, self.FENETRE_BOUCHON)
+
+        assert "=== Fenetre du modele d'embedding ===" in sortie, sortie
+        assert "chunks indexes            : 1" in sortie, sortie
+
+    def test_la_limite_rapportee_est_celle_du_modele(self, tmp_path):
+        """LE GARDE. Une fenetre en dur rougit ici."""
+        sortie = self._rapport(tmp_path, self.FENETRE_BOUCHON)
+
+        assert f"limite                    : {self.FENETRE_BOUCHON} tokens" in sortie, (
+            f"la fenetre rapportee n'est pas celle du modele "
+            f"({self.FENETRE_BOUCHON}) : l'instrument annonce un chiffre "
+            f"fabrique, et son taux de troncature avec lui\n{sortie}"
+        )
+
+    def test_la_limite_suit_le_modele_et_n_est_pas_figee(self, tmp_path):
+        """Le second temoin, et il est le plus important.
+
+        Sans lui, une limite ecrite en dur a la valeur du bouchon passerait le
+        garde ci-dessus. Deux modeles differents doivent rendre deux fenetres
+        differentes — c'est cela, « lue sur le modele ».
+        """
+        autre = 512
+
+        sortie = self._rapport(tmp_path, autre)
+
+        assert f"limite                    : {autre} tokens" in sortie, sortie
+        assert str(self.FENETRE_BOUCHON) not in sortie, (
+            f"la fenetre est figee a {self.FENETRE_BOUCHON} : elle ne suit pas le modele\n{sortie}"
+        )

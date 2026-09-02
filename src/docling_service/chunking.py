@@ -72,8 +72,9 @@ def embedding_inputs(
     ``vectors.write_elements`` prefixait le titre de section avant d'encoder, et
     ``index_report`` tokenisait le texte stocke pour compter les troncatures.
     L'instrument mesurait donc un autre texte que celui qu'il pretendait
-    surveiller, et sous-comptait d'un facteur 2 — 65 chunks annonces au-dela de
-    la fenetre contre 137 reels (`mesure`, 31 aout 2026, 4 365 chunks).
+    surveiller, et sous-comptait d'un facteur **2,1** (`mesure` sur le corpus
+    complet). Les deux comptes qui donnent ce facteur vivent a
+    :func:`~src.docling_service.vectors.get_chunker`, leur seul site.
 
     Corriger le calcul de l'instrument n'aurait ferme que l'ecart du jour : deux
     endroits qui decident du meme texte finissent par diverger a nouveau. Il n'y

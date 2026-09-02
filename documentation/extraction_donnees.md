@@ -259,9 +259,13 @@ decoupes par **`HybridChunker`**, le decoupeur de Docling.
 
 **Pourquoi le sien plutot que le notre.** Le decoupage maison coupait a la longueur en
 caracteres, sans savoir ou il coupait. `HybridChunker` respecte la structure du document
-et recoit **le tokenizer du modele d'embedding lui-meme** : il remplit la fenetre sans
-jamais la depasser, la ou une approximation en caracteres laisse toujours une marge
-d'erreur.
+et recoit **le tokenizer du modele d'embedding lui-meme**, la ou une approximation en
+caracteres laisse toujours une marge d'erreur.
+
+*(Ce paragraphe ajoutait « il remplit la fenetre SANS JAMAIS LA DEPASSER ». C'est une
+phrase d'exhaustivite, et elle est fausse : le decoupeur ne peut pas fractionner une table,
+et le titre de section est prepose APRES son travail. Le chiffre et ses deux causes ont un
+seul site, `vectors.get_chunker` — registre §3.4 bis.)*
 
 Comparaison sur le chapitre 1 de `Practical MLOps`, a troncature nulle des deux cotes :
 
@@ -322,11 +326,20 @@ qui disparait, ce sont les fragments de mise en page et les doublons de
 granularite. NebulaGraph, lui, conserve ses 24 709 noeuds — la structure du
 document reste complete.
 
-**Limite connue et mesuree** : 0,8 % des chunks depassent la fenetre de 256
-tokens du modele d'embedding et sont donc tronques par le modele lui-meme. Il
-s'agit de passages denses — code, tableaux, formules — dont le ratio
-caracteres/tokens est defavorable. Le texte stocke, lui, reste integral. La
-commande `python -m src.index_report` donne ce chiffre apres chaque ingestion.
+**Limite connue et mesuree.** Une part des chunks depasse la fenetre du modele
+d'embedding et est donc tronquee par le modele lui-meme ; le texte stocke, lui, reste
+integral. La commande `python -m src.index_report` donne ce chiffre apres chaque
+ingestion, et le chiffre du corpus actuel a un seul site, `vectors.get_chunker`.
+
+*(Ce paragraphe annoncait « 0,8 % des chunks depassent la fenetre de 256 tokens ». LES
+DEUX NOMBRES ETAIENT FAUX. La fenetre vaut 128, et ce n'est pas un reglage : elle est lue
+au runtime sur le modele. Le pourcentage portait sur le corpus disparu — voir la reserve
+en tete de cette section — et il etait de surcroit mesure sur le mauvais texte : cet
+instrument tokenisait le texte STOCKE quand le modele recoit le texte PREFIXE du titre de
+sa section, ce qui le faisait sous-compter d'un facteur 2,1 (registre §3.4). Son
+explication « il s'agit de passages denses — code, tableaux, formules » etait elle aussi
+inexacte : mesure, les chunks qui depassent avant prefixe sont des TABLES, et rien
+d'autre.)*
 
 #### Contextualisation des vecteurs
 

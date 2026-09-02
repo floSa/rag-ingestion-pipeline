@@ -230,7 +230,7 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 |----------------|---------------|--------------------------------------------|
 | id             | string        | `element_id`, ou `element_id#n` si le bloc a du etre decoupe |
 | embedding      | float[384]    | Vecteur paraphrase-multilingual-MiniLM-L12-v2                   |
-| document       | string        | Texte du chunk, integral (aucune troncature) |
+| document       | string        | Texte du chunk, integral — le VECTEUR, lui, est tronque au-dela de la fenetre |
 | metadata.element_id    | string | Hash ID de l'**ancre** du bloc, toujours au format `^[a-f0-9]{10}$` |
 | metadata.graph_node_id | string | = element_id, cle pour NebulaGraph  |
 | metadata.filename      | string | Nom du fichier source, sans extension — le **chapitre** |
@@ -246,8 +246,19 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | metadata.chunk_index / chunk_count | int | Position du chunk dans son bloc |
 | metadata.block_size    | int    | Nombre d'elements fusionnes dans ce chunk |
 
-**Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de 256
-tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
+**Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de
+**128** tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
+
+> **Ce bloc annoncait 256 tokens, et « aucune troncature ».** Les deux tombent
+> ensemble (registre §6.2). La fenetre vaut **128** (`mesure` le 2 septembre 2026,
+> `python -m src.index_report` : « limite : 128 tokens »), et **ce n'est pas un
+> reglage** : elle est lue au runtime sur le modele (`modele.max_seq_length`).
+> Le texte **stocke** est integral ; le **vecteur** ne l'est pas — le modele
+> tronque ce qui depasse, et cela arrive. Le chiffre et ses deux causes ont un
+> seul site, `vectors.get_chunker` dans ce depot.
+>
+> **Conséquence pour l'agent, et elle est directe** : un budget de contexte
+> calcule sur 256 tokens par chunk surestime du double ce qu'un chunk porte.
 
 **Granularité** : un vecteur par **chunk**, pas par élément — et le mot « bloc » qui vivait ici était le vocabulaire de `build_blocks`, un regroupement maison retiré du dépôt (registre §5.2, §6.4). Le découpage est confié à `HybridChunker` de Docling, qui regroupe ce qui va ensemble en respectant la **structure** du document ; « les éléments consécutifs d'une même section et de même nature sont fusionnés » décrivait l'algorithme disparu, pas celui-ci.
 
