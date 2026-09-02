@@ -2155,6 +2155,58 @@ change un fait, y compris ceux d'un lot dont c'est le sujet.
 
 ---
 
+### 4.31 → la RÉPARATION du lot 5 — quatre bloquants et quatre constats de ligne
+
+Le pilote a jugé le lot fusionnable **après réparation** : ses trois défauts de
+comportement sont confirmés, ses chiffres reproduits, ses écarts validés. Ce qui
+suit est ce qu'il a fermé, avec le juge de chacun.
+
+**Et le motif est dur à entendre : les quatre bloquants sont, quatre fois, la
+famille que ce lot existe pour fermer — commise par lui.** Un renvoi qu'il a
+rendu faux un commit après l'avoir écrit, un dénombrement qui contredit le
+déverrouillage sur lequel reposent ses propres tests, une conséquence devenue
+fausse au lot précédent et recopiée à quatre sites, et un invariant énoncé dans
+un docstring sans le garde qui va avec. Ce n'est pas une charge contre le lot :
+c'est la mesure de la difficulté du travail. Le lot s'est fait prendre deux fois
+de son propre aveu (§4.30.b, §4.30.i), son audit en a trouvé deux de plus, et le
+pilote en a créé un lui-même il y a deux jours (§5.4).
+
+#### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
+
+`verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
+son docstring — « Un `DESCRIBE` en échec est compté comme "colonne absente" : ne
+pas pouvoir constater n'est pas constater que tout va bien », qui est la leçon du
+cinquième trou du lot 3 (§4.4) — et **rien ne le gardait**.
+
+`mesuré` le 2 septembre 2026 sur le code livré, mutation appliquée puis révoquée,
+texte vérifié changé par empreinte SHA-256 :
+
+| État | `if colonne not in colonnes` → `if colonnes and colonne not in colonnes` |
+|---|---|
+| lot 5 tel que livré | **rc=0, 857 tests, ZÉRO rouge** |
+| après ce garde | **rc=1, 3 rouges** — `test_un_describe_rejete_est_compte_comme_colonne_absente`, `test_un_seul_describe_rejete_suffit_a_nommer_son_tag`, `test_l_anomalie_qui_en_decoule_prescrit_le_redemarrage` |
+
+*(La même mutation, la suite **privée de la classe neuve** : rc=0, 0 rouge. C'est
+la bascule, et elle est mesurée sur le même arbre.)*
+
+**Le motif est celui des douze gardes creux précédents** : *le test observe une
+absence.* `_verifier_le_tag_document` porte le sien depuis le lot 3 ; la fonction
+que le lot 5 vient d'écrire, non.
+
+**Ce que la mutation coûtait, et ce n'est pas une élégance** : un graphd qui
+refuse le `DESCRIBE` rend `tags_sans_la_colonne == []`, donc
+`anomalie_de_colonne` prend sa **seconde** branche et prescrit « réingérez » là où
+il faut « redémarrez **puis** réingérez ». **C'est le §4.29.e rouvert par le
+commit qui le ferme.**
+
+Le garde porte deux témoins : un schéma entièrement migré ne rend aucun tag —
+sans quoi un garde qui rougirait toujours passerait — et un `DESCRIBE` en échec
+**sur un seul tag** ne nomme que celui-là, sans quoi un garde qui ne verrait que
+« tous les `DESCRIBE` échouent » resterait vert sur l'état le plus plausible, un
+tag verrouillé par une migration en cours.
+
+---
+
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
 ### 5.1 → traité par le lot 5 — cinq symboles morts retirés, et le sixième était CONTOURNÉ

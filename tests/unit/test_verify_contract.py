@@ -19,9 +19,11 @@ from pathlib import Path
 
 import pytest
 
+from src.docling_service.elements import TAG_MAP
 from src.docling_service.ngql import DOCUMENT_PROPERTIES, VERTEX_PROPERTIES
 from src.verify_contract import (
     _lire_les_aretes,
+    _lire_les_tags_sans_la_colonne,
     _verifier_le_graphe,
     _verifier_le_tag_document,
     _verifier_les_ancres,
@@ -966,4 +968,107 @@ class TestLesDeuxEtatsDUneColonneNeSeConfondentPlus:
         )
         assert "REDEMARRER" in str(absente) and "REDEMARRER" not in str(vide), (
             f"le geste ne distingue pas les deux etats :\n  absente = {absente}\n  vide    = {vide}"
+        )
+
+
+class TestUnDescribeEnEchecCompteCommeUneColonneAbsente:
+    """Le TREIZIEME garde creux du chantier, et il etait dans la fonction qui
+    ENONCE l'invariant.
+
+    Le docstring de `_lire_les_tags_sans_la_colonne` ecrit : « Un `DESCRIBE` en
+    echec est compte comme "colonne absente" : ne pas pouvoir constater n'est pas
+    constater que tout va bien. » C'est la lecon du cinquieme trou du lot 3
+    (registre 4.4), et `_verifier_le_tag_document` la porte avec son propre test
+    — `test_a_rejected_describe_is_reported_and_not_read_as_a_success`.
+
+    **Cette fonction-ci ne l'avait pas.** `mesure` sur le code livre, AVANT ce
+    garde :
+    `if colonne not in colonnes` remplace par `if colonnes and colonne not in
+    colonnes` laisse `make all` en `rc=0`, 857 tests, ZERO rouge. Le motif est
+    celui des douze gardes creux precedents : *le test observe une absence.*
+
+    Ce que la mutation coute, et ce n'est pas une elegance : un graphd qui refuse
+    le `DESCRIBE` rendrait `tags_sans_la_colonne == []`, donc
+    `anomalie_de_colonne` prendrait sa SECONDE branche et prescrirait
+    « reingerez » la ou il faut « redemarrez PUIS reingerez ». C'est le registre
+    4.29.e rouvert par le commit qui le ferme.
+    """
+
+    TAGS = sorted(set(TAG_MAP.values()))
+    MIGRE = [[colonne] for colonne in VERTEX_PROPERTIES]
+    AVANT_MIGRATION = [[c] for c in VERTEX_PROPERTIES if c != "page_no_end"]
+
+    def _describe(self, reponses: dict[str, _Resultat]) -> _Session:
+        return _Session(reponses)
+
+    def test_un_schema_entierement_migre_ne_rend_aucun_tag(self) -> None:
+        """LE TEMOIN, et sans lui un garde qui rend toujours tout passerait."""
+        session = self._describe({"DESCRIBE TAG": _Resultat(self.MIGRE)})
+
+        assert _lire_les_tags_sans_la_colonne(session, "page_no_end") == []
+
+    def test_un_tag_sans_la_colonne_est_nomme_et_lui_seul(self) -> None:
+        session = self._describe(
+            {
+                "DESCRIBE TAG Table": _Resultat(self.AVANT_MIGRATION),
+                "DESCRIBE TAG": _Resultat(self.MIGRE),
+            }
+        )
+
+        assert _lire_les_tags_sans_la_colonne(session, "page_no_end") == ["Table"]
+
+    def test_un_describe_rejete_est_compte_comme_colonne_absente(self) -> None:
+        """LE GARDE. Un graphd qui refuse le `DESCRIBE` ne dit pas que tout va bien.
+
+        `_lire` journalise l'echec et rend une liste vide : la fonction doit lire
+        cette liste vide comme « je ne sais pas », donc comme une absence, et non
+        comme « aucune colonne ne manque ».
+        """
+        session = self._describe({"DESCRIBE TAG": _Resultat([], succes=False)})
+
+        manquants = _lire_les_tags_sans_la_colonne(session, "page_no_end")
+
+        assert manquants == self.TAGS, (
+            "un DESCRIBE en echec a ete lu comme « la colonne est la » : "
+            f"{manquants}. Ne pas pouvoir constater n'est pas constater que "
+            "tout va bien (registre 4.4, cinquieme trou)"
+        )
+
+    def test_un_seul_describe_rejete_suffit_a_nommer_son_tag(self) -> None:
+        """La MOITIE que le temoin ne couvre pas : un echec partiel.
+
+        Sans ce cas, un garde qui ne verrait que « tous les DESCRIBE echouent »
+        resterait vert sur un graphd qui n'en refuse qu'un — l'etat le plus
+        plausible, un tag verrouille par une migration en cours.
+        """
+        session = self._describe(
+            {
+                "DESCRIBE TAG SectionHeader": _Resultat([], succes=False),
+                "DESCRIBE TAG": _Resultat(self.MIGRE),
+            }
+        )
+
+        assert _lire_les_tags_sans_la_colonne(session, "page_no_end") == ["SectionHeader"]
+
+    def test_l_anomalie_qui_en_decoule_prescrit_le_redemarrage(self) -> None:
+        """LE TEMOIN DE BOUT EN BOUT, et c'est lui qui dit ce que le garde protege.
+
+        Le garde ne vaut que par ce que son appelant en fait : un `DESCRIBE` en
+        echec doit conduire au message « redemarrez PUIS reingerez », jamais a
+        « reingerez ». Sans cette assertion, la fonction pourrait rendre la bonne
+        liste et le rapport rester faux.
+        """
+        session = self._describe({"DESCRIBE TAG": _Resultat([], succes=False)})
+
+        message = anomalie_de_colonne(
+            "page_no_end",
+            _lire_les_tags_sans_la_colonne(session, "page_no_end"),
+            15173,
+            15173,
+            "registre 4.22",
+        )
+
+        assert message is not None
+        assert "REDEMARRER" in message, (
+            f"un DESCRIBE en echec prescrit la reingestion seule : {message}"
         )

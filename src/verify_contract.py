@@ -691,6 +691,18 @@ def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
         session: Session NebulaGraph.
         colonne: Nom de la colonne cherchee.
 
+    **CET INVARIANT ETAIT ENONCE ICI ET GARDE PAR RIEN — le treizieme garde
+    creux du chantier.** `mesure` le 2 septembre 2026 sur le code livre, AVANT ce garde :
+    remplacer `if colonne not in colonnes` par `if colonnes and colonne not in
+    colonnes` laissait `make all` en `rc=0`, 857 tests, zero rouge. Le motif est
+    celui des douze precedents — *le test observe une absence.* Ce que la
+    mutation coutait : un graphd qui refuse le `DESCRIBE` faisait prendre a
+    :func:`anomalie_de_colonne` sa SECONDE branche, donc prescrire « reingerez »
+    la ou il faut « redemarrez PUIS reingerez » — le registre 4.29.e rouvert par
+    le commit qui le ferme. Le garde est
+    `TestUnDescribeEnEchecCompteCommeUneColonneAbsente`, et il rougit a
+    3 tests sous cette mutation.
+
     Returns:
         Les tags qui ne la portent pas, dans l'ordre. Un ``DESCRIBE`` en echec
         est compte comme « colonne absente » : ne pas pouvoir constater n'est
