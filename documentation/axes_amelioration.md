@@ -2210,6 +2210,54 @@ reproductible.
 | `ranking.py:56-71`, `ranking.py:83-84` | **justes** — vérifiés ligne à ligne : ce sont bien les corps de `docling_parent_rank` et `docling_level_rank` |
 | `README.md:317`, `extraction.py:335-337`, `index_report.py:75-84`, `nebula.py:49`, `nebula.py:160`, `schemas.py:94-95` | **citations, pas des renvois** : ils vivent dans le tableau du §6.17 qui les déclare périmés ou dérivés, et ce tableau existe pour dire qu'ils le sont. Les corriger en `fichier:ligne` neuf serait refaire le défaut à trois jours près |
 
+#### 4.31.B2 « Onze modules sans dépendance externe » : ils sont QUATORZE, et le sept niait le déverrouillage
+
+`services/docling.md` annonçait **onze** modules ne dépendant que de la
+bibliothèque standard, et **sept** portant une dépendance de niveau module.
+
+*Le juge est une mesure* — balayage AST rejoué le 2 septembre 2026, **critère
+écrit au site** parce qu'un balayage dont le critère n'est pas écrit n'est pas
+reproductible : les **18 modules** de `src/docling_service/` (les `*.py`, moins
+le marqueur de paquet `__init__.py`, vide), un module portant une dépendance
+externe quand une instruction `import` du **corps du module** nomme un paquet
+racine qui n'est ni relatif, ni `src`/`docling_service`, ni dans
+`sys.stdlib_module_names`.
+
+**Résultat : 18 modules, 4 porteurs, 14 sans aucune dépendance** —
+`extraction.py` (`bs4`), `images.py` (`minio`), `main.py` (`fastapi`),
+`settings.py` (`pydantic_settings`).
+
+**Et le compte de sept était plus grave que le compte de onze : il NIAIT le
+déverrouillage livré par les lots 3 et 4** (§3.4, §4.4, §4.28.d), celui-là même
+sur lequel reposent `test_vectors.py` et `test_nebula.py`. Il rangeait
+`embedding.py`, `nebula.py` et `vectors.py` parmi les porteurs alors que leurs
+imports lourds sont **différés**. La preuve est dure, et elle tient en deux
+mesures : `chromadb`, `nebula3` et `sentence_transformers` **ne sont pas dans le
+venv du dépôt** (`importlib.util.find_spec` rend `None` pour les trois), et
+`uv run python -c "import src.docling_service.vectors"` — de même pour `nebula`
+et `embedding` — rend `rc=0` côté hôte.
+
+La liste ne venait pas d'un balayage : elle venait du **registre §6.8 corrigé à
+la main**, et §6.8 était marqué ✅ sur ce compte faux. Il est corrigé, pas
+rouvert : le constat — *le document énumère mal* — est bien fermé une fois
+l'énumération juste.
+
+**Le balayage est converti en garde**, parce que la phrase est une phrase
+d'exhaustivité et que le chantier n'en laisse plus passer sans borne ni test :
+`tests/unit/test_dependances_de_niveau_module.py` rejoue l'AST, sans rien
+importer — donc sans dépendre du venv ni de l'ordre des tests. `mesuré`,
+mutation appliquée puis révoquée, texte vérifié changé :
+
+| Mutation | Suite entière |
+|---|---|
+| `import minio` ajouté au corps de `storage.py` — un porteur de plus, rien d'autre ne casse | **rc=1, UN seul rouge** : `test_seuls_quatre_modules_portent_une_dependance` |
+| `import chromadb` remis au corps de `vectors.py` — le déverrouillage défait | **rc=2**, la collecte est **interrompue** sur 3 erreurs (`test_vectors.py`, `test_storage.py`, `test_extraction.py`). *Le garde ne rougit pas là : il n'est jamais atteint.* C'est ce qui rend la première mutation nécessaire — elle est la seule qui isole la propriété |
+
+Trois témoins : le balayage doit avoir lu au moins 18 modules, il doit rendre
+`bs4` sur `extraction.py` (sans quoi un balayage qui ne détecte rien passerait),
+et il doit rendre l'ensemble vide sur `ngql.py` (sans quoi un balayage qui
+détecte tout passerait aussi).
+
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 
 `verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
@@ -2420,7 +2468,7 @@ le redécouvre comme un défaut.
 | 6.5 | ~~fragments isolés « absorbés dans leur paragraphe »~~ | **✅ lot 5** — la production **jette**, et le rejet est **borné** au chunk seul de son élément depuis le lot 4 : écrire « jette » sans la borne aurait créé le défaut d'à côté | moyenne |
 | 6.6 | ~~`llm_integration_plan.md` prescrit `cross-encoder/ms-marco-MiniLM-L6-v2`~~ | **✅ lot 5, côté DOCUMENT** — la prescription est **retirée plutôt que remplacée** : choisir un reranker multilingue est une décision de l'autre dépôt, appuyée sur une campagne. Ce document devait cesser de prescrire ce qui a déjà échoué. Le défaut est **inerte** tant que le corpus est entièrement anglais (§1), et il se réveille au premier document non anglais ou à la première question française sur un passage anglais — ce que l'embedder multilingue rend précisément possible | haute |
 | 6.7 | ~~`docling.md` : « Ressources : GPU NVIDIA (CUDA 12.1) »~~ | **✅ lot 5** — n'était fermé qu'**à moitié** : trois autres affirmations du même fichier supposaient un GPU (« seul service avec accès GPU », « FastAPI + CUDA 12.1 », « la conversion sature déjà le GPU »). La nuance juste est écrite : l'image embarque les wheels CUDA, elle n'**exige** pas de GPU | haute |
-| 6.8 | ~~`docling.md` énumère les modules « sans dépendance externe »~~ | **✅ lot 5** — ils sont **onze** et la phrase en nommait cinq. **Et la liste d'omissions de ce constat était elle-même fausse** : elle oubliait `storage.py` et nommait `blocks.py`, qui n'existe plus. Remesuré à l'AST | basse |
+| 6.8 | ~~`docling.md` énumère les modules « sans dépendance externe »~~ | **✅ lot 5, corrigé par sa réparation** — ils sont **quatorze** sur 18, et non onze ; les quatre qui portent une dépendance de niveau module sont `extraction.py` (`bs4`), `images.py` (`minio`), `main.py` (`fastapi`) et `settings.py` (`pydantic_settings`). Le compte de onze **niait le déverrouillage des lots 3 et 4** — celui sur lequel reposent `test_vectors.py` et `test_nebula.py`. Le critère du balayage est écrit au site et rejoué par un test : §4.31.B2 | basse |
 | 6.9 | ~~`README.md`, section Volumétrie : mesurée sur 42 documents~~ | **✅ lot 5** — remplacée par la mesure de l'index vivant, avec deux réserves (les 13 objets MinIO ne sont pas représentatifs, la chaîne d'images HTML étant rompue ; une taille de répertoire n'est pas une mesure de contenu) et **aucune extrapolation**. **Le renvoi de ce constat a roté DEUX fois** : `:317` → `:365` → la section est en `:404`. Voir §6.17 | moyenne |
 | 6.10 | ~~chiffres de découpage et de bruit~~ | **✅ lot 5** — **conservés** avec leur périmètre plutôt que supprimés : ils documentent la décision prise à l'époque, et l'effacer laisserait le choix sans motif. Détail mesuré : la comparaison porte sur *Practical MLOps*, **absent du corpus** — les deux titres actuels s'en approchent, d'où la réserve écrite au site | moyenne |
 | 6.11 | ~~`CHANGEMENTS.md` : 759 arêtes, 13 220 chemins~~ | **✅ lot 5** — même traitement que §6.10, et la réserve dit ce que le corpus actuel a mesuré à la place (§3.2). Le 0/0 côté agent n'est pas une contradiction : il mesurait un graphe produit par autre chose que ce code | haute |

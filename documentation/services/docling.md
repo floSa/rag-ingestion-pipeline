@@ -110,21 +110,46 @@ que `HybridChunker` a remplace et que plus rien n'appelait, plus une doctrine de
 33 lignes que la production n'applique pas — registre §5.2. Son seul symbole
 encore appele, `has_content`, a rejoint `chunking.py`.)*
 
-**Onze modules ne dependent que de la bibliotheque standard**, et leur logique
-est donc testee sans Docling, sans torch et sans GPU (`mesure` le 2 septembre
-2026, imports de niveau module lus a l'AST — cette phrase en nommait **cinq**,
-et la liste du registre §6.8 qui la corrigeait en oubliait un de son cote) :
+**Quatorze modules ne dependent que de la bibliotheque standard**, et leur
+logique est donc testee sans Docling, sans torch et sans GPU.
 
-`anchoring.py`, `chunking.py`, `elements.py`, `hierarchy.py`, `jobs.py`,
-`language.py`, `markdown.py`, `matter.py`, `ngql.py`, `ranking.py`, `storage.py`.
+**LE CRITERE, ecrit parce qu'un balayage dont le critere n'est pas ecrit n'est
+pas reproductible.** Le perimetre est les **18 modules** de
+`src/docling_service/` — les `*.py` du repertoire, moins le marqueur de paquet
+`__init__.py`, qui est vide. Un module porte une dependance externe quand une
+instruction `import` ou `from ... import` du **corps du module** — donc ni dans
+une fonction, ni dans une methode, ni derriere un `if` — nomme un paquet racine
+qui n'est ni un import relatif, ni `src` ou `docling_service`, ni membre de
+`sys.stdlib_module_names`. `mesure` le 2 septembre 2026, lecture a l'AST ; le
+balayage est rejoue par `tests/unit/test_dependances_de_niveau_module.py`.
 
-Les sept autres portent une dependance de niveau module : `embedding.py`
-(`sentence_transformers`), `extraction.py` (`bs4`, `docling`, `fitz`),
-`images.py` (`fitz`, `minio`), `main.py` (`fastapi`, `uvicorn`), `nebula.py`
-(`nebula3`), `settings.py` (`pydantic_settings`) et `vectors.py` (`chromadb`,
-`docling_core`). Ce compte n'est pas celui des modules **inimportables** cote
-hote — plusieurs de ces dependances vivent dans le venv du depot — et cette
-propriete-la, elle, est gardee par
+Les quatorze : `anchoring.py`, `chunking.py`, `elements.py`, `embedding.py`,
+`hierarchy.py`, `jobs.py`, `language.py`, `markdown.py`, `matter.py`,
+`nebula.py`, `ngql.py`, `ranking.py`, `storage.py`, `vectors.py`.
+
+**Les quatre autres**, et il y en a quatre : `extraction.py` (`bs4`),
+`images.py` (`minio`), `main.py` (`fastapi`), `settings.py`
+(`pydantic_settings`).
+
+> **Cette phrase annoncait ONZE et SEPT, et le sept NIAIT le deverrouillage
+> livre par les lots 3 et 4.** Elle rangeait `embedding.py`, `nebula.py` et
+> `vectors.py` parmi les modules a dependance de niveau module : leurs imports
+> lourds sont **differes** dans la fonction qui en a besoin, et c'est
+> precisement ce qui permet a `tests/unit/test_vectors.py` et
+> `tests/unit/test_nebula.py` d'exister (registre §3.4, §4.4, §4.28.d). La
+> preuve est dure et elle tient en deux mesures : `chromadb`, `nebula3` et
+> `sentence_transformers` **ne sont pas dans le venv du depot**, et
+> `uv run python -c "import src.docling_service.vectors"` — de meme pour
+> `nebula` et `embedding` — rend `rc=0` cote hote.
+>
+> La liste d'origine ne venait pas d'un balayage : elle venait du registre §6.8
+> corrige a la main. C'est la famille que ce lot existe pour fermer, dans le
+> fichier ou il la ferme.
+
+Ce compte n'est pas celui des modules **inimportables** cote hote — `bs4`,
+`minio` et `pydantic_settings` vivent dans le venv du depot, donc trois des
+quatre s'importent quand meme, et le seul qui ne s'importe pas est `main.py`
+(`fastapi` absent du venv). Cette propriete-la, elle, est gardee par
 `tests/unit/test_importabilite_cote_hote.py`.
 
 ## Variables d'environnement
