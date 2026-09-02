@@ -31,6 +31,27 @@ RACINE = Path(__file__).resolve().parents[2]
 CHEMIN = RACINE / "dagster.yaml"
 
 
+def _reference_de_l_instance(chemin: Path) -> Any:
+    """Resout ce que Dagster lit du `dagster.yaml` livre, sans rien ouvrir.
+
+    `InstanceRef.from_dir` rend des `ConfigurableClassData` — du descriptif, pas
+    des objets : rien n'est instancie, donc aucun des trois stores Postgres que
+    ce fichier declare n'est joint. C'est ce qui rend le controle utilisable dans
+    une suite qui ne sort jamais du disque.
+
+    Le fichier est COPIE dans un repertoire jetable : `from_dir` prend son
+    argument pour la racine des artefacts locaux et peut y ecrire.
+    """
+    import shutil
+    import tempfile
+
+    from dagster._core.instance.ref import InstanceRef
+
+    with tempfile.TemporaryDirectory() as bac:
+        shutil.copy2(chemin, Path(bac) / "dagster.yaml")
+        return InstanceRef.from_dir(bac)
+
+
 @pytest.fixture(scope="module")
 def configuration() -> dict[str, Any]:
     """Le `dagster.yaml` livre, tel que Dagster le lit."""
@@ -128,12 +149,43 @@ class TestLeDelaiDeGardeEstArme:
         `DockerRunLauncher` — `max_resume_run_attempts: 0` devient un mauvais
         reglage, et ce test est ce qui le rappellera. *Cherche l'antecedent avant
         d'auditer le raisonnement.*
+
+        **CETTE ASSERTION PORTAIT SUR UN COMMENTAIRE** (registre 4.29.g). Elle
+        etait `"DefaultRunLauncher" in texte`, sur le contenu BRUT du fichier.
+        `mesure` le 2 septembre 2026 : la chaine apparait sur TROIS lignes de
+        `dagster.yaml`, et les trois sont des commentaires —
+        `grep -v` sur les lignes de commentaire puis `grep -c` rend **0**.
+        Le test ne trouvait donc que du commentaire, dans un fichier dont le
+        docstring affirme « ce fichier n'est pas un test de texte, et la
+        distinction compte ». Le docstring avait raison sur le reste du fichier,
+        et faux sur cette assertion-la.
+
+        Elle lit desormais le launcher **effectif**, celui que Dagster resout
+        depuis le `dagster.yaml` livre. La resolution est PURE — `InstanceRef`
+        calcule un `ConfigurableClassData` sans instancier — donc aucun store
+        n'est ouvert et aucun Postgres n'est joint : le fichier declare pourtant
+        trois stores Postgres, et les instancier sortirait la suite du disque.
+        Le fichier livre est copie dans un repertoire jetable, `from_dir`
+        pouvant y creer des repertoires d'artefacts.
+
+        La seconde assertion, elle, etait deja substantielle et elle est
+        conservee : `"run_launcher:" not in texte` detecte l'APPARITION d'un bloc
+        explicite, c'est-a-dire exactement l'evenement qui rendrait
+        `max_resume_run_attempts: 0` mauvais. Elle porte le raisonnement ; la
+        premiere ne portait rien.
         """
         texte = CHEMIN.read_text(encoding="utf-8")
+        ref = _reference_de_l_instance(CHEMIN)
+        donnees = ref.run_launcher_data
 
-        assert "DefaultRunLauncher" in texte, (
-            "le launcher a change : relire `max_resume_run_attempts`, dont le 0 "
-            "ne se defend que pour un launcher incapable de reprendre un run"
+        assert donnees is not None, "aucun launcher resolu depuis le dagster.yaml livre"
+        assert (donnees.module_name, donnees.class_name) == (
+            "dagster",
+            "DefaultRunLauncher",
+        ), (
+            f"le launcher effectif est {donnees.module_name}.{donnees.class_name} "
+            "et non DefaultRunLauncher : relire `max_resume_run_attempts`, dont "
+            "le 0 ne se defend que pour un launcher incapable de reprendre un run"
         )
         assert "run_launcher:" not in texte, (
             "un `run_launcher` explicite est apparu dans dagster.yaml : verifier "

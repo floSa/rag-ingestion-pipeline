@@ -332,8 +332,16 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 >
 > L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
 > lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
-> redémarrer ne répare rien — voir le registre, le message d'anomalie
-> `page_no_end` de `verify_contract` égare sur ce point précis.
+> redémarrer ne répare rien.
+>
+> **Et le message d'anomalie le dit désormais lui-même.** Il égarait : il
+> annonçait « le tag a migré, les données non — il faut une réingestion » alors
+> que, dans le cas mesuré, la colonne **n'existait pas** (registre §4.29.e). Le
+> contrôle lit maintenant `DESCRIBE TAG` **avant** de compter les valeurs
+> absentes, et rend deux anomalies distinctes : « la colonne n'existe pas,
+> redémarrer le service **puis** réingérer » et « la colonne existe, les données
+> sont à NULL, réingérer ». Les deux états demandaient des gestes différents et
+> se présentaient sous la même phrase.
 
 > Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'un des trois stores résiste : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes.
 
@@ -855,7 +863,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**847 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
+**857 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
