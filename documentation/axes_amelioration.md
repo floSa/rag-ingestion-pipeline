@@ -1595,11 +1595,14 @@ qui tient, et c'est elle qu'il faut lire :
    questions désigne des `element_id`, mais un rappel se calcule sur des chunks :
    deux chunks de plus déplacent le dénominateur ;
 2. **`page_no_end` demande une réingestion pour être peuplé.** Le schéma migre en
-   place, les **données** non — `mesuré` le 1er septembre 2026,
-   `DESCRIBE TAG Paragraph` sur le space vivant rend
-   `label, page_no, text, minio_url, depth` : la colonne n'existe **pas encore**.
-   Un jeu de questions écrit contre l'index actuel ne pourrait pas exercer le
-   cadrage « page N à M » que le lot 4 livre.
+   place, les **données** non. `mesuré` le 1er septembre 2026,
+   `DESCRIBE TAG Paragraph` rendait `label, page_no, text, minio_url, depth` : la
+   colonne n'existait pas. **`mesuré` le 2 septembre 2026, après un redémarrage de
+   `docling-service` : elle existe, sur les tags d'élément, et 7 251 sommets
+   `Paragraph` sur 7 251 sont à `NULL`** (§4.29.e). La conclusion ne bouge pas —
+   un jeu de questions écrit contre l'index actuel ne peut pas exercer le cadrage
+   « page N à M » — mais **son antécédent a changé**, et le second état est celui
+   qui vaut aujourd'hui.
 
 **Ce qui est retourné, et ce qui tient — les deux moitiés, côte à côte :**
 
@@ -1637,9 +1640,11 @@ l'index vivant sont un sous-ensemble strict des deux. La cause se lit dans le co
 `prov[0].page_no`.
 
 **L'ordre reste forcé, pour deux raisons neuves et mesurées** : le jeu de *chunks*
-change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'existe pas encore dans le
-graphe** — `DESCRIBE TAG` sur le space vivant ne le porte pas, donc une réingestion
-est requise, précédée d'un redémarrage de `docling-service` (§4.29.e). Les 30
+change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'est peuplé sur aucun sommet**
+— la colonne existe depuis le redémarrage du 2 septembre 2026, et les 7 251
+`Paragraph` sont à `NULL` (§4.29.e), donc une réingestion reste requise ; elle
+reste précédée d'un redémarrage de `docling-service`, qui est sans coût quand le
+schéma est déjà à jour. Les 30
 questions attendent donc toujours, mais pas pour la raison écrite ici.
 
 **Ce que le chantier doit en retenir** : ce paragraphe portait un raisonnement
@@ -1842,6 +1847,25 @@ le 1er septembre 2026 sur le space vivant, `DESCRIBE TAG Paragraph` et
 `SectionHeader` rendent `label, page_no, text, minio_url, depth` — cinq colonnes,
 sans `page_no_end`. Le message décrit donc un état qui n'est pas celui du poste,
 et il prescrit le geste qui ne suffit pas.
+
+> **CE FAIT A PÉRIMÉ LE 2 SEPTEMBRE 2026, ET IL FAUT LE LIRE COMME UN ÉTAT DE
+> POSTE.** `docling-service` a été redémarré, `init_schema()` a joué, et
+> `DESCRIBE TAG Paragraph` comme `DESCRIBE TAG SectionHeader` rendent désormais
+> **six** colonnes — `label, page_no, text, minio_url, depth, page_no_end` —
+> tandis que **7 251 sommets `Paragraph` sur 7 251 portent `NULL`** (`mesuré`,
+> lecture directe depuis le conteneur d'extraction). Le poste est donc passé du
+> **premier** état au **second** : le schéma a migré, les données non.
+>
+> **Ce n'est pas le monde qui a menti, c'est une phrase non datée qui a vieilli.**
+> C'est la même famille que les quatre bloquants de la réparation, produite cette
+> fois par le monde et non par une main : *un état de poste n'est vrai qu'à une
+> date, et la seule défense est l'étiquette et la date.* Les deux mesures sont
+> conservées côte à côte, chacune datée, plutôt qu'une seule réécrite — c'est ce
+> qui rend le mouvement lisible.
+>
+> **Ce que cela ne change PAS** : la forme du garde à écrire ci-dessous, ni la
+> consigne « redémarrer puis réingérer ». Le contrôle doit toujours distinguer les
+> deux états, et le poste vient de prouver que **les deux existent vraiment**.
 
 **Et `init_schema()` n'est joué qu'au DÉMARRAGE du service** (`main.py:72`, dans
 le `lifespan`). La consigne complète est donc **« redémarrer `docling-service`,
@@ -2482,6 +2506,52 @@ soustrait les blocs et les spans de code avant de chercher. *Un balayage se
 mesure avec son critère, et un critère se corrige en regardant ce qu'il a
 attrapé* — sans quoi la réparation aurait écrit « trois liens morts » et créé,
 dans le geste qui ferme le constat, exactement le défaut qu'il ferme.
+
+#### 4.31.N Deux faits de poste mesurés pendant la réparation, et l'un rendait la documentation fausse
+
+Ils ne viennent ni du lot ni de son audit : le **monde** les a produits pendant
+que la réparation travaillait. C'est la même famille que les quatre bloquants —
+*une phrase survit à ce qui la rend fausse* — à ceci près qu'aucune main ne l'a
+écrite. **La seule défense est l'étiquette et la date.**
+
+**1 — `page_no_end` EXISTE désormais dans le graphe vivant.** `docling-service` a
+été redémarré, `init_schema()` a joué. `mesuré` le 2 septembre 2026, lecture
+directe depuis le conteneur d'extraction :
+
+| | 1er septembre 2026 | 2 septembre 2026 |
+|---|---|---|
+| `DESCRIBE TAG Paragraph` | 5 colonnes, **sans** `page_no_end` | **6 colonnes**, `page_no_end` comprise |
+| `DESCRIBE TAG SectionHeader` | idem | idem |
+| sommets `Paragraph` à `NULL` | — | **7 251 / 7 251** |
+
+Donc « la colonne n'existe pas encore » est **devenu faux** au `README.md`, au
+§4.29.e, au §4.28.e et au mandat (§6 et §7.2). Les cinq sites portent désormais
+les **deux** mesures, chacune datée, plutôt qu'une seule réécrite : c'est ce qui
+rend le mouvement lisible. Et chacun dit explicitement que **ce fait périme, parce
+que c'est un état de poste et non une propriété du code** — un `docker compose
+restart` suffit à le retourner, et c'est exactement ce qui vient d'arriver.
+
+Le poste est passé du **premier** des deux états que `anomalie_de_colonne`
+distingue au **second**. La consigne, elle, ne périme pas : redémarrer avant de
+réingérer est sans coût quand le schéma est déjà à jour, et c'est la seule des
+deux choses qui vaille d'être apprise par cœur.
+
+**2 — `dagster-daemon` tournait depuis quatre heures**, et le pilote l'a arrêté
+pour protéger l'antécédent. **L'index est intact**, et la réparation l'a remesuré
+de ses mains le 2 septembre 2026 — les cinq chiffres concordent :
+
+| | |
+|---|---|
+| chunks ChromaDB | **4 365** |
+| sommets | **15 196** |
+| arêtes `PARENT_OF` | **15 173** |
+| documents | **23** |
+| objets MinIO | **13** |
+
+Le §7.2 du mandat le dit arrêté : c'est **redevenu** vrai. Ce qu'il faut retenir
+n'est pas l'incident mais sa leçon : **« le daemon est arrêté » n'est pas une
+propriété stable**, elle se remesure avant toute mesure qui en dépend — et les
+sensors étant livrés armés (§4.18), un daemon qui repart réingère.
 
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 

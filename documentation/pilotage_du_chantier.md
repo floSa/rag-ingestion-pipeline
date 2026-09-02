@@ -924,7 +924,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **5** | Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre. **Plus, en PREMIER point et tranché par le pilote le 2 septembre 2026 : `CLEANED_SUBDIR` cesse d'être un réglage** (§4.29.a). Personne ne configure où l'étape de nettoyage écrit — c'est un détail d'implémentation — et c'est le seul chemin par lequel un outil de purge peut viser le corpus versionné ou les bind mounts des stores. `mesuré` sur un faux corpus : `CLEANED_SUBDIR=htms` passe le containment livré par le lot 4 et détruit 24 des 25 fichiers ; `=database` détruit les stores. **Un réglage annoncé à l'opérateur dont trois valeurs sur quatre détruisent le corpus coûte plus qu'il ne rend, et une configuration que rien ne configure est de la configuration morte** — c'est le périmètre de ce lot au mot près. **Plus les huit autres constats du §4.29** que le lot 4 a versés | la lisibilité, et l'arrêt des faux réglages | **à faire — c'est l'action suivante, §7** |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché le 1er septembre 2026 : les 30 questions attendent le lot 4. La conclusion tient toujours, mais SON MOTIF EST TOMBÉ — et c'est instructif.** Le motif était : `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`, donc §4.22, §4.6 et §4.7 déplaceraient les `element_id`. **Mesuré trois fois — par le lot 4, reproduit par son audit, confirmé statiquement par le pilote — c'est FAUX** : les ensembles d'`element_id` sont rigoureusement égaux de part et d'autre du lot 4, 15 173 des deux côtés, différence symétrique nulle, parce que `page_no_end` est **additif** et que `pages[0]` vaut exactement ce que valait `prov[0].page_no`.
 
-L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'existe pas encore dans le graphe** — `DESCRIBE TAG` sur le space vivant ne le porte pas, donc une réingestion est requise. Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
+L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'est peuplé sur aucun sommet** — la colonne **existe** depuis le redémarrage de `docling-service` du 2 septembre 2026, et les 7 251 `Paragraph` sont à `NULL` (`mesuré` ; registre §4.29.e). Une réingestion reste donc requise. *La ligne précédente disait « la colonne n'existe pas encore » : c'était vrai le 1er septembre et faux le 2. **Un état de poste n'est vrai qu'à une date** — remesure-le, ne le lis pas ici.* Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
 
 **Ce que le chantier doit retenir de cet épisode** : une conclusion juste peut reposer sur un raisonnement faux, et alors elle ne survit que par chance. Le motif ici était un raisonnement sur le code — plausible, jamais mesuré — et il a fallu trois mesures indépendantes pour le renverser. **Étiquette `supposé` tout ce qui n'a pas été mesuré, même quand ta conclusion te paraît sûre** : c'est cette étiquette qui a déjà économisé un lot entier au §6, et son absence ici a failli en coûter un. Ce qui est acquis en revanche l'est vraiment : le corpus complet est indexé et les deux instruments ont rendu leur verdict dessus, ce qui donne au lot 4 son antécédent mesuré |
 
@@ -1049,10 +1049,18 @@ complet** ingéré par le code de `main`, et non sur les 3 documents du lot 1.
 **LE GESTE À FAIRE AVANT TOUTE RÉINGESTION, ET IL N'EST PAS INTUITIF :
 redémarrer `docling-service`.** C'est `init_schema()`, joué **au démarrage** du
 service, qui exécute l'`ALTER TAG … ADD (page_no_end int)` livré par le lot 4.
-`DESCRIBE TAG` sur le space vivant ne porte pas encore cette colonne (`mesuré`) :
-une réingestion lancée sans ce redémarrage écrirait contre un tag qui n'a pas la
-colonne. Le message d'anomalie de `verify_contract` ne dit pas cette moitié — c'est
-le §4.29.e, consigné.
+Une réingestion lancée sans ce redémarrage écrirait contre un tag qui n'a pas la
+colonne. Le message d'anomalie de `verify_contract` ne disait pas cette moitié —
+c'est le §4.29.e, fermé par le lot 5.
+
+**ÉTAT DU POSTE, DATÉ, ET IL PÉRIME.** `DESCRIBE TAG` ne portait **pas** cette
+colonne le 1er septembre 2026. **Le 2 septembre 2026, `docling-service` a été
+redémarré, `init_schema()` a joué, et la colonne EXISTE** — six colonnes sur
+`Paragraph` et `SectionHeader`, et **7 251 sommets `Paragraph` sur 7 251 à
+`NULL`** (`mesuré` par le pilote). Le poste est passé du premier état au second.
+**Ceci est un état, pas une propriété du code : mesure-le, ne le lis pas ici.**
+La consigne, elle, ne périme pas — redémarrer avant de réingérer est sans coût
+quand le schéma est déjà à jour.
 
 **`verify_contract` sort désormais en 1 avec QUATRE anomalies**, et c'est le
 verdict juste : l'index vivant a été écrit par le code du lot 3. Deux sont
@@ -1092,9 +1100,17 @@ Ce que le lot 3 laisse, et qui vaut toujours :
   réserve mesurée qu'il faut connaître : `run_monitoring` couvre `STARTING`,
   `NOT_STARTED` et `STARTED`, **jamais `QUEUED`** — précisément l'état du run
   bloqué de ce poste ;
-- **`dagster-daemon` est arrêté, et il l'est RESTÉ à travers le redémarrage de
-  l'instance** (`mesuré` le 1er septembre 2026 : `exited`, les neuf autres
-  services debout). Un service arrêté par `docker compose stop` ne repart pas au
+- **`dagster-daemon` est arrêté — et ÇA N'A PAS TENU TOUT SEUL.** `mesuré` le
+  1er septembre 2026 : `exited`, les neuf autres services debout, et il l'était
+  resté à travers le redémarrage de l'instance. **`mesuré` le 2 septembre 2026 :
+  il TOURNAIT, et depuis quatre heures.** Le pilote l'a arrêté pour protéger
+  l'antécédent, et l'index est intact — **4 365 chunks, 15 196 sommets, 15 173
+  arêtes `PARENT_OF`, 23 documents, 13 objets MinIO** (`mesuré`, remesuré par la
+  réparation du lot 5 le 2 septembre 2026 : les cinq chiffres concordent). Le
+  §7.2 le dit arrêté, et c'est **redevenu** vrai. *Ce qu'il faut retenir n'est pas
+  l'incident, c'est que la propriété « le daemon est arrêté » n'est pas stable :
+  elle se remesure avant toute mesure qui en dépend, et les sensors étant livrés
+  armés (§4.18), un daemon qui repart réingère.* Un service arrêté par `docker compose stop` ne repart pas au
   redémarrage de la machine, quelle que soit sa politique de redémarrage — c'est
   ce qui a protégé l'index. `docker compose start dagster-daemon` pour le
   reprendre, et **sache ce que tu déclenches** : les sensors sont livrés armés

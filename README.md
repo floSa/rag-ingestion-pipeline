@@ -326,11 +326,26 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 > **REDÉMARREZ `docling-service` AVANT toute réingestion, y compris sans purge.**
 > C'est `init_schema()` qui joue les `ALTER TAG … ADD`, et il n'est appelé **qu'au
 > démarrage du service** (`main.py`, dans le `lifespan`). Le lot 4 ajoute la
-> colonne `page_no_end` aux onze tags d'élément : `mesuré` le 1er septembre 2026,
-> `DESCRIBE TAG Paragraph` sur le space vivant rend
-> `label, page_no, text, minio_url, depth` — **la colonne n'existe pas encore**.
-> Une réingestion lancée avant le redémarrage écrit donc contre un tag qui n'a pas
-> la colonne, et le graphd rejette chaque `INSERT`.
+> colonne `page_no_end` aux onze tags d'élément. Une réingestion lancée avant le
+> redémarrage écrit donc contre un tag qui n'a pas la colonne, et le graphd
+> rejette chaque `INSERT`.
+>
+> **ÉTAT DU POSTE, ET IL PÉRIME — c'est un état, pas une propriété du code.**
+> `mesuré` le **1er septembre 2026** : `DESCRIBE TAG Paragraph` rendait
+> `label, page_no, text, minio_url, depth` — la colonne **n'existait pas**.
+> `mesuré` le **2 septembre 2026**, après un redémarrage de `docling-service` qui
+> a joué `init_schema()` : `DESCRIBE TAG Paragraph` et `DESCRIBE TAG SectionHeader`
+> rendent **six** colonnes, `page_no_end` comprise, et **7 251 sommets `Paragraph`
+> sur 7 251 sont à `NULL`**. L'état a donc changé de moitié : le schéma a migré,
+> les données non — c'est le **second** des deux états que le message d'anomalie
+> distingue, plus le premier.
+>
+> **Ne lis pas ces deux lignes comme un fait du dépôt : remesure.**
+> `docker exec <conteneur docling> python -c "… DESCRIBE TAG Paragraph …"`. Un
+> redémarrage de service suffit à les périmer, et c'est exactement ce qui vient
+> d'arriver. La **consigne**, elle, ne périme pas : redémarrer avant de réingérer
+> est sans coût quand le schéma est déjà à jour, et c'est la seule des deux
+> choses qui vaille d'être apprise par cœur.
 >
 > L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
 > lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
