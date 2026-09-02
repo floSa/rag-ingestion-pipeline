@@ -2264,13 +2264,22 @@ suit est ce qu'il a fermé, avec le juge de chacun.
 
 **Et le motif est dur à entendre : les quatre bloquants sont, quatre fois, la
 famille que ce lot existe pour fermer — commise par lui.** Un renvoi qu'il a
-rendu faux un commit après l'avoir écrit, un dénombrement qui contredit le
-déverrouillage sur lequel reposent ses propres tests, une conséquence devenue
-fausse au lot précédent et recopiée à quatre sites, et un invariant énoncé dans
-un docstring sans le garde qui va avec. Ce n'est pas une charge contre le lot :
-c'est la mesure de la difficulté du travail. Le lot s'est fait prendre deux fois
-de son propre aveu (§4.30.b, §4.30.i), son audit en a trouvé deux de plus, et le
-pilote en a créé un lui-même il y a deux jours (§5.4).
+rendu faux **au commit suivant** celui qui l'écrivait (§4.31.B1), un
+dénombrement qui contredit le déverrouillage sur lequel reposent ses propres
+tests (§4.31.B2), une conséquence devenue fausse au lot précédent et recopiée à
+**neuf passages dans six fichiers** (§4.31.B3), et un invariant énoncé dans un
+docstring sans le garde qui va avec (§4.31.B4).
+
+**Ce n'est pas une charge contre le lot : c'est la mesure de la difficulté du
+travail, et personne n'y échappe.** Le lot s'est fait prendre **deux fois de son
+propre aveu** (§4.30.b, §4.30.i) ; son audit en a trouvé **deux de plus** ; le
+**pilote** a recopié « le seul chapitre retenu sans aucun `<h2>` » **deux fois,
+le tableau des balises sous les yeux** (§3.2, mandat §5.1 ter) ; et la
+**réparation elle-même** en a produit trois qu'elle a dû corriger en cours de
+route — « huit sites » pour neuf passages, « ~37 lignes » repris sans mesure, et
+« trois liens morts » dont deux étaient des illustrations de syntaxe. Chacune est
+écrite au site où elle a été faite, parce qu'une famille de défaut qu'on ne
+documente que chez les autres n'est pas comprise.
 
 #### 4.31.B1 Cinq renvois `mesuré` que le lot a rendus faux LUI-MÊME
 
