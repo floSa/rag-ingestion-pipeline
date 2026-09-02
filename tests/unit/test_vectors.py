@@ -373,6 +373,127 @@ class TestChunkCountNeMentPlus:
         assert metas[0]["chunk_count"] == 1
 
 
+class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
+    """LE GARDE QUI MANQUAIT, et il manquait a une clause du contrat.
+
+    La forme de l'id ChromaDB — id nu pour un element d'un seul chunk, suffixe
+    `#n` au-dela — etait ecrite a DEUX endroits : `chunking.chunk_ids`, testee et
+    **sans aucun appelant**, et une expression en ligne dans `build_chunks`, la
+    seule que la production execute et **que rien ne gardait** (registre 5.1).
+
+    `mesure` sur `main` a `27a6304`, le code d'AVANT ce lot : remplacer
+    l'expression en ligne de `vectors.py` par `f"{element_id}#{ancre.index}"` —
+    un suffixe inconditionnel — y laissait la suite ENTIEREMENT VERTE, **857
+    tests, rc=0**. La meme mutation, portee ici sur `chunking.chunk_id`, rougit
+    a deux tests.
+
+    **CE QUE CETTE MUTATION COUTE, ET CE DOCSTRING L'AVAIT SURDIT.** Il ecrivait
+    « chaque reingestion entrerait des vecteurs neufs, l'index doublerait ».
+    C'est faux depuis le lot 4 (`a54636c`) : `extraction.extract` appelle
+    `storage.forget_document` AVANT la conversion, et `vectors.delete_document`
+    supprime par `where={"source_path": ...}` et **jamais par id** — donc aucune
+    forme d'id ne laisse d'orphelin. Le seul chemin qui saute la purge est le
+    doublon exact, qui n'ecrit rien non plus.
+
+    Ce qui est casse est la **clause du contrat** elle-meme : la forme de l'id,
+    que `verify_contract` COMPTE — 974 ids suffixes sur 4 365 (`mesure` le
+    2 septembre 2026). Un suffixe inconditionnel porterait ce compte a 4 365 sur
+    4 365, et c'est un compteur d'instrument, pas une anomalie levee : raison de
+    plus pour qu'un test tienne la clause.
+
+    C'est pourquoi la fonction n'a pas ete amputee comme du code mort : elle est
+    devenue le seul site, et l'appelant la traverse. Ces tests assertent **depuis
+    le cote qui produit** — sur les ids que `build_chunks` rend.
+    """
+
+    @staticmethod
+    def _chunks(textes: list[str], meme_ancre: bool) -> Any:
+        class Morceau:
+            def __init__(self, texte: str, ref: str) -> None:
+                self.text = texte
+                self.meta = type("M", (), {"doc_items": [type("I", (), {"self_ref": ref})()]})()
+
+        return [
+            Morceau(texte, "#/texts/0" if meme_ancre else f"#/texts/{i}")
+            for i, texte in enumerate(textes)
+        ]
+
+    ELEMENTS = [
+        {
+            "id": "aa3de10738",
+            "self_ref": "#/texts/0",
+            "label": "text",
+            "page_no": 1,
+            "text": "un paragraphe",
+            "minio_url": "",
+            "depth": 1,
+            "order": 0,
+            "reference_id": "DOC",
+        },
+        {
+            "id": "bb3de10739",
+            "self_ref": "#/texts/1",
+            "label": "text",
+            "page_no": 1,
+            "text": "un autre paragraphe",
+            "minio_url": "",
+            "depth": 1,
+            "order": 1,
+            "reference_id": "DOC",
+        },
+    ]
+
+    def _ids(self, monkeypatch: Any, textes: list[str], meme_ancre: bool) -> list[str]:
+        from src.docling_service import vectors as module
+
+        monkeypatch.setattr(
+            module,
+            "get_chunker",
+            lambda: type("C", (), {"chunk": lambda s, d: self._chunks(textes, meme_ancre)})(),
+        )
+        ids, _, _ = module.build_chunks(self.ELEMENTS, IDENTITE, None, document=object())
+        return ids
+
+    def test_un_element_d_un_seul_chunk_est_ecrit_sous_son_id_nu(self, monkeypatch):
+        """LE GARDE. Le suffixe inconditionnel rougit ici.
+
+        Deux elements, un chunk chacun : les deux ids doivent etre nus. Un `#0`
+        ici signifie que la clause du contrat est rompue au seul site qui ecrit.
+        """
+        ids = self._ids(monkeypatch, ["a" * 200, "b" * 200], meme_ancre=False)
+
+        assert ids == ["aa3de10738", "bb3de10739"], (
+            f"les ids portent un suffixe alors que chaque element tient en un "
+            f"chunk : {ids}. C'est la clause du contrat sur la forme de l'id, "
+            "celle que `verify_contract` compte sous « ids de chunk suffixes »"
+        )
+
+    def test_un_element_multi_chunks_est_ecrit_suffixe(self, monkeypatch):
+        """LE TEMOIN, et il est indispensable.
+
+        Sans lui, un `chunk_id` qui rendrait TOUJOURS l'id nu passerait le test
+        ci-dessus — et deux chunks du meme element s'ecraseraient l'un l'autre a
+        l'upsert, ce qui perd du texte au lieu d'en dupliquer.
+        """
+        ids = self._ids(monkeypatch, ["a" * 200, "b" * 200, "c" * 200], meme_ancre=True)
+
+        assert ids == ["aa3de10738#0", "aa3de10738#1", "aa3de10738#2"], (
+            f"trois chunks du meme element partagent un id : {ids}. Ils "
+            "s'ecraseraient l'un l'autre a l'upsert"
+        )
+
+    def test_les_ids_ecrits_sont_tous_distincts(self, monkeypatch):
+        """Le second temoin : la propriete qui rend l'upsert correct.
+
+        `chunk_ids` l'assertait sur sa propre sortie ; ce qui compte est qu'elle
+        tienne sur ce que la production ECRIT, un `upsert` avec un id repete
+        n'ecrivant qu'un vecteur pour deux chunks.
+        """
+        ids = self._ids(monkeypatch, ["a" * 200, "b" * 200, "c" * 200], meme_ancre=True)
+
+        assert len(set(ids)) == len(ids), f"ids repetes : {ids}"
+
+
 class TestPageNoEndAtteintLaMetadonneeDeChunk:
     """LA MOITIE VECTORIELLE DU REGISTRE 4.22, ET ELLE N'ETAIT PROUVEE PAR RIEN.
 

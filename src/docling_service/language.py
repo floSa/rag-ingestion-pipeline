@@ -1,10 +1,17 @@
 """Detection de la langue d'un document, sans dependance externe.
 
-Pourquoi c'est utile ici : le modele d'embedding actuel n'est entraine que
-sur de l'anglais. Une question francaise posee sur un ouvrage anglais fait
-remonter en priorite les passages francais, meme hors sujet. Savoir dans
-quelle langue est chaque document permet a l'agent de filtrer, de ponderer,
-ou simplement de dire a l'utilisateur ce qu'il a sous la main.
+Pourquoi c'est utile ici : savoir dans quelle langue est chaque document permet
+a l'agent de filtrer quand l'utilisateur le demande, et de dire a l'utilisateur
+dans quelle langue est la source qu'il cite.
+
+**CE PARAGRAPHE PORTAIT UN VESTIGE, ET LE REGISTRE NE LE NOMMAIT PAS.** Il
+disait « le modele d'embedding actuel n'est entraine que sur de l'anglais. Une
+question francaise posee sur un ouvrage anglais fait remonter en priorite les
+passages francais, meme hors sujet. » C'etait vrai d'`all-MiniLM-L6-v2`,
+remplace depuis `7b72854`. Le modele du contrat est
+`paraphrase-multilingual-MiniLM-L12-v2`, MULTILINGUE. Le registre 6.14 et 6.15
+nomment deux sites de ce vestige — `README.md` et `schemas.py` — et il y en
+avait TROIS : celui-ci, dans le module dont la langue est le sujet.
 
 **Methode.** Comptage de mots-outils (articles, prepositions, auxiliaires).
 A l'echelle d'un document — des milliers de mots — c'est tres discriminant,

@@ -17,7 +17,14 @@ class PipelineSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     source_dir: str = "/opt/dagster/app/Datas"
-    cleaned_subdir: str = ".cleaned"
+    # `CLEANED_SUBDIR` etait ici, et il n'y est plus : le sous-repertoire ou
+    # l'etape de nettoyage depose ses copies est un DETAIL D'IMPLEMENTATION, pas
+    # un reglage. Il vit desormais en constante,
+    # `src.docling_service.elements.CLEANED_SUBDIR`, avec les trois mesures qui
+    # ont decide (registre 4.29.a) — dont celle-ci, la moins visible : toute
+    # valeur autre que la constante deplacait les `element_id` de tout le corpus,
+    # parce que le nettoyage ecrivait selon le reglage et que l'identite du
+    # document retirait la constante.
     docling_service_url: str = "http://docling-service:8000"
 
     # MinIO : utilise uniquement pour exporter les images base64 des captures

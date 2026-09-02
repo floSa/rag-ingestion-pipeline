@@ -230,7 +230,7 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 |----------------|---------------|--------------------------------------------|
 | id             | string        | `element_id`, ou `element_id#n` si le bloc a du etre decoupe |
 | embedding      | float[384]    | Vecteur paraphrase-multilingual-MiniLM-L12-v2                   |
-| document       | string        | Texte du chunk, integral (aucune troncature) |
+| document       | string        | Texte du chunk, integral — le VECTEUR, lui, est tronque au-dela de la fenetre |
 | metadata.element_id    | string | Hash ID de l'**ancre** du bloc, toujours au format `^[a-f0-9]{10}$` |
 | metadata.graph_node_id | string | = element_id, cle pour NebulaGraph  |
 | metadata.filename      | string | Nom du fichier source, sans extension — le **chapitre** |
@@ -240,21 +240,32 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | metadata.page_no       | int    | Numero de page (1 pour les formats non pagines) |
 | metadata.minio_url     | string | URL MinIO si image/table ("" sinon) |
 | metadata.reference_id  | string | Section parente, ou `DOC`            |
+| metadata.page_no_end   | int    | DERNIERE page du chunk. Egale a `page_no` sauf pour un element que Docling a fusionne par-dessus une frontiere de page : citer « page N » seule est alors inexact |
+| metadata.language      | string | Code ISO 639-1 du document (`en`, `fr`...), vide si indeterminee |
+| metadata.depth         | int    | Profondeur dans la hierarchie. **DEUX ECHELLES s'y croisent** : sur un titre elle compte les titres au-dessus, sur tout autre element elle vaut celle de son titre + 1. C'est `label` qui dit laquelle. Aucun plafond. Site canonique : `ChunkMetadata.depth` |
 | metadata.section_title | string | Titre de la section, pour l'affichage des citations |
 | metadata.page_position | int    | Rang de l'element dans sa page       |
 | metadata.ref_position  | int    | Rang de l'element sous son parent    |
 | metadata.chunk_index / chunk_count | int | Position du chunk dans son bloc |
 | metadata.block_size    | int    | Nombre d'elements fusionnes dans ce chunk |
 
-**Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de 256
-tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
+**Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de
+**128** tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
 
-**Granularite** : un vecteur par **bloc**, et non par element. L'analyse de
-layout produit quantite de fragments isoles (`x`, `and`, `Note`, `-`) qui n'ont
-aucun sens vectorises ; les elements consecutifs d'une meme section et de meme
-nature sont donc fusionnes, et les residus sous le plancher sont ecartes de
-l'index. Le decoupage est confie a HybridChunker de Docling —
-plus aucune troncature.
+> **Ce bloc annoncait 256 tokens, et « aucune troncature ».** Les deux tombent
+> ensemble (registre §6.2). La fenetre vaut **128** (`mesure` le 2 septembre 2026,
+> `python -m src.index_report` : « limite : 128 tokens »), et **ce n'est pas un
+> reglage** : elle est lue au runtime sur le modele (`modele.max_seq_length`).
+> Le texte **stocke** est integral ; le **vecteur** ne l'est pas — le modele
+> tronque ce qui depasse, et cela arrive. Le chiffre et ses deux causes ont un
+> seul site, `vectors.get_chunker` dans ce depot.
+>
+> **Conséquence pour l'agent, et elle est directe** : un budget de contexte
+> calcule sur 256 tokens par chunk surestime du double ce qu'un chunk porte.
+
+**Granularité** : un vecteur par **chunk**, pas par élément — et le mot « bloc » qui vivait ici était le vocabulaire de `build_blocks`, un regroupement maison retiré du dépôt (registre §5.2, §6.4). Le découpage est confié à `HybridChunker` de Docling, qui regroupe ce qui va ensemble en respectant la **structure** du document ; « les éléments consécutifs d'une même section et de même nature sont fusionnés » décrivait l'algorithme disparu, pas celui-ci.
+
+Ce que la production écarte, `mesuré` dans `vectors.build_chunks` : un chunk sans aucun caractère alphanumérique, ou plus court que `MIN_CHUNK_CHARS` — **et seulement s'il est le seul chunk de son élément**. Une fenêtre du milieu d'un texte continu est conservée même courte, sans quoi l'agent concaténerait un texte troué (registre §4.28.a). Les éléments écartés de l'index restent présents dans NebulaGraph.
 
 **Consequences pour l'agent** :
 
@@ -295,18 +306,26 @@ une evolution du pipeline.
 
 | Tag            | Proprietes                                      |
 |----------------|-------------------------------------------------|
-| Document       | filename: string, type_file: string             |
-| SectionHeader  | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Paragraph      | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Table          | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Picture        | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| ListItem       | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Caption        | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Code           | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Formula        | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Footnote       | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| PageHeader     | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| PageFooter     | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Document       | `filename`: string, `type_file`: string, `total_pages`: int, `collection`: string, `source_path`: string, `language`: string, `content_hash`: string |
+| les **11** tags d'element — SectionHeader, Paragraph, Table, Picture, ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter | `label`: string, `page_no`: int, `page_no_end`: int, `text`: string, `minio_url`: string, `depth`: int |
+
+> **Ce bloc annoncait DEUX propriétés sur `Document` et CINQ sur les tags
+> d'élément.** `mesuré` le 2 septembre 2026 (`ngql.DOCUMENT_PROPERTIES`,
+> `ngql.VERTEX_PROPERTIES`) : **7** et **6**. Deux manques, et ils ne sont pas de
+> même nature — `source_path` est **l'exigence 3 du contrat**, l'identité d'un
+> document, et elle manquait depuis l'origine ; `page_no_end` a été ajoutée aux
+> onze tags par le **lot 4**, qui n'a pas touché ce document (registre §6.18).
+>
+> Les onze tags sont désormais donnés en **une** ligne et non recopiés onze
+> fois : une énumération répétée onze fois est onze occasions de diverger, et
+> c'est ainsi que `page_no_end` a manqué partout à la fois. Le site canonique du
+> schéma est `VERTEX_PROPERTIES` / `VERTEX_TYPES` dans
+> `src/docling_service/ngql.py`.
+>
+> **`NULL` n'est pas `0`.** Le schéma Nebula migre en place, les **données** non :
+> un `ALTER TAG … ADD` laisse à `NULL` tous les sommets déjà écrits, et seule une
+> réécriture du document les renseigne. Un `page_no_end` absent signifie « fin
+> inconnue », jamais « tient sur une page ». `verify_contract` le compte.
 
 `depth` est le nombre d'aretes `PARENT_OF` qui separent le noeud de la racine
 de son document. C'est le **seul niveau declare** lisible sur un titre : aucun
@@ -321,10 +340,52 @@ n'en decrit jamais un (registre 4.24). Un noeud ecrit avant le lot 3 porte
 | PARENT_OF  | sequence: int    | Document -> SectionHeader -> Elements      |
 | LINKED_TO  | relation: string | Caption -> Picture/Table ("describes")     |
 
+#### `sequence` : les TROIS RESERVES DE LECTURE — a lire avant de s'en servir
+
+**L'exigence 4 du contrat est tenue** : `sequence` est presente sur **toutes** les
+aretes `PARENT_OF`, et triee par `sequence`, `page_no` ne decroit jamais dans un
+document. `verify_contract` le verifie sur la totalite des aretes.
+
+Mais trois proprietes qu'aucun document ne portait, et **dont deux interdisent
+des controles qu'on serait tente d'ecrire a la place** :
+
+1. **`sequence` repart a 0 dans chaque document.** Elle n'est **pas** globalement
+   monotone : tout « avant / apres » doit etre **borne au document**. Comparer
+   deux `sequence` de documents differents n'a aucun sens.
+2. **Elle n'est pas contigue sous un parent, et c'est par construction.** C'est un
+   ordre de lecture **global au document**, pas un rang sous le parent : l'ecart
+   entre deux enfants consecutifs est la taille du sous-arbre du frere precedent.
+3. **Les trous sont grands.** Le plus grand ecart entre deux enfants consecutifs
+   d'un meme parent se compte en **centaines**.
+
+**Les deux consequences pour l'agent, et ce sont elles qui coutent :**
+
+- une « fenetre d'elements » implementee comme « les enfants de P dont `sequence`
+  est dans `[s-k, s+k]` » rendra **silencieusement moins** d'elements que demande.
+  Pour obtenir les `k` voisins, il faut **trier les enfants de P par `sequence`
+  puis prendre les rangs voisins**, jamais filtrer sur un intervalle de valeurs ;
+- lire la contiguite comme un indice d'integrite fera **conclure a une perte de
+  donnees qui n'existe pas**.
+
+Les chiffres de ces trois reserves ont **un seul site**, le docstring de
+`verify_contract.inversions_de_page` dans ce depot : ils y sont remesures sur le
+corpus complet, et non repris du lot 1 qui les avait mesures sur 3 documents.
+
+> **CE QUI RESTE A FAIRE, ET IL N'EST PAS FAISABLE D'ICI.** Le registre §6.16
+> reste **ouvert**, et sa moitie manquante est la documentation de
+> `rag-agent-chat`, dans l'**autre depot** : ces trois reserves decrivent la
+> facon dont l'AGENT lit `sequence`, et aucun commit de ce depot-ci ne peut
+> l'ecrire la-bas. Ce que ce depot pouvait faire est fait — les rendre
+> trouvables en un endroit nomme, avec leurs chiffres a un site unique. **Le
+> geste qui reste est de les reporter dans `pour_le_pipeline_ingestion.md` cote
+> agent.** Ne pas le confondre avec « §6.16 est ferme ».
+
 **VID format** : `FIXED_STRING(256)` — le site canonique est `VID_MAX_BYTES`
 dans `src/docling_service/ngql.py`. Ce plan annonçait 64 : un space créé à 64
-refuse les deux documents réels du corpus (identifiants de 65 et 67 octets),
-et un `vid_type` ne se modifie pas après coup.
+refuse **16 des 23 documents du corpus**, ceux dont l'identifiant dépasse
+64 octets — jusqu'à **111** —, et un `vid_type` ne se modifie pas après coup.
+Les longueurs et leur méthode de mesure vivent à un seul site,
+`documentation/services/nebulagraph.md`, section « Schéma nGQL ».
 - Document : `doc_{source_path sans extension}` — **la clé, jamais le nom de
   fichier seul** : le corpus porte deux `Preface.html`, et `doc_{filename}`
   les ferait collisionner sur un seul sommet (contrat, exigence 3)
@@ -409,10 +470,29 @@ L'agent peut copier ces schemas ou les importer comme dependance.
 | LLM principal    | **Claude Sonnet/Opus**  | Long context (200K), multimodal natif, tool-use |
 | LLM fallback     | **GPT-4o**              | Alternative si besoin                           |
 | Embedding query  | **paraphrase-multilingual-MiniLM-L12-v2**   | Obligatoire : meme modele que l'ingestion       |
-| Reranking        | **cross-encoder/ms-marco-MiniLM-L6-v2** | Local, pas de cout API, bon compromis |
+| Reranking        | **A TRANCHER — voir la reserve ci-dessous** | `ms-marco-MiniLM-L6-v2` est ANGLAIS |
 | Frontend         | **Streamlit** ou **Gradio** | Prototypage rapide, selection interactive    |
 | API backend      | **FastAPI**             | Meme stack que le service Docling               |
 | Observabilite    | **Langfuse**            | Open-source, self-hostable en Docker            |
+
+> **LE RERANKER PRESCRIT ICI EST ANGLAIS, FACE A UN EMBEDDER MULTILINGUE**
+> (registre §6.6). `cross-encoder/ms-marco-MiniLM-L6-v2` est entraine sur MS
+> MARCO, un jeu anglais. C'est **la faute exacte que l'agent a deja mesuree de
+> son cote** : etendue de scores **0,0 %** sur 20 candidats en francais, c'est-a-dire
+> un reranker qui ne classe plus rien et se contente de renvoyer l'ordre d'entree.
+>
+> Et c'est le meme mode de panne que l'exigence 1 du contrat : **silencieux**. Un
+> reranker qui n'ordonne rien ne leve aucune erreur, ne remplit aucun journal, et
+> rend des resultats plausibles.
+>
+> **Le corpus actuel est entierement en anglais** (registre §1), donc le defaut
+> est INERTE aujourd'hui — un reranker anglais sur un corpus anglais fonctionne.
+> Il se reveille au premier document non anglais, ou a la premiere question posee
+> en francais sur un passage anglais, ce que le modele d'embedding multilingue
+> rend precisement possible. La prescription est donc **retiree plutot que
+> remplacee** : choisir un reranker multilingue est une decision de l'autre
+> depot, appuyee sur une campagne, et ce document n'a pas a la trancher a sa
+> place. Ce qu'il doit faire est de ne plus prescrire ce qui a deja echoue.
 | Guardrails       | **NeMo Guardrails**     | Validation input/output, anti-hallucination     |
 | PII detection    | **Presidio**            | Detection/anonymisation d'informations personnelles |
 
@@ -551,7 +631,10 @@ LLM_MAX_TOKENS=4096
 
 # --- Retrieval ---
 EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2   # DOIT etre le meme que l'ingestion
-RERANK_MODEL=cross-encoder/ms-marco-MiniLM-L6-v2
+# A TRANCHER : ms-marco-MiniLM-L6-v2 est ANGLAIS, et l'agent a mesure une
+# etendue de scores de 0,0 % sur 20 candidats francais — un reranker qui ne
+# classe plus rien, en silence. Voir la reserve du tableau des modeles.
+RERANK_MODEL=<a-trancher-multilingue>
 RETRIEVAL_TOP_K=20
 RERANK_TOP_K=10
 MAX_SEARCH_ITERATIONS=3

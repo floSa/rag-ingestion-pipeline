@@ -301,6 +301,114 @@ class TestTagSchemaStatements:
         assert len(alterations) == len(VERTEX_PROPERTIES)
 
 
+class TestChaqueColonneRecoitSonTYPE:
+    """Registre 4.29.c — LA LONGUEUR ETAIT GARDEE, LA CORRESPONDANCE NON.
+
+    `VERTEX_PROPERTIES` et `VERTEX_TYPES` sont lus ENSEMBLE par
+    `tag_schema_statements` : les desaligner produit un `CREATE TAG` qui n'a pas
+    les colonnes que les `INSERT` ecrivent. L'invariant etait ecrit au site, et
+    reproduit de mes mains le 2 septembre 2026 sur le code livre par le lot 4 :
+
+    ==================================== =========================
+    mutation                             suite entiere
+    ==================================== =========================
+    un type RETIRE — longueur 5 pour 6   ROUGE, 5 tests
+    `page_no_end` passe a `string`       **VERTE, 838 tests**
+    ==================================== =========================
+
+    La longueur est donc gardee, et pas par un test : par le `strict=True` des
+    deux `zip`, qui leve. C'est un garde reel et il est au site. Ce que RIEN ne
+    gardait est la correspondance colonne -> type, celle qui decide qu'un
+    `page_no_end` est un `int`.
+
+    L'echec est bruyant quand le graphd rejette un `INSERT`, d'ou la severite
+    basse. Mais **un `int` declare `string` ne rejette pas forcement** : il
+    accepte et stocke la mauvaise forme, et un agent qui compare `page_no_end` a
+    `page_no` compare alors un entier a une chaine.
+
+    Ces tests assertent le couple ATTENDU pour chaque colonne, contre le
+    `CREATE TAG` que la fonction rend — pas contre les tuples, qui sont ce qu'on
+    veut voir bouger.
+    """
+
+    # Le schema attendu, ecrit ICI et non derive des tuples : un test qui relit
+    # sa source ne garde rien. Une colonne ajoutee demain fait rougir le temoin
+    # de completude ci-dessous, ce qui est le comportement voulu — c'est le
+    # moment de decider son type.
+    TYPE_ATTENDU = {
+        "label": "string",
+        "page_no": "int",
+        "page_no_end": "int",
+        "text": "string",
+        "minio_url": "string",
+        "depth": "int",
+    }
+
+    def test_le_temoin_les_colonnes_attendues_sont_bien_celles_du_schema(self) -> None:
+        """LE TEMOIN, ET IL PASSE EN PREMIER.
+
+        Sans lui, une colonne ajoutee au schema echapperait a la table ci-dessus
+        et son type ne serait garde par rien — le defaut de depart, un cran plus
+        loin.
+        """
+        assert set(self.TYPE_ATTENDU) == set(VERTEX_PROPERTIES), (
+            "le schema a gagne ou perdu une colonne sans que son type soit "
+            f"decide ici : {set(VERTEX_PROPERTIES) ^ set(self.TYPE_ATTENDU)}"
+        )
+
+    @pytest.mark.parametrize("colonne", sorted(TYPE_ATTENDU))
+    def test_chaque_colonne_est_declaree_avec_son_type(self, colonne: str) -> None:
+        """LE GARDE. Un type change rougit ici, colonne par colonne."""
+        creation = next(
+            s for s in tag_schema_statements(["Paragraph"]) if s.startswith("CREATE TAG")
+        )
+
+        attendu = f"{colonne} {self.TYPE_ATTENDU[colonne]}"
+        assert attendu in creation, (
+            f"le CREATE TAG ne declare pas « {attendu} » : {creation}. Un type "
+            "faux n'est pas toujours rejete par le graphd — il peut accepter et "
+            "stocker la mauvaise forme"
+        )
+
+    def test_une_permutation_des_types_est_vue(self) -> None:
+        """LE SECOND TEMOIN, et c'est lui que le registre reclamait.
+
+        Un test qui n'asserterait que « les types declares sont les bons, dans
+        l'ordre » serait vert sur deux colonnes de MEME type echangees. Le vrai
+        risque est une permutation qui deplace un `string` dans un emplacement
+        `int` : ce test la voit, parce qu'il asserte le couple NOM-TYPE et non
+        la suite des types.
+
+        Il asserte aussi qu'aucune colonne ne recoit DEUX types, ce qu'une
+        permutation partielle pourrait produire.
+        """
+        creation = next(
+            s for s in tag_schema_statements(["Paragraph"]) if s.startswith("CREATE TAG")
+        )
+
+        for colonne, type_attendu in self.TYPE_ATTENDU.items():
+            autre = "string" if type_attendu == "int" else "int"
+            assert f"{colonne} {autre}" not in creation, (
+                f"« {colonne} » est declaree en {autre} alors qu'elle doit etre "
+                f"en {type_attendu} : {creation}"
+            )
+
+    def test_chaque_alter_porte_aussi_son_type(self) -> None:
+        """La migration est l'autre moitie, et elle porte le meme risque.
+
+        `CREATE TAG IF NOT EXISTS` ne fait rien sur un space existant : c'est
+        l'`ALTER` qui decide du type reellement ajoute a un space peuple. Un
+        garde qui n'aurait vu que le `CREATE` aurait ete vert sur un `ALTER`
+        errone, c'est-a-dire sur tout poste deja en service.
+        """
+        alterations = [s for s in tag_schema_statements(["Paragraph"]) if s.startswith("ALTER TAG")]
+
+        for colonne, type_attendu in self.TYPE_ATTENDU.items():
+            assert f"ALTER TAG Paragraph ADD ({colonne} {type_attendu});" in alterations, (
+                f"aucun ALTER ne declare « {colonne} {type_attendu} » : {alterations}"
+            )
+
+
 class TestMissingVertexColumns:
     """Le garde qui manquait : une migration peut echouer et se taire.
 

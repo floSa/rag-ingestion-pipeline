@@ -141,6 +141,33 @@ class TestUnEchecNePasseJamaisInapercu:
         resultat = request_reindex(URL, post=Espion(exception=requests.Timeout("trop long")))
         assert "ECHEC" in resultat.metadata_value
 
+    def test_un_echec_ne_se_rend_jamais_comme_un_succes(self):
+        """LE GARDE DE LA BRANCHE QUE LE LOT 5 A DECIDE DE NE PAS AMPUTER.
+
+        Le registre 5.7 range cette branche dans le code mort : la production ne
+        l'atteint plus, `reindex_job.lexical_index` levant d'abord. C'est exact.
+        Mais l'etat est atteignable sur l'objet, et sans la branche il tombe sur
+        le cas nominal — `mesure` : `"ok — None chunks indexes"`.
+
+        Le test precedent asserte la PRESENCE de « ECHEC ». Celui-ci asserte la
+        propriete qui compte, et il est plus fort : un echec ne doit pas pouvoir
+        se LIRE comme un succes. Un rendu qui porterait les deux mots passerait
+        le premier et rougirait ici.
+        """
+        resultat = request_reindex(URL, post=Espion(exception=requests.Timeout("trop long")))
+
+        rendu = resultat.metadata_value
+
+        assert not rendu.startswith("ok"), (
+            f"un echec de reindexation se rend « {rendu} » : l'operateur lit un "
+            "succes dans l'interface Dagster, et l'index lexical de l'agent est "
+            "pourtant perime"
+        )
+        assert "chunks indexes" not in rendu, (
+            f"le rendu « {rendu} » annonce un compte de chunks indexes alors "
+            "qu'aucune reindexation n'a abouti"
+        )
+
     def test_les_metadonnees_disent_le_compte_en_cas_de_succes(self):
         resultat = request_reindex(URL, post=Espion(FausseReponse({"chunks_indexed": 77})))
         assert "77" in resultat.metadata_value

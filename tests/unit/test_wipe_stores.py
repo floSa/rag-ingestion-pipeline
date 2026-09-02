@@ -9,6 +9,7 @@ juste — c'est en cela qu'elle ressemble aux autres pannes de cette chaine.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -309,11 +310,12 @@ def _purger(
         source_dir: Racine des donnees, dont le sous-repertoire ``.cleaned`` est
             purge. Par defaut un chemin inexistant sous ``tmp_path``, pour
             qu'aucun test ne touche au corpus du poste.
-        cleaned_subdir: Valeur de ``CLEANED_SUBDIR``. ``None`` laisse le defaut
-            du code. C'EST LE RECLAGE QUI DECIDE DE LA CIBLE DU ``rmtree``, et il
-            est annonce a l'operateur dans ``.env.example`` : le harnais devait
-            pouvoir le poser, sans quoi aucun test n'observait ce que ce module
-            supprime quand on le configure.
+        cleaned_subdir: Valeur posee dans ``CLEANED_SUBDIR``. ``None`` retire la
+            variable de l'environnement herite. **Ce n'est plus un reglage** : le
+            sous-repertoire est une constante du code (registre 4.29.a). Le
+            harnais garde la possibilite de poser la variable, et c'est ce qui
+            permet de prouver qu'elle est INERTE — y compris pour les deux
+            valeurs qui detruisaient le corpus et les stores.
 
     Returns:
         Le processus termine, et la liste des gestes tracee par les bouchons.
@@ -351,6 +353,36 @@ def _purger(
         timeout=120,
     )
     return processus, trace.read_text(encoding="utf-8").splitlines()
+
+
+def _faux_corpus(tmp_path: Path) -> Path:
+    """Un `Datas/` jetable : du corpus, un `database/`, et du HTML nettoye.
+
+    JAMAIS le `Datas/` du poste. Ces tests lancent un sous-processus qui
+    SUPPRIME un repertoire, et le corpus reel est versionne — son contenu entre
+    dans le calcul d'`element_id` (contrat, exigences 2 et 3).
+    """
+    datas = tmp_path / "datas"
+    (datas / "htms" / "livre").mkdir(parents=True)
+    (datas / "htms" / "livre" / "chapitre.html").write_text("<html>corpus</html>", "utf-8")
+    (datas / "pdfs").mkdir()
+    (datas / "pdfs" / "livre.pdf").write_bytes(b"%PDF-1.4 corpus")
+    (datas / "database" / "chroma").mkdir(parents=True)
+    (datas / "database" / "chroma" / "index.bin").write_bytes(b"des vecteurs")
+    (datas / ".cleaned" / "htms").mkdir(parents=True)
+    (datas / ".cleaned" / "htms" / "chapitre.html").write_text("<html/>", "utf-8")
+    return datas
+
+
+def _corpus_intact(datas: Path) -> None:
+    """Le corpus ET l'index vivant sont encore la, a l'octet."""
+    chapitre = datas / "htms" / "livre" / "chapitre.html"
+    assert chapitre.exists(), "LE CORPUS A ETE DETRUIT par la purge"
+    assert chapitre.read_text(encoding="utf-8") == "<html>corpus</html>"
+    assert (datas / "pdfs" / "livre.pdf").read_bytes() == b"%PDF-1.4 corpus"
+    index = datas / "database" / "chroma" / "index.bin"
+    assert index.exists(), "L'INDEX VIVANT A ETE DETRUIT par la purge"
+    assert index.read_bytes() == b"des vecteurs"
 
 
 class TestLesBouchonsFonctionnent:
@@ -581,13 +613,13 @@ class TestMainPurgeAussiLeHtmlNettoye:
 
 
 class TestUneCibleHorsDeLaRacineEstREFUSEE:
-    """LE SEUL BLOQUANT DE CE LOT QUI DETRUIT QUELQUE CHOSE.
+    """LE SEUL BLOQUANT DU LOT 4 QUI DETRUISAIT QUELQUE CHOSE.
 
-    `main()` calcule `Path(reglages.source_dir) / reglages.cleaned_subdir` et
-    passe le resultat a `purge_cleaned`, qui faisait `shutil.rmtree` sans aucun
-    controle de containment. Or `CLEANED_SUBDIR` **est un reglage annonce a
-    l'operateur**, `.env.example:54`, et trois de ses valeurs font viser la
-    RACINE ou au-dessus (`mesure` le 1er septembre 2026) :
+    `main()` calculait `Path(reglages.source_dir) / reglages.cleaned_subdir` et
+    passait le resultat a `purge_cleaned`, qui faisait `shutil.rmtree` sans aucun
+    controle de containment. `CLEANED_SUBDIR` etait alors **un reglage annonce a
+    l'operateur**, et quatre de ses valeurs faisaient viser la RACINE ou
+    au-dessus (`mesure` le 1er septembre 2026) :
 
         CLEANED_SUBDIR=""   ->  Path("/x/Datas") / ""   ==  /x/Datas
         CLEANED_SUBDIR="."  ->  idem, apres resolution
@@ -602,102 +634,76 @@ class TestUneCibleHorsDeLaRacineEstREFUSEE:
 
     **LE REFUS EST DUR, ET C'EST UNE DECISION.** Pas un avertissement, pas un
     repli sur le defaut : un echec, verse aux `echecs`, code de sortie 1. Une
-    purge qui ne sait pas ce qu'elle vise ne purge pas — et un repli silencieux
-    sur `.cleaned` serait pire, l'operateur croyant avoir configure une cible
-    que le code aurait discretement remplacee.
+    purge qui ne sait pas ce qu'elle vise ne purge pas.
+
+    **CE QUI A CHANGE AU LOT 5, ET CE QUI N'A PAS CHANGE.** Le reglage n'existe
+    plus, donc ces quatre valeurs ne sont plus atteignables par `main()` : la
+    classe voisine `TestLeSousRepertoireNettoyeNEstPlusUnReglage` le prouve. Ce
+    qui reste atteignable, et qui garde ce garde vivant, c'est un `source_dir`
+    mal regle — un reglage legitime, lui, qui decide encore de la racine. Les
+    cas dangereux sont donc eprouves ici PAR LA RACINE, et sur `purge_cleaned`
+    directement pour ceux qu'aucun `source_dir` ne peut produire.
 
     Ces tests s'eprouvent sur un FAUX corpus jetable sous `tmp_path`, jamais sur
     le `Datas/` du poste. C'est le harnais qui le garantit : `SOURCE_DIR` pointe
     par defaut un chemin inexistant sous `tmp_path`.
     """
 
-    @staticmethod
-    def _faux_corpus(tmp_path: Path) -> Path:
-        """Un `Datas/` jetable : du corpus, un `database/`, et du HTML nettoye."""
-        datas = tmp_path / "datas"
-        (datas / "htms" / "livre").mkdir(parents=True)
-        (datas / "htms" / "livre" / "chapitre.html").write_text("<html>corpus</html>", "utf-8")
-        (datas / "pdfs").mkdir()
-        (datas / "pdfs" / "livre.pdf").write_bytes(b"%PDF-1.4 corpus")
-        (datas / "database" / "chroma").mkdir(parents=True)
-        (datas / "database" / "chroma" / "index.bin").write_bytes(b"des vecteurs")
-        (datas / ".cleaned" / "htms").mkdir(parents=True)
-        (datas / ".cleaned" / "htms" / "chapitre.html").write_text("<html/>", "utf-8")
-        return datas
+    def test_un_cleaned_qui_sort_de_la_racine_fait_sortir_en_un(self, tmp_path: Path) -> None:
+        """LE CAS QUI RESTE ATTEIGNABLE PAR `main()`, et il n'est pas theorique.
 
-    def _corpus_intact(self, datas: Path) -> None:
-        """Le corpus ET l'index vivant sont encore la, a l'octet."""
-        chapitre = datas / "htms" / "livre" / "chapitre.html"
-        assert chapitre.exists(), "LE CORPUS A ETE DETRUIT par la purge"
-        assert chapitre.read_text(encoding="utf-8") == "<html>corpus</html>"
-        assert (datas / "pdfs" / "livre.pdf").read_bytes() == b"%PDF-1.4 corpus"
-        index = datas / "database" / "chroma" / "index.bin"
-        assert index.exists(), "L'INDEX VIVANT A ETE DETRUIT par la purge"
-        assert index.read_bytes() == b"des vecteurs"
+        Les quatre valeurs de reglage sont mortes avec le reglage. Ce qui peut
+        encore faire viser hors de la racine est le repertoire lui-meme : un
+        `.cleaned` qui est un LIEN SYMBOLIQUE vers l'exterieur passerait toute
+        comparaison textuelle, et `rmtree` suivrait le lien. La comparaison porte
+        sur le chemin RESOLU des deux cotes, et c'est ce qui l'attrape.
 
-    @pytest.mark.parametrize(
-        ("sous_repertoire", "ce_qu_il_vise"),
-        [
-            ("", "la racine elle-meme : Path(base) / '' vaut base"),
-            (".", "la racine elle-meme, apres resolution"),
-            ("..", "le PARENT de la racine"),
-        ],
-    )
-    def test_une_cible_qui_vise_la_racine_ou_au_dessus_fait_sortir_en_un(
-        self, tmp_path: Path, sous_repertoire: str, ce_qu_il_vise: str
-    ) -> None:
-        """Les trois valeurs de reglage qui font viser la racine ou au-dessus.
-
-        Le refus porte sur le CONTAINMENT STRICT, et rien de plus large. Ce qu'il
-        ne couvre pas — une cible bien contenue mais fausse, `CLEANED_SUBDIR=htms`
-        — est consigne au registre et NON traite : ce serait etendre une decision
-        prise, pas la tenir.
+        Le cas se produit pour de vrai sur ce depot : `Datas/database/` est ecrit
+        par Docker, et le chantier a deja deplace des stores en les remplacant par
+        des copies (registre 4.26). Un lien pose la par commodite suffit.
         """
-        datas = self._faux_corpus(tmp_path)
+        datas = _faux_corpus(tmp_path)
+        # Le `.cleaned` du faux corpus est un vrai repertoire : on le remplace
+        # par un lien vers un temoin situe HORS de la racine.
+        shutil.rmtree(datas / ".cleaned")
+        dehors = tmp_path / "dehors"
+        dehors.mkdir()
+        (dehors / "temoin.txt").write_text("hors de la racine", encoding="utf-8")
+        (datas / ".cleaned").symlink_to(dehors, target_is_directory=True)
 
-        acheve, _ = _purger(tmp_path, source_dir=str(datas), cleaned_subdir=sous_repertoire)
+        acheve, _ = _purger(tmp_path, source_dir=str(datas))
 
-        self._corpus_intact(datas)
-        assert acheve.returncode == 1, (
-            f"CLEANED_SUBDIR={sous_repertoire!r} vise {ce_qu_il_vise} et la purge "
-            f"a rendu 0 : elle ne sait pas ce qu'elle vise\n{acheve.stdout}{acheve.stderr}"
+        _corpus_intact(datas)
+        assert (dehors / "temoin.txt").exists(), (
+            "le lien a ete suivi et la cible HORS de la racine detruite"
         )
+        assert acheve.returncode == 1, acheve.stdout + acheve.stderr
         assert "PURGE INCOMPLETE" in acheve.stdout, acheve.stdout
         assert "HTML nettoye" in acheve.stdout.split("PURGE INCOMPLETE")[1], acheve.stdout
 
-    def test_un_sous_repertoire_absolu_remplace_la_racine_et_est_refuse(
+    def test_le_refus_nomme_la_cible_la_racine_et_le_reglage_qui_reste(
         self, tmp_path: Path
     ) -> None:
-        """Le cas le plus large : un chemin ABSOLU fait oublier la base entiere.
-
-        `Path("/x/Datas") / "/autre"` vaut `/autre`. La cible designee ici est un
-        repertoire jetable HORS de la racine : elle doit survivre, et le refus
-        doit venir du containment et non d'une absence de droits.
-        """
-        datas = self._faux_corpus(tmp_path)
-        ailleurs = tmp_path / "ailleurs"
-        ailleurs.mkdir()
-        (ailleurs / "temoin.txt").write_text("hors de la racine", encoding="utf-8")
-
-        acheve, _ = _purger(tmp_path, source_dir=str(datas), cleaned_subdir=str(ailleurs))
-
-        self._corpus_intact(datas)
-        assert (ailleurs / "temoin.txt").exists(), (
-            "un chemin ABSOLU a remplace la racine et la purge a suivi"
-        )
-        assert acheve.returncode == 1, acheve.stdout + acheve.stderr
-
-    def test_le_refus_nomme_la_cible_la_racine_et_le_reglage(self, tmp_path: Path) -> None:
         """Un refus sans cause probable envoie l'operateur lire le code.
 
         Il doit nommer les trois choses qu'il faut pour agir : ce qui a ete vise,
-        ce dans quoi cela devait tenir, et le REGLAGE qui en a decide.
+        ce dans quoi cela devait tenir, et le reglage qui en decide encore. Ce
+        reglage n'est plus `CLEANED_SUBDIR` — il a disparu — c'est `SOURCE_DIR`,
+        et le message aurait continue de designer le mauvais coupable.
         """
-        datas = self._faux_corpus(tmp_path)
+        datas = _faux_corpus(tmp_path)
+        shutil.rmtree(datas / ".cleaned")
+        dehors = tmp_path / "dehors"
+        dehors.mkdir()
+        (datas / ".cleaned").symlink_to(dehors, target_is_directory=True)
 
-        acheve, _ = _purger(tmp_path, source_dir=str(datas), cleaned_subdir="")
+        acheve, _ = _purger(tmp_path, source_dir=str(datas))
 
-        assert "CLEANED_SUBDIR" in acheve.stdout, acheve.stdout
+        assert "SOURCE_DIR" in acheve.stdout, acheve.stdout
+        assert "CLEANED_SUBDIR" not in acheve.stdout, (
+            "le refus nomme un reglage qui n'existe plus : l'operateur "
+            f"chercherait une variable absente de .env.example\n{acheve.stdout}"
+        )
         assert str(datas) in acheve.stdout, acheve.stdout
 
     def test_les_trois_stores_sont_purges_quand_meme(self, tmp_path: Path) -> None:
@@ -706,9 +712,13 @@ class TestUneCibleHorsDeLaRacineEstREFUSEE:
         Un refus qui arreterait la purge des stores laisserait l'etat exact que
         ce script existe pour eviter : des stores peuples qu'on croit vides.
         """
-        datas = self._faux_corpus(tmp_path)
+        datas = _faux_corpus(tmp_path)
+        shutil.rmtree(datas / ".cleaned")
+        dehors = tmp_path / "dehors"
+        dehors.mkdir()
+        (datas / ".cleaned").symlink_to(dehors, target_is_directory=True)
 
-        acheve, gestes = _purger(tmp_path, source_dir=str(datas), cleaned_subdir="")
+        acheve, gestes = _purger(tmp_path, source_dir=str(datas))
 
         assert acheve.returncode == 1
         assert any("chroma delete_collection" in geste for geste in gestes), gestes
@@ -721,31 +731,15 @@ class TestUneCibleHorsDeLaRacineEstREFUSEE:
         `.cleaned` est strictement contenu dans la racine : il doit passer, et
         etre reellement retire. Un garde qui refuserait aussi la cible nominale
         rendrait `wipe_stores` inutilisable en sortant en 1 a chaque purge — et
-        les cinq tests ci-dessus resteraient verts.
+        les tests ci-dessus resteraient verts.
         """
-        datas = self._faux_corpus(tmp_path)
-
-        acheve, _ = _purger(tmp_path, source_dir=str(datas), cleaned_subdir=".cleaned")
-
-        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
-        assert not (datas / ".cleaned").exists(), "le HTML nettoye devait etre purge"
-        self._corpus_intact(datas)
-
-    def test_le_defaut_du_code_est_accepte_quand_le_reglage_est_absent(
-        self, tmp_path: Path
-    ) -> None:
-        """Le second temoin : un poste dont le `.env` est muet purge normalement.
-
-        Sans lui, le garde pourrait n'accepter que la valeur explicite et casser
-        tout poste qui ne declare pas `CLEANED_SUBDIR` — c'est-a-dire le cas
-        nominal, `.env.example` la donnant en commentaire.
-        """
-        datas = self._faux_corpus(tmp_path)
+        datas = _faux_corpus(tmp_path)
 
         acheve, _ = _purger(tmp_path, source_dir=str(datas))
 
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
-        assert not (datas / ".cleaned").exists(), acheve.stdout
+        assert not (datas / ".cleaned").exists(), "le HTML nettoye devait etre purge"
+        _corpus_intact(datas)
 
 
 class TestLeContainmentEstDecideParPurgeCleaned:
@@ -813,3 +807,70 @@ class TestLeContainmentEstDecideParPurgeCleaned:
         assert purge_cleaned(cible, datas) == 1
         assert not cible.exists()
         assert (datas / "a" / "b").exists(), "seule la cible devait partir"
+
+
+class TestLeSousRepertoireNettoyeNEstPlusUnReglage:
+    """LE GARDE DU LOT 5, POINT 1 — et il ferme ce que le containment laissait.
+
+    Le lot 4 a livre un containment STRICT : `purge_cleaned` refuse toute cible
+    qui n'est pas strictement contenue dans `source_dir`, ce qui ferme `""`,
+    `"."`, `".."` et un chemin absolu. **Il ne fermait pas une cible bien
+    contenue et FAUSSE** : `mesure` le 1er septembre 2026 sur un faux corpus
+    jetable, `CLEANED_SUBDIR=htms` passait le garde et `rmtree` detruisait
+    `Datas/htms/` — 24 des 25 fichiers du corpus versionne ; `=database`
+    detruisait les cinq stores (registre 4.29.a).
+
+    **Le pilote a tranche : le sous-repertoire cesse d'etre un reglage.** Ces
+    tests le prouvent par la seule voie qui vaille — la valeur qui detruisait le
+    corpus est posee dans l'environnement, et il ne se passe RIEN.
+    """
+
+    @pytest.mark.parametrize(
+        ("valeur", "ce_qu_elle_faisait_avant"),
+        [
+            ("htms", "detruisait 24 des 25 fichiers du corpus versionne"),
+            ("database", "detruisait les cinq stores de Datas/database/"),
+            ("", "visait la racine elle-meme : Path(base) / '' vaut base"),
+            (".", "visait la racine elle-meme, apres resolution"),
+            ("..", "visait le PARENT de la racine"),
+            ("/", "un chemin ABSOLU remplacait la base entiere"),
+            (".propre", "deplacait le depot du HTML nettoye, et avec lui les element_id"),
+        ],
+    )
+    def test_la_variable_d_environnement_est_inerte(
+        self, tmp_path: Path, valeur: str, ce_qu_elle_faisait_avant: str
+    ) -> None:
+        """Chacune de ces valeurs decidait de la cible d'un `rmtree`. Plus aucune."""
+        datas = _faux_corpus(tmp_path)
+
+        acheve, _ = _purger(tmp_path, source_dir=str(datas), cleaned_subdir=valeur)
+
+        _corpus_intact(datas)
+        assert acheve.returncode == 0, (
+            f"CLEANED_SUBDIR={valeur!r} ({ce_qu_elle_faisait_avant}) n'est plus "
+            f"un reglage : la purge devait se derouler normalement\n"
+            f"{acheve.stdout}{acheve.stderr}"
+        )
+        assert not (datas / ".cleaned").exists(), (
+            f"CLEANED_SUBDIR={valeur!r} a detourne la purge : le sous-repertoire "
+            f"livre n'a pas ete retire\n{acheve.stdout}"
+        )
+        assert (datas / "htms" / "livre" / "chapitre.html").exists()
+        assert (datas / "database" / "chroma" / "index.bin").exists()
+
+    def test_le_champ_a_disparu_des_reglages_du_pipeline(self) -> None:
+        """LE TEMOIN, et sans lui le test ci-dessus serait vert pour rien.
+
+        Un champ renomme, un alias change, une variable d'environnement dont le
+        nom a bouge : les sept cas ci-dessus seraient verts sans que le reglage
+        ait disparu. La propriete asserte ici est celle qui a ete decidee — il
+        n'y a PLUS de champ.
+        """
+        from src.pipeline.settings import PipelineSettings
+
+        assert "cleaned_subdir" not in PipelineSettings.model_fields, (
+            "`cleaned_subdir` est revenu dans PipelineSettings. Personne ne "
+            "configure ou l'etape de nettoyage ecrit : c'est un detail "
+            "d'implementation, et c'etait le seul chemin par lequel un outil de "
+            "ce depot pouvait viser le corpus versionne (registre 4.29.a)"
+        )

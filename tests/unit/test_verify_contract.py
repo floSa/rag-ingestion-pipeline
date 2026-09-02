@@ -19,12 +19,15 @@ from pathlib import Path
 
 import pytest
 
-from src.docling_service.ngql import DOCUMENT_PROPERTIES
+from src.docling_service.elements import TAG_MAP
+from src.docling_service.ngql import DOCUMENT_PROPERTIES, VERTEX_PROPERTIES
 from src.verify_contract import (
     _lire_les_aretes,
+    _lire_les_tags_sans_la_colonne,
     _verifier_le_graphe,
     _verifier_le_tag_document,
     _verifier_les_ancres,
+    anomalie_de_colonne,
     chunks_incoherents,
     images_sans_url,
     inversions_de_page,
@@ -71,10 +74,13 @@ class TestInversionsDePage:
     def test_gaps_are_not_inversions(self):
         """Reserve 2 et 3 : `sequence` n'est pas contigue sous un parent.
 
-        Le plus grand trou mesure entre deux enfants d'un meme parent vaut 993.
-        Un controle qui exigerait la contiguite rougirait sur un graphe sain.
+        Le plus grand ecart mesure entre deux `sequence` consecutives d'un meme
+        parent est une DIFFERENCE de 994 — 993 valeurs intercalaires — entre les
+        rangs 203 et 1197. Les valeurs ci-dessous les reprennent telles quelles :
+        un controle qui exigerait la contiguite rougirait sur un graphe sain. Le
+        site canonique de ces chiffres est le docstring d'`inversions_de_page`.
         """
-        assert inversions_de_page([("doc", 0, 1), ("doc", 993, 4)]) == []
+        assert inversions_de_page([("doc", 203, 1), ("doc", 1197, 4)]) == []
 
     def test_a_repeated_sequence_is_not_an_inversion_by_itself(self):
         assert inversions_de_page([("doc", 4, 2), ("doc", 4, 2)]) == []
@@ -720,16 +726,31 @@ def _bouchonner_nebula3(monkeypatch: pytest.MonkeyPatch, session: _Session) -> N
         monkeypatch.setitem(sys.modules, nom, module)
 
 
-def _session_dun_graphe_sain(page_no_end: int | None, depth: int | None = 0) -> _Session:
+def _session_dun_graphe_sain(
+    page_no_end: int | None,
+    depth: int | None = 0,
+    colonnes_des_tags: tuple[str, ...] = VERTEX_PROPERTIES,
+) -> _Session:
     """Une session dont TOUS les controles passent, sauf ce qu'on lui fait porter.
 
     Le graphe rendu est sain de bout en bout — une arete `PARENT_OF` ordonnee, un
-    tag `Document` complet, une image avec son URL, l'ancre presente. Seules les
-    valeurs de `page_no_end` et de `depth` sont a la main de l'appelant.
+    tag `Document` complet, les onze tags d'element au schema complet, une image
+    avec son URL, l'ancre presente. Seules les valeurs de `page_no_end`, de
+    `depth` et le schema des tags sont a la main de l'appelant.
 
     Un montage qui rendrait un graphe vide produirait des anomalies pour d'autres
     raisons, et l'assertion « une seule anomalie, celle-ci » ne vaudrait plus
     rien.
+
+    **`colonnes_des_tags` est arrive avec le registre 4.29.e.** Le controle lit
+    desormais `DESCRIBE TAG` sur les tags d'ELEMENT avant de compter les NULL,
+    pour distinguer « la colonne n'existe pas » de « les donnees sont a NULL ».
+    Le bouchon devait donc pouvoir repondre a ce `DESCRIBE` — sans quoi il
+    simulait un graphe dont AUCUN tag n'a la colonne, et les temoins d'un graphe
+    sain rougissaient. *Verifie ton harnais avant de croire ton rouge.*
+
+    L'ordre des cles compte : `DESCRIBE TAG Document` est teste AVANT le motif
+    generique, `_Session` rendant la premiere correspondance.
     """
     return _Session(
         {
@@ -737,6 +758,7 @@ def _session_dun_graphe_sain(page_no_end: int | None, depth: int | None = 0) -> 
             "page_no_end AS valeur": _Resultat([[page_no_end]]),
             "depth AS valeur": _Resultat([[depth]]),
             "DESCRIBE TAG Document": _Resultat([[c] for c in DOCUMENT_PROPERTIES]),
+            "DESCRIBE TAG ": _Resultat([[c] for c in colonnes_des_tags]),
             "minio_url AS url": _Resultat([["http://minio:9000/documents/a.png"]]),
             "MATCH (v) WHERE id(v) IN": _Resultat([[1]]),
         }
@@ -801,6 +823,35 @@ class TestLeControleDePageNoEndEstGardeASonSiteDAppel:
 
         assert _verifier_le_graphe(ANCRES) == []
 
+    def test_une_colonne_absente_des_tags_prescrit_le_redemarrage_au_site_d_appel(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """LE GARDE DU SITE D'APPEL pour le registre 4.29.e.
+
+        La fonction pure est gardee ailleurs dans ce fichier. Ce test-ci prouve
+        que `_verifier_le_graphe` LA TRAVERSE — c'est-a-dire qu'il lit
+        `DESCRIBE TAG` sur les tags d'element avant de compter les NULL. Sans
+        cela, la distinction existerait dans une fonction que la production
+        n'appelle pas, ce qui est le defaut central de ce lot.
+
+        Le montage reproduit le cas MESURE sur ce poste : la colonne n'est sur
+        aucun tag, donc tous les sommets rendent NULL — les deux conditions sont
+        vraies a la fois, et c'est la premiere qui doit parler.
+        """
+        sans_la_colonne = tuple(c for c in VERTEX_PROPERTIES if c != "page_no_end")
+        _bouchonner_nebula3(
+            monkeypatch,
+            _session_dun_graphe_sain(page_no_end=None, colonnes_des_tags=sans_la_colonne),
+        )
+
+        anomalies = _verifier_le_graphe(ANCRES)
+
+        assert len(anomalies) == 1, anomalies
+        assert "N'EXISTE PAS" in anomalies[0], anomalies[0]
+        assert "REDEMARRER" in anomalies[0], (
+            f"le site d'appel prescrit encore la seule reingestion : {anomalies[0]}"
+        )
+
     def test_le_controle_de_depth_est_garde_au_meme_site(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -839,4 +890,189 @@ class TestLeControleDePageNoEndEstGardeASonSiteDAppel:
         assert session.relachee, (
             "la session n'est pas relachee : le `finally` du module ne tourne pas, "
             "donc le montage ne reproduit pas la sortie reelle"
+        )
+
+
+class TestLesDeuxEtatsDUneColonneNeSeConfondentPlus:
+    """Registre 4.29.e — LE MESSAGE PRESCRIVAIT LE GESTE QUI NE SUFFIT PAS.
+
+    Quand des sommets n'avaient pas de `page_no_end`, le controle disait « le tag
+    a migre, les donnees non — il faut une reingestion pour peupler la colonne ».
+    Dans le cas mesure le 1er septembre 2026, **le tag n'avait PAS migre** :
+    `DESCRIBE TAG Paragraph` rendait cinq colonnes, sans `page_no_end`. Le
+    message decrivait donc un etat qui n'etait pas celui du poste.
+
+    Et ce n'est pas une imprecision de vocabulaire : c'est `init_schema()` qui
+    joue les `ALTER TAG`, et il n'est appele **qu'au demarrage du service**. Un
+    operateur qui lit « il faut une reingestion » et s'execute ecrit contre un
+    tag qui n'a pas la colonne, et **le graphd rejette chaque INSERT**. Le geste
+    complet est « redemarrer `docling-service`, PUIS reingerer ».
+
+    Le controle lit desormais `DESCRIBE TAG` **avant** de compter les NULL, et
+    rend deux anomalies distinctes. Le temoin que le registre reclamait est le
+    dernier test de cette classe : *les deux etats doivent rendre des messages
+    DIFFERENTS, sans quoi la distinction serait faite dans le code et perdue dans
+    la sortie.*
+    """
+
+    TAGS = ["Paragraph", "SectionHeader"]
+
+    def test_la_colonne_absente_prescrit_le_redemarrage(self) -> None:
+        message = anomalie_de_colonne("page_no_end", self.TAGS, 0, 0, "registre 4.22")
+
+        assert message is not None
+        assert "N'EXISTE PAS" in message, message
+        assert "REDEMARRER" in message, (
+            f"le message ne prescrit pas le redemarrage : {message}. Une "
+            "reingestion seule ecrirait contre un tag sans la colonne"
+        )
+        assert "Paragraph" in message and "SectionHeader" in message, message
+
+    def test_la_colonne_presente_mais_vide_prescrit_la_reingestion(self) -> None:
+        message = anomalie_de_colonne("page_no_end", [], 15173, 15173, "registre 4.22")
+
+        assert message is not None
+        assert "EXISTE" in message, message
+        assert "reingestion" in message, message
+        assert "15173" in message, message
+
+    def test_une_colonne_presente_et_renseignee_n_est_pas_une_anomalie(self) -> None:
+        """LE TEMOIN : sans lui, un controle qui rougit toujours passerait."""
+        assert anomalie_de_colonne("page_no_end", [], 0, 15173, "registre 4.22") is None
+
+    def test_l_absence_de_colonne_prime_sur_le_comptage_des_null(self) -> None:
+        """L'ordre des deux branches est le sujet du constat.
+
+        Quand la colonne n'existe pas, TOUS les sommets rendent NULL : les deux
+        conditions sont vraies en meme temps, et c'est exactement le cas mesure
+        sur ce poste. Si le comptage passait d'abord, le message prescrirait la
+        reingestion — le defaut d'origine, a l'identique.
+        """
+        message = anomalie_de_colonne("page_no_end", self.TAGS, 15173, 15173, "registre 4.22")
+
+        assert message is not None
+        assert "REDEMARRER" in message, (
+            f"les deux etats sont vrais et c'est la REINGESTION qui a ete prescrite : {message}"
+        )
+
+    def test_les_deux_etats_rendent_des_messages_differents(self) -> None:
+        """LE TEMOIN QUE LE REGISTRE RECLAMAIT, et il est le plus important.
+
+        Sans lui, la distinction pourrait etre faite dans le code et perdue dans
+        la sortie — deux branches qui rendent la meme phrase. C'est l'operateur
+        qui lit la phrase, pas la branche.
+        """
+        absente = anomalie_de_colonne("page_no_end", self.TAGS, 15173, 15173, "registre 4.22")
+        vide = anomalie_de_colonne("page_no_end", [], 15173, 15173, "registre 4.22")
+
+        assert absente != vide, (
+            "les deux etats rendent la meme phrase : la distinction est faite "
+            "dans le code et perdue dans la sortie"
+        )
+        assert "REDEMARRER" in str(absente) and "REDEMARRER" not in str(vide), (
+            f"le geste ne distingue pas les deux etats :\n  absente = {absente}\n  vide    = {vide}"
+        )
+
+
+class TestUnDescribeEnEchecCompteCommeUneColonneAbsente:
+    """Le TREIZIEME garde creux du chantier, et il etait dans la fonction qui
+    ENONCE l'invariant.
+
+    Le docstring de `_lire_les_tags_sans_la_colonne` ecrit : « Un `DESCRIBE` en
+    echec est compte comme "colonne absente" : ne pas pouvoir constater n'est pas
+    constater que tout va bien. » C'est la lecon du cinquieme trou du lot 3
+    (registre 4.4), et `_verifier_le_tag_document` la porte avec son propre test
+    — `test_a_rejected_describe_is_reported_and_not_read_as_a_success`.
+
+    **Cette fonction-ci ne l'avait pas.** `mesure` sur le code livre, AVANT ce
+    garde :
+    `if colonne not in colonnes` remplace par `if colonnes and colonne not in
+    colonnes` laisse `make all` en `rc=0`, 857 tests, ZERO rouge. Le motif est
+    celui des douze gardes creux precedents : *le test observe une absence.* Le
+    compte de douze est derive au registre 4.31.B4 ; ne le recopie pas, renvoie-y.
+
+    Ce que la mutation coute, et ce n'est pas une elegance : un graphd qui refuse
+    le `DESCRIBE` rendrait `tags_sans_la_colonne == []`, donc
+    `anomalie_de_colonne` prendrait sa SECONDE branche et prescrirait
+    « reingerez » la ou il faut « redemarrez PUIS reingerez ». C'est le registre
+    4.29.e rouvert par le commit qui le ferme.
+    """
+
+    TAGS = sorted(set(TAG_MAP.values()))
+    MIGRE = [[colonne] for colonne in VERTEX_PROPERTIES]
+    AVANT_MIGRATION = [[c] for c in VERTEX_PROPERTIES if c != "page_no_end"]
+
+    def _describe(self, reponses: dict[str, _Resultat]) -> _Session:
+        return _Session(reponses)
+
+    def test_un_schema_entierement_migre_ne_rend_aucun_tag(self) -> None:
+        """LE TEMOIN, et sans lui un garde qui rend toujours tout passerait."""
+        session = self._describe({"DESCRIBE TAG": _Resultat(self.MIGRE)})
+
+        assert _lire_les_tags_sans_la_colonne(session, "page_no_end") == []
+
+    def test_un_tag_sans_la_colonne_est_nomme_et_lui_seul(self) -> None:
+        session = self._describe(
+            {
+                "DESCRIBE TAG Table": _Resultat(self.AVANT_MIGRATION),
+                "DESCRIBE TAG": _Resultat(self.MIGRE),
+            }
+        )
+
+        assert _lire_les_tags_sans_la_colonne(session, "page_no_end") == ["Table"]
+
+    def test_un_describe_rejete_est_compte_comme_colonne_absente(self) -> None:
+        """LE GARDE. Un graphd qui refuse le `DESCRIBE` ne dit pas que tout va bien.
+
+        `_lire` journalise l'echec et rend une liste vide : la fonction doit lire
+        cette liste vide comme « je ne sais pas », donc comme une absence, et non
+        comme « aucune colonne ne manque ».
+        """
+        session = self._describe({"DESCRIBE TAG": _Resultat([], succes=False)})
+
+        manquants = _lire_les_tags_sans_la_colonne(session, "page_no_end")
+
+        assert manquants == self.TAGS, (
+            "un DESCRIBE en echec a ete lu comme « la colonne est la » : "
+            f"{manquants}. Ne pas pouvoir constater n'est pas constater que "
+            "tout va bien (registre 4.4, cinquieme trou)"
+        )
+
+    def test_un_seul_describe_rejete_suffit_a_nommer_son_tag(self) -> None:
+        """La MOITIE que le temoin ne couvre pas : un echec partiel.
+
+        Sans ce cas, un garde qui ne verrait que « tous les DESCRIBE echouent »
+        resterait vert sur un graphd qui n'en refuse qu'un — l'etat le plus
+        plausible, un tag verrouille par une migration en cours.
+        """
+        session = self._describe(
+            {
+                "DESCRIBE TAG SectionHeader": _Resultat([], succes=False),
+                "DESCRIBE TAG": _Resultat(self.MIGRE),
+            }
+        )
+
+        assert _lire_les_tags_sans_la_colonne(session, "page_no_end") == ["SectionHeader"]
+
+    def test_l_anomalie_qui_en_decoule_prescrit_le_redemarrage(self) -> None:
+        """LE TEMOIN DE BOUT EN BOUT, et c'est lui qui dit ce que le garde protege.
+
+        Le garde ne vaut que par ce que son appelant en fait : un `DESCRIBE` en
+        echec doit conduire au message « redemarrez PUIS reingerez », jamais a
+        « reingerez ». Sans cette assertion, la fonction pourrait rendre la bonne
+        liste et le rapport rester faux.
+        """
+        session = self._describe({"DESCRIBE TAG": _Resultat([], succes=False)})
+
+        message = anomalie_de_colonne(
+            "page_no_end",
+            _lire_les_tags_sans_la_colonne(session, "page_no_end"),
+            15173,
+            15173,
+            "registre 4.22",
+        )
+
+        assert message is not None
+        assert "REDEMARRER" in message, (
+            f"un DESCRIBE en echec prescrit la reingestion seule : {message}"
         )

@@ -4,11 +4,12 @@ Deux corrections par rapport a la version initiale :
 
 - **plus de troncature a 1000 caracteres** : les textes longs sont decoupes en
   fenetres recouvrantes au lieu d'etre coupes, dans l'embedding comme dans le
-  document stocke. Cette ligne disait « plus de troncature », sans borne : une
-  phrase d'exhaustivite, et elle est fausse. `mesure` le 31 aout 2026 sur
-  4 365 chunks : **137 (3,1 %) depassent la fenetre de 128 tokens** du modele,
-  qui les tronque lui-meme. Voir :func:`get_chunker` pour la cause, qui est
-  structurelle et non un reglage ;
+  document stocke. Cette ligne disait « plus de troncature », SANS BORNE : une
+  phrase d'exhaustivite, et elle est fausse — une part des chunks depasse la
+  fenetre du modele, qui les tronque lui-meme. **Le chiffre et ses deux causes
+  vivent a :func:`get_chunker`, leur SEUL site.** Ils etaient ici aussi, et un
+  nombre a deux sites dans le meme fichier finit par diverger : c'est le motif du
+  lot 5, applique a ce fichier-ci ;
 - **encodage par lots** : ``SentenceTransformer.encode`` recoit toute la liste
   d'un coup au lieu d'un appel par element, ce qui exploite reellement le GPU.
 
@@ -27,7 +28,7 @@ from typing import Any
 
 from src.docling_service import chunking
 from src.docling_service.anchoring import block_size, resolve_anchors
-from src.docling_service.blocks import has_content
+from src.docling_service.chunking import has_content
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
 from src.docling_service.embedding import (
     EmbeddingContractError,
@@ -136,7 +137,36 @@ def get_chunker() -> Any:
        fenetre par ce seul prefixe, et le decoupeur ne pouvait pas le prevoir.
 
     Le nombre reel de chunks tronques par le modele est donc **137 (3,1 %)**, et
-    ``index_report`` le dit desormais — il en annoncait 65.
+    ``index_report`` le dit desormais — il en annoncait 65, soit un facteur 2,1.
+    Les maxima suivent le meme ecart : **140** tokens sur le texte stocke contre
+    **149** sur le texte encode.
+
+    **CE DOCSTRING EST LE SITE CANONIQUE DE CES CINQ NOMBRES** — 65, 72, 137,
+    140, 149 — et de la fenetre de **128** tokens.
+
+    Ces nombres vivaient a **sept** autres sites, donc sept occasions de
+    diverger, et deux avaient DEJA diverge : l'en-tete de ce module,
+    ``chunking.embedding_inputs``, ``index_report.mesurer_la_fenetre``,
+    `architecture.md`, `services/chromadb.md` (fenetre de **256**),
+    `llm_integration_plan.md` (**256**) et `extraction_donnees.md` (**0,8 %**
+    des chunks, et **256**). Tous renvoient ici desormais.
+
+    L'affirmation, elle, vivait a **trois** sites de plus qui ne portaient aucun
+    chiffre — donc rien a remesurer, seulement une phrase a corriger :
+    ``build_chunks`` dans ce fichier (« remplit la fenetre du modele sans jamais
+    la depasser », a cent-cinquante lignes d'ici), le commentaire de
+    ``settings.graph_text_max_chars`` (« decoupe et sans troncature ») et
+    `base_vectorielle.md` (« Rien n'est tronque »).
+
+    La fenetre, elle, **n'est pas un reglage** : c'est ``modele.max_seq_length``,
+    lu au runtime sur le modele du contrat. Aucun `settings.py` ne la porte, et
+    l'annoncer configurable etait la famille des `CHUNK_SIZE=900` (registre 5.1).
+
+    **Remesure du 2 septembre 2026**, sur l'index vivant, avec le code de cette
+    branche monte dans l'image d'extraction (le geste du registre 4.27) :
+    ``python -m src.index_report`` rend « limite : 128 tokens », « chunks
+    tronques par le modele : 137 (3.1 %) », « tokens : mediane 95, maximum
+    149 ». Les trois concordent avec les valeurs ci-dessus.
     """
     from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
     from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
@@ -158,8 +188,16 @@ def build_chunks(
     """Decoupe le document en chunks prets pour ChromaDB.
 
     Le decoupage est confie a ``HybridChunker`` : il regroupe ce qui va
-    ensemble, respecte la structure du document, et remplit la fenetre du
-    modele sans jamais la depasser. Nos identifiants restent les notres —
+    ensemble et respecte la structure du document.
+
+    **CE DOCSTRING AJOUTAIT « et remplit la fenetre du modele SANS JAMAIS LA
+    DEPASSER ». C'EST LA TROISIEME FOIS QUE CE FICHIER PORTE CETTE PHRASE, ET LE
+    LOT 3 N'EN AVAIT CORRIGE QUE DEUX.** Il a repris l'en-tete du module et
+    :func:`get_chunker`, et laisse celle-ci — a cent-cinquante lignes de la
+    premiere, dans le meme fichier, qu'elle contredit. Le chiffre et les deux
+    causes vivent a :func:`get_chunker`, leur SEUL site : ne les recopie pas
+    ici, une phrase d'exhaustivite se referme d'autant plus vite qu'elle est
+    breve. Nos identifiants restent les notres —
     chaque chunk est rattache a l'element d'ou part sa lecture, via la
     reference interne Docling.
 
@@ -232,9 +270,19 @@ def build_chunks(
 
         element = ancre.element
         element_id = str(element["id"])
-        chunk_id = element_id if ancre.count == 1 else f"{element_id}#{ancre.index}"
-
-        ids.append(chunk_id)
+        # LA FORME DE L'ID VIENT DE `chunking.chunk_id`, ET ELLE ETAIT EN LIGNE
+        # ICI. `chunking` portait la meme forme, testee, et sans appelant : deux
+        # sites pour une clause du contrat, dont celui-ci — le seul qui ecrit —
+        # n'etait garde par rien. `mesure` sur `main` a `27a6304` : un suffixe
+        # inconditionnel y laissait 857 tests verts, rc=0 (registre 5.1).
+        #
+        # Ce que ce suffixe coute NE VA PAS jusqu'a la duplication, et ce
+        # commentaire l'a d'abord ecrit : `extraction.extract` purge le document
+        # par `storage.forget_document` AVANT la conversion depuis le lot 4, et
+        # `delete_document` supprime par `source_path` et jamais par id. Ce qui
+        # est casse est la clause elle-meme, que `verify_contract` compte —
+        # 974 ids suffixes sur 4 365 (`mesure`).
+        ids.append(chunking.chunk_id(element_id, ancre.index, ancre.count))
         texts.append(texte)
         metadatas.append(
             ChunkMetadata(

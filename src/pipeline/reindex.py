@@ -89,7 +89,41 @@ class ReindexOutcome:
 
     @property
     def metadata_value(self) -> str:
-        """Rendu court pour les metadonnees d'asset Dagster."""
+        """Rendu court pour les metadonnees d'asset Dagster.
+
+        **LA BRANCHE « ECHEC » N'EST PLUS ATTEIGNABLE EN PRODUCTION, ET ELLE
+        RESTE. Tranche au lot 5, contre son propre mandat, et voici pourquoi.**
+
+        Le registre 5.7 la range dans le code mort : `reindex_job.lexical_index`
+        LEVE quand l'appel a ete tente et n'a pas abouti, donc il n'atteint
+        jamais `add_output_metadata` avec `called=True, ok=False`. C'est exact, et
+        ce n'est pas un accident : cette levee est gardee par TROIS tests
+        (`mesure`, la remplacer par `if False:` les rougit).
+
+        Mais l'etat, lui, est REEL et atteignable : `request_reindex` le construit
+        (voir plus bas, sur exception), et son contrat ecrit est « ne leve jamais,
+        dit ce qui s'est passe ». Amputer le rendu de cet objet parce que son
+        unique consommateur d'aujourd'hui leve d'abord le coupleraient a ce
+        consommateur.
+
+        **Et la mesure tranche mieux que l'argument.** Sans cette branche, l'etat
+        d'echec tombe sur le cas nominal et se rend `"ok — None chunks indexes"` :
+
+            ReindexOutcome(called=True, ok=False, chunks_indexed=None,
+                           detail="agent injoignable")
+              rendu actuel     ->  "ECHEC — agent injoignable"
+              apres amputation ->  "ok — None chunks indexes"
+
+        Un echec qui s'affiche « ok » dans une metadonnee que l'operateur lit est
+        strictement pire qu'une branche que la production n'atteint pas. Le
+        chantier a passe cinq lots a fermer des pannes qui se presentaient comme
+        des succes : en ouvrir une pour retirer trois lignes serait le geste
+        inverse de ce lot.
+
+        Le developpeur de la reparation du lot 0 avait refuse de l'amputer en
+        donnant l'argument de couplage. Il avait raison, et la mesure ci-dessus
+        est ce qui manquait pour le dire sans discuter.
+        """
         if not self.called:
             return f"non appele — {self.detail}"
         if self.ok:

@@ -86,16 +86,53 @@ def inversions_de_page(aretes: Sequence[tuple[str, int, int]]) -> list[tuple[str
     qui est l'unicite sous un parent : une numerotation aleatoire distincte par
     parent la satisferait sans porter aucun ordre (registre 6.16).
 
-    Trois reserves, toutes mesurees, et qui dictent la forme de ce controle :
+    **SITE CANONIQUE DES TROIS RESERVES DE LECTURE DE ``sequence``** (registre
+    6.16). Elles dictent la forme de ce controle, et elles disent a un agent ce
+    qu'il ne doit PAS conclure. Leurs chiffres etaient ceux du lot 1, mesures sur
+    **3 documents et 2 285 aretes** et repris au registre sans ce perimetre :
+    remesures ici sur le corpus complet, le 2 septembre 2026, sur le graphe
+    vivant — **15 173 aretes, 763 parents, 23 documents, 0 arete sans
+    ``sequence``**, valeurs de 0 a 1 269.
 
     1. **``sequence`` repart a 0 dans chaque document.** Elle n'est donc pas
-       globalement monotone, et la verification est bornee au document. Sans ce
-       groupement, deux documents entrelaces rendraient des inversions fausses ;
+       globalement monotone, et tout « avant / apres » doit etre BORNE AU
+       DOCUMENT. `mesure` : **23 aretes portent ``sequence == 0`` pour exactement
+       23 documents**. Sans ce groupement, deux documents entrelaces rendraient
+       des inversions fausses ;
     2. **elle n'est pas contigue sous un parent, par construction** — c'est un
-       ordre de lecture global, pas un rang sous le parent ;
-    3. **le plus grand trou entre deux enfants consecutifs d'un meme parent vaut
-       993.** Un controle qui exigerait la contiguite rougirait sur un graphe
-       sain.
+       ordre de lecture global, pas un rang sous le parent. `mesure` : **167 des
+       763 parents (21,9 %) portent des ``sequence`` non contigues**, et l'ecart
+       est chaque fois la taille du sous-arbre du frere precedent. Le lot 1
+       mesurait 44 sur 185 ; la proportion tient, le compte est quatre fois plus
+       grand ;
+    3. **le plus grand ecart entre deux ``sequence`` consecutives sous un meme
+       parent vaut 994**, et il faut dire ce que « ecart » veut dire, parce que
+       les deux lectures ne donnent pas le meme nombre : c'est la DIFFERENCE
+       entre les deux valeurs, `1197 - 203 = 994`, soit **993 valeurs
+       intercalaires**. Un controle qui exigerait la contiguite rougirait sur un
+       graphe sain.
+
+       **Et ce n'est pas le PDF.** Ce docstring a d'abord ecrit « le trou venant
+       du PDF dont les sous-arbres dominent ». `mesure` le 2 septembre 2026 sur
+       le graphe vivant : l'ecart maximal est sous
+       ``doc_htms/MLOps with Databricks/7. Foundation Models and Context
+       Engineering`` — **un chapitre HTML**, et le parent est la RACINE du
+       document elle-meme, entre ses deux enfants de rang 203 et 1197. Le sous-
+       arbre qui explique le trou est celui du frere precedent, comme le dit la
+       reserve 2 ; il n'a rien de particulier au PDF.
+
+    **CE QUE CES DEUX DERNIERES INTERDISENT A UN AGENT, et c'est le motif de
+    §6.16.** Un agent qui implemente « la fenetre d'elements » comme « les
+    enfants de P dont ``sequence`` est dans [s-k, s+k] » rendra SILENCIEUSEMENT
+    moins d'elements que demande ; un agent qui lit la contiguite comme un indice
+    d'integrite conclura a une perte de donnees qui n'existe pas.
+
+    **§6.16 RESTE OUVERT, ET CE MODULE NE PEUT PAS LE FERMER.** La moitie qui
+    manque est la documentation de ``rag-agent-chat``, dans l'AUTRE depot : ces
+    reserves decrivent la facon dont l'agent LIT ``sequence``, et rien ici ne
+    peut l'y ecrire. Ce depot les rend trouvables — ici pour les chiffres, et
+    dans ``documentation/llm_integration_plan.md`` pour l'enonce destine a
+    l'agent. Le geste qui reste est de les reporter la-bas.
 
     Args:
         aretes: Triplets ``(document, sequence, page_no)``, dans n'importe quel
@@ -479,15 +516,23 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
         # quatrieme des cinq trous que l'audit du lot 3 a trouves, sur la colonne
         # que ce lot-ci ajoute : ne pas l'ecrire aurait ete refaire le defaut
         # dans le geste qui le connait.
+        # LE DESCRIBE VIENT AVANT LE COMPTAGE, et c'est tout le point : compter
+        # des NULL ne dit pas si la colonne existe, et les deux etats demandent
+        # des gestes differents (registre 4.29.e).
+        tags_sans_fin = _lire_les_tags_sans_la_colonne(session, "page_no_end")
         fins = _lire_un_entier_sur_les_sommets(session, "page_no_end")
         sans_fin = sommets_sans_profondeur(fins)
-        print(f"sommets sans page_no_end       : {sans_fin}/{len(fins)}")
-        if sans_fin:
+        print(
+            f"sommets sans page_no_end       : {sans_fin}/{len(fins)}"
+            + (f", colonne absente de {len(tags_sans_fin)} tags" if tags_sans_fin else "")
+        )
+        anomalie = anomalie_de_colonne(
+            "page_no_end", tags_sans_fin, sans_fin, len(fins), "registre 4.22"
+        )
+        if anomalie:
             anomalies.append(
-                f"{sans_fin} sommets sur {len(fins)} sans page_no_end : le tag a "
-                "migre, les donnees non — il faut une reingestion pour peupler la "
-                "colonne (registre 4.22). L'agent ne peut pas distinguer « cet "
-                "element tient sur une page » de « on ne sait pas ou il finit »"
+                anomalie + ". L'agent ne peut pas distinguer « cet element tient "
+                "sur une page » de « on ne sait pas ou il finit »"
             )
 
         anomalies.extend(_verifier_le_tag_document(session))
@@ -587,6 +632,103 @@ def _lire_un_entier_sur_les_sommets(session: Any, propriete: str) -> list[int | 
             valeur = ligne[0]
             valeurs.append(None if valeur.is_null() else int(valeur.as_int()))
     return valeurs
+
+
+def anomalie_de_colonne(
+    colonne: str,
+    tags_sans_la_colonne: Sequence[str],
+    sommets_sans_valeur: int,
+    sommets_lus: int,
+    registre: str,
+) -> str | None:
+    """Distingue « le tag n'a pas la colonne » de « les donnees sont a NULL ».
+
+    **LE MESSAGE PRECEDENT CONFONDAIT LES DEUX, ET IL PRESCRIVAIT LE GESTE QUI NE
+    SUFFIT PAS** (registre 4.29.e). Il disait, des que des sommets n'avaient pas
+    de `page_no_end` : « le tag a migre, les donnees non — il faut une
+    reingestion pour peupler la colonne ». Or dans le cas mesure le 1er septembre
+    2026, **le tag n'avait PAS migre** : `DESCRIBE TAG Paragraph` rendait
+    `label, page_no, text, minio_url, depth` — cinq colonnes, sans `page_no_end`.
+
+    Les deux etats demandent des gestes DIFFERENTS, et c'est pour cela qu'il faut
+    les separer :
+
+    - **la colonne n'existe pas** : c'est `init_schema()` qui joue les
+      `ALTER TAG ... ADD`, et il n'est appele **qu'au demarrage du service**
+      (`main.py`, dans le `lifespan`). Le geste est donc **redemarrer
+      `docling-service`, PUIS reingerer**. Un operateur qui lit « il faut une
+      reingestion » et s'execute ecrit contre un tag qui n'a pas la colonne, et
+      le graphd rejette chaque `INSERT` ;
+    - **la colonne existe, les valeurs sont a NULL** : le schema a migre, les
+      donnees non. Une reingestion suffit.
+
+    Args:
+        colonne: Nom de la colonne controlee.
+        tags_sans_la_colonne: Tags dont ``DESCRIBE TAG`` ne porte pas la colonne.
+        sommets_sans_valeur: Nombre de sommets dont la valeur est ``NULL``.
+        sommets_lus: Nombre de sommets examines.
+        registre: Renvoi au constat, pour que le message soit actionnable.
+
+    Returns:
+        L'anomalie, ou ``None`` si la colonne existe partout et est renseignee.
+    """
+    if tags_sans_la_colonne:
+        return (
+            f"la colonne {colonne} N'EXISTE PAS sur {len(tags_sans_la_colonne)} "
+            f"tags ({', '.join(tags_sans_la_colonne)}) : le schema n'a PAS migre. "
+            f"C'est init_schema() qui joue les ALTER TAG, et il n'est appele qu'au "
+            f"DEMARRAGE du service. Le geste est REDEMARRER docling-service PUIS "
+            f"reingerer — une reingestion seule ecrirait contre un tag sans la "
+            f"colonne, et le graphd rejetterait chaque INSERT ({registre})"
+        )
+    if sommets_sans_valeur:
+        return (
+            f"{sommets_sans_valeur} sommets sur {sommets_lus} sans {colonne} : la "
+            f"colonne EXISTE, le schema a donc migre, mais les donnees non — seule "
+            f"une reingestion les renseigne ({registre})"
+        )
+    return None
+
+
+def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
+    """Rend les tags d'element dont ``DESCRIBE TAG`` ne porte pas la colonne.
+
+    Le mecanisme existait deja pour le tag ``Document``
+    (:func:`_verifier_le_tag_document`) et pour le schema entier
+    (``ngql.missing_vertex_columns``) : il manquait a ce controle-ci, qui
+    comptait des NULL sans jamais demander au graphe si la colonne etait la.
+
+    **CET INVARIANT ETAIT ENONCE ICI ET GARDE PAR RIEN — le treizieme garde
+    creux du chantier** — le compte est derive au registre 4.31.B4, il ne se
+    recopie pas. `mesure` le 2 septembre 2026 sur le code livre, AVANT ce garde :
+    remplacer `if colonne not in colonnes` par `if colonnes and colonne not in
+    colonnes` laissait `make all` en `rc=0`, 857 tests, zero rouge. Le motif est
+    celui des douze precedents — *le test observe une absence.* Ce que la
+    mutation coutait : un graphd qui refuse le `DESCRIBE` faisait prendre a
+    :func:`anomalie_de_colonne` sa SECONDE branche, donc prescrire « reingerez »
+    la ou il faut « redemarrez PUIS reingerez » — le registre 4.29.e rouvert par
+    le commit qui le ferme. Le garde est
+    `TestUnDescribeEnEchecCompteCommeUneColonneAbsente`, et il rougit a
+    3 tests sous cette mutation.
+
+    Args:
+        session: Session NebulaGraph.
+        colonne: Nom de la colonne cherchee.
+
+    Returns:
+        Les tags qui ne la portent pas, dans l'ordre. Un ``DESCRIBE`` en echec
+        est compte comme « colonne absente » : ne pas pouvoir constater n'est
+        pas constater que tout va bien.
+    """
+    from src.docling_service.elements import TAG_MAP
+
+    manquants: list[str] = []
+    for tag in sorted(set(TAG_MAP.values())):
+        lignes = _lire(session, f"DESCRIBE TAG {tag};")
+        colonnes = {ligne[0].as_string() for ligne in lignes}
+        if colonne not in colonnes:
+            manquants.append(tag)
+    return manquants
 
 
 def _verifier_le_tag_document(session: Any) -> list[str]:

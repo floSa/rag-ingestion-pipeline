@@ -14,11 +14,14 @@ from typing import Any
 import pytest
 
 from src.docling_service.elements import (
+    CLEANED_SUBDIR,
     ROOT_REFERENCE,
     SECTION_LABELS,
     TAG_MAP,
     DocumentAccumulator,
     DocumentFacts,
+    cleaned_path,
+    cleaned_root,
     compute_id,
     document_identity,
     extract_bbox,
@@ -549,3 +552,87 @@ class TestLesPagesCouvertesParAucunElement:
         elements = [{"page_no": 7, "page_no_end": 6}]
 
         assert 7 not in pages_sans_element(elements, total_pages=7)
+
+
+class TestLAllerRetourDuSousRepertoireNettoye:
+    """L'INVARIANT QUE `CLEANED_SUBDIR` CASSAIT QUAND C'ETAIT UN REGLAGE.
+
+    Deux sites decidaient du meme nom de repertoire : `PipelineSettings.
+    cleaned_subdir`, selon lequel l'asset `cleaned_html` ECRIVAIT, et la
+    constante de ce module, selon laquelle `document_identity` RETIRE le segment
+    pour retrouver le chemin source. Rien ne gardait leur accord.
+
+    `mesure` le 1er septembre 2026, avec `CLEANED_SUBDIR=.propre`, sur le chemin
+    nettoye de `htms/MLOps with Databricks/Preface.html` :
+
+    ======================= ================================== =================
+    ce qui est lu           avec le reglage a la constante      avec `.propre`
+    ======================= ================================== =================
+    `identity.key`          `htms/MLOps.../Preface`            `.propre/htms/...`
+    `identity.collection`   `MLOps with Databricks`            `htms`
+    `element_id`            `fab608f4eb`                       `9d6460cded`
+    ======================= ================================== =================
+
+    **L'exigence 2 du contrat rompue, et l'exigence 3 avec elle, sans qu'aucune
+    erreur ne soit levee.** Le reglage a disparu (registre 4.29.a) ; ce qui reste
+    a garder est l'aller-retour lui-meme, parce qu'un second site peut toujours
+    reapparaitre. Ces tests l'assertent depuis les DEUX cotes : le chemin que la
+    production ECRIT, et l'identite que la production en DEDUIT.
+    """
+
+    RACINE = "/opt/dagster/app/Datas"
+    SOURCE = "htms/MLOps with Databricks/Preface.html"
+
+    def test_la_copie_nettoyee_rend_l_identite_du_document(self) -> None:
+        """LE GARDE. Un second site qui derive rougit ici.
+
+        `_deduce_source_path` est la voie que suit un appel manuel a l'API, ou le
+        pipeline ne passe pas `source_path` : le service part alors du chemin du
+        FICHIER, qui est celui de la copie nettoyee.
+        """
+        from src.docling_service.extraction import _deduce_source_path
+
+        ecrit = cleaned_path(self.RACINE, self.SOURCE)
+        identite = document_identity(_deduce_source_path(ecrit))
+
+        assert identite.key == "htms/MLOps with Databricks/Preface", (
+            f"la copie nettoyee {ecrit} ne rend plus l'identite du document : "
+            "ses element_id ont change, en silence (contrat, exigence 2)"
+        )
+        assert identite.collection == "MLOps with Databricks", (
+            "l'OUVRAGE est perdu : une citation ne peut plus dire de quel livre "
+            "elle vient (contrat, exigence 3)"
+        )
+
+    def test_l_element_id_est_le_meme_par_les_deux_chemins(self) -> None:
+        """LE TEMOIN QUI PORTE LA CONSEQUENCE, et c'est elle qui coute.
+
+        Le test precedent compare des chaines ; celui-ci compare ce que le
+        contrat designe. Un jeu de questions de l'agent nomme des `element_id` :
+        deux chemins qui rendent deux identifiants pour le meme element rendent
+        toute mesure historique incomparable.
+        """
+        from src.docling_service.extraction import _deduce_source_path
+
+        par_la_source = compute_id(document_identity(self.SOURCE).key, 1, 0, "un texte")
+        par_la_copie = compute_id(
+            document_identity(_deduce_source_path(cleaned_path(self.RACINE, self.SOURCE))).key,
+            1,
+            0,
+            "un texte",
+        )
+
+        assert par_la_source == par_la_copie, (
+            f"le meme element rend {par_la_source} depuis la source et "
+            f"{par_la_copie} depuis sa copie nettoyee"
+        )
+
+    def test_les_deux_derivations_partent_de_la_meme_constante(self) -> None:
+        """Le second temoin : `cleaned_path` passe bien par `cleaned_root`.
+
+        Sans lui, les deux fonctions pourraient porter deux litteraux — le defaut
+        d'origine, reduit d'un cran — et les tests ci-dessus resteraient verts si
+        `document_identity` lisait celui de `cleaned_path`.
+        """
+        assert cleaned_path(self.RACINE, self.SOURCE).is_relative_to(cleaned_root(self.RACINE))
+        assert cleaned_root(self.RACINE).name == CLEANED_SUBDIR

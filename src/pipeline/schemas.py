@@ -92,8 +92,20 @@ class ChunkMetadata(BaseModel):
     # Chemin complet relatif a Datas/, identite unique du document.
     source_path: str = ""
     # Code ISO 639-1 de la langue du document (``en``, ``fr``...), vide si
-    # indeterminee. Le modele d'embedding actuel n'etant entraine que sur de
-    # l'anglais, l'agent a besoin de cette cle pour filtrer ou ponderer.
+    # indeterminee.
+    #
+    # **LE MOTIF ECRIT ICI ETAIT UN VESTIGE, ET IL ETAIT FAUX** (registre 6.15).
+    # Il disait « le modele d'embedding actuel n'etant entraine que sur de
+    # l'anglais » : c'etait vrai d'`all-MiniLM-L6-v2`, remplace depuis
+    # `7b72854`. Le modele du contrat est
+    # `paraphrase-multilingual-MiniLM-L12-v2`, MULTILINGUE — une question
+    # francaise retrouve les passages anglais, et reciproquement. Le contrat
+    # met explicitement en garde contre le modele dont ce commentaire portait
+    # encore la trace, et c'est ce fichier qui EST le contrat de reference.
+    #
+    # La cle reste utile, pour deux raisons qui n'ont rien a voir avec celle-la :
+    # l'agent peut FILTRER par langue quand l'utilisateur le demande, et il peut
+    # DIRE a l'utilisateur dans quelle langue est la source qu'il cite.
     language: str = ""
     label: str = ""
     # PREMIERE page du chunk. `page_no_end` donne la derniere : un chunk peut
@@ -125,6 +137,30 @@ class ChunkMetadata(BaseModel):
     # ``section_header`` n'est jamais un chunk (registre 4.24, mesure). Le
     # niveau d'un titre se lit sur le sommet du graphe, ou se compte sur la
     # chaine ``PARENT_OF`` — le seul signal exact.
+    #
+    # ── SITE CANONIQUE DE LA DISTRIBUTION, ET IL EN FALLAIT UN ───────────────
+    # `mesure` le 2 septembre 2026 sur l'index vivant
+    # (`collection.get(include=["metadatas"])`, distribution de `depth`) :
+    #
+    #     {1: 912, 2: 1993, 3: 1164, 4: 256, 5: 40}   maximum 5
+    #
+    # Soit 296 chunks sur 4 365 — 6,8 % — AU-DELA DE 3. Ce chiffre decide, parce
+    # que QUATRE documents annoncaient encore « la profondeur est plafonnee a
+    # 3 » : `README.md`, `documentation/graphe_connaissances.md`,
+    # `documentation/extraction_donnees.md` (dans un TITRE de section) et
+    # `documentation/CHANGEMENTS.md`. Le lot 3 a retire `MAX_DEPTH` et corrige
+    # `schemas.py`, `services/nebulagraph.md` et `llm_integration_plan.md` ;
+    # perimetre strict, il a laisse les quatre autres. Ils renvoient ici
+    # desormais, et ce commentaire est le seul endroit ou la distribution est
+    # ecrite.
+    #
+    # Le motif ecrit du plafond — « au-dela, un RAG n'y gagne rien : l'objectif
+    # est de reconstruire un bloc avec ses titres parents, pas de reproduire une
+    # arborescence complete » — decrivait une limitation de l'ARBRE QUI N'A
+    # JAMAIS EXISTE : `parent_id` n'a jamais ete plafonne, donc les aretes du
+    # graphe etaient les memes avec ou sans lui. Son seul effet mesurable etait
+    # de rendre `depth` NON INJECTIF : la valeur 4 recouvrait les profondeurs
+    # reelles 4 ET 5, et c'est exactement ce que les 40 chunks a 5 montrent.
     depth: int = 0
     section_title: str = ""
     page_position: int = 0

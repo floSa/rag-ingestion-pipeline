@@ -397,8 +397,12 @@ La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas
 motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
 que de laisser croire que `make` a tourné.
 
-Attendu sur `main` (`mesuré`, 31 août 2026) : `ruff` propre, `mypy --strict`
-« no issues found in 36 source files », et la suite verte. Le compte canonique
+Attendu sur `main` : `ruff` propre, `mypy --strict` sans erreur, et la suite
+verte. **Le nombre de fichiers que `mypy` annonce a été retiré de cette case**,
+comme le SHA de `main` l'avait été du §5.1 et pour la même raison : il valait 36
+le 31 août 2026, il vaut **35** depuis que le lot 5 a retiré `blocks.py`
+(`mesuré`, 2 septembre 2026, `uv run mypy src/`), et une case qui donne un
+chiffre invite à lire le chiffre plutôt qu'à le remesurer. Le compte canonique
 de tests vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
 
 **`make all` ne mute plus l'arbre : il le constate, et il rend 0.**
@@ -920,9 +924,20 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **5** | Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre. **Plus, en PREMIER point et tranché par le pilote le 2 septembre 2026 : `CLEANED_SUBDIR` cesse d'être un réglage** (§4.29.a). Personne ne configure où l'étape de nettoyage écrit — c'est un détail d'implémentation — et c'est le seul chemin par lequel un outil de purge peut viser le corpus versionné ou les bind mounts des stores. `mesuré` sur un faux corpus : `CLEANED_SUBDIR=htms` passe le containment livré par le lot 4 et détruit 24 des 25 fichiers ; `=database` détruit les stores. **Un réglage annoncé à l'opérateur dont trois valeurs sur quatre détruisent le corpus coûte plus qu'il ne rend, et une configuration que rien ne configure est de la configuration morte** — c'est le périmètre de ce lot au mot près. **Plus les huit autres constats du §4.29** que le lot 4 a versés | la lisibilité, et l'arrêt des faux réglages | **à faire — c'est l'action suivante, §7** |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché le 1er septembre 2026 : les 30 questions attendent le lot 4. La conclusion tient toujours, mais SON MOTIF EST TOMBÉ — et c'est instructif.** Le motif était : `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`, donc §4.22, §4.6 et §4.7 déplaceraient les `element_id`. **Mesuré trois fois — par le lot 4, reproduit par son audit, confirmé statiquement par le pilote — c'est FAUX** : les ensembles d'`element_id` sont rigoureusement égaux de part et d'autre du lot 4, 15 173 des deux côtés, différence symétrique nulle, parce que `page_no_end` est **additif** et que `pages[0]` vaut exactement ce que valait `prov[0].page_no`.
 
-L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'existe pas encore dans le graphe** — `DESCRIBE TAG` sur le space vivant ne le porte pas, donc une réingestion est requise. Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
+L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'est peuplé sur aucun sommet** — la colonne **existe** depuis le redémarrage de `docling-service` du 2 septembre 2026, et les 7 251 `Paragraph` sont à `NULL` (`mesuré` ; registre §4.29.e). Une réingestion reste donc requise. *La ligne précédente disait « la colonne n'existe pas encore » : c'était vrai le 1er septembre et faux le 2. **Un état de poste n'est vrai qu'à une date** — remesure-le, ne le lis pas ici.* Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
 
 **Ce que le chantier doit retenir de cet épisode** : une conclusion juste peut reposer sur un raisonnement faux, et alors elle ne survit que par chance. Le motif ici était un raisonnement sur le code — plausible, jamais mesuré — et il a fallu trois mesures indépendantes pour le renverser. **Étiquette `supposé` tout ce qui n'a pas été mesuré, même quand ta conclusion te paraît sûre** : c'est cette étiquette qui a déjà économisé un lot entier au §6, et son absence ici a failli en coûter un. Ce qui est acquis en revanche l'est vraiment : le corpus complet est indexé et les deux instruments ont rendu leur verdict dessus, ce qui donne au lot 4 son antécédent mesuré |
+
+**Après le lot 6, un item et un seul est déjà au plan : la bascule à clé
+provisoire** (registre §4.29.i, tranché le 2 septembre 2026). Le comportement
+retenu est celui que le lot 4 a livré — *entre un index qui sert un document
+périmé et un index qui n'en sert aucun, le second* — parce qu'une perte
+silencieuse coûte plus qu'une panne bruyante. Écrire sous une clé provisoire puis
+basculer serait **strictement meilleur** : absence de perte silencieuse **et**
+continuité de service. Ce n'est pas fait avant, faute d'antécédent : personne ne
+sait à quelle fréquence une conversion échoue durablement sur ce corpus, et
+**c'est la première campagne qui le dira**. Décider avant serait décider sur un
+`supposé`.
 
 **Le lot 1 a payé son pari, et pas comme prévu.** Il n'a rien corrigé, il n'a
 produit aucun commit, il a coûté quelques minutes d'ingestion — et il a
@@ -1034,10 +1049,18 @@ complet** ingéré par le code de `main`, et non sur les 3 documents du lot 1.
 **LE GESTE À FAIRE AVANT TOUTE RÉINGESTION, ET IL N'EST PAS INTUITIF :
 redémarrer `docling-service`.** C'est `init_schema()`, joué **au démarrage** du
 service, qui exécute l'`ALTER TAG … ADD (page_no_end int)` livré par le lot 4.
-`DESCRIBE TAG` sur le space vivant ne porte pas encore cette colonne (`mesuré`) :
-une réingestion lancée sans ce redémarrage écrirait contre un tag qui n'a pas la
-colonne. Le message d'anomalie de `verify_contract` ne dit pas cette moitié — c'est
-le §4.29.e, consigné.
+Une réingestion lancée sans ce redémarrage écrirait contre un tag qui n'a pas la
+colonne. Le message d'anomalie de `verify_contract` ne disait pas cette moitié —
+c'est le §4.29.e, fermé par le lot 5.
+
+**ÉTAT DU POSTE, DATÉ, ET IL PÉRIME.** `DESCRIBE TAG` ne portait **pas** cette
+colonne le 1er septembre 2026. **Le 2 septembre 2026, `docling-service` a été
+redémarré, `init_schema()` a joué, et la colonne EXISTE** — six colonnes sur
+`Paragraph` et `SectionHeader`, et **7 251 sommets `Paragraph` sur 7 251 à
+`NULL`** (`mesuré` par le pilote). Le poste est passé du premier état au second.
+**Ceci est un état, pas une propriété du code : mesure-le, ne le lis pas ici.**
+La consigne, elle, ne périme pas — redémarrer avant de réingérer est sans coût
+quand le schéma est déjà à jour.
 
 **`verify_contract` sort désormais en 1 avec QUATRE anomalies**, et c'est le
 verdict juste : l'index vivant a été écrit par le code du lot 3. Deux sont
@@ -1077,14 +1100,27 @@ Ce que le lot 3 laisse, et qui vaut toujours :
   réserve mesurée qu'il faut connaître : `run_monitoring` couvre `STARTING`,
   `NOT_STARTED` et `STARTED`, **jamais `QUEUED`** — précisément l'état du run
   bloqué de ce poste ;
-- **`dagster-daemon` est arrêté, et il l'est RESTÉ à travers le redémarrage de
-  l'instance** (`mesuré` le 1er septembre 2026 : `exited`, les neuf autres
-  services debout). Un service arrêté par `docker compose stop` ne repart pas au
-  redémarrage de la machine, quelle que soit sa politique de redémarrage — c'est
-  ce qui a protégé l'index. `docker compose start dagster-daemon` pour le
-  reprendre, et **sache ce que tu déclenches** : les sensors sont livrés armés
-  (§4.18), donc le daemon reprend l'ingestion. Registre §4.28.c : un run est
-  `QUEUED` et l'historique porte 67 `ReindexError` ;
+- **`dagster-daemon` est arrêté — et « ARRÊTÉ » N'EST PAS UNE PROPRIÉTÉ STABLE.**
+  `mesuré` le 1er septembre 2026 : `exited`, les neuf autres services debout, et
+  il l'était resté à travers un redémarrage complet de l'instance — un service
+  arrêté par `docker compose stop` ne repart pas au redémarrage de la machine,
+  quelle que soit sa politique de redémarrage, et c'est ce qui a protégé l'index
+  ce jour-là. **`mesuré` le 2 septembre 2026 : il TOURNAIT, et depuis quatre
+  heures.** Le pilote l'a arrêté pour protéger l'antécédent. **La cause du
+  redémarrage n'a pas été cherchée et n'est donc pas écrite ici** — ce qui est
+  mesuré est l'état, jamais son origine.
+
+  **L'index est intact**, remesuré par la réparation du lot 5 le 2 septembre 2026,
+  les cinq chiffres concordant : **4 365 chunks, 15 196 sommets, 15 173 arêtes
+  `PARENT_OF`, 23 documents, 13 objets MinIO**. L'état « arrêté » est donc
+  **redevenu** vrai.
+
+  *La leçon n'est pas l'incident : c'est que la propriété générale ci-dessus —
+  vraie — a été lue comme une garantie, et qu'elle n'en est pas une.* **Remesure
+  l'état du daemon avant toute mesure qui en dépend.** `docker compose start
+  dagster-daemon` pour le reprendre, et **sache ce que tu déclenches** : les
+  sensors sont livrés armés (§4.18), donc le daemon reprend l'ingestion. Registre
+  §4.28.c : un run est `QUEUED` et l'historique porte 67 `ReindexError` ;
 - **le space `rag_space` a été recréé** : le lot y avait éprouvé la réversibilité
   d'un `ALTER ... DROP`, et Nebula refuse ensuite le ré-ajout de la colonne. Le
   corpus complet y est réingéré avec le code du lot.
@@ -1155,9 +1191,42 @@ Conventions apprises à leurs dépens sur le dépôt jumeau.
 **L'identité Git, en premier** — §2.1 de ce fichier, mot pour mot. C'est la
 règle dont l'oubli a coûté un dépôt.
 
-**Aucune mention** de Claude, Claude Code, Anthropic, Copilot ou ChatGPT nulle
-part — code, documentation, messages de commit. **Aucun trailer
-`Co-Authored-By`.**
+**Aucune ATTRIBUTION du travail à un assistant de génération de code.** Aucun
+assistant ne doit apparaître comme **auteur ou contributeur** : ni dans un
+message de commit, ni dans un trailer — **aucun `Co-Authored-By`** — ni dans une
+signature, ni dans un en-tête de fichier, ni dans une ligne de documentation qui
+dirait qui a écrit quoi. C'est une règle de **paternité**, et son motif est celui
+du §2.1 : la liste des contributeurs d'un dépôt GitHub, une fois constituée, ne
+se défait pas.
+
+**Cette règle s'écrivait « aucune mention de Claude, Claude Code, Anthropic,
+Copilot ou ChatGPT nulle part — code, documentation, messages de commit ». Prise
+au mot, elle est FAUSSE, et c'est une phrase d'exhaustivité de plus.** `mesuré`
+le 2 septembre 2026 sur `main` à `27a6304`, fichiers versionnés hors `Datas/`,
+`git grep -nIiE 'claude|anthropic|copilot|chatgpt'` : **13 occurrences** sur
+12 lignes, **hors la ligne de la règle elle-même** — qui en porte cinq de plus,
+et qu'aucune formulation ne peut éviter.
+
+| Famille | Occurrences | Où |
+|---|---|---|
+| **noms de branche et d'arbre de travail** — `claude/<lot>-<sha>`, `.claude/worktrees/…` | **7** | les **deux documents de gouvernance**, écrits par le pilote lui-même : `axes_amelioration.md` (3) et ce fichier (4) |
+| **choix de fournisseur de modèle**, mentions **produit** | **6** | `llm_integration_plan.md` : le tableau des composants, un arbre de fichiers, `ANTHROPIC_API_KEY`, `LLM_MODEL=…`, et la ligne « intégration … via SDK » |
+
+**Aucune des treize ne viole la règle, et voici pourquoi.** Un **nom de branche
+créé par l'outillage** n'attribue rien : il nomme un fil de travail, il est
+imposé par le harnais qui crée l'arbre, et le refuser demanderait de renommer
+chaque branche du chantier — donc de mentir sur ce que `git branch` montre. Un
+**choix de fournisseur de modèle dans un document de conception** n'attribue rien
+non plus : il dit quel modèle le système *appellera*, exactement comme
+`EMBEDDING_MODEL_NAME` dit quel modèle d'embedding il charge. Ni l'un ni l'autre
+ne dit qui a **écrit** une ligne de ce dépôt.
+
+**Le geste est donc : borner, ne rien nettoyer.** Retirer ces treize mentions
+appauvrirait le dépôt — un plan d'intégration qui tait le modèle qu'il prescrit
+ne prescrit plus rien — sans rien fermer, la règle ne visant pas cela. Ce qui
+reste interdit est inchangé et n'a jamais été enfreint : **aucun commit de ce
+chantier ne porte un assistant en auteur, en committer, en trailer ou en
+signature** (`mesuré` à chaque fusion).
 
 **Commits atomiques en français**, dans le style du dépôt (`git log`). Une même
 affirmation fausse vivant dans le **code** et dans un **document** se corrige

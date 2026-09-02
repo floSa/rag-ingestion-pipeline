@@ -1,9 +1,27 @@
-"""Decoupage des textes longs destines a la base vectorielle.
+"""Ce que le modele d'embedding recoit, et sous quel identifiant il est ecrit.
 
-L'ingestion tronquait les textes a 1000 caracteres, dans l'embedding comme dans
-le document stocke : un paragraphe long etait ampute en silence et sa fin
-devenait inatteignable par la recherche. On decoupe desormais en fenetres
-recouvrantes, sans rien perdre.
+**CE MODULE NE DECOUPE PLUS RIEN, ET SON EN-TETE L'AFFIRMAIT ENCORE.** Il
+portait « on decoupe desormais en fenetres recouvrantes, sans rien perdre » et
+exposait `chunk_text`, `DEFAULT_CHUNK_SIZE` et `DEFAULT_CHUNK_OVERLAP` : trois
+symboles **sans aucun appelant en production**, seuls les tests de ce module les
+exercaient (registre 5.1). Le decoupage reel est
+`HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`
+(`vectors.get_chunker`), qui decoupe sur la STRUCTURE du document et non sur un
+compte de caracteres. Le debat « 900 contre 450 » qui a occupe la documentation
+de ce depot etait donc vide : les deux valeurs etaient fausses, parce qu'aucune
+n'etait lue.
+
+Ce qui reste ici est ce que la production appelle, et rien d'autre :
+
+- :func:`contextualize` et :func:`embedding_inputs` — le texte tel que le modele
+  le recoit, a un seul site, partage par `vectors` et par `index_report` ;
+- :func:`chunk_id` — la forme de l'identifiant ChromaDB, qui est une clause du
+  contrat avec `rag-agent-chat` ;
+- :func:`has_content` — le filtre qui decide si un texte merite un vecteur. Il
+  vivait dans `blocks.py`, dont il etait le SEUL symbole encore appele : le
+  module portait par ailleurs une doctrine de regroupement que la production
+  n'applique plus (registre 5.2), et un module nomme « blocs » qui ne contient
+  aucune notion de bloc est un nom qui ment.
 
 Le module ne depend que de la bibliotheque standard : il reste testable sans
 sentence-transformers ni ChromaDB.
@@ -13,68 +31,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
-
-# ~450 caracteres : le modele multilingue encode 128 tokens, soit environ 500
-# caracteres de prose francaise ou anglaise. Au-dela il tronque de lui-meme, et
-# le vecteur ne represente plus que le debut du texte sans que rien ne le
-# signale. Le recouvrement evite de couper une idee en deux.
-DEFAULT_CHUNK_SIZE = 450
-DEFAULT_CHUNK_OVERLAP = 75
-
-
-def chunk_text(
-    text: str,
-    size: int = DEFAULT_CHUNK_SIZE,
-    overlap: int = DEFAULT_CHUNK_OVERLAP,
-) -> list[str]:
-    """Decoupe un texte en fenetres recouvrantes alignees sur les mots.
-
-    Args:
-        text: Texte a decouper.
-        size: Taille maximale d'une fenetre, en caracteres.
-        overlap: Recouvrement entre deux fenetres consecutives, en caracteres.
-
-    Returns:
-        Liste des fenetres, vide si le texte est vide. Un texte plus court que
-        ``size`` est retourne tel quel, en un seul element.
-
-    Raises:
-        ValueError: Si ``size`` est nul ou negatif, ou si ``overlap`` n'est pas
-            strictement inferieur a ``size`` (la progression ne serait pas garantie).
-    """
-    if size <= 0:
-        raise ValueError("size doit etre strictement positif")
-    if not 0 <= overlap < size:
-        raise ValueError("overlap doit etre compris entre 0 et size (exclu)")
-
-    stripped = text.strip()
-    if not stripped:
-        return []
-    if len(stripped) <= size:
-        return [stripped]
-
-    chunks: list[str] = []
-    start = 0
-    while start < len(stripped):
-        end = min(start + size, len(stripped))
-        if end < len(stripped):
-            # Reculer jusqu'a la derniere frontiere de mot, sans jamais rogner
-            # plus que le recouvrement (sinon un texte sans espace boucle).
-            boundary = stripped.rfind(" ", start + size - overlap, end)
-            if boundary > start:
-                end = boundary
-
-        chunk = stripped[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-
-        if end >= len(stripped):
-            break
-        # max(..., start + 1) : garantit la progression meme si end - overlap
-        # retombe avant start (fenetre courte apres recul sur un espace).
-        start = max(end - overlap, start + 1)
-
-    return chunks
 
 
 def contextualize(text: str, section_title: str) -> str:
@@ -116,8 +72,9 @@ def embedding_inputs(
     ``vectors.write_elements`` prefixait le titre de section avant d'encoder, et
     ``index_report`` tokenisait le texte stocke pour compter les troncatures.
     L'instrument mesurait donc un autre texte que celui qu'il pretendait
-    surveiller, et sous-comptait d'un facteur 2 — 65 chunks annonces au-dela de
-    la fenetre contre 137 reels (`mesure`, 31 aout 2026, 4 365 chunks).
+    surveiller, et sous-comptait d'un facteur **2,1** (`mesure` sur le corpus
+    complet). Les deux comptes qui donnent ce facteur vivent a
+    :func:`~src.docling_service.vectors.get_chunker`, leur seul site.
 
     Corriger le calcul de l'instrument n'aurait ferme que l'ecart du jour : deux
     endroits qui decident du meme texte finissent par diverger a nouveau. Il n'y
@@ -151,25 +108,90 @@ def embedding_inputs(
     ]
 
 
-def chunk_ids(element_id: str, count: int) -> list[str]:
-    """Derive les ids ChromaDB des chunks d'un element.
+def chunk_id(element_id: str, index: int, count: int) -> str:
+    """Derive l'id ChromaDB d'un chunk, et c'est le SEUL site de cette forme.
 
-    Un element tenant en un seul chunk conserve son id nu : les documents deja
-    ingeres gardent leur identifiant et l'upsert les met a jour au lieu de les
-    dupliquer. Les elements multi-chunks recoivent un suffixe ``#n``.
+    Un element tenant en un seul chunk conserve son id nu ; les elements
+    multi-chunks recoivent un suffixe ``#n``. **C'est une clause du contrat, et
+    `verify_contract` la COMPTE** — « ids de chunk suffixes en #n » : 974 sur
+    4 365 sur l'index vivant (`mesure` le 2 septembre 2026). Un suffixe
+    inconditionnel porterait ce compte a 4 365 sur 4 365.
 
     Le contrat avec ``rag-agent-chat`` est preserve : le consommateur lit
     ``chunk_id`` (l'id ChromaDB) et ``element_id`` (le hash 10 hexa) dans deux
     champs distincts, et ne valide le format ``^[a-f0-9]{10}$`` que sur le
     second.
 
+    **CETTE FONCTION S'APPELAIT `chunk_ids`, RENDAIT UNE LISTE, ET N'AVAIT AUCUN
+    APPELANT** (registre 5.1). Elle n'etait pas pour autant du code mort a
+    amputer : `vectors.build_chunks` reconstruisait la MEME forme par une
+    seconde expression en ligne, et **cette expression-la n'etait gardee par
+    rien**. `mesure` sur `main` a `27a6304`, c'est-a-dire le code d'AVANT ce lot :
+    remplacer l'expression en ligne de `vectors.py` par un suffixe
+    inconditionnel (`f"{element_id}#{ancre.index}"`) laissait la suite
+    ENTIEREMENT VERTE, **857 tests, rc=0**. *(Ce docstring a d'abord ecrit
+    « 862 tests », un compte pris sur l'arbre du lot et non sur celui qu'il
+    decrit — la famille F2 du registre : un nombre exact, mesure, et perime par
+    l'arbre auquel on le rapporte.)*
+
+    **CE QUE CETTE MUTATION COUTE, ET LA PREMIERE REPONSE ETAIT FAUSSE.** Ce
+    docstring a ecrit qu'elle « fait qu'une reingestion DUPLIQUE chaque element ».
+    C'est faux depuis le lot 4 (`a54636c`), et il faut le lire dans le code :
+    `extraction.extract` appelle `storage.forget_document(identity)` **avant** la
+    conversion, et `vectors.delete_document` supprime par
+    ``where={"source_path": ...}``, **jamais par id**. Les chunks du document
+    partent donc en entier avant que les nouveaux ne soient ecrits, quelle que
+    soit la forme de leur id : aucun orphelin. Le seul chemin qui saute la purge
+    est le doublon exact (`_already_ingested`), et il n'ecrit rien non plus.
+
+    Ce que la mutation casse est une **clause du contrat**, et elle est
+    observable : la forme de l'id, que `verify_contract` compte. C'est un
+    compteur d'instrument et non une anomalie levee — raison de plus pour qu'un
+    test la tienne.
+
+    Retirer la fonction aurait donc retire les seuls tests d'une clause du
+    contrat dont le site de production n'a aucun garde. Elle est rendue
+    UNITAIRE — c'est ce que l'appelant demande, un chunk a la fois — et
+    l'appelant la traverse.
+
     Args:
         element_id: Identifiant de l'element dans NebulaGraph.
+        index: Rang du chunk dans son element, a partir de 0.
         count: Nombre de chunks produits pour cet element.
 
     Returns:
-        Liste de ``count`` identifiants.
+        L'identifiant du chunk.
     """
-    if count == 1:
-        return [element_id]
-    return [f"{element_id}#{index}" for index in range(count)]
+    return element_id if count == 1 else f"{element_id}#{index}"
+
+
+def has_content(text: str) -> bool:
+    """Indique si un texte porte au moins un caractere alphanumerique.
+
+    Un texte qui n'en contient aucun est un artefact de mise en page — filet de
+    tableau, puce, ponctuation isolee — et n'a rien a faire dans un index
+    vectoriel.
+
+    **CE FILTRE JETTE, ET LE MODULE D'OU IL VIENT AFFIRMAIT L'INVERSE.**
+    `blocks.py` ouvrait sur « la reponse retenue suit l'etat de l'art du
+    decoupage pour RAG : **fusionner plutot que jeter** », doctrine de 33 lignes
+    qui decrivait `build_blocks` — sans appelant depuis que `HybridChunker` l'a
+    remplace. Ce que la production fait, `mesure` dans `vectors.build_chunks` :
+
+        autonome = ancre.count == 1
+        if autonome and (not has_content(texte) or len(texte) < min_chunk_chars):
+            continue
+
+    Elle JETTE donc, et la borne compte : depuis le lot 4 (registre 4.28.a), le
+    filtre ne s'applique qu'a un chunk qui est le SEUL de son element. Une
+    fenetre du MILIEU d'un texte continu est conservee meme courte, sans quoi
+    l'agent concatenerait un texte troue. L'element ecarte, lui, reste dans
+    NebulaGraph : c'est l'index vectoriel qui est nettoye, pas le document.
+
+    Args:
+        text: Texte a examiner.
+
+    Returns:
+        Vrai si le texte porte au moins un caractere alphanumerique.
+    """
+    return any(character.isalnum() for character in text)

@@ -777,7 +777,9 @@ porter aucun ordre. Les trois réserves mesurées dictent la forme du contrôle 
 sont écrites à son site : `sequence` repart à 0 par document — d'où un contrôle
 **borné au document**, sans quoi deux documents entrelacés rendraient des
 inversions fausses — elle n'est pas contiguë sous un parent, et le plus grand
-trou vaut 993, donc **exiger la contiguïté rougirait sur un graphe sain**.
+écart vaut **994** de différence, soit 993 valeurs intercalaires, donc **exiger
+la contiguïté rougirait sur un graphe sain**. Le site canonique de ces chiffres
+est le docstring d'`inversions_de_page` ; ne les recopie pas, renvoie-y.
 
 **La phrase d'exhaustivité est corrigée, et l'échantillon est SUPPRIMÉ.** « Une
 rupture de contrat est systématique » est vraie d'un FORMAT et fausse d'un ORDRE.
@@ -1593,11 +1595,14 @@ qui tient, et c'est elle qu'il faut lire :
    questions désigne des `element_id`, mais un rappel se calcule sur des chunks :
    deux chunks de plus déplacent le dénominateur ;
 2. **`page_no_end` demande une réingestion pour être peuplé.** Le schéma migre en
-   place, les **données** non — `mesuré` le 1er septembre 2026,
-   `DESCRIBE TAG Paragraph` sur le space vivant rend
-   `label, page_no, text, minio_url, depth` : la colonne n'existe **pas encore**.
-   Un jeu de questions écrit contre l'index actuel ne pourrait pas exercer le
-   cadrage « page N à M » que le lot 4 livre.
+   place, les **données** non. `mesuré` le 1er septembre 2026,
+   `DESCRIBE TAG Paragraph` rendait `label, page_no, text, minio_url, depth` : la
+   colonne n'existait pas. **`mesuré` le 2 septembre 2026, après un redémarrage de
+   `docling-service` : elle existe, sur les tags d'élément, et 7 251 sommets
+   `Paragraph` sur 7 251 sont à `NULL`** (§4.29.e). La conclusion ne bouge pas —
+   un jeu de questions écrit contre l'index actuel ne peut pas exercer le cadrage
+   « page N à M » — mais **son antécédent a changé**, et le second état est celui
+   qui vaut aujourd'hui.
 
 **Ce qui est retourné, et ce qui tient — les deux moitiés, côte à côte :**
 
@@ -1635,9 +1640,11 @@ l'index vivant sont un sous-ensemble strict des deux. La cause se lit dans le co
 `prov[0].page_no`.
 
 **L'ordre reste forcé, pour deux raisons neuves et mesurées** : le jeu de *chunks*
-change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'existe pas encore dans le
-graphe** — `DESCRIBE TAG` sur le space vivant ne le porte pas, donc une réingestion
-est requise, précédée d'un redémarrage de `docling-service` (§4.29.e). Les 30
+change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'est peuplé sur aucun sommet**
+— la colonne existe depuis le redémarrage du 2 septembre 2026, et les 7 251
+`Paragraph` sont à `NULL` (§4.29.e), donc une réingestion reste requise ; elle
+reste précédée d'un redémarrage de `docling-service`, qui est sans coût quand le
+schéma est déjà à jour. Les 30
 questions attendent donc toujours, mais pas pour la raison écrite ici.
 
 **Ce que le chantier doit en retenir** : ce paragraphe portait un raisonnement
@@ -1669,7 +1676,7 @@ Deux d'entre eux **corrigent un chiffre du mandat de cette réparation**, remesu
 plutôt que recopié : le b et le f. C'est le principe du chantier, et il vaut
 aussi pour les chiffres que le chantier vient d'écrire.
 
-#### 4.29.a Le containment ne protège pas d'une cible contenue mais fausse
+#### 4.29.a → traité par le lot 5 — `CLEANED_SUBDIR` n'est plus un réglage, et son TROISIÈME dégât n'avait pas été mesuré
 
 Le bloquant B1 est fermé : `purge_cleaned` refuse toute cible qui n'est pas
 **strictement contenue** dans `source_dir` après résolution (`wipe_stores.py`).
@@ -1718,7 +1725,7 @@ main**, et c'est à son crédit : son test rougissait déjà sur le code livré,
 retiré du juge et l'a écrit ici. Un développeur qui élargit un périmètre tranché
 « parce que c'est mieux » retire au pilote la décision qu'il a prise.
 
-#### 4.29.b `media.py` : un site de dérivation fermé, un autre ouvert
+#### 4.29.b → traité par le lot 5 — les deux classes de réglages sont gardées d'accord
 
 L'objet est téléversé dans `PipelineSettings.minio_bucket` /
 `.minio_endpoint` (`media.py:50`, `:64`) ; l'URL publiée est construite par
@@ -1741,7 +1748,7 @@ dans un test qui importe les deux classes. Deux lignes. Son témoin : la faire
 porter sur les deux couples (`minio_endpoint` **et** `minio_bucket`), sans quoi
 la moitié non assertée redeviendrait libre de dériver.
 
-#### 4.29.c `VERTEX_PROPERTIES` / `VERTEX_TYPES` : la longueur est gardée, la CORRESPONDANCE non
+#### 4.29.c → traité par le lot 5 — la correspondance colonne → type est gardée, `CREATE` **et** `ALTER`
 
 L'invariant est écrit au site — « les deux tuples sont lus ensemble par
 `tag_schema_statements` : les désaligner produit un `CREATE TAG` qui n'a pas les
@@ -1774,7 +1781,7 @@ témoin : que le test rougisse aussi sur une **permutation** des types, pas
 seulement sur un type changé — sans quoi il serait vert sur deux colonnes de même
 type échangées.
 
-#### 4.29.d `verify_contract.py:438` est le SEUL des quatre sites d'identifiants du graphe que rien ne garde
+#### 4.29.d → CONSIGNÉ par le lot 5, NON traité — le motif est au bas de ce constat
 
 Le lot 4 a exposé `NEBULA_USER` / `NEBULA_PASSWORD` en réglages et corrigé les
 **quatre** sites qui codaient `("root", "nebula")` en dur (§4.3, qui en annonçait
@@ -1809,7 +1816,26 @@ déclare rendrait le témoin vert ou rouge selon la machine.
 il n'observe pas ce que `pool.get_session` reçoit. Il rapproche le geste, il ne le
 fait pas.)*
 
-#### 4.29.e Le message d'anomalie `page_no_end` de `verify_contract` égare
+**POURQUOI LE LOT 5 NE L'A PAS TRAITÉ, et le motif n'est pas le périmètre.** Le
+garde à écrire est un sous-processus qui bouchonne `nebula3` et **imprime** les
+identifiants reçus — le patron de `test_verify_data.py`, transposé. Le lot 5 a
+écrit trois gardes de cette famille (§4.29.b, §4.29.c, §4.29.e) et celui-ci
+aurait été le quatrième : il est faisable, et il n'est pas fait.
+
+La raison est que **ce lot a déjà touché `verify_contract.py` en profondeur**
+pour §4.29.e — une fonction pure neuve, un `DESCRIBE TAG` ajouté au chemin de
+lecture, et le harnais de session du lot 4 étendu pour y répondre. Ajouter dans
+le même souffle un second harnais, en sous-processus celui-là, sur le même
+module, aurait mêlé deux montages de test différents dans un diff que personne
+ne relirait pour les deux. La sévérité le permet : l'échec est **bruyant** — un
+graphd qui refuse les identifiants ne laisse rien passer en silence.
+
+**Le geste reste écrit, il est petit, et il n'a pas bougé.** Son témoin non
+optionnel est rappelé ici : le test doit **retirer** `NEBULA_USER` et
+`NEBULA_PASSWORD` de l'environnement hérité avant de poser les siens, sans quoi
+un poste qui les déclare rendrait le témoin vert ou rouge selon la machine.
+
+#### 4.29.e → traité par le lot 5 — les deux états ne se confondent plus, et l'ordre des branches est le sujet
 
 `verify_contract.py:486-491` dit, quand des sommets n'ont pas de `page_no_end` :
 
@@ -1821,6 +1847,25 @@ le 1er septembre 2026 sur le space vivant, `DESCRIBE TAG Paragraph` et
 `SectionHeader` rendent `label, page_no, text, minio_url, depth` — cinq colonnes,
 sans `page_no_end`. Le message décrit donc un état qui n'est pas celui du poste,
 et il prescrit le geste qui ne suffit pas.
+
+> **CE FAIT A PÉRIMÉ LE 2 SEPTEMBRE 2026, ET IL FAUT LE LIRE COMME UN ÉTAT DE
+> POSTE.** `docling-service` a été redémarré, `init_schema()` a joué, et
+> `DESCRIBE TAG Paragraph` comme `DESCRIBE TAG SectionHeader` rendent désormais
+> **six** colonnes — `label, page_no, text, minio_url, depth, page_no_end` —
+> tandis que **7 251 sommets `Paragraph` sur 7 251 portent `NULL`** (`mesuré`,
+> lecture directe depuis le conteneur d'extraction). Le poste est donc passé du
+> **premier** état au **second** : le schéma a migré, les données non.
+>
+> **Ce n'est pas le monde qui a menti, c'est une phrase non datée qui a vieilli.**
+> C'est la même famille que les quatre bloquants de la réparation, produite cette
+> fois par le monde et non par une main : *un état de poste n'est vrai qu'à une
+> date, et la seule défense est l'étiquette et la date.* Les deux mesures sont
+> conservées côte à côte, chacune datée, plutôt qu'une seule réécrite — c'est ce
+> qui rend le mouvement lisible.
+>
+> **Ce que cela ne change PAS** : la forme du garde à écrire ci-dessous, ni la
+> consigne « redémarrer puis réingérer ». Le contrôle doit toujours distinguer les
+> deux états, et le poste vient de prouver que **les deux existent vraiment**.
 
 **Et `init_schema()` n'est joué qu'au DÉMARRAGE du service** (`main.py:72`, dans
 le `lifespan`). La consigne complète est donc **« redémarrer `docling-service`,
@@ -1841,7 +1886,7 @@ rend les colonnes absentes d'un tag réel. Son témoin : les deux états doivent
 rendre des messages différents, sans quoi la distinction serait faite dans le code
 et perdue dans la sortie.
 
-#### 4.29.f Un chunk vide peut atteindre l'embedding, en principe — et la conséquence écrite était fausse
+#### 4.29.f → CONSIGNÉ par le lot 5, NON traité — le motif est au bas de ce constat
 
 `vectors.py:229-230` : `autonome = ancre.count == 1`, puis
 `if autonome and (not has_content(texte) or len(texte) < settings.min_chunk_chars)`.
@@ -1897,7 +1942,27 @@ explicitement sur la collection. Le laisser au défaut fait dépendre le
 comportement de recherche d'une valeur que personne n'a écrite — la famille des
 `CHUNK_SIZE=900` du §5.1, dans l'autre sens.
 
-#### 4.29.g `test_le_launcher_est_bien_celui_que_ce_raisonnement_suppose` asserte sur un commentaire
+**POURQUOI LE LOT 5 NE L'A PAS TRAITÉ.** Deux raisons, et la première suffit.
+
+1. **Le garde demandé est un garde de SERRAGE sur un comportement à décider.**
+   Le constat le dit lui-même : la distinction à écrire est « vide ou sans
+   caractère alphanumérique » contre « court », et non « autonome » contre « avec
+   frères ». C'est un **changement du filtre d'indexation**, donc du jeu de
+   chunks écrit — exactement ce que le §6 du mandat interdit de bouger avant la
+   campagne de référence, puisque le rappel se calcule sur des chunks. Le
+   périmètre du lot 5 est le code mort et l'écart documentation/code ; celui-ci
+   est un correctif de comportement.
+2. **Sa conséquence est inconnue plutôt que grave, et c'est mesuré** — zéro
+   occurrence sur les 4 365 chunks de l'index, et la chaîne vide se place au
+   95,9ᵉ centile des normes réelles sous une distance L2 qui l'**éloigne** des
+   requêtes.
+
+**Ce que le lot 5 laisse au lot suivant** : la décision `hnsw:space` doit être
+prise **avant** ce garde, parce qu'elle décide si une norme élevée rapproche ou
+éloigne — donc si le mécanisme est un défaut ou une curiosité. Les deux dans le
+même geste, ou aucun.
+
+#### 4.29.g → traité par le lot 5 — le test lit le launcher EFFECTIF, hors ligne
 
 `tests/unit/test_dagster_yaml.py:123`. Sa première assertion est
 `"DefaultRunLauncher" in texte`, sur le contenu brut de `dagster.yaml`. `mesuré`
@@ -1924,7 +1989,7 @@ celui déjà employé deux tests plus haut pour `max_runtime_seconds` — compar
 valeur du fichier à un réglage réel — appliqué au dernier endroit du fichier qui
 lit encore une chaîne.
 
-#### 4.29.h Ma déclaration du quatrième écart surdisait — CORRIGÉE au README, non au message de commit
+#### 4.29.h → VÉRIFIÉ par le lot 5, non traité — divergence permanente et assumée
 
 `src/docling_service/main.py` n'a **AUCUNE ligne modifiée** dans le diff du lot 4
 (`mesuré` : `git diff main..HEAD -- src/docling_service/main.py` rend le vide). Il
@@ -1950,7 +2015,7 @@ déclare à sa taille exacte **au moment où on le prend**, et aucun test ne le 
 déclaration — `tests/unit/test_importabilite_cote_hote.py` rougirait si `main.py`
 devenait importable, en exigeant qu'on retire l'exception plutôt que la garder.
 
-#### 4.29.i `extract()` purge avant de convertir — un changement du chemin NOMINAL
+#### 4.29.i → CONSIGNÉ par le lot 5, NON traité — c'est un arbitrage à poser au pilote, pas un correctif
 
 `extraction.py` fait `storage.forget_document(identity)` **avant** la conversion,
 et l'ordre est gardé (`test_extraction.py`, `ordre == ["oubli", "conversion"]`).
@@ -1976,25 +2041,649 @@ d'abord trancher lequel des deux états on préfère : *un index qui sert un doc
 périmé* ou *un index qui n'en sert aucun*. Le lot a choisi le second et l'a écrit ;
 le choix n'est pas évident et il n'a pas été posé au pilote.
 
+#### TRANCHÉ par le pilote le 2 septembre 2026 : le second, et le troc est bon
+
+**Entre un index qui sert un document périmé et un index qui n'en sert aucun, le
+second est retenu.** Le comportement livré par le lot 4 est donc confirmé, pas
+toléré.
+
+**Le motif est la doctrine de ce chantier, et il tient en une opposition.** Un
+document périmé servi avec des citations d'apparence valide est une perte
+**silencieuse** : l'agent rend des passages, l'utilisateur les lit, les
+`element_id` sont bien formés, `verify_contract` ne voit rien — *personne ne peut
+la voir*. Une absence est **bruyante** : la partition Dagster rougit,
+`index_report` compte les documents et en annoncerait **22 là où le corpus en
+porte 23** (`calculé` — le corpus versionné porte 23 documents, §2), et
+`verify_contract` le dit. Le chantier a passé quatre lots à apprendre que la
+perte silencieuse coûte plus que la panne bruyante ; il n'allait pas trancher
+dans l'autre sens.
+
+**Ce que la décision NE dit pas, et il faut l'écrire aussi.** Elle ne dit pas que
+le comportement actuel est le meilleur possible. **La conception « écrire sous une
+clé provisoire puis basculer » serait strictement meilleure** — elle donne
+l'absence de perte silencieuse *et* la continuité de service — et elle **va au
+plan, après le lot 6**. Elle n'y va pas avant, pour une raison mesurable : rien
+ne dit aujourd'hui à quelle fréquence une conversion échoue durablement sur ce
+corpus, et **c'est la première campagne de référence qui le dira**. Un chantier
+de bascule à clé provisoire décidé avant cette mesure serait décidé sur un
+antécédent `supposé` — la faute que le §3.2 et le §4.28.e ont chacune coûté un
+raisonnement au chantier.
+
+**Décision datée, pas question ouverte.** Ce paragraphe remplace « le choix n'est
+pas évident et il n'a pas été posé au pilote » : il a été posé, et il est
+tranché.
+
+**LE LOT 5 NE LE TRAITE PAS, ET C'EST LE SEUL DES NEUF QU'IL NE POUVAIT PAS
+TRAITER.** Ce constat n'est ni du code mort, ni un écart entre la documentation
+et le code : le code fait ce que sa documentation dit, et le comportement est
+cohérent avec l'invariant que le lot 4 installe. **C'est une question posée au
+pilote**, et elle attend une réponse, pas un commit — « écrire sous une clé
+provisoire puis basculer » suppose de trancher lequel des deux états on préfère.
+Un développeur qui trancherait de sa main retirerait au pilote la décision, ce
+qui est exactement ce que le §4.29.a félicite le réparateur du lot 4 de n'avoir
+pas fait.
+
+**Ce que le lot 5 ajoute, et c'est tout ce qu'il pouvait ajouter** : la question
+est posée nettement, et son coût est borné. Le déclencheur est le capteur `mtime`
+— toucher un fichier suffit — donc le cas se produit à **chaque tick** tant que
+la conversion échoue, et non une fois.
+
+### 4.30 → CONSIGNÉ par le lot 5 — ce qu'il a trouvé en cherchant autre chose
+
+Onze constats, tous mesurés, et **aucun n'était au registre**. Ils se ressemblent :
+chacun est né dans un commit qui faisait bien son travail, et qu'aucun périmètre
+n'obligeait à relire la phrase décrivant l'état d'avant. C'est le motif du lot 5,
+appliqué au lot 5 lui-même — trois de ces onze ont été trouvés en relisant mes
+propres commits.
+
+#### 4.30.a « La profondeur est plafonnée à 3 » vivait à QUATRE documents
+
+Le lot 3 a retiré `MAX_DEPTH` (§4.24) et corrigé `schemas.py`,
+`services/nebulagraph.md` et `llm_integration_plan.md`. Périmètre strict, il a
+laissé `README.md`, `documentation/graphe_connaissances.md`,
+`documentation/extraction_donnees.md` — **dans un titre de section** — et
+`documentation/CHANGEMENTS.md`. Remesuré sur l'index vivant :
+`{1: 912, 2: 1993, 3: 1164, 4: 256, 5: 40}`, maximum **5**, soit **296 chunks sur
+4 365 (6,8 %) au-delà de 3**. Le motif écrit du plafond était faux aussi, et
+`README.md` le recopiait mot pour mot. **Traité par le lot 5.** Le code, lui,
+était juste et gardé depuis le lot 3 : remettre le plafond rougit 2 tests.
+
+#### 4.30.b `chunk_ids` n'était pas du code mort, il était CONTOURNÉ
+
+§5.1 le range parmi les symboles sans appelant. Exact — et `vectors.build_chunks`
+reconstruisait la **même** forme par une expression en ligne, la seule que la
+production exécute, et **que rien ne gardait** : un suffixe inconditionnel
+laissait la suite entièrement verte (**857 tests, rc=0** sur `main` à `27a6304`,
+remesuré par la réparation ; ce constat écrivait 862, un compte pris sur l'arbre
+du lot et non sur celui qu'il décrit). L'amputer comme du code mort aurait retiré les seuls
+tests d'une clause du contrat dont le site d'exécution n'a aucun garde.
+**Traité par le lot 5** : la fonction devient `chunk_id`, unitaire, et
+l'appelant la traverse.
+
+> **La CONSÉQUENCE que ce constat écrivait — « cette mutation fait dupliquer tout
+> l'index à chaque réingestion » — est FAUSSE, et corrigée par la réparation.**
+> Elle l'est depuis le lot 4, et elle a survécu au commit qui l'a rendue fausse.
+> Ce que la mutation casse réellement est la clause elle-même, que
+> `verify_contract` compte : **974 ids suffixés sur 4 365**. Le détail et la
+> mesure sont au **§4.31.B3**. *L'écart, lui, reste justifié : le site de
+> production n'était gardé par rien.*
+
+**La leçon, et elle est neuve : « aucun appelant » et « code mort » ne sont pas la
+même chose.** Un symbole sans appelant dont un *doublon* est appelé est le
+contraire du code mort — c'est la version testée d'un comportement dont la
+version vivante ne l'est pas. Avant de retirer un symbole sans appelant, cherche
+si son *comportement* a un second site.
+
+#### 4.30.c Le vestige « le modèle ne parle qu'anglais » avait un TROISIÈME site
+
+§6.14 et §6.15 en nomment deux. Le troisième est
+`src/docling_service/language.py` — le module dont la langue **est** le sujet, et
+celui qu'un développeur ouvre pour comprendre à quoi sert la clé `language`.
+**Traité par le lot 5.**
+
+#### 4.30.d L'ancre morte de §6.14 était citée DEUX fois
+
+`#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais` ne correspond à aucun
+titre de `base_vectorielle.md`. §6.14 nomme le renvoi du `README.md` ; celui de
+`documentation/CHANGEMENTS.md` n'était pas relevé. **Traité par le lot 5**, avec
+un balayage de **tous les liens `](fichier#ancre)`** des documents livrés,
+résolus contre les titres réels de leur cible : **0 ancre morte** après
+correction, et la commande est rejouable.
+
+> **LA BORNE ÉTAIT DANS LE MESSAGE DE `d2562d6` ET ELLE EST TOMBÉE ICI.** Le
+> commit écrit « tous les liens `](fichier#ancre)` », ce qui est exact et borné ;
+> ce constat écrivait « tous les **renvois internes**… 0 mort », ce qui est plus
+> large que ce qui a été mesuré. **Il y a deux familles de renvoi interne**, et
+> une seule avait été balayée :
+>
+> | Famille | Balayée par le lot | `mesuré` par la réparation, 2 septembre 2026 |
+> |---|---|---|
+> | ancres — `](cible#ancre)` | **oui** | 10 vérifiées, **0 morte** |
+> | liens de **fichier** — `](chemin)` | **non** | 41 vérifiés, **1 mort** |
+>
+> Le lien mort est `documentation/base_vectorielle.md` →
+> `src/docling_service/language.py` : il manquait le `../`, dans un document que
+> le lot modifie. Corrigé.
+>
+> **Le critère du balayage**, parce qu'un balayage dont le critère n'est pas
+> écrit n'est pas reproductible : les 21 `*.md` du dépôt hors `.venv` et `.git`,
+> **privés de leurs blocs et de leurs spans de code** — sans cette soustraction,
+> les illustrations de syntaxe `![legende](chemin)` du `README.md` et
+> d'`extraction_donnees.md` comptent pour trois liens morts qu'elles ne sont
+> pas — chaque cible relative devant exister, et chaque ancre devant figurer
+> parmi les ancres GitHub des titres de sa cible.
+
+#### 4.30.e « Aucune troncature » survivait à DIX sites, dont un dans `vectors.py`
+
+Le mandat du lot 5 en annonce deux. L'inventaire en rend dix, et le plus
+instructif est `vectors.build_chunks` : « remplit la fenêtre du modèle sans jamais
+la dépasser », **à cent-cinquante lignes de l'en-tête du même fichier qui dit le
+contraire**. Le lot 3 avait corrigé les deux docstrings *nommés* et laissé le
+troisième. Sept sites portaient un chiffre, trois l'affirmation seule.
+**Traité par le lot 5**, tout renvoyant à `vectors.get_chunker`.
+
+#### 4.30.f `page_no_end` manquait de TOUS les schémas documentés
+
+Le lot 4 a ajouté la colonne aux onze tags d'élément et à `ChunkMetadata`. Il n'a
+touché **aucun** des quatre documents qui décrivent ces schémas (`mesuré` :
+`git log e9ebe43~1..79cd2bc --name-only` sur ces fichiers rend le vide). §6.18
+relève que le tag `Document` porte 7 propriétés et non 2 ; il ne relève pas que
+les tags d'élément en portent 6 et non 5. **Traité par le lot 5.**
+
+#### 4.30.g Le README annonçait « les trois stores » quand la purge en fait QUATRE
+
+Le lot 4 a ajouté la purge de `Datas/.cleaned/` — le piège le plus discret de
+cette purge — sans recompter la phrase d'exhaustivité du `README.md`. Le compte
+est mesuré sur la sortie du script, qui titre chacune des quatre.
+**Traité par le lot 5.**
+
+> **ET LE LOT 5 A LAISSÉ LA MÊME PHRASE UNE LIGNE PLUS LOIN.** `README.md`
+> écrivait encore « le script sort en code d'erreur si l'un des **trois** stores
+> résiste », **trente-cinq lignes sous le tableau qui en compte quatre, dans la
+> section que ce constat corrige**. `mesuré` sur le code : **quatre** branches
+> alimentent `echecs` dans `wipe_stores.main` — ChromaDB, MinIO, NebulaGraph,
+> HTML nettoyé — et la quatrième est gardée par le test que le lot a écrit
+> lui-même, `test_un_echec_de_purge_du_html_fait_sortir_en_un`. **Le lot prouvait
+> quatre et écrivait trois.** Corrigé par la réparation ; c'est la troisième
+> occurrence du motif de dénombrement dans ce lot, après §4.31.B2 et §4.31.C3.
+
+#### 4.30.h `CLEANED_SUBDIR` cassait les `element_id`, et personne ne l'avait mesuré
+
+§4.29.a nomme deux dégâts : les quatre valeurs qui visent la racine, et les
+valeurs contenues mais fausses. **Il y en avait un troisième, plus discret et plus
+grave.** Deux sites décidaient du nom du répertoire : `PipelineSettings.
+cleaned_subdir`, selon lequel l'asset `cleaned_html` **écrit**, et
+`elements.CLEANED_SUBDIR`, selon laquelle `document_identity` **retire** le
+segment. `mesuré` avec `CLEANED_SUBDIR=.propre`, sur le chemin nettoyé d'un
+chapitre réel : `key` passe de `htms/MLOps with Databricks/Preface` à
+`.propre/htms/…`, `collection` passe de l'ouvrage au dossier de source, et
+l'`element_id` passe de `fab608f4eb` à `9d6460cded`. **L'exigence 2 rompue, et
+l'exigence 3 avec elle, sans qu'aucune erreur ne soit levée.** Traité par le
+lot 5, et c'est l'argument qui rend la décision du pilote plus forte qu'elle ne
+se présentait.
+
+#### 4.30.i La liste de « renvois vérifiés justes » du §6.17 avait ROTÉ
+
+Deux des sept le sont encore. Le détail et la leçon de méthode sont au §6.17 :
+**un renvoi `fichier:ligne` est une mesure dont la provenance comprend la
+révision**, et re-vérifier une liste ne la stabilise pas. Le geste durable est de
+désigner un **symbole**. Le renvoi de §6.9 a roté deux fois en trois jours.
+
+#### 4.30.j Le piège de mesure §4.27 n° 2 vaut aussi pour les propriétés d'ARÊTE
+
+Le §4.27 documente qu'un `WHERE` sur une propriété de **tag** sans index rend
+`IndexNotFound`. `mesuré` : c'est vrai aussi d'une propriété d'**arête** —
+`MATCH (a)-[e:PARENT_OF]->(b) WHERE e.sequence == 0` rend « Error found in
+optimization stage: IndexNotFound: No valid index found ». Le geste est le même,
+filtrer côté client. **Et l'échec ne ressemble pas à un échec** : la requête rend
+zéro ligne, donc un `row_values(0)` lève un `IndexError` qui se lit comme un bug
+de script.
+
+#### 4.30.k La fenêtre du modèle n'était gardée par rien, et deux documents l'avaient déjà fausse
+
+`index_report` lit `modele.max_seq_length` : `mesuré`, la remplacer par
+`limite = 256` — le nombre même qui était faux dans `services/chromadb.md` et
+`llm_integration_plan.md` — laissait 834 tests verts. L'instrument pouvait donc
+rapporter une fenêtre fabriquée, **et son taux de troncature avec elle**.
+**Traité par le lot 5**, garde en sous-processus, avec le témoin qui exige que
+deux modèles rendent deux fenêtres.
+
+**Le motif commun des onze, et il est unique** : *une phrase, un chiffre ou un
+renvoi survit au commit qui rend son objet faux, parce que le périmètre du commit
+ne l'obligeait pas à le relire.* Le §11 du mandat le formule pour les commits qui
+ferment un angle mort ; ces onze montrent que cela vaut pour **tout** commit qui
+change un fait, y compris ceux d'un lot dont c'est le sujet.
+
+---
+
+### 4.31 → la RÉPARATION du lot 5 — quatre bloquants et quatre constats de ligne
+
+Le pilote a jugé le lot fusionnable **après réparation** : ses trois défauts de
+comportement sont confirmés, ses chiffres reproduits, ses écarts validés. Ce qui
+suit est ce qu'il a fermé, avec le juge de chacun.
+
+**Et le motif est dur à entendre : les quatre bloquants sont, quatre fois, la
+famille que ce lot existe pour fermer — commise par lui.** Un renvoi qu'il a
+rendu faux **au commit suivant** celui qui l'écrivait (§4.31.B1), un
+dénombrement qui contredit le déverrouillage sur lequel reposent ses propres
+tests (§4.31.B2), une conséquence devenue fausse au lot précédent et recopiée à
+**neuf passages dans six fichiers** (§4.31.B3), et un invariant énoncé dans un
+docstring sans le garde qui va avec (§4.31.B4).
+
+**Ce n'est pas une charge contre le lot : c'est la mesure de la difficulté du
+travail, et personne n'y échappe.** Le lot s'est fait prendre **deux fois de son
+propre aveu** (§4.30.b, §4.30.i) ; son audit en a trouvé **deux de plus** ; le
+**pilote** a recopié « le seul chapitre retenu sans aucun `<h2>` » **deux fois,
+le tableau des balises sous les yeux** (§3.2, mandat §5.1 ter) ; et la
+**réparation elle-même** en a produit trois qu'elle a dû corriger en cours de
+route — « huit sites » pour neuf passages, « ~37 lignes » repris sans mesure, et
+« trois liens morts » dont deux étaient des illustrations de syntaxe. Chacune est
+écrite au site où elle a été faite, parce qu'une famille de défaut qu'on ne
+documente que chez les autres n'est pas comprise.
+
+#### 4.31.B1 Cinq renvois `mesuré` que le lot a rendus faux LUI-MÊME
+
+Il écrivait `mesuré à src/docling_service/vectors.py:230` à **cinq sites** : le
+docstring de `chunking.has_content`, `base_vectorielle.md`,
+`extraction_donnees.md`, `llm_integration_plan.md` et `services/chromadb.md`.
+
+*Le juge est une mesure*, `mesuré` le 2 septembre 2026 sur la pointe du lot :
+
+```bash
+sed -n '230p' src/docling_service/vectors.py   # -> `ids: list[str] = []`
+grep -n 'autonome' src/docling_service/vectors.py   # -> 267, 268
+```
+
+Le filtre vit donc à **267-268**, et non à 230.
+
+**La chronologie est mesurée, commit par commit**, et elle est plus instructive
+que le fait :
+
+```bash
+for c in $(git rev-list --reverse main..e5103cf); do
+  git show "$c:src/docling_service/vectors.py" | grep -n 'if autonome and'
+done
+git show --numstat --format= 765f5ee -- src/docling_service/vectors.py
+git log --oneline -S 'vectors.py:230' main..e5103cf
+```
+
+| | ligne du `if autonome and …` |
+|---|---|
+| `main` (`27a6304`) et les trois premiers commits du lot | **230** |
+| **`765f5ee`** et les huit suivants | **268** |
+
+Le renvoi a été écrit par **`c563f45`**, le troisième commit du lot, et il était
+**exact ce jour-là**. **`765f5ee` — le commit SUIVANT — l'a rendu faux** en
+portant `vectors.py` de +46/−8 lignes, soit un décalage net de 38 qui est
+exactement `268 − 230`. *Le renvoi n'a donc pas vieilli : il a été tué par le
+commit d'après, dans le lot dont c'est le sujet.*
+
+C'est le §4.30.i au mot près — « un renvoi `fichier:ligne` est une mesure dont la
+provenance comprend la révision » — et le §6.17 prescrivait déjà le remède : **le
+geste durable est de désigner un SYMBOLE et non une ligne.** Les cinq sites
+nomment désormais `vectors.build_chunks`.
+
+##### Le balayage complet des renvois `fichier:ligne` du diff, avec son critère
+
+Corriger cinq renvois ne dit rien des autres. Le balayage porte sur **toute ligne
+ajoutée** par `git diff main..HEAD -U0` contenant un motif
+`<chemin>.<py|md|yml|yaml|toml|sh>:<n>[-<m>]`, le fichier visé étant cherché tel
+quel puis sous `src/`, `src/docling_service/`, `src/pipeline/`, `tests/unit/` et
+`documentation/`. Un balayage dont le critère n'est pas écrit n'est pas
+reproductible.
+
+`mesuré` le 2 septembre 2026 : **10 renvois distincts**, 0 fichier introuvable.
+
+| Renvoi | État |
+|---|---|
+| `vectors.py:230` (5 sites) | **FAUX** — corrigé ci-dessus, par le symbole |
+| `ranking.py:56-71`, `ranking.py:83-84` | **justes à `e5103cf`** — vérifiés ligne à ligne : ce sont bien les corps de `docling_parent_rank` et `docling_level_rank`. La révision est nommée parce que c'est la moitié de la provenance qui manquait au §6.17, et ces deux-là rotteront comme les autres |
+| `README.md:317`, `extraction.py:335-337`, `index_report.py:75-84`, `nebula.py:49`, `nebula.py:160`, `schemas.py:94-95` | **citations, pas des renvois** : ils vivent dans le tableau du §6.17 qui les déclare périmés ou dérivés, et ce tableau existe pour dire qu'ils le sont. Les corriger en `fichier:ligne` neuf serait refaire le défaut à trois jours près |
+
+#### 4.31.B2 « Onze modules sans dépendance externe » : ils sont QUATORZE, et le sept niait le déverrouillage
+
+`services/docling.md` annonçait **onze** modules ne dépendant que de la
+bibliothèque standard, et **sept** portant une dépendance de niveau module.
+
+*Le juge est une mesure* — balayage AST rejoué le 2 septembre 2026, **critère
+écrit au site** parce qu'un balayage dont le critère n'est pas écrit n'est pas
+reproductible : les **18 modules** de `src/docling_service/` (les `*.py`, moins
+le marqueur de paquet `__init__.py`, vide), un module portant une dépendance
+externe quand une instruction `import` du **corps du module** nomme un paquet
+racine qui n'est ni relatif, ni `src`/`docling_service`, ni dans
+`sys.stdlib_module_names`.
+
+**Résultat : 18 modules, 4 porteurs, 14 sans aucune dépendance** —
+`extraction.py` (`bs4`), `images.py` (`minio`), `main.py` (`fastapi`),
+`settings.py` (`pydantic_settings`).
+
+**Et le compte de sept était plus grave que le compte de onze : il NIAIT le
+déverrouillage livré par les lots 3 et 4** (§3.4, §4.4, §4.28.d), celui-là même
+sur lequel reposent `test_vectors.py` et `test_nebula.py`. Il rangeait
+`embedding.py`, `nebula.py` et `vectors.py` parmi les porteurs alors que leurs
+imports lourds sont **différés**. La preuve est dure, et elle tient en deux
+mesures : `chromadb`, `nebula3` et `sentence_transformers` **ne sont pas dans le
+venv du dépôt** (`importlib.util.find_spec` rend `None` pour les trois), et
+`uv run python -c "import src.docling_service.vectors"` — de même pour `nebula`
+et `embedding` — rend `rc=0` côté hôte.
+
+La liste ne venait pas d'un balayage : elle venait du **registre §6.8 corrigé à
+la main**, et §6.8 était marqué ✅ sur ce compte faux. Il est corrigé, pas
+rouvert : le constat — *le document énumère mal* — est bien fermé une fois
+l'énumération juste.
+
+**Le balayage est converti en garde**, parce que la phrase est une phrase
+d'exhaustivité et que le chantier n'en laisse plus passer sans borne ni test :
+`tests/unit/test_dependances_de_niveau_module.py` rejoue l'AST, sans rien
+importer — donc sans dépendre du venv ni de l'ordre des tests. `mesuré`,
+mutation appliquée puis révoquée, texte vérifié changé :
+
+| Mutation | Suite entière |
+|---|---|
+| `import minio` ajouté au corps de `storage.py` — un porteur de plus, rien d'autre ne casse | **rc=1, UN seul rouge** : `test_seuls_quatre_modules_portent_une_dependance` |
+| `import chromadb` remis au corps de `vectors.py` — le déverrouillage défait | **rc=2**, la collecte est **interrompue** sur 3 erreurs (`test_vectors.py`, `test_storage.py`, `test_extraction.py`). *Le garde ne rougit pas là : il n'est jamais atteint.* C'est ce qui rend la première mutation nécessaire — elle est la seule qui isole la propriété |
+
+Trois témoins : le balayage doit avoir lu au moins 18 modules, il doit rendre
+`bs4` sur `extraction.py` (sans quoi un balayage qui ne détecte rien passerait),
+et il doit rendre l'ensemble vide sur `ngql.py` (sans quoi un balayage qui
+détecte tout passerait aussi).
+
+#### 4.31.B3 « Un suffixe inconditionnel fait DUPLIQUER tout l'index » : faux depuis le lot 4
+
+L'affirmation vivait à **neuf passages** répartis dans **six fichiers**, et le
+mandat de la réparation en nommait quatre. L'inventaire, `mesuré` — `grep -rn
+'dupliqu' src/ tests/ documentation/ README.md`, puis lecture de chaque ligne
+pour écarter celles qui parlent d'autre chose (le déterminisme des `element_id`,
+le chevauchement de pages, la déduplication de `detect-secrets`) :
+
+| Fichier | Passages |
+|---|---|
+| `src/docling_service/chunking.py` — docstring de `chunk_id` | **2** |
+| `src/docling_service/vectors.py` — commentaire de `build_chunks` | 1 |
+| `tests/unit/test_chunking.py` | 1 |
+| `tests/unit/test_vectors.py` — docstring de classe, docstring de test, message d'assertion | **3** |
+| `documentation/base_vectorielle.md` | 1 |
+| ce registre, §4.30.b | 1 |
+
+*(Ce paragraphe a d'abord écrit « huit sites » : neuf passages, six fichiers, et
+« site » ne disait pas lequel des deux. **Une erreur de dénombrement dans la
+section qui traite des erreurs de dénombrement** — c'est la difficulté du
+travail, et elle se corrige en recomptant, pas en s'en méfiant.)*
+
+*N'audite pas la liste qu'on te donne : construis la tienne, puis diffe.* Le §5.1
+s'y ajoute d'une autre façon : il ne portait pas l'affirmation, il décrivait
+l'état d'**avant** le lot sous un titre qui annonce « traité par le lot 5 ». Il
+est réécrit.
+
+*Le juge est une mesure, et elle se lit dans le code livré sans rien exécuter :*
+
+```bash
+grep -n 'forget_document\|_already_ingested' src/docling_service/extraction.py
+grep -n 'where=' src/docling_service/vectors.py          # -> {"source_path": ...}
+git log --oneline -S 'storage.forget_document(identity)' -- src/docling_service/extraction.py
+```
+
+- `extraction.extract` appelle **`storage.forget_document(identity)` avant la
+  conversion** ; l'ordre est gardé (`test_extraction.py`,
+  `ordre == ["oubli", "conversion"]`) ;
+- `vectors.delete_document` supprime par `where={"source_path": …}`, **jamais par
+  id** — la clause vise `source_path` parce que c'est l'identité d'un document
+  (exigence 3) ;
+- donc **une forme d'id changée ne laisse aucun orphelin** : les chunks du
+  document partent en entier avant que les nouveaux ne soient écrits ;
+- le seul chemin qui saute la purge est le **doublon exact**
+  (`_already_ingested`), et il retourne sans rien écrire ;
+- et la ligne qui a rendu la phrase fausse est **`a54636c`, du lot 4**
+  (1er septembre 2026), « delete_document n'avait aucun appelant ». **La phrase a
+  survécu au commit qui l'a rendue fausse**, et elle vivait dans la
+  justification d'un écart du lot 5 : *sa propre famille, appliquée à lui-même.*
+
+**L'écart, lui, reste justifié et n'est pas rediscuté.** Le site de production —
+l'expression en ligne de `build_chunks` — n'était gardé par rien : la mutation
+« suffixe inconditionnel » laissait la suite entièrement verte sur `main` à
+`27a6304` — **857 tests, rc=0**, remesuré de mes mains dans un arbre dédié — et
+elle rougit maintenant à **2 tests**,
+`test_chunking.py::TestChunkId::test_un_chunk_seul_garde_l_id_nu` et
+`test_vectors.py::…::test_un_element_d_un_seul_chunk_est_ecrit_sous_son_id_nu`.
+*(Le lot annonçait 862 : c'est son propre arbre, pas celui qu'il décrivait —
+famille F2.)* Ce qui était faux est la **conséquence**, pas la décision.
+
+**La vraie conséquence, et elle est mesurée.** La forme de l'id de chunk est une
+**clause du contrat**, et `verify_contract` la compte : « ids de chunk suffixés
+en #n ». `mesuré` le 2 septembre 2026 sur l'index vivant, lecture directe de la
+collection `rag_documents` : **4 365 chunks, 974 ids suffixés, 3 391 ids nus**.
+Un suffixe inconditionnel porterait le compte à **4 365 sur 4 365**.
+
+**Et il faut dire ce que ce compteur est** : `verify_contract` l'**imprime**, il
+n'en lève **aucune anomalie**. C'est une lecture d'instrument, pas un garde — ce
+qui est exactement la raison pour laquelle la clause a besoin d'un test, et
+pourquoi retirer `chunk_ids` comme du code mort aurait été une perte.
+
+#### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
+
+`verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
+son docstring — « Un `DESCRIBE` en échec est compté comme "colonne absente" : ne
+pas pouvoir constater n'est pas constater que tout va bien », qui est la leçon du
+cinquième trou du lot 3 (§4.4) — et **rien ne le gardait**.
+
+`mesuré` le 2 septembre 2026 sur le code livré, mutation appliquée puis révoquée,
+texte vérifié changé par empreinte SHA-256 :
+
+| État | `if colonne not in colonnes` → `if colonnes and colonne not in colonnes` |
+|---|---|
+| lot 5 tel que livré | **rc=0, 857 tests, ZÉRO rouge** |
+| après ce garde | **rc=1, 3 rouges** — `test_un_describe_rejete_est_compte_comme_colonne_absente`, `test_un_seul_describe_rejete_suffit_a_nommer_son_tag`, `test_l_anomalie_qui_en_decoule_prescrit_le_redemarrage` |
+
+*(La même mutation, la suite **privée de la classe neuve** : rc=0, 0 rouge. C'est
+la bascule, et elle est mesurée sur le même arbre.)*
+
+**Le motif est celui des douze gardes creux précédents** : *le test observe une
+absence.* Le compte de douze est `calculé` et il se dérive : **trois** au lot 3 —
+M15, M12, M20, les gardes neufs que rien ne gardait (§4.4, §4.5) — et **neuf** au
+lot 4, cinq trouvés par le lot lui-même et quatre par son audit (mandat
+§5.1 quinquies). Celui-ci est donc le treizième. `_verifier_le_tag_document` porte le sien depuis le lot 3 ; la fonction
+que le lot 5 vient d'écrire, non.
+
+**Ce que la mutation coûtait, et ce n'est pas une élégance** : un graphd qui
+refuse le `DESCRIBE` rend `tags_sans_la_colonne == []`, donc
+`anomalie_de_colonne` prend sa **seconde** branche et prescrit « réingérez » là où
+il faut « redémarrez **puis** réingérez ». **C'est le §4.29.e rouvert par le
+commit qui le ferme.**
+
+Le garde porte deux témoins : un schéma entièrement migré ne rend aucun tag —
+sans quoi un garde qui rougirait toujours passerait — et un `DESCRIBE` en échec
+**sur un seul tag** ne nomme que celui-là, sans quoi un garde qui ne verrait que
+« tous les `DESCRIBE` échouent » resterait vert sur l'état le plus plausible, un
+tag verrouillé par une migration en cours.
+
+#### 4.31.C1 L'écart maximal de `sequence` : 994, sous un chapitre HTML, et « écart » n'était pas défini
+
+Le site canonique — le docstring de `verify_contract.inversions_de_page` —
+écrivait « le plus grand trou vaut **993**… le trou venant du **PDF** dont les
+sous-arbres dominent ».
+
+*Le juge est une mesure*, `mesuré` le 2 septembre 2026 sur le graphe vivant, en
+lecture seule, depuis le conteneur d'extraction :
+
+```ngql
+MATCH (a)-[e:PARENT_OF]->(b) RETURN id(a) AS parent, e.sequence AS seq;
+```
+puis, côté client, les `sequence` triées par parent et les différences entre
+valeurs consécutives (le §4.30.j interdit un `WHERE` sur une propriété d'arête).
+
+| | |
+|---|---|
+| arêtes `PARENT_OF` lues | **15 173** |
+| parents distincts | **763** |
+| parents à `sequence` non contiguës | **167** (21,9 %) |
+| **écart maximal — différence** | **994** |
+| **écart maximal — valeurs intercalaires** | **993** |
+| entre les `sequence` | **203** et **1197** |
+| sous le parent | `doc_htms/MLOps with Databricks/7. Foundation Models and Context Engineering` |
+
+**Deux corrections, et la seconde vaut plus que la première.**
+
+1. **Ce n'est pas le PDF.** C'est un **chapitre HTML**, et le parent est la
+   **racine du document elle-même**. « Le trou venant du PDF » était une
+   explication vraisemblable, jamais mesurée — la famille du §3.2 ;
+2. **« écart » n'était pas défini, et les deux lectures ne donnent pas le même
+   nombre.** 994 de différence ou 993 valeurs intercalaires : les deux sont
+   vraies, elles ne disent pas la même chose, et **aucune des deux n'était
+   écrite**. Un agent qui dimensionne une fenêtre sur « le trou vaut 993 » se
+   trompe d'un rang. La définition est désormais au site, avec les deux nombres.
+
+Les mentions du registre renvoient au site canonique au lieu de recopier, et les
+chiffres du lot 1 qui y vivaient encore (44 parents sur 185) portent désormais
+leur périmètre — 3 documents, 2 285 arêtes.
+
+#### 4.31.C2 « Les trois stores » : la purge en fait QUATRE — corrigé au §4.30.g
+
+Le constat et sa mesure vivent au **§4.30.g**, c'est-à-dire au site que la phrase
+fausse contredisait, et non ici : c'est là que le prochain lecteur cherchera.
+En deux lignes : `README.md` écrivait « le script sort en code d'erreur si l'un
+des **trois** stores résiste », **trente-cinq lignes sous le tableau qui en compte
+quatre**, dans la section que le §4.30.g corrige. `mesuré` : **quatre** branches
+alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par le
+test que le lot a écrit lui-même. **Il prouvait quatre et écrivait trois.**
+
+#### 4.31.C3 « Les DEUX documents réels du corpus » : ils sont SEIZE sur 23
+
+`services/nebulagraph.md` et `llm_integration_plan.md` écrivaient qu'un space
+créé à `FIXED_STRING(64)` « refuse les **deux** documents réels du corpus
+(identifiants de 65 et 67 octets) ».
+
+*Le juge est une mesure*, `mesuré` le 2 septembre 2026 sur le graphe vivant :
+
+```ngql
+MATCH (v:Document) RETURN id(v) AS vid;
+```
+puis `len(vid.encode("utf-8"))` côté client.
+
+| | |
+|---|---|
+| sommets `Document` | **23** |
+| identifiants **> 64 octets** | **16** |
+| minimum / maximum | **38** / **111** |
+
+65 et 67 sont les **deux premiers trouvés** au-dessus du seuil, pas les deux
+seuls : `…/1. MLOps Principles and Components` et
+`…/Practical MLflow…/Preface` à 65, `…/5. Machine Learning Model Deployment` à
+67 — et treize autres jusqu'à 111.
+
+**Le défaut est préexistant au lot 4**, et c'est la raison pour laquelle il
+compte quand même : il vit dans le bloc que le lot 5 déclare **relu et fermé au
+§6.18**. Un bloc déclaré relu porte la responsabilité de ce qu'il laisse.
+
+La longueur et sa méthode de mesure ont désormais **un seul site**,
+`services/nebulagraph.md`, section « Schéma nGQL » ; `llm_integration_plan.md`
+y renvoie.
+
+#### 4.31.C4 Une borne perdue entre le commit et le registre, plus un lien mort
+
+Le message de `d2562d6` est **juste et borné** : « tous les liens
+`](fichier#ancre)` des documents livrés… 0 renvoi mort ». Le §4.30.d a laissé
+tomber la borne et écrit « tous les **renvois internes**… 0 mort ». *Une borne
+qui tombe entre le commit et le registre est un élargissement d'affirmation que
+personne ne mesure.*
+
+Balayage refait aux **deux** familles, `mesuré` le 2 septembre 2026 : **0 ancre
+morte sur 10**, mais **1 lien de fichier mort sur 41** — `base_vectorielle.md` →
+`src/docling_service/language.py`, où il manquait le `../`, **dans un document
+que le lot modifie**. Corrigé, et la borne rétablie au §4.30.d avec le critère
+du balayage.
+
+**Une leçon de méthode au passage.** Le premier passage du balayage a rendu
+**trois** liens morts ; deux étaient des illustrations de syntaxe —
+`![legende](chemin)` — vivant dans des spans de code. Le critère corrigé
+soustrait les blocs et les spans de code avant de chercher. *Un balayage se
+mesure avec son critère, et un critère se corrige en regardant ce qu'il a
+attrapé* — sans quoi la réparation aurait écrit « trois liens morts » et créé,
+dans le geste qui ferme le constat, exactement le défaut qu'il ferme.
+
+#### 4.31.N Deux faits de poste mesurés pendant la réparation, et l'un rendait la documentation fausse
+
+Ils ne viennent ni du lot ni de son audit : le **monde** les a produits pendant
+que la réparation travaillait. C'est la même famille que les quatre bloquants —
+*une phrase survit à ce qui la rend fausse* — à ceci près qu'aucune main ne l'a
+écrite. **La seule défense est l'étiquette et la date.**
+
+**1 — `page_no_end` EXISTE désormais dans le graphe vivant.** `docling-service` a
+été redémarré, `init_schema()` a joué. `mesuré` le 2 septembre 2026, lecture
+directe depuis le conteneur d'extraction :
+
+| | 1er septembre 2026 | 2 septembre 2026 |
+|---|---|---|
+| `DESCRIBE TAG Paragraph` | 5 colonnes, **sans** `page_no_end` | **6 colonnes**, `page_no_end` comprise |
+| `DESCRIBE TAG SectionHeader` | idem | idem |
+| sommets `Paragraph` à `NULL` | — | **7 251 / 7 251** |
+
+Donc « la colonne n'existe pas encore » est **devenu faux** au `README.md`, au
+§4.29.e, au §4.28.e et au mandat (§6 et §7.2). Les cinq sites portent désormais
+les **deux** mesures, chacune datée, plutôt qu'une seule réécrite : c'est ce qui
+rend le mouvement lisible. Et chacun dit explicitement que **ce fait périme, parce
+que c'est un état de poste et non une propriété du code** — un `docker compose
+restart` suffit à le retourner, et c'est exactement ce qui vient d'arriver.
+
+Le poste est passé du **premier** des deux états que `anomalie_de_colonne`
+distingue au **second**. La consigne, elle, ne périme pas : redémarrer avant de
+réingérer est sans coût quand le schéma est déjà à jour, et c'est la seule des
+deux choses qui vaille d'être apprise par cœur.
+
+**2 — `dagster-daemon` tournait depuis quatre heures**, et le pilote l'a arrêté
+pour protéger l'antécédent. **L'index est intact**, et la réparation l'a remesuré
+de ses mains le 2 septembre 2026 — les cinq chiffres concordent :
+
+| | |
+|---|---|
+| chunks ChromaDB | **4 365** |
+| sommets | **15 196** |
+| arêtes `PARENT_OF` | **15 173** |
+| documents | **23** |
+| objets MinIO | **13** |
+
+Le §7.2 du mandat le dit arrêté : c'est **redevenu** vrai. Ce qu'il faut retenir
+n'est pas l'incident mais sa leçon : **« le daemon est arrêté » n'est pas une
+propriété stable**, elle se remesure avant toute mesure qui en dépend — et les
+sensors étant livrés armés (§4.18), un daemon qui repart réingère.
+
+---
+
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
-### 5.1 Le découpage : trois valeurs pour un réglage qui n'existe pas
+### 5.1 → traité par le lot 5 — cinq symboles morts retirés, et le sixième était CONTOURNÉ
 
-`settings.chunk_size` (450) et `settings.chunk_overlap` (75)
-(`settings.py:49-50`), `chunk_text` et `DEFAULT_CHUNK_SIZE` /
-`DEFAULT_CHUNK_OVERLAP` (`chunking.py:18-74`), `chunk_ids`
-(`chunking.py:105-126`) : **aucun appelant en production**. Seuls
-`tests/unit/test_chunking.py` les exercent. Le découpage réel est
-`HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`
-(`vectors.py:79-87`).
+**Le constat, tel qu'il était ouvert.** `settings.chunk_size` (450) et
+`settings.chunk_overlap` (75), `chunk_text` et `DEFAULT_CHUNK_SIZE` /
+`DEFAULT_CHUNK_OVERLAP`, `chunk_ids` : **aucun appelant en production**. Seuls
+les tests les exerçaient. Le découpage réel est
+`HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`, construit par
+`vectors.get_chunker`. Le débat « 900 contre 450 » était donc vide — **les deux
+étaient faux** — et `services/docling.md` présentait `CHUNK_SIZE=900` /
+`CHUNK_OVERLAP=150` comme des variables d'environnement effectives, alors
+qu'elles ne faisaient rien. Le commentaire de `settings.py` justifiait 450 par
+une mesure qui documentait une constante morte.
 
-Le débat « 900 contre 450 » est donc vide : **les deux sont faux**.
-`documentation/services/docling.md:112-113` présente `CHUNK_SIZE=900` et
-`CHUNK_OVERLAP=150` comme des variables d'environnement effectives — elles ne
-font rien. Et le commentaire de `settings.py:45-48` justifie 450 par une mesure
-(« 31 % de troncature à 900, 1,3 % à 450 ») qui documente une constante morte.
+**Ce que le lot 5 a fait, et ce paragraphe décrivait encore l'état d'AVANT.**
+Cinq symboles sont retirés — `chunk_size`, `chunk_overlap`, `chunk_text`,
+`DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP` — et le motif est écrit à leur
+place, dans `settings.py`, pour que le débat ne se rouvre pas. `services/docling.md`
+ne les annonce plus. `mesuré` le 2 septembre 2026,
+`grep -rni 'chunk_size\|chunk_overlap\|chunk_text\|DEFAULT_CHUNK' src/ tests/`
+rend **quatre lignes, toutes des commentaires** qui disent pourquoi ces symboles
+sont partis — `settings.py`, `vectors.py`, `chunking.py` et
+`tests/unit/test_dagster_yaml.py`. Aucune n'est du code. *(Le `-i` n'est pas un
+détail : sans lui, le commentaire de `settings.py`, qui écrit `CHUNK_SIZE` en
+capitales, ne sort pas — et ce paragraphe l'avait d'abord compté à un site au
+lieu de quatre.)*
 
-### 5.2 `blocks.py` : une doctrine de 33 lignes que la production n'applique plus
+**Le sixième n'était pas mort, il était CONTOURNÉ.** `chunk_ids` n'avait aucun
+appelant, mais `vectors.build_chunks` reconstruisait la **même** forme par une
+expression en ligne — le seul site que la production exécute, et **le seul que
+rien ne gardait**. La fonction devient `chunk_id`, unitaire, et l'appelant la
+traverse. Voir §4.30.b pour la leçon, et **§4.31.B3 pour la conséquence, que ce
+registre avait d'abord écrite fausse**.
+
+### 5.2 → traité par le lot 5 — le module part en entier, son nom mentait aussi
 
 Seul `has_content` est importé (`vectors.py:28`, `index_report.py:21`).
 `build_blocks`, `Block`, `_family`, `PROSE_LABELS`, `CODE_LABELS` n'ont aucun
@@ -2116,7 +2805,7 @@ phrase, pas le garde-fou. À traiter avec 4.7, d'une seule main.
 
 ---
 
-### 5.7 `ReindexOutcome.metadata_value` a désormais une branche morte
+### 5.7 → TRANCHÉ par le lot 5 — la branche RESTE, et la mesure tranche mieux que l'argument
 
 La branche qui rend `"ECHEC — …"` n'est plus atteinte en production : l'asset
 lève avant de publier ses métadonnées (§8). Seuls les tests unitaires de
@@ -2128,7 +2817,7 @@ contrat est « ne lève jamais, dit ce qui s'est passé », et amputer son objet
 retour parce que son unique appelant d'aujourd'hui lève d'abord la coupleraient
 à ce consommateur. À trancher avec §5.1 et §5.2, dans le lot du code mort.
 
-### 5.8 Le message de commit de `3eb5aef` porte une affirmation devenue fausse
+### 5.8 → VÉRIFIÉ par le lot 5, non traité — divergence permanente et assumée
 
 Il contient la phrase d'exhaustivité « la seule obligation que le contrat
 impose au pipeline », corrigée depuis dans le docstring de `reindex.py` (§8).
@@ -2143,25 +2832,25 @@ le redécouvre comme un défaut.
 
 | # | Affirmation | Preuve du contraire | Sévérité |
 |---|---|---|---|
-| 6.1 | `docling.md:112-113` : `CHUNK_SIZE=900`, `CHUNK_OVERLAP=150` | variables mortes, cf. §5.1 | haute |
-| 6.2 | `chromadb.md:28-29` et `llm_integration_plan.md:249` : fenêtre de **256** tokens | `settings.py:45` dit **128** ; `HybridChunker` lit `max_seq_length` | moyenne |
-| 6.3 | `chromadb.md:30-32` énumère les métadonnées | il manque `collection`, `source_path`, `language`, `depth` — les clés d'identité du contrat | haute |
-| 6.4 | `chromadb.md:35` : « un vecteur par **bloc** » | vocabulaire de `build_blocks`, mort | basse |
-| 6.5 | `base_vectorielle.md:20` : fragments isolés « absorbés dans leur paragraphe » | `vectors.py:138` les jette ; `blocks.py:9-13` dit l'inverse | moyenne |
-| 6.6 | `llm_integration_plan.md:401` et `:543` prescrivent `cross-encoder/ms-marco-MiniLM-L6-v2` | reranker **anglais** face à un embedder multilingue — la faute exacte que l'agent a mesurée (étendue de scores 0,0 % sur 20 candidats en français) | haute |
-| 6.7 | `docling.md:129` : « Ressources : GPU NVIDIA (CUDA 12.1) » | l'ingestion tourne sur processeur ; la réservation en dur (`docker-compose.yml:196-201`) rendait le service **incréable** sans runtime nvidia | haute |
-| 6.8 | `docling.md:95-96` énumère les modules « sans dépendance externe » | oublie `blocks.py`, `anchoring.py`, `hierarchy.py`, `ranking.py`, `language.py`, `matter.py` | basse |
-| 6.9 | `README.md:365` (l'ancien renvoi `:317` était **périmé**) : volumétrie « mesurée » sur 42 documents (1 PDF de 280 pages, 35 HTML, 6 Markdown) | ce corpus n'existe plus ; l'actuel est 24 HTML + 1 PDF de **71** pages, 0 Markdown | moyenne |
-| 6.10 | `extraction_donnees.md:276-280`, `CHANGEMENTS.md:107-113` : chiffres de découpage et de bruit | mesurés sur le corpus disparu, sans réserve ni date | moyenne |
-| 6.11 | `CHANGEMENTS.md:78-83` : 759 arêtes `SectionHeader → SectionHeader`, 13 220 chemins de longueur 3 | contredit par le 0 / 0 mesuré côté agent ; cf. §3.2 | haute |
-| 6.12 | `Dockerfile.docling:14-18` installe torch depuis l'index CUDA 12.1 | chaîne prévue pour le processeur ; image inutilement lourde | moyenne |
-| 6.13 | `docker-compose.yml:167,207` monte `docling_models` | ni `rag_hf_cache` ni `rag_models_cache` — divergence de nommage à consigner, sans conséquence fonctionnelle | basse |
-| 6.14 | `README.md:231` : « le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais » | faux depuis `7b72854` ; c'est le **vestige d'`all-MiniLM-L6-v2`** contre lequel le contrat met explicitement en garde. Le lien qui suit pointe de surcroît vers une ancre disparue (`#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`) | haute |
-| 6.15 | `src/pipeline/schemas.py:87-88` : « le modèle d'embedding actuel n'étant entraîné que sur de l'anglais » | même vestige, **dans le fichier qui est le contrat de référence** | haute |
+| 6.1 | ~~`docling.md` : `CHUNK_SIZE=900`, `CHUNK_OVERLAP=150`~~ | **✅ lot 5** — variables mortes retirées du code ET de la table ; le motif est écrit au site pour que le débat ne se rouvre pas | haute |
+| 6.2 | ~~`chromadb.md` et `llm_integration_plan.md` : fenêtre de **256** tokens~~ | **✅ lot 5** — c'est **128**, et le renvoi de ce constat était faux : *aucun* `settings.py` ne porte ce chiffre, la fenêtre est `modele.max_seq_length` lue au runtime. Annoncer 256 laissait croire à une fenêtre configurable qui n'existe pas | moyenne |
+| 6.3 | ~~`chromadb.md` énumère les métadonnées~~ | **✅ lot 5** — il en manquait **cinq** et non quatre : le constat oubliait `page_no_end`, ajoutée par le lot 4. Traité aux **quatre** sites (13/18, 9/18, 15/18, 17/18 clés), et les énumérations qui ne portaient aucun rôle sont **retirées** au profit d'un renvoi à `ChunkMetadata` | haute |
+| 6.4 | ~~« un vecteur par **bloc** »~~ | **✅ lot 5** — deux sites, plus la description du regroupement qui décrivait l'algorithme disparu | basse |
+| 6.5 | ~~fragments isolés « absorbés dans leur paragraphe »~~ | **✅ lot 5** — la production **jette**, et le rejet est **borné** au chunk seul de son élément depuis le lot 4 : écrire « jette » sans la borne aurait créé le défaut d'à côté | moyenne |
+| 6.6 | ~~`llm_integration_plan.md` prescrit `cross-encoder/ms-marco-MiniLM-L6-v2`~~ | **✅ lot 5, côté DOCUMENT** — la prescription est **retirée plutôt que remplacée** : choisir un reranker multilingue est une décision de l'autre dépôt, appuyée sur une campagne. Ce document devait cesser de prescrire ce qui a déjà échoué. Le défaut est **inerte** tant que le corpus est entièrement anglais (§1), et il se réveille au premier document non anglais ou à la première question française sur un passage anglais — ce que l'embedder multilingue rend précisément possible | haute |
+| 6.7 | ~~`docling.md` : « Ressources : GPU NVIDIA (CUDA 12.1) »~~ | **✅ lot 5** — n'était fermé qu'**à moitié** : trois autres affirmations du même fichier supposaient un GPU (« seul service avec accès GPU », « FastAPI + CUDA 12.1 », « la conversion sature déjà le GPU »). La nuance juste est écrite : l'image embarque les wheels CUDA, elle n'**exige** pas de GPU | haute |
+| 6.8 | ~~`docling.md` énumère les modules « sans dépendance externe »~~ | **✅ lot 5, corrigé par sa réparation** — ils sont **quatorze** sur 18, et non onze ; les quatre qui portent une dépendance de niveau module sont `extraction.py` (`bs4`), `images.py` (`minio`), `main.py` (`fastapi`) et `settings.py` (`pydantic_settings`). Le compte de onze **niait le déverrouillage des lots 3 et 4** — celui sur lequel reposent `test_vectors.py` et `test_nebula.py`. Le critère du balayage est écrit au site et rejoué par un test : §4.31.B2 | basse |
+| 6.9 | ~~`README.md`, section Volumétrie : mesurée sur 42 documents~~ | **✅ lot 5** — remplacée par la mesure de l'index vivant, avec deux réserves (les 13 objets MinIO ne sont pas représentatifs, la chaîne d'images HTML étant rompue ; une taille de répertoire n'est pas une mesure de contenu) et **aucune extrapolation**. **Le renvoi de ce constat a roté DEUX fois** : `:317` → `:365` → la section est en `:404`. Voir §6.17 | moyenne |
+| 6.10 | ~~chiffres de découpage et de bruit~~ | **✅ lot 5** — **conservés** avec leur périmètre plutôt que supprimés : ils documentent la décision prise à l'époque, et l'effacer laisserait le choix sans motif. Détail mesuré : la comparaison porte sur *Practical MLOps*, **absent du corpus** — les deux titres actuels s'en approchent, d'où la réserve écrite au site | moyenne |
+| 6.11 | ~~`CHANGEMENTS.md` : 759 arêtes, 13 220 chemins~~ | **✅ lot 5** — même traitement que §6.10, et la réserve dit ce que le corpus actuel a mesuré à la place (§3.2). Le 0/0 côté agent n'est pas une contradiction : il mesurait un graphe produit par autre chose que ce code | haute |
+| 6.12 | `Dockerfile.docling` installe torch depuis l'index CUDA 12.1 | **OUVERT — consigné par le lot 5 avec son motif, écrit au site.** Changer l'index change l'**image**, donc demande une reconstruction et une réingestion pour vérifier que l'extraction et l'encodage rendent les mêmes résultats : un chantier avec sa campagne de validation, hors du périmètre « documentation contre code ». Le coût est écrit dans `services/docling.md` (10,4 Go) | moyenne |
+| 6.13 | ~~divergence de nommage du volume de cache~~ | **✅ lot 5 — SANS OBJET, et c'est une mesure** : `rag_hf_cache` et `rag_models_cache` n'apparaissent **nulle part** dans le dépôt. Écrit comme sans objet dans `services/docling.md` pour que personne ne le redécouvre comme un défaut | basse |
+| 6.14 | ~~`README.md` : « le modèle n'est entraîné que sur de l'anglais »~~ | **✅ lot 5** — et le vestige vivait à **trois** sites, non deux : ce constat et §6.15 en nomment deux, le troisième est `src/docling_service/language.py`, le module dont la langue **est** le sujet. L'ancre morte était citée **deux** fois (README **et** `CHANGEMENTS.md`). Balayage complet : **0 renvoi interne mort** dans les documents livrés | haute |
+| 6.15 | ~~`schemas.py` : « le modèle actuel n'étant entraîné que sur de l'anglais »~~ | **✅ lot 5** — dans le fichier qui **est** le contrat. Le motif est **remplacé** et non seulement retiré : la clé `language` sert à filtrer sur demande et à dire à l'utilisateur la langue de la source. Une clé sans motif invite le lot suivant à la croire morte, ce qui est arrivé à `chunk_ids` (§5.1) | haute |
 
 ---
 
-### 6.16 `sequence` : trois réserves à écrire au contrat
+### 6.16 → MOITIÉ faite par le lot 5, et il RESTE OUVERT — la seconde moitié est dans l'autre dépôt
 
 L'exigence 4 est **tenue** sur l'échantillon du lot 1 : `sequence` est présente
 sur **2 285 arêtes sur 2 285**, et l'ordre de lecture est prouvé — trié par
@@ -2173,15 +2862,23 @@ Trois réserves qu'aucun document ne porte, et dont l'agent peut se tromper :
 
 1. **`sequence` repart à 0 dans chaque document.** Elle n'est donc pas
    globalement monotone : tout « avant / après » doit être **borné au document**.
-2. **Elle n'est pas contiguë sous un parent, par construction.** Mesuré : 44 des
-   185 parents ont des `sequence` non contiguës, et **44 sur 44** sont exactement
-   expliqués par la taille du sous-arbre du frère précédent. Ce n'est pas un
-   défaut — c'est un ordre de lecture global, pas un rang sous le parent.
-3. **Le plus grand trou entre deux enfants consécutifs d'un même parent vaut
-   993.** Un agent qui implémente « la fenêtre d'éléments » comme « les enfants
-   de P dont `sequence ∈ [s−k, s+k]` » rendra **silencieusement moins**
-   d'éléments que demandé ; un agent qui lit la contiguïté comme un indice
-   d'intégrité conclura à une perte.
+2. **Elle n'est pas contiguë sous un parent, par construction.** Mesuré **par le
+   lot 1, sur 3 documents et 2 285 arêtes** : 44 des 185 parents ont des
+   `sequence` non contiguës, et **44 sur 44** sont exactement expliqués par la
+   taille du sous-arbre du frère précédent. Ce n'est pas un défaut — c'est un
+   ordre de lecture global, pas un rang sous le parent. *(Remesuré sur le corpus
+   complet — 15 173 arêtes, 763 parents, 167 non contigus — au site canonique.)*
+3. **Le plus grand écart entre deux `sequence` consécutives d'un même parent vaut
+   994**, c'est-à-dire une **différence** de 994 et **993 valeurs
+   intercalaires** — les deux lectures ne donnent pas le même nombre, et aucune
+   des deux n'était écrite. Un agent qui implémente « la fenêtre d'éléments »
+   comme « les enfants de P dont `sequence ∈ [s−k, s+k]` » rendra
+   **silencieusement moins** d'éléments que demandé ; un agent qui lit la
+   contiguïté comme un indice d'intégrité conclura à une perte.
+
+**Le site canonique des trois chiffres est le docstring de
+`verify_contract.inversions_de_page`**, où ils sont remesurés sur le corpus
+complet. Les mentions d'ici y renvoient.
 
 **Le garde existe désormais — écrit par le lot 3 avec §4.4.** La propriété que
 le lot 1 avait d'abord conclue — « aucun parent ne porte deux fois la même
@@ -2197,7 +2894,7 @@ elles interdisent des contrôles qu'on serait tenté d'écrire à la place.
 d'ici : les réserves 1 à 3 concernent la façon dont l'agent LIT `sequence`, et
 sa documentation vit dans l'autre dépôt.
 
-### 6.18 Les deux blocs de schéma documentés portent d'autres erreurs — relevé par le lot 3, NON traité
+### 6.18 → traité par le lot 5 — et il manquait une erreur de plus que ce constat n'en annonçait
 
 Le lot 3 a mis à jour `documentation/services/nebulagraph.md` et
 `documentation/llm_integration_plan.md` sur le seul point que son code rendait
@@ -2216,20 +2913,51 @@ C'est la même famille que §6.3 : une énumération close que personne n'a
 rouverte. `source_path` y manque des deux côtés, et c'est **l'exigence 3 du
 contrat** — l'identité d'un document.
 
-### 6.17 Chiffres et renvois faux, relevés le 31 août 2026
+### 6.17 → traité par le lot 5 — et sa propre liste de « renvois vérifiés justes » avait ROTÉ
 
 | Site | Ce qu'il dit | Mesuré |
 |---|---|---|
 | §2 de ce registre | « 1 PDF de 73 pages » sous l'étiquette **`mesuré`** | **71** — corrigé |
-| §6.9 de ce registre | renvoi `README.md:317` | ligne réelle **365** — corrigé |
+| §6.9 de ce registre | renvoi `README.md:317` | ligne réelle **365** — corrigé le 31 août 2026, **et roté depuis** : la section est en `:404`. Le renvoi désigne désormais la SECTION (« README.md, section Volumétrie ») et non une ligne |
 | §3.2 (avant fermeture) | renvoi `extraction.py:370-373` | c'est la fin de `_detect_document_language` ; le vrai site est `extraction.py:320` + `ranking.py:130-148` — corrigé |
 | §3.4 | renvoi `vectors.py:199-203` | c'est la boucle d'`upsert` ; le vrai site est `vectors.py:186-192` — corrigé |
 | `pilotage_du_chantier.md` §2.2 | « 73 pages », deux sites | **71** |
 | `pilotage_du_chantier.md` §5.1 | `main = 528748d` | la pointe bouge à chaque commit : le SHA a été retiré au profit de la commande qui la mesure |
 
-Vérifiés **justes** et laissés tels quels : `ranking.py:56-71`,
-`extraction.py:335-337`, `index_report.py:75-84`, `nebula.py:49`,
-`nebula.py:160`, `schemas.py:94-95`, `ranking.py:83-84`.
+**Cette section listait sept renvois « vérifiés justes et laissés tels quels ».
+Remesurés par le lot 5 le 2 septembre 2026, DEUX le sont encore.** C'est le
+résultat le plus instructif de tout le §6, et il porte sur la méthode plutôt que
+sur les faits :
+
+| Renvoi, tel qu'il était déclaré juste | État mesuré le 2 septembre 2026 |
+|---|---|
+| `ranking.py:56-71` — `docling_parent_rank` | **juste**, c'est bien le corps de la fonction |
+| `ranking.py:83-84` — `docling_level_rank` | **juste** |
+| `extraction.py:335-337` | **dérivé** — pointe désormais un *docstring* sur `minio_url`, plus le code de propagation |
+| `index_report.py:75-84` | **dérivé** — pointe le bloc `Returns:`, plus la mesure |
+| `nebula.py:49` — `VERTEX_PROPERTIES` | **PÉRIMÉ** — une parenthèse fermante seule. Le symbole ne vit plus dans ce fichier depuis le lot 3 (§5.3) |
+| `nebula.py:160` — `last_visual_id` | **PÉRIMÉ** — une ligne vide |
+| `schemas.py:94-95` | juste au moment de la mesure, et **corrigé depuis** par le lot 5 (§6.15) |
+
+**Et le renvoi de §6.9 a roté DEUX fois.** Cette même section l'avait corrigé de
+`README.md:317` vers `:365`. La section Volumétrie est aujourd'hui en `:404`.
+
+**La leçon, et elle vaut plus que les sept lignes.** Un renvoi `fichier:ligne`
+est une mesure dont la provenance comprend la **révision**, exactement comme le
+« 56 files already formatted » du F2 : un nombre exact, mesuré, et périmé par le
+commit qui le porte. Re-vérifier une liste de renvois ne la stabilise pas — elle
+recommence à pourrir au commit suivant, et ce §6.17 en est la preuve par
+lui-même, en trois jours.
+
+**Le geste durable est de désigner un SYMBOLE et non une ligne** — `ngql.
+VERTEX_PROPERTIES`, `vectors.get_chunker`, `ChunkMetadata.depth` — parce qu'un
+symbole se déplace avec son code et qu'un `grep` le retrouve. Les renvois que le
+lot 5 a écrits le sont sous cette forme, et les chiffres qu'il a consolidés
+portent le nom de leur site canonique plutôt que sa ligne.
+
+*(Les quatre renvois périmés ci-dessus ne sont **pas** corrigés en `fichier:ligne`
+neuf : ce serait refaire le défaut à trois jours près. Ils sont remplacés par le
+nom du symbole dans le corps des constats concernés.)*
 
 ---
 
@@ -2263,6 +2991,22 @@ un chantier, pas un correctif.
 
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
 pas.
+
+**Le lot 5 est LIVRÉ, non fusionné**, sur `claude/lot5-dead-code-docs-873c64` :
+douze commits, `make all` à **0** sur chacun, balayage de graines **26/26** sur
+chacun, corpus intact à l'octet (sha du contenu versionné inchangé du premier au
+dernier commit). Il ferme §4.29.a, §4.29.b, §4.29.c, §4.29.e, §4.29.g, §5.1,
+§5.2, §5.7 *(tranché : la branche RESTE)*, §6.1 à §6.11, §6.13 à §6.15, §6.17,
+§6.18, et **la moitié faisable de §6.16**. Il vérifie §5.8 et §4.29.h — deux
+divergences permanentes et assumées, non touchées. Il consigne §4.29.d, §4.29.f,
+§4.29.i et §6.12 avec leur motif, et verse **onze constats neufs au §4.30**.
+
+**Ce qu'il n'a pas fait, délibérément** : il n'a pas réécrit le plan de lots ni le
+§7 du mandat. Le §4.28.e pose la règle — « il n'appartient pas à une branche de
+réécrire le plan » — et elle vaut ici. Le seul chiffre du mandat qu'il a touché est
+le nombre de fichiers que `mypy` annonce au §2.4, que son code fait passer de 36 à
+35 : la règle « documentation dans le même commit que le code » l'imposait, et il
+a été **retiré** au profit de la commande qui le mesure.
 
 **Le lot 4 a été fusionné dans `main` le 2 septembre 2026** par la fusion
 `--no-ff` `79cd2bc` : 14 commits de livraison, puis 11 de réparation exigés par le

@@ -212,7 +212,11 @@ Le code n'a aucune branche par format : il essaie les signaux dans l'ordre et pr
 
 Deux garde-fous : un titre dont la boîte est **contenue dans une image ou un tableau** est écarté (le texte d'une figure peut être grand), et un titre **pas plus grand que le corps du texte** n'ouvre pas de niveau. Un titre écarté prend le rang le plus profond, jamais le rang zéro — le promouvoir chapitre remettrait tout l'arbre à zéro.
 
-La profondeur est plafonnée à 3 : l'objectif est de reconstruire un bloc avec ses titres parents pour l'agent, pas de reproduire une arborescence complète.
+**La profondeur n'est plafonnée par rien**, et cette phrase disait le contraire. Le lot 3 a retiré `MAX_DEPTH` (registre §4.24) : `depth` est le nombre d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document, et il dépasse 3 sur une part mesurable du corpus. Le site canonique de cette règle, des **deux échelles** qui s'y croisent et de la distribution mesurée est `ChunkMetadata.depth` dans `src/pipeline/schemas.py` — la distribution n'est écrite que là, pour qu'elle n'ait pas quatre sites de plus.
+
+Le motif écrit du plafond — « l'objectif est de reconstruire un bloc avec ses titres parents, pas de reproduire une arborescence complète » — **décrivait une limitation de l'arbre qui n'a jamais existé** : `parent_id` n'a jamais été plafonné, donc les arêtes écrites dans le graphe étaient les mêmes avec ou sans lui. Son seul effet mesurable était de rendre `depth` non injectif, la valeur 4 recouvrant les profondeurs réelles 4 **et** 5.
+
+**Et `depth` mélange deux échelles**, ce qu'un agent doit savoir avant de s'en servir : sur un **titre**, il compte les titres au-dessus ; sur **tout autre** élément, il vaut celui de son titre **plus un**. Un paragraphe sous un titre de premier niveau vaut donc 1, comme un sous-titre — c'est `label` qui dit laquelle des deux on lit. Le site canonique de cette règle est `ChunkMetadata.depth` dans `src/pipeline/schemas.py`.
 
 **Vérifié contre le sommaire imprimé de l'ouvrage, ligne à ligne :**
 
@@ -236,7 +240,9 @@ Chaque chunk porte sa profondeur sous la clé `depth`. Le rapport d'index (`src/
 
 Chaque document est identifié dans l'une de sept langues (`en`, `fr`, `es`, `de`, `it`, `pt`, `nl`), et cette langue est portée par le nœud `Document` **et par chaque chunk** — l'agent peut donc filtrer sans repasser par le graphe. La valeur reste vide quand le doute est permis.
 
-C'est important : le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais. Une question française sur un livre anglais fait remonter les passages français, même hors sujet. Le détail, la mesure et les quatre façons de traiter le problème sont dans [base_vectorielle.md](documentation/base_vectorielle.md#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais).
+C'est important, et **cette phrase disait exactement le contraire de la vérité.** Elle annonçait que « le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais » : c'était vrai d'`all-MiniLM-L6-v2`, remplacé depuis `7b72854`. Le modèle du contrat est `paraphrase-multilingual-MiniLM-L12-v2`, **multilingue** — une question française retrouve les passages anglais, et réciproquement. Le contrat met explicitement en garde contre le modèle dont cette phrase portait encore la trace (registre §6.14).
+
+Le renvoi qui suivait pointait de surcroît une **ancre disparue** — `#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`, qui ne correspond à aucun titre de la cible. La mesure des deux modèles, les scores comparés et les quatre façons de traiter le multilingue sont dans [base_vectorielle.md](documentation/base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue).
 
 ### Ce qui n'est pas ingéré : index, sommaire, pages liminaires
 
@@ -298,29 +304,63 @@ docker compose logs -f docling-service
 | `Service Docling toujours pas prêt` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
 | `nGQL rejeté ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
 
-**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro sur **les trois stores** — collection ChromaDB, space NebulaGraph et bucket MinIO —, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et `minio` par leur nom de service) :
+**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et `minio` par leur nom de service) :
 
 ```bash
 docker compose exec docling-service python -m src.wipe_stores
 ```
+
+Il purge **quatre** choses, et non trois. Cette phrase disait « les trois stores — collection ChromaDB, space NebulaGraph et bucket MinIO » : c'était une phrase d'exhaustivité, et le lot 4 l'a rendue fausse en ajoutant la quatrième sans la compter ici. Le compte est `mesuré` sur la sortie du script, qui titre chacune (`--- ChromaDB ---`, `--- MinIO ---`, `--- NebulaGraph ---`, `--- HTML nettoyé ---`) :
+
+| Ce qui est purgé | Pourquoi il y est |
+|---|---|
+| la collection ChromaDB `rag_documents` | les vecteurs |
+| le space NebulaGraph `rag_space` | le graphe |
+| le bucket MinIO `documents` | les crops d'images ; ils survivaient à toute purge avant le lot 4 |
+| `Datas/.cleaned/` | **le piège le plus discret.** Le HTML nettoyé porte les URL MinIO des images, et l'asset `cleaned_html` ne se rematérialise pas si son fichier existe déjà : une purge suivie d'une réingestion repartait du HTML **périmé**, pointant les objets que la purge venait de supprimer |
+
+**Le sous-répertoire `.cleaned` n'est pas configurable, et c'est délibéré.** `CLEANED_SUBDIR` a été un réglage annoncé dans `.env.example`, et il décidait à lui seul de la cible de ce `rmtree`. Quatre valeurs faisaient viser `Datas/` ou son parent, et deux autres, **bien contenues donc acceptées par le garde**, en détruisaient le contenu : `mesuré` sur un faux corpus jetable, `htms` emportait 24 des 25 fichiers du corpus versionné et `database` les cinq stores. Toute valeur autre que le défaut déplaçait de surcroît les `element_id` de tout le corpus, en silence — le nettoyage écrivait selon le réglage, l'identité du document retirait la constante. Le sous-répertoire est désormais une constante du code ; le contrôle de containment, lui, **reste** : `SOURCE_DIR` demeure un réglage, et une racine mal réglée fait toujours sortir le script en 1 plutôt que de supprimer ce qu'elle désigne.
 
 Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
 > **REDÉMARREZ `docling-service` AVANT toute réingestion, y compris sans purge.**
 > C'est `init_schema()` qui joue les `ALTER TAG … ADD`, et il n'est appelé **qu'au
 > démarrage du service** (`main.py`, dans le `lifespan`). Le lot 4 ajoute la
-> colonne `page_no_end` aux onze tags d'élément : `mesuré` le 1er septembre 2026,
-> `DESCRIBE TAG Paragraph` sur le space vivant rend
-> `label, page_no, text, minio_url, depth` — **la colonne n'existe pas encore**.
-> Une réingestion lancée avant le redémarrage écrit donc contre un tag qui n'a pas
-> la colonne, et le graphd rejette chaque `INSERT`.
+> colonne `page_no_end` aux onze tags d'élément. Une réingestion lancée avant le
+> redémarrage écrit donc contre un tag qui n'a pas la colonne, et le graphd
+> rejette chaque `INSERT`.
+>
+> **ÉTAT DU POSTE, ET IL PÉRIME — c'est un état, pas une propriété du code.**
+> `mesuré` le **1er septembre 2026** : `DESCRIBE TAG Paragraph` rendait
+> `label, page_no, text, minio_url, depth` — la colonne **n'existait pas**.
+> `mesuré` le **2 septembre 2026**, après un redémarrage de `docling-service` qui
+> a joué `init_schema()` : `DESCRIBE TAG Paragraph` et `DESCRIBE TAG SectionHeader`
+> rendent **six** colonnes, `page_no_end` comprise, et **7 251 sommets `Paragraph`
+> sur 7 251 sont à `NULL`**. L'état a donc changé de moitié : le schéma a migré,
+> les données non — c'est le **second** des deux états que le message d'anomalie
+> distingue, plus le premier.
+>
+> **Ne lis pas ces deux lignes comme un fait du dépôt : remesure.**
+> `docker exec <conteneur docling> python -c "… DESCRIBE TAG Paragraph …"`. Un
+> redémarrage de service suffit à les périmer, et c'est exactement ce qui vient
+> d'arriver. La **consigne**, elle, ne périme pas : redémarrer avant de réingérer
+> est sans coût quand le schéma est déjà à jour, et c'est la seule des deux
+> choses qui vaille d'être apprise par cœur.
 >
 > L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
 > lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
-> redémarrer ne répare rien — voir le registre, le message d'anomalie
-> `page_no_end` de `verify_contract` égare sur ce point précis.
+> redémarrer ne répare rien.
+>
+> **Et le message d'anomalie le dit désormais lui-même.** Il égarait : il
+> annonçait « le tag a migré, les données non — il faut une réingestion » alors
+> que, dans le cas mesuré, la colonne **n'existait pas** (registre §4.29.e). Le
+> contrôle lit maintenant `DESCRIBE TAG` **avant** de compter les valeurs
+> absentes, et rend deux anomalies distinctes : « la colonne n'existe pas,
+> redémarrer le service **puis** réingérer » et « la colonne existe, les données
+> sont à NULL, réingérer ». Les deux états demandaient des gestes différents et
+> se présentaient sous la même phrase.
 
-> Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'un des trois stores résiste : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes.
+> Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'une des **quatre** purges résiste — les trois stores *et* `Datas/.cleaned/` : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes. *(Cette phrase disait « les trois stores », trente-cinq lignes sous le tableau qui en compte quatre. `mesuré` sur le code : quatre branches alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par `test_un_echec_de_purge_du_html_fait_sortir_en_un`.)*
 
 ```bash
 docker compose restart docling-service
@@ -376,7 +416,25 @@ docker compose exec docling-service python -m src.verify_data
 docker compose exec docling-service python -m src.index_report
 ```
 
-**Volumétrie.** Mesurée sur le corpus de référence — 1 PDF de 280 pages, 35 chapitres HTML de deux ouvrages, 6 notes Markdown, soit 42 documents : 750 Mo dans `Datas/database/` — 401 Mo pour ChromaDB, 264 Mo pour NebulaGraph, 86 Mo pour MinIO — soit 23 741 nœuds de graphe et 5 592 chunks vectorisés. Une bonne part de ces 750 Mo est de l'amorce fixe : les 280 pages de PDF pèsent à elles seules 31 Mo d'images sur MinIO. Comptez de l'ordre de **15 à 25 Go pour 300 livres**, dominés par les images.
+**Volumétrie.** `mesuré` le 2 septembre 2026 sur l'index vivant — **24 chapitres HTML de deux ouvrages plus 1 PDF de 71 pages, soit 23 documents ingérés** :
+
+| | |
+|---|---|
+| chunks vectorisés | **4 365** |
+| sommets de graphe | **15 196**, dont 23 `Document` |
+| arêtes `PARENT_OF` | **15 173** |
+| objets MinIO | **13** |
+| `Datas/database/` | **≈ 388 Mo** — NebulaGraph 257, PostgreSQL 78, ChromaDB 51, MinIO 1,8 |
+| corpus source | 25 fichiers, 57 381 999 o |
+
+*(Cette section annonçait « 42 documents, 750 Mo, 23 741 nœuds, 5 592 chunks », mesurés sur le **corpus de référence** — mixte français/anglais, avec 6 notes Markdown et un PDF de 280 pages. Ce corpus n'existe plus, le registre §1 le déclare mort, et `Datas/mds/` est vide : aucun de ces chiffres n'était reproductible. Registre §6.9.)*
+
+**Et deux réserves, sans lesquelles cette table induirait en erreur :**
+
+- **les 13 objets MinIO ne sont pas représentatifs.** Le corpus porte **199 images** dans ses captures HTML, et la chaîne qui les téléverse est rompue : elles ne sont ni dans le bucket, ni référencées par le graphe (registre §3.5, §4.28.b). Les 13 objets présents sont tous des crops du PDF. Une extrapolation bâtie sur cette ligne **sous-estimerait donc massivement** le poids des médias ;
+- **une taille de répertoire n'est pas une mesure de contenu.** Les 78 Mo de PostgreSQL sont l'historique Dagster, qui ne suit pas le corpus ; et le registre §4.27 avertit qu'un store peut peser lourd en étant vide. Ces tailles disent ce que le disque porte, pas ce que l'index contient.
+
+**Aucune extrapolation n'est donnée ici, et c'est délibéré.** Cette section annonçait « de l'ordre de 15 à 25 Go pour 300 livres » sans dire de quoi c'était dérivé. Un chiffre par livre tiré d'un corpus de deux ouvrages dont la chaîne d'images est cassée serait `supposé` déguisé en `calculé` — et le chantier a déjà payé une décision de plan fondée sur un raisonnement plausible jamais mesuré (registre §4.28.e).
 
 **Débit.** Voir le tableau détaillé dans [orchestration.md](documentation/orchestration.md#combien-de-temps-prend-une-ingestion) : un chapitre HTML en 6 s, un PDF de 300 pages en 1 à 2 min, **1 h 30 à 2 h pour 50 livres**, sans surveillance.
 
@@ -445,7 +503,6 @@ RAG_Assistant/
 │   │   ├── nebula.py           # Écritures NebulaGraph groupées, pool partagé
 │   │   ├── ngql.py             # Échappement et construction des requêtes nGQL
 │   │   ├── vectors.py          # Embeddings par lots et upsert ChromaDB
-│   │   ├── blocks.py           # Regroupement en blocs, filtrage du bruit
 │   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
 │   │   ├── matter.py           # Index, sommaire, pages liminaires : hors contenu
@@ -528,7 +585,7 @@ L'état, `mesuré` sur cette révision :
 uv run ruff format --check src/ tests/
 ```
 
-→ « 74 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+→ « 72 files already formatted », `rc=0`. Et `make all` → `rc=0`.
 
 *(Ce nombre valait **67**, et il était faux sur la révision qui le portait —
 mot pour mot le défaut que le pilote venait de corriger en `39ce91a`, « le README
@@ -841,7 +898,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**857 tests verts** (`mesuré` le 1er septembre 2026 par `make test` sur cette
+**865 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -853,8 +910,7 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | Module | Rôle | Couverture |
 |---|---|---|
 | `ngql.py` | Échappement et construction des requêtes du graphe | 100 % |
-| `blocks.py` | Regroupement des éléments, filtrage du bruit | 100 % |
-| `chunking.py` | Découpage et contextualisation | 100 % |
+| `chunking.py` | Ce que le modèle d'embedding reçoit, la forme de l'id de chunk, le filtre du bruit | 100 % |
 | `elements.py` | Hiérarchie, positions, identifiants | 100 % |
 | `markdown.py` | Normalisation avant conversion | 100 % |
 | `matter.py` | Repérage des parties hors contenu (index, sommaire) | 100 % |

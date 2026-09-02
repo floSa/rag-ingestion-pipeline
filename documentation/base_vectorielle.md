@@ -13,11 +13,17 @@ Grâce aux *embeddings* générés par le composant IA (`paraphrase-multilingual
 ## Structure et définition des données
 La collection utilisée est **`rag_documents`**.
 
-- **Identifiant du chunk** : l'identifiant cryptographique (Hash ID) de l'élément d'où part la lecture du chunk. Un élément réparti sur plusieurs chunks leur donne un suffixe : `023351d5f4#0`, `023351d5f4#1`… Un élément tenant en un seul chunk garde son identifiant nu, de sorte que les documents déjà ingérés sont mis à jour et non dupliqués.
+- **Identifiant du chunk** : l'identifiant cryptographique (Hash ID) de l'élément d'où part la lecture du chunk. Un élément réparti sur plusieurs chunks leur donne un suffixe : `023351d5f4#0`, `023351d5f4#1`… Un élément tenant en un seul chunk garde son identifiant nu. C'est une clause du contrat, et `verify_contract` la compte : **974 ids suffixés sur 4 365** (`mesuré` le 2 septembre 2026 sur l'index vivant). *Ce n'est pas ce qui protège de la duplication à la réingestion* — c'est `extraction.extract`, qui purge le document par `source_path` avant de le réécrire (registre §4.2, §4.31.B3).
 - **Embeddings** : représentation mathématique du texte du chunk, produite par `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions), encodée par lots. Le modèle est **multilingue** : une question française retrouve les passages anglais pertinents, et réciproquement.
-- **Documents** : le contenu en texte pur du chunk. Rien n'est tronqué : le découpage remplace l'ancienne coupe à 1000 caractères, qui amputait silencieusement les paragraphes longs.
+- **Documents** : le contenu en texte pur du chunk. Le découpage remplace l'ancienne coupe à 1000 caractères, qui amputait silencieusement les paragraphes longs. **Cette ligne affirmait « Rien n'est tronqué »** : c'est vrai du texte *stocké*, faux du *vecteur* — le modèle tronque lui-même ce qui dépasse sa fenêtre. Le chiffre et ses deux causes ont un seul site, `vectors.get_chunker` dans `src/docling_service/vectors.py` (registre §3.4 bis).
 
-Un point important : **la collection ne contient pas un vecteur par élément du document, mais un vecteur par chunk**. Le découpage est confié à `HybridChunker`, le découpeur de Docling : il regroupe ce qui va ensemble en respectant la structure du document, et reçoit le tokenizer du modèle d'embedding pour ne jamais dépasser sa fenêtre. Les fragments isolés produits par l'analyse de layout (`x`, `and`, `-`) sont absorbés dans leur paragraphe d'origine, et les résidus sans caractère alphanumérique sont écartés. Tous les éléments restent en revanche dans NebulaGraph : la structure du document est intacte, et `/context/{element_id}` la reconstruit. Voir [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
+Un point important : **la collection ne contient pas un vecteur par élément du document, mais un vecteur par chunk**. Le découpage est confié à `HybridChunker`, le découpeur de Docling : il regroupe ce qui va ensemble en respectant la structure du document, et reçoit le tokenizer du modèle d'embedding. Tous les éléments restent en revanche dans NebulaGraph : la structure du document est intacte, et `/context/{element_id}` la reconstruit. Voir [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
+
+> **Les fragments isolés ne sont pas « absorbés dans leur paragraphe d'origine ».** Cette phrase décrivait `build_blocks`, un regroupement maison retiré du dépôt : sa doctrine était « fusionner plutôt que jeter », et `blocks.py` affirmait au même moment que `HybridChunker` « n'a pas de `min_tokens` : les fragments isolés y survivent ». Les deux ne pouvaient pas être vrais ensemble, et aucun des deux ne décrivait le code (registre §5.2).
+>
+> Ce que la production fait, `mesuré` dans `vectors.build_chunks` : `HybridChunker` fusionne les pairs de même métadonnée (`merge_peers`), puis un chunk est **écarté** — pas absorbé — s'il n'a aucun caractère alphanumérique ou s'il est plus court que `MIN_CHUNK_CHARS`.
+>
+> **Et ce rejet est borné, ce qui compte autant que le rejet lui-même.** Il ne s'applique qu'à un chunk qui est le **seul** de son élément. Une fenêtre du *milieu* d'un texte continu est conservée même courte : sans cette borne, l'agent concaténerait les chunks d'un élément et obtiendrait un texte troué, ce qui est arrivé sur deux éléments de l'index (registre §4.28.a).
 
 Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa section**, alors que le document stocké reste le texte brut. Le passage s'affiche donc tel quel côté agent, mais le vecteur porte son contexte.
 - **Métadonnées intégrées** — définies par `ChunkMetadata` dans `src/pipeline/schemas.py`, qui est le contrat de référence avec `rag-agent-chat` :
@@ -30,11 +36,12 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `collection` | Dossier parent — l'**ouvrage** dont vient le chapitre |
 | `source_path` | Chemin complet relatif à `Datas/`, identité unique du document |
 | `label` | Tag Docling, pour filtrer par type (`table`, `formula`, `text`…) |
-| `page_no` | Page source, pour citer la référence à l'utilisateur |
+| `page_no` | **Première** page du chunk, pour citer la référence à l'utilisateur |
+| `page_no_end` | **Dernière** page couverte. Égale à `page_no` sauf pour un élément que Docling a fusionné par-dessus une frontière de page — citer « page N » seule est alors inexact. Ajoutée par le lot 4 ; cette table ne la portait pas |
 | `minio_url` | URL de l'image associée, le cas échéant |
 | `reference_id` | Section parente (ou `DOC`) |
 | `language` | Langue du document (`en`, `fr`…), vide si indéterminée. Voir plus bas |
-| `depth` | Profondeur du chunk dans la hiérarchie des titres (0 = titre de tête) |
+| `depth` | Profondeur dans la hiérarchie des titres. **Aucun plafond**, et **deux échelles s'y croisent** — c'est `label` qui dit laquelle. Site canonique : `ChunkMetadata.depth` |
 | `section_title` | Titre de la section, exploitable pour l'affichage des citations |
 | `page_position` | Rang de l'élément dans sa page |
 | `ref_position` | Rang de l'élément sous son parent |
@@ -113,7 +120,7 @@ La métadonnée `language` reste utile pour dire à l'utilisateur dans quelle la
 
 ### D'où vient la métadonnée `language`
 
-Détectée par comptage de mots-outils sur les 20 000 premiers caractères du document ([`language.py`](src/docling_service/language.py)). À l'échelle d'un ouvrage, c'est très discriminant — ce qui serait fragile sur une seule phrase.
+Détectée par comptage de mots-outils sur les 20 000 premiers caractères du document ([`language.py`](../src/docling_service/language.py)). À l'échelle d'un ouvrage, c'est très discriminant — ce qui serait fragile sur une seule phrase.
 
 Sept langues reconnues : `en`, `fr`, `es`, `de`, `it`, `pt`, `nl`. La valeur est **vide** dès que le doute est permis : mieux vaut pas de réponse qu'une mauvaise. Les mots partagés entre plusieurs langues (`la`, `de`, `on`…) sont retirés des listes au chargement, sinon ils feraient pencher un score au hasard.
 
@@ -121,12 +128,12 @@ Vérifié sur le corpus : 6 notes françaises et les chapitres anglais correctem
 
 ## Commandes utiles
 Lors de vos futurs développements du système RAG Agentique, vous nécessiterez régulièrement ces concepts :
-- **Intérroger la collection en Python :** 
+- **Intérroger la collection en Python :**
   ```python
   import chromadb
   client = chromadb.HttpClient(host='localhost', port=8080)
   collection = client.get_or_create_collection(name="rag_documents")
-  
+
   # Requête sur un contexte RAG métier (ici: cibler que les paragraphes et les formules avec un texte lié aux analyses statistiques)
   results = collection.query(
       query_texts=["Comment calculer la médiane ?"],
@@ -140,6 +147,6 @@ Lors de vos futurs développements du système RAG Agentique, vous nécessiterez
   ```
 
 ## Problèmes rencontrés et solutions
-- **Intégrité de Base Perdue au Reboot** : 
+- **Intégrité de Base Perdue au Reboot** :
   - *Problème* : L'inexistence de `restart: unless-stopped` en politique de redémarrage sur le conteneur ChromaDB faisait disparaître ou arrêter inopinément le service dès réveil d'une nuit de fermeture du terminal (WSL). Le service demandeur `docling-service` ne parvenait alors plus à trouver son système cible et jetait les paquets vectoriels dans le vide.
   - *Solution* : Ajouté ce jour des conditions optimales `restart: unless-stopped` sur la déclaration docker, forçant chroma à se relancer instantanément et récupérer automatiquement ses collections depuis son montage `/Datas/database/chromadb`.

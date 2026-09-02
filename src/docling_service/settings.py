@@ -63,12 +63,16 @@ class DoclingSettings(BaseSettings):
     image_crop_zoom: float = 2.0
 
     # ── Vectorisation ────────────────────────────────────────────────────────
-    # 450 caracteres : le modele multilingue encode 128 tokens, soit environ
-    # 500 caracteres de prose. A 900, un tiers des chunks etait tronque — le
-    # vecteur ne representait que le debut du texte, sans que rien ne le
-    # signale. Mesure sur le corpus : 31 % de troncature a 900, 1,3 % a 450.
-    chunk_size: int = 450
-    chunk_overlap: int = 75
+    # `CHUNK_SIZE` (450) et `CHUNK_OVERLAP` (75) etaient ici, ET RIEN NE LES
+    # LISAIT (registre 5.1). Le decoupage reel est `HybridChunker`, qui coupe sur
+    # la STRUCTURE du document et sur la fenetre du tokenizer du modele, jamais
+    # sur un compte de caracteres. Le commentaire qui les accompagnait justifiait
+    # 450 par une mesure — « 31 % de troncature a 900, 1,3 % a 450 » — et
+    # documentait donc une constante morte : le chiffre etait peut-etre juste, il
+    # ne decrivait aucun comportement de ce code. `documentation/services/
+    # docling.md` les annoncait de surcroit a l'operateur avec les valeurs 900 et
+    # 150, que ces defauts-ci contredisaient : le debat « 900 contre 450 » etait
+    # vide des deux cotes.
     embedding_batch_size: int = 32
     chroma_upsert_batch: int = 500
     # Plancher en caracteres sous lequel un bloc est ecarte de l'index
@@ -82,7 +86,15 @@ class DoclingSettings(BaseSettings):
 
     # ── Graphe ───────────────────────────────────────────────────────────────
     # Le graphe porte la structure, pas le corpus : on y stocke un apercu du
-    # texte. Le texte integral vit dans ChromaDB, decoupe et sans troncature.
+    # texte. Le texte integral vit dans ChromaDB, decoupe.
+    #
+    # Cette ligne ajoutait « et SANS TRONCATURE ». C'est faux, et deux fois : le
+    # texte STOCKE dans ChromaDB est bien integral, mais le VECTEUR ne l'est pas
+    # — le modele tronque ce qui depasse sa fenetre, et le chiffre est a
+    # `vectors.get_chunker`. Quant au graphe, il coupe a cette limite-ci, ce qui
+    # fait diverger les deux stores en silence sur les elements concernes
+    # (registre 4.23) : `nebula.write_elements` compte desormais les coupes et
+    # emet un avertissement.
     graph_text_max_chars: int = 2000
 
     # ── File de jobs ─────────────────────────────────────────────────────────

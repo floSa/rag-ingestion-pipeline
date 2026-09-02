@@ -178,11 +178,23 @@ Deux garde-fous, parce que ce signal est le seul indirect :
 Un titre ecarte par l'un de ces garde-fous recoit le rang le plus profond, **jamais le rang
 zero** : le promouvoir chapitre remettrait tout l'arbre a zero.
 
-#### Profondeur plafonnee a 3
+#### Profondeur : aucun plafond
 
-L'objectif est de reconstruire un bloc avec ses titres parents pour l'agent, pas de
-reproduire une arborescence complete. La profondeur est en outre toujours celle du parent
-plus un, jamais le rang brut : un faux titre minuscule se range juste sous son
+**Cette section s'intitulait « Profondeur plafonnee a 3 », et le plafond n'existe plus.**
+Le lot 3 l'a retire avec `MAX_DEPTH` (registre 4.24). `depth` est le nombre d'aretes
+`PARENT_OF` qui separent l'element de la racine de son document, et il depasse 3 sur une
+part mesurable du corpus. Le site canonique de cette regle, des DEUX ECHELLES qui s'y
+croisent et de la distribution mesuree est `ChunkMetadata.depth` dans
+`src/pipeline/schemas.py`.
+
+Le motif ecrit du plafond — « l'objectif est de reconstruire un bloc avec ses titres
+parents, pas de reproduire une arborescence complete » — decrivait une limitation de
+l'ARBRE qui n'a jamais existe : `parent_id` n'a jamais ete plafonne, donc les aretes
+ecrites dans le graphe etaient les memes avec ou sans lui. Son seul effet mesurable etait
+de rendre `depth` NON INJECTIF, la valeur 4 recouvrant les profondeurs reelles 4 et 5.
+
+Ce qui reste vrai, et qui n'etait pas le plafond : la profondeur est toujours celle du
+parent plus un, jamais le rang brut. Un faux titre minuscule se range juste sous son
 predecesseur au lieu de tomber au niveau 9 et de trouer l'arbre.
 
 #### Resultat verifie
@@ -259,11 +271,18 @@ decoupes par **`HybridChunker`**, le decoupeur de Docling.
 
 **Pourquoi le sien plutot que le notre.** Le decoupage maison coupait a la longueur en
 caracteres, sans savoir ou il coupait. `HybridChunker` respecte la structure du document
-et recoit **le tokenizer du modele d'embedding lui-meme** : il remplit la fenetre sans
-jamais la depasser, la ou une approximation en caracteres laisse toujours une marge
-d'erreur.
+et recoit **le tokenizer du modele d'embedding lui-meme**, la ou une approximation en
+caracteres laisse toujours une marge d'erreur.
 
-Comparaison sur le chapitre 1 de `Practical MLOps`, a troncature nulle des deux cotes :
+*(Ce paragraphe ajoutait « il remplit la fenetre SANS JAMAIS LA DEPASSER ». C'est une
+phrase d'exhaustivite, et elle est fausse : le decoupeur ne peut pas fractionner une table,
+et le titre de section est prepose APRES son travail. Le chiffre et ses deux causes ont un
+seul site, `vectors.get_chunker` — registre §3.4 bis.)*
+
+Comparaison sur le chapitre 1 de `Practical MLOps` — **un ouvrage qui n'est PAS dans le
+corpus actuel**, dont les deux titres sont `MLOps with Databricks` et `Practical MLflow
+for Generative AI on Databricks`. Cette mesure n'est donc pas rejouable, et le
+decoupage maison a depuis ete retire du depot (registre 5.1, 6.10) :
 
 | Mesure                  | Decoupage maison (450 car.) | `HybridChunker` |
 |-------------------------|-----------------------------|-----------------|
@@ -273,11 +292,19 @@ Comparaison sur le chapitre 1 de `Practical MLOps`, a troncature nulle des deux 
 
 A contenu egal, quarante-six chunks de moins, chacun portant davantage de contexte.
 
-**Le plancher reste.** Un chunk sans caractere alphanumerique, ou plus court que
-`MIN_CHUNK_CHARS`, est ecarte de l'index — il demeure dans le graphe. Sur le corpus de
-reference, cela ne concerne plus que 16 chunks sur 6 124, et **plus aucun fragment isole**
-du type `x`, `and`, `-` : le regroupement structurel de Docling les absorbe dans leur
-paragraphe d'origine.
+**Le plancher reste, ET IL EST BORNE.** Un chunk sans caractere alphanumerique, ou plus
+court que `MIN_CHUNK_CHARS`, est ecarte de l'index — il demeure dans le graphe. Mais ce
+rejet ne s'applique qu'a un chunk qui est le **seul** de son element
+(`vectors.build_chunks`, `mesure`). Une fenetre du MILIEU d'un texte continu est conservee meme courte : sans cette
+borne, l'agent concatene les chunks d'un element et obtient un texte troue, ce qui est
+arrive sur deux elements de l'index (registre 4.28.a). Le motif ecrit du plancher — « trop
+court pour porter du sens » — suppose un chunk autonome, et cette supposition est fausse
+pour une fenetre du milieu.
+
+*(Ce paragraphe ajoutait « et plus aucun fragment isole du type `x`, `and`, `-` : le
+regroupement structurel de Docling les absorbe dans leur paragraphe d'origine ». Le verbe
+etait faux : la production ECARTE, elle n'absorbe pas. « Absorber » etait le vocabulaire de
+`build_blocks`, un regroupement maison retire du depot — registre 5.2.)*
 
 **Nos identifiants restent les notres.** `HybridChunker` rend ses chunks avec ses
 references internes (`#/texts/18`), alors que le contrat impose nos hash de dix
@@ -300,7 +327,7 @@ chunk couvre.
 Corpus de reference : un PDF de 280 pages, 36 chapitres HTML et un fichier
 Markdown, ingeres avant puis apres la mise en place du regroupement.
 
-| Mesure                                | Avant   | Apres  |
+| Mesure, sur le CORPUS DE REFERENCE (disparu)   | Avant   | Apres  |
 |---------------------------------------|---------|--------|
 | chunks indexes                        | 22 937  | 5 246  |
 | sans aucun caractere alphanumerique   | 5,0 %   | 0,0 %  |
@@ -309,16 +336,39 @@ Markdown, ingeres avant puis apres la mise en place du regroupement.
 | chunks issus d'une fusion             | 0 %     | 51,5 % |
 | chunks portant un titre de section    | 0 %     | 100 %  |
 
-L'index perd 77 % de ses entrees sans perdre un seul caractere de contenu : ce
-qui disparait, ce sont les fragments de mise en page et les doublons de
-granularite. NebulaGraph, lui, conserve ses 24 709 noeuds — la structure du
-document reste complete.
+L'index perdait 77 % de ses entrees sans perdre un seul caractere de contenu : ce
+qui disparaissait, ce sont les fragments de mise en page et les doublons de
+granularite.
 
-**Limite connue et mesuree** : 0,8 % des chunks depassent la fenetre de 256
-tokens du modele d'embedding et sont donc tronques par le modele lui-meme. Il
-s'agit de passages denses — code, tableaux, formules — dont le ratio
-caracteres/tokens est defavorable. Le texte stocke, lui, reste integral. La
-commande `python -m src.index_report` donne ce chiffre apres chaque ingestion.
+> **CES CHIFFRES PORTENT SUR UN CORPUS QUI N'EXISTE PLUS**, et ils n'avaient ni
+> reserve ni date (registre 6.10). Le corpus de reference etait mixte
+> francais/anglais, 42 documents dont 6 notes Markdown et un PDF de 280 pages ;
+> le registre 1 le declare mort. Le corpus actuel est 24 chapitres HTML de deux
+> ouvrages plus un PDF de 71 pages, entierement en anglais.
+>
+> `mesure` le 2 septembre 2026 sur l'index vivant, pour comparaison — et ce sont
+> des ORDRES DE GRANDEUR differents, pas une derive : **4 365 chunks, 15 196
+> sommets, 23 documents, 15 173 aretes PARENT_OF**. Les « 24 709 noeuds » que
+> cette section annoncait valent 15 196 aujourd'hui.
+>
+> Les chiffres sont conserves parce qu'ils documentent la DECISION prise a
+> l'epoque ; ils ne decrivent pas l'index d'aujourd'hui. Celui-ci se lit par
+> `python -m src.index_report`, dans le conteneur d'extraction.
+
+**Limite connue et mesuree.** Une part des chunks depasse la fenetre du modele
+d'embedding et est donc tronquee par le modele lui-meme ; le texte stocke, lui, reste
+integral. La commande `python -m src.index_report` donne ce chiffre apres chaque
+ingestion, et le chiffre du corpus actuel a un seul site, `vectors.get_chunker`.
+
+*(Ce paragraphe annoncait « 0,8 % des chunks depassent la fenetre de 256 tokens ». LES
+DEUX NOMBRES ETAIENT FAUX. La fenetre vaut 128, et ce n'est pas un reglage : elle est lue
+au runtime sur le modele. Le pourcentage portait sur le corpus disparu — voir la reserve
+en tete de cette section — et il etait de surcroit mesure sur le mauvais texte : cet
+instrument tokenisait le texte STOCKE quand le modele recoit le texte PREFIXE du titre de
+sa section, ce qui le faisait sous-compter d'un facteur 2,1 (registre §3.4). Son
+explication « il s'agit de passages denses — code, tableaux, formules » etait elle aussi
+inexacte : mesure, les chunks qui depassent avant prefixe sont des TABLES, et rien
+d'autre.)*
 
 #### Contextualisation des vecteurs
 

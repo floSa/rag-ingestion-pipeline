@@ -18,8 +18,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from src.docling_service.blocks import has_content
-from src.docling_service.chunking import embedding_inputs
+from src.docling_service.chunking import embedding_inputs, has_content
 from src.docling_service.settings import get_settings
 
 # `chromadb`, le modele d'embedding et `vectors` sont importes DANS ``main`` :
@@ -53,10 +52,12 @@ def mesurer_la_fenetre(
 
     Cette fonction tokenisait ``documents``, c'est-a-dire le texte **stocke**,
     alors que ``vectors.write_elements`` encode le texte **prefixe du titre de
-    section**. Elle sous-comptait donc, et pas d'un peu : `mesure` le 31 aout
-    2026 sur les 4 365 chunks du corpus, **65 (1,5 %)** annonces contre
-    **137 (3,1 %)** reels, maximum **140** annonce contre **149** reel. Un
-    lecteur voyait 1,5 % et lisait un bruit d'arrondi.
+    section**. Elle sous-comptait donc, et pas d'un peu : d'un facteur **2,1**
+    sur le compte, et le maximum annonce etait lui aussi sous-estime. Un lecteur
+    voyait le chiffre du texte stocke et lisait un bruit d'arrondi. Les nombres
+    de cette comparaison vivent a
+    :func:`~src.docling_service.vectors.get_chunker`, leur seul site — ce module
+    RAPPORTE la mesure, il n'est pas l'endroit ou elle est consignee.
 
     Le texte encode n'est plus reconstruit ici : il vient de
     :func:`~src.docling_service.chunking.embedding_inputs`, le meme site que
