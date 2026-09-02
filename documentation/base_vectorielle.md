@@ -36,11 +36,12 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `collection` | Dossier parent — l'**ouvrage** dont vient le chapitre |
 | `source_path` | Chemin complet relatif à `Datas/`, identité unique du document |
 | `label` | Tag Docling, pour filtrer par type (`table`, `formula`, `text`…) |
-| `page_no` | Page source, pour citer la référence à l'utilisateur |
+| `page_no` | **Première** page du chunk, pour citer la référence à l'utilisateur |
+| `page_no_end` | **Dernière** page couverte. Égale à `page_no` sauf pour un élément que Docling a fusionné par-dessus une frontière de page — citer « page N » seule est alors inexact. Ajoutée par le lot 4 ; cette table ne la portait pas |
 | `minio_url` | URL de l'image associée, le cas échéant |
 | `reference_id` | Section parente (ou `DOC`) |
 | `language` | Langue du document (`en`, `fr`…), vide si indéterminée. Voir plus bas |
-| `depth` | Profondeur du chunk dans la hiérarchie des titres (0 = titre de tête) |
+| `depth` | Profondeur dans la hiérarchie des titres. **Aucun plafond**, et **deux échelles s'y croisent** — c'est `label` qui dit laquelle. Site canonique : `ChunkMetadata.depth` |
 | `section_title` | Titre de la section, exploitable pour l'affichage des citations |
 | `page_position` | Rang de l'élément dans sa page |
 | `ref_position` | Rang de l'élément sous son parent |

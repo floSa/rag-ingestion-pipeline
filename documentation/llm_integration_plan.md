@@ -240,6 +240,9 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | metadata.page_no       | int    | Numero de page (1 pour les formats non pagines) |
 | metadata.minio_url     | string | URL MinIO si image/table ("" sinon) |
 | metadata.reference_id  | string | Section parente, ou `DOC`            |
+| metadata.page_no_end   | int    | DERNIERE page du chunk. Egale a `page_no` sauf pour un element que Docling a fusionne par-dessus une frontiere de page : citer « page N » seule est alors inexact |
+| metadata.language      | string | Code ISO 639-1 du document (`en`, `fr`...), vide si indeterminee |
+| metadata.depth         | int    | Profondeur dans la hierarchie. **DEUX ECHELLES s'y croisent** : sur un titre elle compte les titres au-dessus, sur tout autre element elle vaut celle de son titre + 1. C'est `label` qui dit laquelle. Aucun plafond. Site canonique : `ChunkMetadata.depth` |
 | metadata.section_title | string | Titre de la section, pour l'affichage des citations |
 | metadata.page_position | int    | Rang de l'element dans sa page       |
 | metadata.ref_position  | int    | Rang de l'element sous son parent    |
@@ -303,18 +306,26 @@ une evolution du pipeline.
 
 | Tag            | Proprietes                                      |
 |----------------|-------------------------------------------------|
-| Document       | filename: string, type_file: string             |
-| SectionHeader  | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Paragraph      | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Table          | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Picture        | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| ListItem       | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Caption        | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Code           | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Formula        | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| Footnote       | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| PageHeader     | label: string, page_no: int, text: string, minio_url: string, depth: int |
-| PageFooter     | label: string, page_no: int, text: string, minio_url: string, depth: int |
+| Document       | `filename`: string, `type_file`: string, `total_pages`: int, `collection`: string, `source_path`: string, `language`: string, `content_hash`: string |
+| les **11** tags d'element — SectionHeader, Paragraph, Table, Picture, ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter | `label`: string, `page_no`: int, `page_no_end`: int, `text`: string, `minio_url`: string, `depth`: int |
+
+> **Ce bloc annoncait DEUX propriétés sur `Document` et CINQ sur les tags
+> d'élément.** `mesuré` le 2 septembre 2026 (`ngql.DOCUMENT_PROPERTIES`,
+> `ngql.VERTEX_PROPERTIES`) : **7** et **6**. Deux manques, et ils ne sont pas de
+> même nature — `source_path` est **l'exigence 3 du contrat**, l'identité d'un
+> document, et elle manquait depuis l'origine ; `page_no_end` a été ajoutée aux
+> onze tags par le **lot 4**, qui n'a pas touché ce document (registre §6.18).
+>
+> Les onze tags sont désormais donnés en **une** ligne et non recopiés onze
+> fois : une énumération répétée onze fois est onze occasions de diverger, et
+> c'est ainsi que `page_no_end` a manqué partout à la fois. Le site canonique du
+> schéma est `VERTEX_PROPERTIES` / `VERTEX_TYPES` dans
+> `src/docling_service/ngql.py`.
+>
+> **`NULL` n'est pas `0`.** Le schéma Nebula migre en place, les **données** non :
+> un `ALTER TAG … ADD` laisse à `NULL` tous les sommets déjà écrits, et seule une
+> réécriture du document les renseigne. Un `page_no_end` absent signifie « fin
+> inconnue », jamais « tient sur une page ». `verify_contract` le compte.
 
 `depth` est le nombre d'aretes `PARENT_OF` qui separent le noeud de la racine
 de son document. C'est le **seul niveau declare** lisible sur un titre : aucun

@@ -46,8 +46,10 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
    sérialisée en Markdown est indivisible pour le découpeur, et le titre de section est préposé **après** le découpage, ce que le découpeur ne pouvait pas prévoir. **Le chiffre
    et ses deux causes ont un seul site : `vectors.get_chunker`** — il vivait ici aussi, et un nombre à deux sites finit par diverger (registre §3.4 bis). Les chunks sont
    encodés par lots avec `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), et upsertés avec les
-   métadonnées du contrat d'interface : `element_id`, `graph_node_id`, `filename`,
-   `label`, `page_no`, `minio_url`, `reference_id`, `page_position`, `ref_position`
+   **18** métadonnées du contrat d'interface, définies par `ChunkMetadata` dans
+   `src/pipeline/schemas.py`. *(Cette ligne en énumérait **9**. Une énumération close que
+   personne ne rouvre est le défaut lui-même : elle est retirée plutôt que complétée,
+   registre §6.3.)*
 
 ## Décisions d'architecture
 

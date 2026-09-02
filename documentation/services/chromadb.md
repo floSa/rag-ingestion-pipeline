@@ -27,9 +27,17 @@ API REST standard ChromaDB. Ecrite uniquement par le service Docling
     etre decoupe en plusieurs fenetres
   - **embeddings** : vecteurs 384 dimensions (paraphrase-multilingual-MiniLM-L12-v2,
     fenetre de **128** tokens), calcules sur le texte precede du titre de sa section
-  - **metadatas** : `element_id`, `graph_node_id`, `filename`, `label`,
-    `page_no`, `minio_url`, `reference_id`, `section_title`, `page_position`,
-    `ref_position`, `chunk_index`, `chunk_count`, `block_size`
+  - **metadatas** : **18** cles, definies par `ChunkMetadata` dans
+    `src/pipeline/schemas.py`, qui est le contrat de reference. Leur role est
+    documente dans [base_vectorielle.md](../base_vectorielle.md) et dans
+    [llm_integration_plan.md](../llm_integration_plan.md).
+
+    *(Cette ligne en enumerait **13**, et il en manquait cinq : `collection`,
+    `source_path`, `language` et `depth` — les quatre que le registre §6.3
+    nommait, dont `source_path` qui est l'exigence 3 du contrat — plus
+    `page_no_end`, ajoutee par le lot 4. L'enumeration est retiree plutot que
+    completee : une liste close que personne ne rouvre est le defaut lui-meme,
+    et la completer aujourd'hui ne fait que reculer la prochaine divergence.)*
   - **documents** : texte du chunk, integral
 
 **Granularité** : un vecteur par **chunk**, pas par élément — et le mot « bloc » qui vivait ici était le vocabulaire de `build_blocks`, un regroupement maison retiré du dépôt (registre §5.2, §6.4). Le découpage est confié à `HybridChunker` de Docling, qui regroupe ce qui va ensemble en respectant la **structure** du document ; « les éléments consécutifs d'une même section et de même nature sont fusionnés » décrivait l'algorithme disparu, pas celui-ci.
