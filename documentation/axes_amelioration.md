@@ -2413,6 +2413,40 @@ n'en lève **aucune anomalie**. C'est une lecture d'instrument, pas un garde —
 qui est exactement la raison pour laquelle la clause a besoin d'un test, et
 pourquoi retirer `chunk_ids` comme du code mort aurait été une perte.
 
+#### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
+
+`verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
+son docstring — « Un `DESCRIBE` en échec est compté comme "colonne absente" : ne
+pas pouvoir constater n'est pas constater que tout va bien », qui est la leçon du
+cinquième trou du lot 3 (§4.4) — et **rien ne le gardait**.
+
+`mesuré` le 2 septembre 2026 sur le code livré, mutation appliquée puis révoquée,
+texte vérifié changé par empreinte SHA-256 :
+
+| État | `if colonne not in colonnes` → `if colonnes and colonne not in colonnes` |
+|---|---|
+| lot 5 tel que livré | **rc=0, 857 tests, ZÉRO rouge** |
+| après ce garde | **rc=1, 3 rouges** — `test_un_describe_rejete_est_compte_comme_colonne_absente`, `test_un_seul_describe_rejete_suffit_a_nommer_son_tag`, `test_l_anomalie_qui_en_decoule_prescrit_le_redemarrage` |
+
+*(La même mutation, la suite **privée de la classe neuve** : rc=0, 0 rouge. C'est
+la bascule, et elle est mesurée sur le même arbre.)*
+
+**Le motif est celui des douze gardes creux précédents** : *le test observe une
+absence.* `_verifier_le_tag_document` porte le sien depuis le lot 3 ; la fonction
+que le lot 5 vient d'écrire, non.
+
+**Ce que la mutation coûtait, et ce n'est pas une élégance** : un graphd qui
+refuse le `DESCRIBE` rend `tags_sans_la_colonne == []`, donc
+`anomalie_de_colonne` prend sa **seconde** branche et prescrit « réingérez » là où
+il faut « redémarrez **puis** réingérez ». **C'est le §4.29.e rouvert par le
+commit qui le ferme.**
+
+Le garde porte deux témoins : un schéma entièrement migré ne rend aucun tag —
+sans quoi un garde qui rougirait toujours passerait — et un `DESCRIBE` en échec
+**sur un seul tag** ne nomme que celui-là, sans quoi un garde qui ne verrait que
+« tous les `DESCRIBE` échouent » resterait vert sur l'état le plus plausible, un
+tag verrouillé par une migration en cours.
+
 #### 4.31.C1 L'écart maximal de `sequence` : 994, sous un chapitre HTML, et « écart » n'était pas défini
 
 Le site canonique — le docstring de `verify_contract.inversions_de_page` —
@@ -2452,6 +2486,16 @@ valeurs consécutives (le §4.30.j interdit un `WHERE` sur une propriété d'ar�
 Les mentions du registre renvoient au site canonique au lieu de recopier, et les
 chiffres du lot 1 qui y vivaient encore (44 parents sur 185) portent désormais
 leur périmètre — 3 documents, 2 285 arêtes.
+
+#### 4.31.C2 « Les trois stores » : la purge en fait QUATRE — corrigé au §4.30.g
+
+Le constat et sa mesure vivent au **§4.30.g**, c'est-à-dire au site que la phrase
+fausse contredisait, et non ici : c'est là que le prochain lecteur cherchera.
+En deux lignes : `README.md` écrivait « le script sort en code d'erreur si l'un
+des **trois** stores résiste », **trente-cinq lignes sous le tableau qui en compte
+quatre**, dans la section que le §4.30.g corrige. `mesuré` : **quatre** branches
+alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par le
+test que le lot a écrit lui-même. **Il prouvait quatre et écrivait trois.**
 
 #### 4.31.C3 « Les DEUX documents réels du corpus » : ils sont SEIZE sur 23
 
@@ -2552,40 +2596,6 @@ Le §7.2 du mandat le dit arrêté : c'est **redevenu** vrai. Ce qu'il faut rete
 n'est pas l'incident mais sa leçon : **« le daemon est arrêté » n'est pas une
 propriété stable**, elle se remesure avant toute mesure qui en dépend — et les
 sensors étant livrés armés (§4.18), un daemon qui repart réingère.
-
-#### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
-
-`verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
-son docstring — « Un `DESCRIBE` en échec est compté comme "colonne absente" : ne
-pas pouvoir constater n'est pas constater que tout va bien », qui est la leçon du
-cinquième trou du lot 3 (§4.4) — et **rien ne le gardait**.
-
-`mesuré` le 2 septembre 2026 sur le code livré, mutation appliquée puis révoquée,
-texte vérifié changé par empreinte SHA-256 :
-
-| État | `if colonne not in colonnes` → `if colonnes and colonne not in colonnes` |
-|---|---|
-| lot 5 tel que livré | **rc=0, 857 tests, ZÉRO rouge** |
-| après ce garde | **rc=1, 3 rouges** — `test_un_describe_rejete_est_compte_comme_colonne_absente`, `test_un_seul_describe_rejete_suffit_a_nommer_son_tag`, `test_l_anomalie_qui_en_decoule_prescrit_le_redemarrage` |
-
-*(La même mutation, la suite **privée de la classe neuve** : rc=0, 0 rouge. C'est
-la bascule, et elle est mesurée sur le même arbre.)*
-
-**Le motif est celui des douze gardes creux précédents** : *le test observe une
-absence.* `_verifier_le_tag_document` porte le sien depuis le lot 3 ; la fonction
-que le lot 5 vient d'écrire, non.
-
-**Ce que la mutation coûtait, et ce n'est pas une élégance** : un graphd qui
-refuse le `DESCRIBE` rend `tags_sans_la_colonne == []`, donc
-`anomalie_de_colonne` prend sa **seconde** branche et prescrit « réingérez » là où
-il faut « redémarrez **puis** réingérez ». **C'est le §4.29.e rouvert par le
-commit qui le ferme.**
-
-Le garde porte deux témoins : un schéma entièrement migré ne rend aucun tag —
-sans quoi un garde qui rougirait toujours passerait — et un `DESCRIBE` en échec
-**sur un seul tag** ne nomme que celui-là, sans quoi un garde qui ne verrait que
-« tous les `DESCRIBE` échouent » resterait vert sur l'état le plus plausible, un
-tag verrouillé par une migration en cours.
 
 ---
 
