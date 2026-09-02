@@ -5,70 +5,10 @@ from __future__ import annotations
 import pytest
 
 from src.docling_service.chunking import (
-    chunk_ids,
-    chunk_text,
+    chunk_id,
     contextualize,
     embedding_inputs,
 )
-
-
-class TestChunkText:
-    def test_empty_returns_no_chunk(self):
-        assert chunk_text("") == []
-
-    def test_whitespace_only_returns_no_chunk(self):
-        assert chunk_text("   \n\t ") == []
-
-    def test_short_text_single_chunk(self):
-        assert chunk_text("Un texte court.") == ["Un texte court."]
-
-    def test_short_text_is_stripped(self):
-        assert chunk_text("  bonjour  ") == ["bonjour"]
-
-    def test_long_text_is_split(self):
-        text = " ".join(f"mot{i}" for i in range(500))
-        chunks = chunk_text(text, size=200, overlap=50)
-        assert len(chunks) > 1
-        assert all(len(chunk) <= 200 for chunk in chunks)
-
-    def test_nothing_is_lost(self):
-        # Le point central : l'ancienne troncature a 1000 caracteres perdait
-        # silencieusement la fin des paragraphes longs.
-        text = " ".join(f"mot{i}" for i in range(400))
-        chunks = chunk_text(text, size=200, overlap=50)
-        assert "mot0" in chunks[0]
-        assert "mot399" in chunks[-1]
-
-    def test_chunks_overlap(self):
-        text = " ".join(f"mot{i}" for i in range(200))
-        chunks = chunk_text(text, size=200, overlap=60)
-        # La fin d'un chunk se retrouve au debut du suivant.
-        assert any(word in chunks[1] for word in chunks[0].split()[-3:])
-
-    def test_no_overlap_still_covers_everything(self):
-        text = " ".join(f"mot{i}" for i in range(200))
-        chunks = chunk_text(text, size=100, overlap=0)
-        joined = " ".join(chunks)
-        assert "mot0" in joined
-        assert "mot199" in joined
-
-    def test_text_without_spaces_terminates(self):
-        # Aucune frontiere de mot : la boucle doit progresser quand meme.
-        chunks = chunk_text("x" * 1000, size=100, overlap=20)
-        assert len(chunks) > 1
-        assert all(chunk for chunk in chunks)
-
-    def test_size_must_be_positive(self):
-        with pytest.raises(ValueError):
-            chunk_text("abc", size=0)
-
-    def test_overlap_must_be_smaller_than_size(self):
-        with pytest.raises(ValueError):
-            chunk_text("abc", size=100, overlap=100)
-
-    def test_negative_overlap_rejected(self):
-        with pytest.raises(ValueError):
-            chunk_text("abc", size=100, overlap=-1)
 
 
 class TestContextualize:
@@ -101,22 +41,43 @@ class TestContextualize:
         assert contextualize("Le texte.", "  Titre  ") == "Titre\n\nLe texte."
 
 
-class TestChunkIds:
-    def test_single_chunk_keeps_bare_id(self):
-        # Les documents deja ingeres gardent leur identifiant : l'upsert les
-        # met a jour au lieu de creer un doublon.
-        assert chunk_ids("abc1234567", 1) == ["abc1234567"]
+class TestChunkId:
+    """La forme de l'id ChromaDB, qui est une clause du contrat.
 
-    def test_multiple_chunks_suffixed(self):
-        assert chunk_ids("abc1234567", 3) == [
+    Le garde de la production, lui, vit dans `test_vectors.py` : cette forme
+    etait ecrite DEUX fois, ici et en ligne dans `vectors.build_chunks`, et
+    seule celle-ci etait testee (registre 5.1).
+    """
+
+    def test_un_chunk_seul_garde_l_id_nu(self):
+        """SANS CELA, UNE REINGESTION DUPLIQUE AU LIEU DE METTRE A JOUR.
+
+        L'upsert ChromaDB se fait par id : un element qui tient en un chunk et
+        dont l'id gagnerait un suffixe entrerait comme un NOUVEAU vecteur a
+        chaque reingestion, l'ancien restant en orphelin.
+        """
+        assert chunk_id("abc1234567", 0, 1) == "abc1234567"
+
+    def test_un_element_multi_chunks_est_suffixe(self):
+        assert [chunk_id("abc1234567", i, 3) for i in range(3)] == [
             "abc1234567#0",
             "abc1234567#1",
             "abc1234567#2",
         ]
 
-    def test_ids_are_unique(self):
-        ids = chunk_ids("abc1234567", 10)
+    def test_les_ids_d_un_meme_element_sont_uniques(self):
+        ids = [chunk_id("abc1234567", i, 10) for i in range(10)]
+
         assert len(set(ids)) == 10
+
+    def test_l_element_id_reste_lisible_dans_l_id_du_chunk(self):
+        """Le temoin : le suffixe s'AJOUTE, il ne remplace pas.
+
+        `rag-agent-chat` valide `/context/{element_id}` sur `^[a-f0-9]{10}$` et
+        lit l'id du chunk dans un champ distinct : un id de chunk qui n'ouvrirait
+        plus sur son element romprait la correspondance entre les deux champs.
+        """
+        assert chunk_id("abc1234567", 7, 9).startswith("abc1234567")
 
 
 class TestEmbeddingInputs:

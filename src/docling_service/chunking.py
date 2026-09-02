@@ -1,9 +1,22 @@
-"""Decoupage des textes longs destines a la base vectorielle.
+"""Ce que le modele d'embedding recoit, et sous quel identifiant il est ecrit.
 
-L'ingestion tronquait les textes a 1000 caracteres, dans l'embedding comme dans
-le document stocke : un paragraphe long etait ampute en silence et sa fin
-devenait inatteignable par la recherche. On decoupe desormais en fenetres
-recouvrantes, sans rien perdre.
+**CE MODULE NE DECOUPE PLUS RIEN, ET SON EN-TETE L'AFFIRMAIT ENCORE.** Il
+portait « on decoupe desormais en fenetres recouvrantes, sans rien perdre » et
+exposait `chunk_text`, `DEFAULT_CHUNK_SIZE` et `DEFAULT_CHUNK_OVERLAP` : trois
+symboles **sans aucun appelant en production**, seuls les tests de ce module les
+exercaient (registre 5.1). Le decoupage reel est
+`HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`
+(`vectors.get_chunker`), qui decoupe sur la STRUCTURE du document et non sur un
+compte de caracteres. Le debat « 900 contre 450 » qui a occupe la documentation
+de ce depot etait donc vide : les deux valeurs etaient fausses, parce qu'aucune
+n'etait lue.
+
+Ce qui reste ici est ce que la production appelle, et rien d'autre :
+
+- :func:`contextualize` et :func:`embedding_inputs` — le texte tel que le modele
+  le recoit, a un seul site, partage par `vectors` et par `index_report` ;
+- :func:`chunk_id` — la forme de l'identifiant ChromaDB, qui est une clause du
+  contrat avec `rag-agent-chat`.
 
 Le module ne depend que de la bibliotheque standard : il reste testable sans
 sentence-transformers ni ChromaDB.
@@ -13,68 +26,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
-
-# ~450 caracteres : le modele multilingue encode 128 tokens, soit environ 500
-# caracteres de prose francaise ou anglaise. Au-dela il tronque de lui-meme, et
-# le vecteur ne represente plus que le debut du texte sans que rien ne le
-# signale. Le recouvrement evite de couper une idee en deux.
-DEFAULT_CHUNK_SIZE = 450
-DEFAULT_CHUNK_OVERLAP = 75
-
-
-def chunk_text(
-    text: str,
-    size: int = DEFAULT_CHUNK_SIZE,
-    overlap: int = DEFAULT_CHUNK_OVERLAP,
-) -> list[str]:
-    """Decoupe un texte en fenetres recouvrantes alignees sur les mots.
-
-    Args:
-        text: Texte a decouper.
-        size: Taille maximale d'une fenetre, en caracteres.
-        overlap: Recouvrement entre deux fenetres consecutives, en caracteres.
-
-    Returns:
-        Liste des fenetres, vide si le texte est vide. Un texte plus court que
-        ``size`` est retourne tel quel, en un seul element.
-
-    Raises:
-        ValueError: Si ``size`` est nul ou negatif, ou si ``overlap`` n'est pas
-            strictement inferieur a ``size`` (la progression ne serait pas garantie).
-    """
-    if size <= 0:
-        raise ValueError("size doit etre strictement positif")
-    if not 0 <= overlap < size:
-        raise ValueError("overlap doit etre compris entre 0 et size (exclu)")
-
-    stripped = text.strip()
-    if not stripped:
-        return []
-    if len(stripped) <= size:
-        return [stripped]
-
-    chunks: list[str] = []
-    start = 0
-    while start < len(stripped):
-        end = min(start + size, len(stripped))
-        if end < len(stripped):
-            # Reculer jusqu'a la derniere frontiere de mot, sans jamais rogner
-            # plus que le recouvrement (sinon un texte sans espace boucle).
-            boundary = stripped.rfind(" ", start + size - overlap, end)
-            if boundary > start:
-                end = boundary
-
-        chunk = stripped[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-
-        if end >= len(stripped):
-            break
-        # max(..., start + 1) : garantit la progression meme si end - overlap
-        # retombe avant start (fenetre courte apres recul sur un espace).
-        start = max(end - overlap, start + 1)
-
-    return chunks
 
 
 def contextualize(text: str, section_title: str) -> str:
@@ -151,8 +102,8 @@ def embedding_inputs(
     ]
 
 
-def chunk_ids(element_id: str, count: int) -> list[str]:
-    """Derive les ids ChromaDB des chunks d'un element.
+def chunk_id(element_id: str, index: int, count: int) -> str:
+    """Derive l'id ChromaDB d'un chunk, et c'est le SEUL site de cette forme.
 
     Un element tenant en un seul chunk conserve son id nu : les documents deja
     ingeres gardent leur identifiant et l'upsert les met a jour au lieu de les
@@ -163,13 +114,27 @@ def chunk_ids(element_id: str, count: int) -> list[str]:
     champs distincts, et ne valide le format ``^[a-f0-9]{10}$`` que sur le
     second.
 
+    **CETTE FONCTION S'APPELAIT `chunk_ids`, RENDAIT UNE LISTE, ET N'AVAIT AUCUN
+    APPELANT** (registre 5.1). Elle n'etait pas pour autant du code mort a
+    amputer : `vectors.build_chunks` reconstruisait la MEME forme par une
+    seconde expression en ligne, et **cette expression-la n'etait gardee par
+    rien**. `mesure` le 2 septembre 2026 sur le code livre par le lot 4 :
+    remplacer la ligne de `vectors.py` par un suffixe inconditionnel
+    (`f"{element_id}#{ancre.index}"`) laisse la suite ENTIEREMENT VERTE, 862
+    tests — alors que cette mutation fait qu'une reingestion DUPLIQUE chaque
+    element au lieu de le mettre a jour, l'id nu ayant disparu.
+
+    Retirer la fonction aurait donc retire les seuls tests d'une clause du
+    contrat dont le site de production n'a aucun garde. Elle est rendue
+    UNITAIRE — c'est ce que l'appelant demande, un chunk a la fois — et
+    l'appelant la traverse.
+
     Args:
         element_id: Identifiant de l'element dans NebulaGraph.
+        index: Rang du chunk dans son element, a partir de 0.
         count: Nombre de chunks produits pour cet element.
 
     Returns:
-        Liste de ``count`` identifiants.
+        L'identifiant du chunk.
     """
-    if count == 1:
-        return [element_id]
-    return [f"{element_id}#{index}" for index in range(count)]
+    return element_id if count == 1 else f"{element_id}#{index}"

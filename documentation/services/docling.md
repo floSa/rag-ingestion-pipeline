@@ -109,14 +109,21 @@ la bibliotheque standard : leur logique est testee sans Docling ni GPU.
 | CHROMA_PORT          | Port ChromaDB                          | 8000             |
 | EMBEDDING_MODEL_NAME | Modele SentenceTransformers (multilingue). Verrouille : le service refuse de demarrer sur un autre modele (cf. base_vectorielle.md) | paraphrase-multilingual-MiniLM-L12-v2 |
 | PDF_BATCH_PAGES      | Pages converties par passe             | 5                |
-| CHUNK_SIZE           | Taille d'un chunk vectorise (car.)     | 900              |
-| CHUNK_OVERLAP        | Recouvrement entre chunks (car.)       | 150              |
 | MIN_CHUNK_CHARS      | Plancher d'indexation d'un bloc (car.) | 24               |
 | EMBED_SECTION_CONTEXT| Titre de section prepose a l'embedding | true             |
 | EMBEDDING_BATCH_SIZE | Textes encodes par appel au modele     | 32               |
 | CHROMA_UPSERT_BATCH  | Chunks par upsert ChromaDB             | 500              |
 | GRAPH_TEXT_MAX_CHARS | Apercu du texte stocke dans le graphe  | 2000             |
 | JOB_HISTORY_SIZE     | Jobs termines conserves en memoire     | 500              |
+
+> **`CHUNK_SIZE` et `CHUNK_OVERLAP` etaient annonces ici, avec les valeurs 900 et
+> 150. Ils ne faisaient RIEN.** Aucun code ne les lisait (registre 5.1), et les
+> defauts declares dans `settings.py` valaient de surcroit 450 et 75 : cette
+> table contredisait le code sur des variables que le code ignorait. Le decoupage
+> est confie a `HybridChunker`, qui coupe sur la **structure** du document et sur
+> la fenetre du tokenizer du modele d'embedding, jamais sur un compte de
+> caracteres. Il n'y a donc aucune taille de chunk a regler, et le debat « 900
+> contre 450 » qui a occupe cette documentation etait vide.
 
 ## Dependances
 

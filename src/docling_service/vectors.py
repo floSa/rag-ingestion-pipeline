@@ -232,9 +232,13 @@ def build_chunks(
 
         element = ancre.element
         element_id = str(element["id"])
-        chunk_id = element_id if ancre.count == 1 else f"{element_id}#{ancre.index}"
-
-        ids.append(chunk_id)
+        # LA FORME DE L'ID VIENT DE `chunking.chunk_id`, ET ELLE ETAIT EN LIGNE
+        # ICI. `chunking` portait la meme forme, testee, et sans appelant : deux
+        # sites pour une clause du contrat, dont celui-ci — le seul qui ecrit —
+        # n'etait garde par rien. `mesure` : un suffixe inconditionnel laissait
+        # 862 tests verts, et faisait DUPLIQUER chaque element a la reingestion
+        # au lieu de le mettre a jour (registre 5.1).
+        ids.append(chunking.chunk_id(element_id, ancre.index, ancre.count))
         texts.append(texte)
         metadatas.append(
             ChunkMetadata(

@@ -63,12 +63,16 @@ class DoclingSettings(BaseSettings):
     image_crop_zoom: float = 2.0
 
     # ── Vectorisation ────────────────────────────────────────────────────────
-    # 450 caracteres : le modele multilingue encode 128 tokens, soit environ
-    # 500 caracteres de prose. A 900, un tiers des chunks etait tronque — le
-    # vecteur ne representait que le debut du texte, sans que rien ne le
-    # signale. Mesure sur le corpus : 31 % de troncature a 900, 1,3 % a 450.
-    chunk_size: int = 450
-    chunk_overlap: int = 75
+    # `CHUNK_SIZE` (450) et `CHUNK_OVERLAP` (75) etaient ici, ET RIEN NE LES
+    # LISAIT (registre 5.1). Le decoupage reel est `HybridChunker`, qui coupe sur
+    # la STRUCTURE du document et sur la fenetre du tokenizer du modele, jamais
+    # sur un compte de caracteres. Le commentaire qui les accompagnait justifiait
+    # 450 par une mesure — « 31 % de troncature a 900, 1,3 % a 450 » — et
+    # documentait donc une constante morte : le chiffre etait peut-etre juste, il
+    # ne decrivait aucun comportement de ce code. `documentation/services/
+    # docling.md` les annoncait de surcroit a l'operateur avec les valeurs 900 et
+    # 150, que ces defauts-ci contredisaient : le debat « 900 contre 450 » etait
+    # vide des deux cotes.
     embedding_batch_size: int = 32
     chroma_upsert_batch: int = 500
     # Plancher en caracteres sous lequel un bloc est ecarte de l'index
