@@ -249,12 +249,9 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 **Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de 256
 tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
 
-**Granularite** : un vecteur par **bloc**, et non par element. L'analyse de
-layout produit quantite de fragments isoles (`x`, `and`, `Note`, `-`) qui n'ont
-aucun sens vectorises ; les elements consecutifs d'une meme section et de meme
-nature sont donc fusionnes, et les residus sous le plancher sont ecartes de
-l'index. Le decoupage est confie a HybridChunker de Docling —
-plus aucune troncature.
+**Granularité** : un vecteur par **chunk**, pas par élément — et le mot « bloc » qui vivait ici était le vocabulaire de `build_blocks`, un regroupement maison retiré du dépôt (registre §5.2, §6.4). Le découpage est confié à `HybridChunker` de Docling, qui regroupe ce qui va ensemble en respectant la **structure** du document ; « les éléments consécutifs d'une même section et de même nature sont fusionnés » décrivait l'algorithme disparu, pas celui-ci.
+
+Ce que la production écarte, `mesuré` à `src/docling_service/vectors.py:230` : un chunk sans aucun caractère alphanumérique, ou plus court que `MIN_CHUNK_CHARS` — **et seulement s'il est le seul chunk de son élément**. Une fenêtre du milieu d'un texte continu est conservée même courte, sans quoi l'agent concaténerait un texte troué (registre §4.28.a). Les éléments écartés de l'index restent présents dans NebulaGraph.
 
 **Consequences pour l'agent** :
 

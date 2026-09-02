@@ -17,7 +17,13 @@ La collection utilisée est **`rag_documents`**.
 - **Embeddings** : représentation mathématique du texte du chunk, produite par `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions), encodée par lots. Le modèle est **multilingue** : une question française retrouve les passages anglais pertinents, et réciproquement.
 - **Documents** : le contenu en texte pur du chunk. Rien n'est tronqué : le découpage remplace l'ancienne coupe à 1000 caractères, qui amputait silencieusement les paragraphes longs.
 
-Un point important : **la collection ne contient pas un vecteur par élément du document, mais un vecteur par chunk**. Le découpage est confié à `HybridChunker`, le découpeur de Docling : il regroupe ce qui va ensemble en respectant la structure du document, et reçoit le tokenizer du modèle d'embedding pour ne jamais dépasser sa fenêtre. Les fragments isolés produits par l'analyse de layout (`x`, `and`, `-`) sont absorbés dans leur paragraphe d'origine, et les résidus sans caractère alphanumérique sont écartés. Tous les éléments restent en revanche dans NebulaGraph : la structure du document est intacte, et `/context/{element_id}` la reconstruit. Voir [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
+Un point important : **la collection ne contient pas un vecteur par élément du document, mais un vecteur par chunk**. Le découpage est confié à `HybridChunker`, le découpeur de Docling : il regroupe ce qui va ensemble en respectant la structure du document, et reçoit le tokenizer du modèle d'embedding. Tous les éléments restent en revanche dans NebulaGraph : la structure du document est intacte, et `/context/{element_id}` la reconstruit. Voir [extraction_donnees.md](extraction_donnees.md#ce-qui-part-dans-lindex-vectoriel).
+
+> **Les fragments isolés ne sont pas « absorbés dans leur paragraphe d'origine ».** Cette phrase décrivait `build_blocks`, un regroupement maison retiré du dépôt : sa doctrine était « fusionner plutôt que jeter », et `blocks.py` affirmait au même moment que `HybridChunker` « n'a pas de `min_tokens` : les fragments isolés y survivent ». Les deux ne pouvaient pas être vrais ensemble, et aucun des deux ne décrivait le code (registre §5.2).
+>
+> Ce que la production fait, `mesuré` à `src/docling_service/vectors.py:230` : `HybridChunker` fusionne les pairs de même métadonnée (`merge_peers`), puis un chunk est **écarté** — pas absorbé — s'il n'a aucun caractère alphanumérique ou s'il est plus court que `MIN_CHUNK_CHARS`.
+>
+> **Et ce rejet est borné, ce qui compte autant que le rejet lui-même.** Il ne s'applique qu'à un chunk qui est le **seul** de son élément. Une fenêtre du *milieu* d'un texte continu est conservée même courte : sans cette borne, l'agent concaténerait les chunks d'un élément et obtiendrait un texte troué, ce qui est arrivé sur deux éléments de l'index (registre §4.28.a).
 
 Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa section**, alors que le document stocké reste le texte brut. Le passage s'affiche donc tel quel côté agent, mais le vecteur porte son contexte.
 - **Métadonnées intégrées** — définies par `ChunkMetadata` dans `src/pipeline/schemas.py`, qui est le contrat de référence avec `rag-agent-chat` :
@@ -121,12 +127,12 @@ Vérifié sur le corpus : 6 notes françaises et les chapitres anglais correctem
 
 ## Commandes utiles
 Lors de vos futurs développements du système RAG Agentique, vous nécessiterez régulièrement ces concepts :
-- **Intérroger la collection en Python :** 
+- **Intérroger la collection en Python :**
   ```python
   import chromadb
   client = chromadb.HttpClient(host='localhost', port=8080)
   collection = client.get_or_create_collection(name="rag_documents")
-  
+
   # Requête sur un contexte RAG métier (ici: cibler que les paragraphes et les formules avec un texte lié aux analyses statistiques)
   results = collection.query(
       query_texts=["Comment calculer la médiane ?"],
@@ -140,6 +146,6 @@ Lors de vos futurs développements du système RAG Agentique, vous nécessiterez
   ```
 
 ## Problèmes rencontrés et solutions
-- **Intégrité de Base Perdue au Reboot** : 
+- **Intégrité de Base Perdue au Reboot** :
   - *Problème* : L'inexistence de `restart: unless-stopped` en politique de redémarrage sur le conteneur ChromaDB faisait disparaître ou arrêter inopinément le service dès réveil d'une nuit de fermeture du terminal (WSL). Le service demandeur `docling-service` ne parvenait alors plus à trouver son système cible et jetait les paquets vectoriels dans le vide.
   - *Solution* : Ajouté ce jour des conditions optimales `restart: unless-stopped` sur la déclaration docker, forçant chroma à se relancer instantanément et récupérer automatiquement ses collections depuis son montage `/Datas/database/chromadb`.

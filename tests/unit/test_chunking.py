@@ -8,6 +8,7 @@ from src.docling_service.chunking import (
     chunk_id,
     contextualize,
     embedding_inputs,
+    has_content,
 )
 
 
@@ -115,3 +116,32 @@ class TestEmbeddingInputs:
 
     def test_the_result_stays_aligned_with_the_input(self):
         assert len(embedding_inputs(self.TEXTES, self.METAS, True)) == len(self.TEXTES)
+
+
+class TestHasContent:
+    """Le filtre qui decide si un texte merite un vecteur.
+
+    Ces six tests viennent de `test_blocks.py`, retire avec `blocks.py` : le
+    module portait une doctrine de regroupement — « fusionner plutot que jeter »
+    — que la production n'applique plus depuis que `HybridChunker` a remplace
+    `build_blocks`, et `has_content` en etait le seul symbole encore appele
+    (registre 5.2). La couverture le suit ; elle n'est pas perdue.
+    """
+
+    def test_un_mot_porte_du_contenu(self):
+        assert has_content("bonjour") is True
+
+    def test_un_chiffre_porte_du_contenu(self):
+        assert has_content("2") is True
+
+    def test_la_ponctuation_seule_n_en_porte_pas(self):
+        assert has_content("...") is False
+
+    def test_un_filet_de_tableau_n_en_porte_pas(self):
+        assert has_content("-" * 70) is False
+
+    def test_le_texte_vide_n_en_porte_pas(self):
+        assert has_content("") is False
+
+    def test_les_puces_et_separateurs_n_en_portent_pas(self):
+        assert has_content("  •  |  ") is False

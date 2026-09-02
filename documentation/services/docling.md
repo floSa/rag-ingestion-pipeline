@@ -88,12 +88,30 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `nebula.py`     | Pool partage, sessions, ecritures groupees, schema                    |
 | `ngql.py`       | Echappement et construction des requetes nGQL                         |
 | `vectors.py`    | Embeddings par lots et upsert ChromaDB                                |
-| `blocks.py`     | Regroupement des elements en blocs, filtrage du bruit de mise en page  |
-| `chunking.py`   | Decoupage des textes longs, contextualisation des embeddings          |
+| `chunking.py`   | Ce que le modele d'embedding recoit, la forme de l'id de chunk, le filtre du bruit |
 | `images.py`     | Crop PyMuPDF, envoi de fichiers, export MinIO                         |
 
-`ngql.py`, `chunking.py`, `elements.py`, `markdown.py` et `jobs.py` ne dependent que de
-la bibliotheque standard : leur logique est testee sans Docling ni GPU.
+*(`blocks.py` a ete retire : il portait `build_blocks`, un regroupement maison
+que `HybridChunker` a remplace et que plus rien n'appelait, plus une doctrine de
+33 lignes que la production n'applique pas — registre §5.2. Son seul symbole
+encore appele, `has_content`, a rejoint `chunking.py`.)*
+
+**Onze modules ne dependent que de la bibliotheque standard**, et leur logique
+est donc testee sans Docling, sans torch et sans GPU (`mesure` le 2 septembre
+2026, imports de niveau module lus a l'AST — cette phrase en nommait **cinq**,
+et la liste du registre §6.8 qui la corrigeait en oubliait un de son cote) :
+
+`anchoring.py`, `chunking.py`, `elements.py`, `hierarchy.py`, `jobs.py`,
+`language.py`, `markdown.py`, `matter.py`, `ngql.py`, `ranking.py`, `storage.py`.
+
+Les sept autres portent une dependance de niveau module : `embedding.py`
+(`sentence_transformers`), `extraction.py` (`bs4`, `docling`, `fitz`),
+`images.py` (`fitz`, `minio`), `main.py` (`fastapi`, `uvicorn`), `nebula.py`
+(`nebula3`), `settings.py` (`pydantic_settings`) et `vectors.py` (`chromadb`,
+`docling_core`). Ce compte n'est pas celui des modules **inimportables** cote
+hote — plusieurs de ces dependances vivent dans le venv du depot — et cette
+propriete-la, elle, est gardee par
+`tests/unit/test_importabilite_cote_hote.py`.
 
 ## Variables d'environnement
 

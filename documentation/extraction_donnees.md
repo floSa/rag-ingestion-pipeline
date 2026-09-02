@@ -273,11 +273,19 @@ Comparaison sur le chapitre 1 de `Practical MLOps`, a troncature nulle des deux 
 
 A contenu egal, quarante-six chunks de moins, chacun portant davantage de contexte.
 
-**Le plancher reste.** Un chunk sans caractere alphanumerique, ou plus court que
-`MIN_CHUNK_CHARS`, est ecarte de l'index — il demeure dans le graphe. Sur le corpus de
-reference, cela ne concerne plus que 16 chunks sur 6 124, et **plus aucun fragment isole**
-du type `x`, `and`, `-` : le regroupement structurel de Docling les absorbe dans leur
-paragraphe d'origine.
+**Le plancher reste, ET IL EST BORNE.** Un chunk sans caractere alphanumerique, ou plus
+court que `MIN_CHUNK_CHARS`, est ecarte de l'index — il demeure dans le graphe. Mais ce
+rejet ne s'applique qu'a un chunk qui est le **seul** de son element (`vectors.py:230`,
+`mesure`). Une fenetre du MILIEU d'un texte continu est conservee meme courte : sans cette
+borne, l'agent concatene les chunks d'un element et obtient un texte troue, ce qui est
+arrive sur deux elements de l'index (registre 4.28.a). Le motif ecrit du plancher — « trop
+court pour porter du sens » — suppose un chunk autonome, et cette supposition est fausse
+pour une fenetre du milieu.
+
+*(Ce paragraphe ajoutait « et plus aucun fragment isole du type `x`, `and`, `-` : le
+regroupement structurel de Docling les absorbe dans leur paragraphe d'origine ». Le verbe
+etait faux : la production ECARTE, elle n'absorbe pas. « Absorber » etait le vocabulaire de
+`build_blocks`, un regroupement maison retire du depot — registre 5.2.)*
 
 **Nos identifiants restent les notres.** `HybridChunker` rend ses chunks avec ses
 references internes (`#/texts/18`), alors que le contrat impose nos hash de dix

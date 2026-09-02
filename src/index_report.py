@@ -18,8 +18,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from src.docling_service.blocks import has_content
-from src.docling_service.chunking import embedding_inputs
+from src.docling_service.chunking import embedding_inputs, has_content
 from src.docling_service.settings import get_settings
 
 # `chromadb`, le modele d'embedding et `vectors` sont importes DANS ``main`` :

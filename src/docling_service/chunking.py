@@ -16,7 +16,12 @@ Ce qui reste ici est ce que la production appelle, et rien d'autre :
 - :func:`contextualize` et :func:`embedding_inputs` — le texte tel que le modele
   le recoit, a un seul site, partage par `vectors` et par `index_report` ;
 - :func:`chunk_id` — la forme de l'identifiant ChromaDB, qui est une clause du
-  contrat avec `rag-agent-chat`.
+  contrat avec `rag-agent-chat` ;
+- :func:`has_content` — le filtre qui decide si un texte merite un vecteur. Il
+  vivait dans `blocks.py`, dont il etait le SEUL symbole encore appele : le
+  module portait par ailleurs une doctrine de regroupement que la production
+  n'applique plus (registre 5.2), et un module nomme « blocs » qui ne contient
+  aucune notion de bloc est un nom qui ment.
 
 Le module ne depend que de la bibliotheque standard : il reste testable sans
 sentence-transformers ni ChromaDB.
@@ -138,3 +143,35 @@ def chunk_id(element_id: str, index: int, count: int) -> str:
         L'identifiant du chunk.
     """
     return element_id if count == 1 else f"{element_id}#{index}"
+
+
+def has_content(text: str) -> bool:
+    """Indique si un texte porte au moins un caractere alphanumerique.
+
+    Un texte qui n'en contient aucun est un artefact de mise en page — filet de
+    tableau, puce, ponctuation isolee — et n'a rien a faire dans un index
+    vectoriel.
+
+    **CE FILTRE JETTE, ET LE MODULE D'OU IL VIENT AFFIRMAIT L'INVERSE.**
+    `blocks.py` ouvrait sur « la reponse retenue suit l'etat de l'art du
+    decoupage pour RAG : **fusionner plutot que jeter** », doctrine de 33 lignes
+    qui decrivait `build_blocks` — sans appelant depuis que `HybridChunker` l'a
+    remplace. Ce que la production fait, `mesure` a `vectors.py:230` :
+
+        autonome = ancre.count == 1
+        if autonome and (not has_content(texte) or len(texte) < min_chunk_chars):
+            continue
+
+    Elle JETTE donc, et la borne compte : depuis le lot 4 (registre 4.28.a), le
+    filtre ne s'applique qu'a un chunk qui est le SEUL de son element. Une
+    fenetre du MILIEU d'un texte continu est conservee meme courte, sans quoi
+    l'agent concatenerait un texte troue. L'element ecarte, lui, reste dans
+    NebulaGraph : c'est l'index vectoriel qui est nettoye, pas le document.
+
+    Args:
+        text: Texte a examiner.
+
+    Returns:
+        Vrai si le texte porte au moins un caractere alphanumerique.
+    """
+    return any(character.isalnum() for character in text)

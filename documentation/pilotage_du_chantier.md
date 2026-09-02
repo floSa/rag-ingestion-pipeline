@@ -397,8 +397,12 @@ La différence avec `make` est nulle pour ce `Makefile` — pas de variable, pas
 motif, pas de parallélisme — mais elle existe : dis-le dans ton rapport plutôt
 que de laisser croire que `make` a tourné.
 
-Attendu sur `main` (`mesuré`, 31 août 2026) : `ruff` propre, `mypy --strict`
-« no issues found in 36 source files », et la suite verte. Le compte canonique
+Attendu sur `main` : `ruff` propre, `mypy --strict` sans erreur, et la suite
+verte. **Le nombre de fichiers que `mypy` annonce a été retiré de cette case**,
+comme le SHA de `main` l'avait été du §5.1 et pour la même raison : il valait 36
+le 31 août 2026, il vaut **35** depuis que le lot 5 a retiré `blocks.py`
+(`mesuré`, 2 septembre 2026, `uv run mypy src/`), et une case qui donne un
+chiffre invite à lire le chiffre plutôt qu'à le remesurer. Le compte canonique
 de tests vit dans `README.md`, section Tests — n'en recopie pas la valeur ici.
 
 **`make all` ne mute plus l'arbre : il le constate, et il rend 0.**

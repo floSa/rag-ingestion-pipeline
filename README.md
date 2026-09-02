@@ -456,7 +456,6 @@ RAG_Assistant/
 │   │   ├── nebula.py           # Écritures NebulaGraph groupées, pool partagé
 │   │   ├── ngql.py             # Échappement et construction des requêtes nGQL
 │   │   ├── vectors.py          # Embeddings par lots et upsert ChromaDB
-│   │   ├── blocks.py           # Regroupement en blocs, filtrage du bruit
 │   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
 │   │   ├── matter.py           # Index, sommaire, pages liminaires : hors contenu
@@ -539,7 +538,7 @@ L'état, `mesuré` sur cette révision :
 uv run ruff format --check src/ tests/
 ```
 
-→ « 74 files already formatted », `rc=0`. Et `make all` → `rc=0`.
+→ « 72 files already formatted », `rc=0`. Et `make all` → `rc=0`.
 
 *(Ce nombre valait **67**, et il était faux sur la révision qui le portait —
 mot pour mot le défaut que le pilote venait de corriger en `39ce91a`, « le README
@@ -852,7 +851,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**854 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
+**834 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
 révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
@@ -864,8 +863,7 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | Module | Rôle | Couverture |
 |---|---|---|
 | `ngql.py` | Échappement et construction des requêtes du graphe | 100 % |
-| `blocks.py` | Regroupement des éléments, filtrage du bruit | 100 % |
-| `chunking.py` | Découpage et contextualisation | 100 % |
+| `chunking.py` | Ce que le modèle d'embedding reçoit, la forme de l'id de chunk, le filtre du bruit | 100 % |
 | `elements.py` | Hiérarchie, positions, identifiants | 100 % |
 | `markdown.py` | Normalisation avant conversion | 100 % |
 | `matter.py` | Repérage des parties hors contenu (index, sommaire) | 100 % |

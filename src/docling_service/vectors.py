@@ -27,7 +27,7 @@ from typing import Any
 
 from src.docling_service import chunking
 from src.docling_service.anchoring import block_size, resolve_anchors
-from src.docling_service.blocks import has_content
+from src.docling_service.chunking import has_content
 from src.docling_service.elements import DocumentFacts, DocumentIdentity
 from src.docling_service.embedding import (
     EmbeddingContractError,
