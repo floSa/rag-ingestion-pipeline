@@ -2992,17 +2992,36 @@ un chantier, pas un correctif.
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
 pas.
 
-**Le lot 5 est LIVRÉ, non fusionné**, sur `claude/lot5-dead-code-docs-873c64` :
-douze commits, `make all` à **0** sur chacun, balayage de graines **26/26** sur
-chacun, corpus intact à l'octet (sha du contenu versionné inchangé du premier au
-dernier commit). Il ferme §4.29.a, §4.29.b, §4.29.c, §4.29.e, §4.29.g, §5.1,
+**Le lot 5 a été FUSIONNÉ dans `main` le 3 septembre 2026** par la fusion
+`--no-ff` `d8c67c5` : douze commits de livraison, puis **dix-huit de réparation**
+exigés par le pilote après l'audit indépendant. `e5103cf` est **intact** comme
+ancêtre — zéro réécriture. `make all` à **0** sur chacun des trente, balayage de
+graines **26/26** sur chacun, corpus intact à l'octet.
+
+**Le pilote a remesuré avant de trancher** (`mesuré` le 3 septembre 2026) : le
+juge de sa réparation — un `DESCRIBE` en échec relu comme « colonne présente » —
+rend `rc=1` et **3 rouges**, là où il laissait la suite **entièrement verte** ;
+`sed -n '230p'` ne porte plus le renvoi et les cinq sites nomment le symbole ; le
+balayage AST rend **14** modules sans dépendance et **4** porteurs,
+indépendamment ; `delete_document` supprime par `source_path` et **jamais par
+id**. Sur le résultat de la fusion d'essai : `rc=0`, **865 tests**, 73 fichiers
+formatés, balayage **26/26 vertes**.
+
+**Et il n'était pas cosmétique** : trois de ses constats étaient des défauts de
+comportement, dont un qui **rompait le contrat** — deux sites décidaient du nom du
+sous-répertoire nettoyé, rien ne gardait leur accord, et l'`element_id` d'un
+chapitre changeait. `chunk_ids` n'était pas mort mais **contourné**. La fenêtre du
+modèle n'était gardée par rien. Ses quatre bloquants étaient, quatre fois, la
+famille qu'il existe pour fermer, commise par lui. Mandat §5.1 sexies.
+
+Il ferme §4.29.a, §4.29.b, §4.29.c, §4.29.e, §4.29.g, §5.1,
 §5.2, §5.7 *(tranché : la branche RESTE)*, §6.1 à §6.11, §6.13 à §6.15, §6.17,
 §6.18, et **la moitié faisable de §6.16**. Il vérifie §5.8 et §4.29.h — deux
 divergences permanentes et assumées, non touchées. Il consigne §4.29.d, §4.29.f,
 §4.29.i et §6.12 avec leur motif, et verse **onze constats neufs au §4.30**.
 
-**Ce qu'il n'a pas fait, délibérément** : il n'a pas réécrit le plan de lots ni le
-§7 du mandat. Le §4.28.e pose la règle — « il n'appartient pas à une branche de
+**Ce qu'il n'a pas fait, délibérément, et le pilote l'a fait après fusion** : il
+n'a pas réécrit le plan de lots ni le §7 du mandat. Le §4.28.e pose la règle — « il n'appartient pas à une branche de
 réécrire le plan » — et elle vaut ici. Le seul chiffre du mandat qu'il a touché est
 le nombre de fichiers que `mypy` annonce au §2.4, que son code fait passer de 36 à
 35 : la règle « documentation dans le même commit que le code » l'imposait, et il
