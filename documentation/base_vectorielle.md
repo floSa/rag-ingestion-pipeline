@@ -120,7 +120,7 @@ La métadonnée `language` reste utile pour dire à l'utilisateur dans quelle la
 
 ### D'où vient la métadonnée `language`
 
-Détectée par comptage de mots-outils sur les 20 000 premiers caractères du document ([`language.py`](src/docling_service/language.py)). À l'échelle d'un ouvrage, c'est très discriminant — ce qui serait fragile sur une seule phrase.
+Détectée par comptage de mots-outils sur les 20 000 premiers caractères du document ([`language.py`](../src/docling_service/language.py)). À l'échelle d'un ouvrage, c'est très discriminant — ce qui serait fragile sur une seule phrase.
 
 Sept langues reconnues : `en`, `fr`, `es`, `de`, `it`, `pt`, `nl`. La valeur est **vide** dès que le doute est permis : mieux vaut pas de réponse qu'une mauvaise. Les mots partagés entre plusieurs langues (`la`, `de`, `on`…) sont retirés des listes au chargement, sinon ils feraient pencher un score au hasard.
 

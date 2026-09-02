@@ -2090,8 +2090,32 @@ celui qu'un développeur ouvre pour comprendre à quoi sert la clé `language`.
 `#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais` ne correspond à aucun
 titre de `base_vectorielle.md`. §6.14 nomme le renvoi du `README.md` ; celui de
 `documentation/CHANGEMENTS.md` n'était pas relevé. **Traité par le lot 5**, avec
-un balayage complet de tous les renvois internes des documents livrés :
-**0 mort** après correction, et la commande est rejouable.
+un balayage de **tous les liens `](fichier#ancre)`** des documents livrés,
+résolus contre les titres réels de leur cible : **0 ancre morte** après
+correction, et la commande est rejouable.
+
+> **LA BORNE ÉTAIT DANS LE MESSAGE DE `d2562d6` ET ELLE EST TOMBÉE ICI.** Le
+> commit écrit « tous les liens `](fichier#ancre)` », ce qui est exact et borné ;
+> ce constat écrivait « tous les **renvois internes**… 0 mort », ce qui est plus
+> large que ce qui a été mesuré. **Il y a deux familles de renvoi interne**, et
+> une seule avait été balayée :
+>
+> | Famille | Balayée par le lot | `mesuré` par la réparation, 2 septembre 2026 |
+> |---|---|---|
+> | ancres — `](cible#ancre)` | **oui** | 10 vérifiées, **0 morte** |
+> | liens de **fichier** — `](chemin)` | **non** | 41 vérifiés, **1 mort** |
+>
+> Le lien mort est `documentation/base_vectorielle.md` →
+> `src/docling_service/language.py` : il manquait le `../`, dans un document que
+> le lot modifie. Corrigé.
+>
+> **Le critère du balayage**, parce qu'un balayage dont le critère n'est pas
+> écrit n'est pas reproductible : les 21 `*.md` du dépôt hors `.venv` et `.git`,
+> **privés de leurs blocs et de leurs spans de code** — sans cette soustraction,
+> les illustrations de syntaxe `![legende](chemin)` du `README.md` et
+> d'`extraction_donnees.md` comptent pour trois liens morts qu'elles ne sont
+> pas — chaque cible relative devant exister, et chaque ancre devant figurer
+> parmi les ancres GitHub des titres de sa cible.
 
 #### 4.30.e « Aucune troncature » survivait à DIX sites, dont un dans `vectors.py`
 
@@ -2404,6 +2428,28 @@ compte quand même : il vit dans le bloc que le lot 5 déclare **relu et fermé 
 La longueur et sa méthode de mesure ont désormais **un seul site**,
 `services/nebulagraph.md`, section « Schéma nGQL » ; `llm_integration_plan.md`
 y renvoie.
+
+#### 4.31.C4 Une borne perdue entre le commit et le registre, plus un lien mort
+
+Le message de `d2562d6` est **juste et borné** : « tous les liens
+`](fichier#ancre)` des documents livrés… 0 renvoi mort ». Le §4.30.d a laissé
+tomber la borne et écrit « tous les **renvois internes**… 0 mort ». *Une borne
+qui tombe entre le commit et le registre est un élargissement d'affirmation que
+personne ne mesure.*
+
+Balayage refait aux **deux** familles, `mesuré` le 2 septembre 2026 : **0 ancre
+morte sur 10**, mais **1 lien de fichier mort sur 41** — `base_vectorielle.md` →
+`src/docling_service/language.py`, où il manquait le `../`, **dans un document
+que le lot modifie**. Corrigé, et la borne rétablie au §4.30.d avec le critère
+du balayage.
+
+**Une leçon de méthode au passage.** Le premier passage du balayage a rendu
+**trois** liens morts ; deux étaient des illustrations de syntaxe —
+`![legende](chemin)` — vivant dans des spans de code. Le critère corrigé
+soustrait les blocs et les spans de code avant de chercher. *Un balayage se
+mesure avec son critère, et un critère se corrige en regardant ce qu'il a
+attrapé* — sans quoi la réparation aurait écrit « trois liens morts » et créé,
+dans le geste qui ferme le constat, exactement le défaut qu'il ferme.
 
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 
