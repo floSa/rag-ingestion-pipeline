@@ -11,7 +11,7 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 3 septembre 2026, après la fusion du lot 5**
+> **Dernière mise à jour : 2 septembre 2026, après la fusion du lot 5**
 > (`d8c67c5`). L'action suivante est le **lot 6**, dernier du plan, et son prompt
 > est en annexe A.
 > Toute valeur chiffrée ci-dessous porte son étiquette `mesuré`, `calculé` ou
@@ -582,7 +582,7 @@ branches et leurs arbres de travail — les deux du lot 3 et les trois des lots 
 3 qui ne portaient plus rien hors `main`. Un clone frais ne voit qu'une seule
 branche et un tag (`mesuré`, 1er septembre 2026).
 
-**Le lot 5 a été fusionné le 3 septembre 2026** (`--no-ff`, `d8c67c5`) : 12
+**Le lot 5 a été fusionné le 2 septembre 2026** (`--no-ff`, `d8c67c5`) : 12
 commits de livraison, 18 de réparation, `e5103cf` intact comme ancêtre. Ses trois
 arbres de travail et ses trois branches ont été supprimés, la branche du lot des
 deux côtés, et `make install` relancé depuis le clone principal **après** la
@@ -838,7 +838,7 @@ observe une absence.*
 
 ### 5.1 sexies Le lot 5 : livré, audité, réparé, fusionné — et il n'était pas cosmétique
 
-Douze commits de livraison, dix-huit de réparation, fusionnés le 3 septembre 2026
+Douze commits de livraison, dix-huit de réparation, fusionnés le 2 septembre 2026
 (`--no-ff`, `d8c67c5`). Le détail vit au registre.
 
 **Le mandat l'annonçait « ingrat, qui ne corrige presque aucun comportement ». Le
@@ -866,7 +866,7 @@ réparation trois fois encore — et le pilote une fois, deux jours plus tôt. *
 seul remède qui ait tenu est celui que le lot a nommé : désigner un SYMBOLE et non
 une ligne, et convertir toute phrase d'exhaustivité en garde qui rougit.**
 
-**Ce que le pilote a remesuré de ses mains** (`mesuré` le 3 septembre 2026) : le
+**Ce que le pilote a remesuré de ses mains** (`mesuré` le 2 septembre 2026) : le
 juge de B4 — un `DESCRIBE` en échec relu comme « colonne présente » — rend `rc=1`
 et 3 rouges là où il laissait la suite **entièrement verte** ; `sed -n '230p'` ne
 porte plus le renvoi et les cinq sites nomment le symbole ; le balayage AST rend
@@ -967,7 +967,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **2** | ~~La hiérarchie des titres~~ | — | ❌ **SUPPRIMÉ le 31 août 2026.** Pas parce que le graphe est imbriqué — il l'est à 21/22 — mais parce que **la correction qu'il portait est un no-op** : `level` est absent sur les titres concernés et `elements.py:272` fait `heading_rank or 0`, donc le rang reste 0 (registre §3.2). §3.3 est **retourné** : les deux tests qu'il fallait « amender ensemble » assertent le comportement juste. §4.11 en sort vivant et monte au lot 3 ; §4.12 reste consigné inerte avec sa vraie condition d'activation — l'entrée d'un Markdown au corpus |
 | **3** | ✅ **FUSIONNÉ le 1er septembre 2026** (`--no-ff`, `4e28594`). **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — **onze** commits, **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24 et §5.3. **Audité, puis RÉPARÉ, puis fusionné** : l'audit n'a trouvé aucune régression et a reproduit tous ses chiffres, mais cinq bloquants — dont la fixture du test de non-platitude, qui assertait 39 titres là où la production en produit 41. Les cinq sont fermés, le juge de la réparation est passé sous la main du pilote, et `make all` rend **0** sur `main`. Voir §5.1 quater. Il laisse **deux mutations survivantes** consignées et non fermées (§4.12, §4.28.d) et **cinq constats** au lot 4 (§4.28). *(Cette case portait « dix commits » : un compte ne peut pas s'inclure lui-même, et le lot 0b s'était fait prendre pareil. Elle portait aussi « il a fermé §6.16 » : le registre le garde **ouvert**, et le registre a raison — la moitié « écrire au contrat côté agent » n'est pas faite. Le compte de tests a été retiré : son site canonique est `README.md`, section Tests.)*
 | **4** | ✅ **FUSIONNÉ le 2 septembre 2026** (`--no-ff`, `79cd2bc`) — 16 constats fermés, 857 tests, neuf constats versés au §4.29. La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme). **Plus les cinq constats que la réparation du lot 3 lui a versés, §4.28** : `chunk_count` mensonger (a), les 199 images HTML absentes du bucket **et** `Datas/.cleaned/` que `wipe_stores` ne purge pas — à lire **avant** d'attaquer §3.5 (b), le daemon arrêté et l'exigence 5 inéprouvable (c), et le déverrouillage de `nebula.py` pour que `document_vid` soit enfin gardé (d) | la certitude que le corpus ingéré est le corpus complet | **à faire — c'est l'action suivante, §7** |
-| **5** | ✅ **FUSIONNÉ le 3 septembre 2026** (`--no-ff`, `d8c67c5`) — et il n'était pas cosmétique : voir §5.1 sexies. Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre. **Plus, en PREMIER point et tranché par le pilote le 2 septembre 2026 : `CLEANED_SUBDIR` cesse d'être un réglage** (§4.29.a). Personne ne configure où l'étape de nettoyage écrit — c'est un détail d'implémentation — et c'est le seul chemin par lequel un outil de purge peut viser le corpus versionné ou les bind mounts des stores. `mesuré` sur un faux corpus : `CLEANED_SUBDIR=htms` passe le containment livré par le lot 4 et détruit 24 des 25 fichiers ; `=database` détruit les stores. **Un réglage annoncé à l'opérateur dont trois valeurs sur quatre détruisent le corpus coûte plus qu'il ne rend, et une configuration que rien ne configure est de la configuration morte** — c'est le périmètre de ce lot au mot près. **Plus les huit autres constats du §4.29** que le lot 4 a versés | la lisibilité, et l'arrêt des faux réglages | **à faire — c'est l'action suivante, §7** |
+| **5** | ✅ **FUSIONNÉ le 2 septembre 2026** (`--no-ff`, `d8c67c5`) — et il n'était pas cosmétique : voir §5.1 sexies. Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre. **Plus, en PREMIER point et tranché par le pilote le 2 septembre 2026 : `CLEANED_SUBDIR` cesse d'être un réglage** (§4.29.a). Personne ne configure où l'étape de nettoyage écrit — c'est un détail d'implémentation — et c'est le seul chemin par lequel un outil de purge peut viser le corpus versionné ou les bind mounts des stores. `mesuré` sur un faux corpus : `CLEANED_SUBDIR=htms` passe le containment livré par le lot 4 et détruit 24 des 25 fichiers ; `=database` détruit les stores. **Un réglage annoncé à l'opérateur dont trois valeurs sur quatre détruisent le corpus coûte plus qu'il ne rend, et une configuration que rien ne configure est de la configuration morte** — c'est le périmètre de ce lot au mot près. **Plus les huit autres constats du §4.29** que le lot 4 a versés | la lisibilité, et l'arrêt des faux réglages | **à faire — c'est l'action suivante, §7** |
 | **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché le 1er septembre 2026 : les 30 questions attendent le lot 4. La conclusion tient toujours, mais SON MOTIF EST TOMBÉ — et c'est instructif.** Le motif était : `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`, donc §4.22, §4.6 et §4.7 déplaceraient les `element_id`. **Mesuré trois fois — par le lot 4, reproduit par son audit, confirmé statiquement par le pilote — c'est FAUX** : les ensembles d'`element_id` sont rigoureusement égaux de part et d'autre du lot 4, 15 173 des deux côtés, différence symétrique nulle, parce que `page_no_end` est **additif** et que `pages[0]` vaut exactement ce que valait `prov[0].page_no`.
 
 L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'est peuplé sur aucun sommet** — la colonne **existe** depuis le redémarrage de `docling-service` du 2 septembre 2026, et les 7 251 `Paragraph` sont à `NULL` (`mesuré` ; registre §4.29.e). Une réingestion reste donc requise. *La ligne précédente disait « la colonne n'existe pas encore » : c'était vrai le 1er septembre et faux le 2. **Un état de poste n'est vrai qu'à une date** — remesure-le, ne le lis pas ici.* Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
@@ -1106,7 +1106,7 @@ pendant qu'un lot travaillait. Mesure-le, ne le lis pas.**
 
 1. **Redémarrer `docling-service`** — et c'est déjà fait, ce qui est justement le
    piège. C'est `init_schema()`, joué **au démarrage** du service, qui exécute
-   l'`ALTER TAG … ADD (page_no_end int)`. `mesuré` le 3 septembre 2026 :
+   l'`ALTER TAG … ADD (page_no_end int)`. `mesuré` le 2 septembre 2026 :
    `DESCRIBE TAG Paragraph` et `SectionHeader` rendent **six** colonnes,
    `page_no_end` comprise, et **7 251 sommets sur 7 251 y sont à `NULL`**. Le poste
    est donc passé du premier état que `anomalie_de_colonne` distingue — colonne
@@ -1122,7 +1122,7 @@ pendant qu'un lot travaillait. Mesure-le, ne le lis pas.**
    captures HTML. Sans lui, la campagne mesurera encore 251 sommets visuels sur 264
    sans `minio_url`, et l'agent ne pourra en servir aucune.
 
-**L'état de la pile, `mesuré` le 3 septembre 2026 :**
+**L'état de la pile, `mesuré` le 2 septembre 2026 :**
 
 - **`dagster-daemon` est arrêté — et « arrêté » n'est PAS une propriété stable.**
   Il a tourné **quatre heures** le 3 septembre sans que personne l'ait décidé dans
@@ -1375,6 +1375,20 @@ relire.**
   L'annexe A portait « `main` = 77d4f5b, avance rapide possible » — vrai le jour
   où elle a été écrite, faux dès que `main` a bougé. Un prompt prêt à
   distribuer périme : relis-le contre `git`, pas contre ta mémoire.
+- **Écrire une date sans la mesurer.** Le pilote a daté tout le lot 5 du
+  « 3 septembre 2026 » — **neuf mentions** dans le mandat et le registre. La date
+  était le **2** : aucun commit du dépôt ne porte le 3, et `date -u` le dit en un
+  mot. Trouvé par le lot 6, qui a comparé les dates écrites aux dates des commits.
+  **Une date est une mesure comme une autre** — `date -u` ou `git log --date=short`
+  — et le chantier étiquette `mesuré` tout le reste. Corrigé aux neuf sites.
+- **Annoncer dans un prompt le résultat attendu d'une mesure, et se tromper.** Le
+  prompt du lot 6 écrivait « les quatre anomalies doivent se fermer ». Trois se
+  sont fermées ; la quatrième **était inatteignable**, et le lot l'a mesuré :
+  les sommets visuels sans URL sont **52 tables HTML sur 55**, et une table HTML
+  est du Markdown — il n'y a rien à téléverser. `verify_contract` ne peut donc pas
+  rendre 0 sur ce corpus. Le mandat interdit d'annoncer le résultat attendu d'une
+  mesure qu'on commande (§7) : **le pilote l'a fait, et son attente était fausse.**
+  Un développeur moins rigoureux aurait cherché à la satisfaire.
 - **Affirmer dans un prompt un état de poste qu'on n'a pas mesuré.** Le pilote a
   écrit au réparateur du lot 5 « son arbre de travail a été retiré : la branche est
   libre ». **C'était faux** : il avait retiré celui du lot 4, pas celui du lot 5, et

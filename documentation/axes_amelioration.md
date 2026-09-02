@@ -2992,13 +2992,13 @@ un chantier, pas un correctif.
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
 pas.
 
-**Le lot 5 a été FUSIONNÉ dans `main` le 3 septembre 2026** par la fusion
+**Le lot 5 a été FUSIONNÉ dans `main` le 2 septembre 2026** par la fusion
 `--no-ff` `d8c67c5` : douze commits de livraison, puis **dix-huit de réparation**
 exigés par le pilote après l'audit indépendant. `e5103cf` est **intact** comme
 ancêtre — zéro réécriture. `make all` à **0** sur chacun des trente, balayage de
 graines **26/26** sur chacun, corpus intact à l'octet.
 
-**Le pilote a remesuré avant de trancher** (`mesuré` le 3 septembre 2026) : le
+**Le pilote a remesuré avant de trancher** (`mesuré` le 2 septembre 2026) : le
 juge de sa réparation — un `DESCRIBE` en échec relu comme « colonne présente » —
 rend `rc=1` et **3 rouges**, là où il laissait la suite **entièrement verte** ;
 `sed -n '230p'` ne porte plus le renvoi et les cinq sites nomment le symbole ; le
