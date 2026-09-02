@@ -468,10 +468,29 @@ L'agent peut copier ces schemas ou les importer comme dependance.
 | LLM principal    | **Claude Sonnet/Opus**  | Long context (200K), multimodal natif, tool-use |
 | LLM fallback     | **GPT-4o**              | Alternative si besoin                           |
 | Embedding query  | **paraphrase-multilingual-MiniLM-L12-v2**   | Obligatoire : meme modele que l'ingestion       |
-| Reranking        | **cross-encoder/ms-marco-MiniLM-L6-v2** | Local, pas de cout API, bon compromis |
+| Reranking        | **A TRANCHER — voir la reserve ci-dessous** | `ms-marco-MiniLM-L6-v2` est ANGLAIS |
 | Frontend         | **Streamlit** ou **Gradio** | Prototypage rapide, selection interactive    |
 | API backend      | **FastAPI**             | Meme stack que le service Docling               |
 | Observabilite    | **Langfuse**            | Open-source, self-hostable en Docker            |
+
+> **LE RERANKER PRESCRIT ICI EST ANGLAIS, FACE A UN EMBEDDER MULTILINGUE**
+> (registre §6.6). `cross-encoder/ms-marco-MiniLM-L6-v2` est entraine sur MS
+> MARCO, un jeu anglais. C'est **la faute exacte que l'agent a deja mesuree de
+> son cote** : etendue de scores **0,0 %** sur 20 candidats en francais, c'est-a-dire
+> un reranker qui ne classe plus rien et se contente de renvoyer l'ordre d'entree.
+>
+> Et c'est le meme mode de panne que l'exigence 1 du contrat : **silencieux**. Un
+> reranker qui n'ordonne rien ne leve aucune erreur, ne remplit aucun journal, et
+> rend des resultats plausibles.
+>
+> **Le corpus actuel est entierement en anglais** (registre §1), donc le defaut
+> est INERTE aujourd'hui — un reranker anglais sur un corpus anglais fonctionne.
+> Il se reveille au premier document non anglais, ou a la premiere question posee
+> en francais sur un passage anglais, ce que le modele d'embedding multilingue
+> rend precisement possible. La prescription est donc **retiree plutot que
+> remplacee** : choisir un reranker multilingue est une decision de l'autre
+> depot, appuyee sur une campagne, et ce document n'a pas a la trancher a sa
+> place. Ce qu'il doit faire est de ne plus prescrire ce qui a deja echoue.
 | Guardrails       | **NeMo Guardrails**     | Validation input/output, anti-hallucination     |
 | PII detection    | **Presidio**            | Detection/anonymisation d'informations personnelles |
 
@@ -610,7 +629,10 @@ LLM_MAX_TOKENS=4096
 
 # --- Retrieval ---
 EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2   # DOIT etre le meme que l'ingestion
-RERANK_MODEL=cross-encoder/ms-marco-MiniLM-L6-v2
+# A TRANCHER : ms-marco-MiniLM-L6-v2 est ANGLAIS, et l'agent a mesure une
+# etendue de scores de 0,0 % sur 20 candidats francais — un reranker qui ne
+# classe plus rien, en silence. Voir la reserve du tableau des modeles.
+RERANK_MODEL=<a-trancher-multilingue>
 RETRIEVAL_TOP_K=20
 RERANK_TOP_K=10
 MAX_SEARCH_ITERATIONS=3

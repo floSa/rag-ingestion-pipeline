@@ -3,12 +3,25 @@
 ## Role
 
 Microservice FastAPI d'extraction structuree de documents. Utilise Docling (IBM)
-pour l'analyse de layout et PyMuPDF pour le crop d'images. Seul service avec acces GPU,
-et seul service a ecrire dans NebulaGraph, ChromaDB et MinIO.
+pour l'analyse de layout et PyMuPDF pour le crop d'images. **Seul service a ecrire
+dans NebulaGraph, ChromaDB et MinIO.**
+
+*(Cette phrase disait aussi « seul service avec acces GPU ». Le compose principal
+ne reserve AUCUN GPU — la reservation ecrite en dur rendait le service
+INCREABLE sans runtime nvidia, et elle vit desormais dans
+`docker-compose.gpu.yml`, superposable. L'ingestion tourne sur processeur.
+Registre §6.7.)*
 
 ## Container
 
-- `docling-service` : FastAPI + CUDA 12.1, port interne 8000
+- `docling-service` : FastAPI, port interne 8000
+
+L'image embarque les wheels `torch` de l'index CUDA 12.1 — les wheels `+cu121`
+n'existent pas sur PyPI — mais **elle n'exige pas de GPU** : sans runtime nvidia,
+`torch` retombe sur le processeur et l'ingestion se deroule. C'est ce qui rend le
+`docker-compose.gpu.yml` optionnel plutot que necessaire. Le prix est le poids de
+l'image, **10,4 Go** : consigne au registre §6.12, non traite par le lot 5 — voir
+la reserve en fin de section « Ressources ».
 
 ## Modele d'execution
 
@@ -17,8 +30,9 @@ se fait donc pas dans la requete HTTP.
 
 1. `POST /extract` valide le fichier, le met dans une file et rend un `job_id`.
 2. Un **worker unique** deroule les jobs les uns apres les autres. Il est unique a
-   dessein : la conversion sature deja le GPU, et c'est la file Dagster en amont
-   qui cadence le debit global (`max_concurrent_runs` dans `dagster.yaml`).
+   dessein : la conversion sature deja la machine — le GPU s'il y en a un, les
+   coeurs sinon — et c'est la file Dagster en amont qui cadence le debit global
+   (`max_concurrent_runs` dans `dagster.yaml`).
 3. L'asset Dagster interroge `GET /jobs/{job_id}` toutes les 15 secondes et
    journalise l'avancement, jusqu'a l'etat terminal.
 
@@ -143,6 +157,17 @@ propriete-la, elle, est gardee par
 > caracteres. Il n'y a donc aucune taille de chunk a regler, et le debat « 900
 > contre 450 » qui a occupe cette documentation etait vide.
 
+## Volumes
+
+Le cache des modeles est le volume nomme **`docling_models`**, monte sur
+`/tmp/.cache` (`docker-compose.yml`). Le registre §6.13 consignait une divergence
+de nommage — de la documentation mentionnant `rag_hf_cache` ou
+`rag_models_cache` — : `mesure` le 2 septembre 2026, ces deux noms
+n'apparaissent **nulle part** dans le depot, ni dans `docker-compose.yml`, ni
+dans la documentation. La divergence est donc **sans objet**, et c'est ecrit ici
+pour que personne ne la redecouvre comme un defaut. Sans consequence
+fonctionnelle dans les deux cas.
+
 ## Dependances
 
 - `minio` (stockage images/tables croppees)
@@ -152,6 +177,19 @@ propriete-la, elle, est gardee par
 ## Ressources
 
 - GPU NVIDIA (CUDA 12.1) — **optionnel**, via `docker-compose.gpu.yml` ; sinon processeur
+
+> **L'image pese 10,4 Go, et c'est un cout connu et NON traite** (registre §6.12).
+> `Dockerfile.docling` installe `torch`, `torchvision` et `torchaudio` depuis
+> l'index CUDA 12.1, ce qui embarque les bibliotheques CUDA alors que la chaine
+> tourne sur processeur. Passer aux wheels CPU allegerait l'image de plusieurs
+> gigaoctets.
+>
+> **Le lot 5 ne l'a pas fait, et voici pourquoi** : ce lot traite le code mort et
+> l'ecart entre la documentation et le code. Changer l'index des wheels change
+> l'IMAGE, donc demande une reconstruction et une reingestion pour verifier que
+> l'extraction et l'encodage donnent les memes resultats — un chantier avec sa
+> propre campagne de validation, pas une correction de documentation. La ligne
+> reste ouverte au registre.
 - RAM : 10 Go max (`deploy.resources.limits.memory`)
 - SHM : 2 Go (`shm_size`)
 

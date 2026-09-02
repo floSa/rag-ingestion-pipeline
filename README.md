@@ -401,7 +401,25 @@ docker compose exec docling-service python -m src.verify_data
 docker compose exec docling-service python -m src.index_report
 ```
 
-**Volumétrie.** Mesurée sur le corpus de référence — 1 PDF de 280 pages, 35 chapitres HTML de deux ouvrages, 6 notes Markdown, soit 42 documents : 750 Mo dans `Datas/database/` — 401 Mo pour ChromaDB, 264 Mo pour NebulaGraph, 86 Mo pour MinIO — soit 23 741 nœuds de graphe et 5 592 chunks vectorisés. Une bonne part de ces 750 Mo est de l'amorce fixe : les 280 pages de PDF pèsent à elles seules 31 Mo d'images sur MinIO. Comptez de l'ordre de **15 à 25 Go pour 300 livres**, dominés par les images.
+**Volumétrie.** `mesuré` le 2 septembre 2026 sur l'index vivant — **24 chapitres HTML de deux ouvrages plus 1 PDF de 71 pages, soit 23 documents ingérés** :
+
+| | |
+|---|---|
+| chunks vectorisés | **4 365** |
+| sommets de graphe | **15 196**, dont 23 `Document` |
+| arêtes `PARENT_OF` | **15 173** |
+| objets MinIO | **13** |
+| `Datas/database/` | **≈ 388 Mo** — NebulaGraph 257, PostgreSQL 78, ChromaDB 51, MinIO 1,8 |
+| corpus source | 25 fichiers, 57 381 999 o |
+
+*(Cette section annonçait « 42 documents, 750 Mo, 23 741 nœuds, 5 592 chunks », mesurés sur le **corpus de référence** — mixte français/anglais, avec 6 notes Markdown et un PDF de 280 pages. Ce corpus n'existe plus, le registre §1 le déclare mort, et `Datas/mds/` est vide : aucun de ces chiffres n'était reproductible. Registre §6.9.)*
+
+**Et deux réserves, sans lesquelles cette table induirait en erreur :**
+
+- **les 13 objets MinIO ne sont pas représentatifs.** Le corpus porte **199 images** dans ses captures HTML, et la chaîne qui les téléverse est rompue : elles ne sont ni dans le bucket, ni référencées par le graphe (registre §3.5, §4.28.b). Les 13 objets présents sont tous des crops du PDF. Une extrapolation bâtie sur cette ligne **sous-estimerait donc massivement** le poids des médias ;
+- **une taille de répertoire n'est pas une mesure de contenu.** Les 78 Mo de PostgreSQL sont l'historique Dagster, qui ne suit pas le corpus ; et le registre §4.27 avertit qu'un store peut peser lourd en étant vide. Ces tailles disent ce que le disque porte, pas ce que l'index contient.
+
+**Aucune extrapolation n'est donnée ici, et c'est délibéré.** Cette section annonçait « de l'ordre de 15 à 25 Go pour 300 livres » sans dire de quoi c'était dérivé. Un chiffre par livre tiré d'un corpus de deux ouvrages dont la chaîne d'images est cassée serait `supposé` déguisé en `calculé` — et le chantier a déjà payé une décision de plan fondée sur un raisonnement plausible jamais mesuré (registre §4.28.e).
 
 **Débit.** Voir le tableau détaillé dans [orchestration.md](documentation/orchestration.md#combien-de-temps-prend-une-ingestion) : un chapitre HTML en 6 s, un PDF de 300 pages en 1 à 2 min, **1 h 30 à 2 h pour 50 livres**, sans surveillance.
 

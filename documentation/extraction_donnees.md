@@ -279,7 +279,10 @@ phrase d'exhaustivite, et elle est fausse : le decoupeur ne peut pas fractionner
 et le titre de section est prepose APRES son travail. Le chiffre et ses deux causes ont un
 seul site, `vectors.get_chunker` — registre §3.4 bis.)*
 
-Comparaison sur le chapitre 1 de `Practical MLOps`, a troncature nulle des deux cotes :
+Comparaison sur le chapitre 1 de `Practical MLOps` — **un ouvrage qui n'est PAS dans le
+corpus actuel**, dont les deux titres sont `MLOps with Databricks` et `Practical MLflow
+for Generative AI on Databricks`. Cette mesure n'est donc pas rejouable, et le
+decoupage maison a depuis ete retire du depot (registre 5.1, 6.10) :
 
 | Mesure                  | Decoupage maison (450 car.) | `HybridChunker` |
 |-------------------------|-----------------------------|-----------------|
@@ -324,7 +327,7 @@ chunk couvre.
 Corpus de reference : un PDF de 280 pages, 36 chapitres HTML et un fichier
 Markdown, ingeres avant puis apres la mise en place du regroupement.
 
-| Mesure                                | Avant   | Apres  |
+| Mesure, sur le CORPUS DE REFERENCE (disparu)   | Avant   | Apres  |
 |---------------------------------------|---------|--------|
 | chunks indexes                        | 22 937  | 5 246  |
 | sans aucun caractere alphanumerique   | 5,0 %   | 0,0 %  |
@@ -333,10 +336,24 @@ Markdown, ingeres avant puis apres la mise en place du regroupement.
 | chunks issus d'une fusion             | 0 %     | 51,5 % |
 | chunks portant un titre de section    | 0 %     | 100 %  |
 
-L'index perd 77 % de ses entrees sans perdre un seul caractere de contenu : ce
-qui disparait, ce sont les fragments de mise en page et les doublons de
-granularite. NebulaGraph, lui, conserve ses 24 709 noeuds — la structure du
-document reste complete.
+L'index perdait 77 % de ses entrees sans perdre un seul caractere de contenu : ce
+qui disparaissait, ce sont les fragments de mise en page et les doublons de
+granularite.
+
+> **CES CHIFFRES PORTENT SUR UN CORPUS QUI N'EXISTE PLUS**, et ils n'avaient ni
+> reserve ni date (registre 6.10). Le corpus de reference etait mixte
+> francais/anglais, 42 documents dont 6 notes Markdown et un PDF de 280 pages ;
+> le registre 1 le declare mort. Le corpus actuel est 24 chapitres HTML de deux
+> ouvrages plus un PDF de 71 pages, entierement en anglais.
+>
+> `mesure` le 2 septembre 2026 sur l'index vivant, pour comparaison — et ce sont
+> des ORDRES DE GRANDEUR differents, pas une derive : **4 365 chunks, 15 196
+> sommets, 23 documents, 15 173 aretes PARENT_OF**. Les « 24 709 noeuds » que
+> cette section annoncait valent 15 196 aujourd'hui.
+>
+> Les chiffres sont conserves parce qu'ils documentent la DECISION prise a
+> l'epoque ; ils ne decrivent pas l'index d'aujourd'hui. Celui-ci se lit par
+> `python -m src.index_report`, dans le conteneur d'extraction.
 
 **Limite connue et mesuree.** Une part des chunks depasse la fenetre du modele
 d'embedding et est donc tronquee par le modele lui-meme ; le texte stocke, lui, reste

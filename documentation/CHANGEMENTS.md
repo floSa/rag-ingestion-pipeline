@@ -75,12 +75,31 @@ Désormais un titre est rattaché **au titre qui le domine** :
             [3] Step 1 – Profiling the data
 ```
 
-| Mesure sur le corpus de référence | Avant | Après |
+| Mesure sur le corpus de référence *(disparu — voir la réserve)* | Avant | Après |
 |---|---|---|
 | Arêtes `SectionHeader → SectionHeader` | 0 | **759** |
 | Chemins de longueur 3 depuis le document | 0 | **13 220** |
 | Chemins de longueur 4 | 0 | 2 778 |
 | Chemins de longueur 5 | 0 | 1 021 |
+
+> **Ces chiffres portent sur le CORPUS DE REFERENCE, qui n'existe plus.** Le §1 du
+> registre le declare mort : c'etait un corpus mixte francais/anglais de 42
+> documents, dont 6 notes Markdown et un PDF de 280 pages. Le corpus actuel est
+> **24 chapitres HTML de deux ouvrages plus un PDF de 71 pages**, entierement en
+> anglais, et `Datas/mds/` est vide. Aucun de ces nombres n'est reproductible
+> aujourd'hui (registre §6.10, §6.11).
+>
+> Ils sont **conserves plutot que supprimes**, avec cette reserve : ils
+> documentent la DECISION prise a l'epoque, et l'effacer laisserait le choix sans
+> motif. Ce qu'ils ne sont pas, c'est une description de l'index d'aujourd'hui.
+> Les chiffres du corpus actuel se lisent par `python -m src.index_report` et
+> `python -m src.verify_contract`, dans le conteneur d'extraction.
+
+> Sur le corpus **actuel**, la question « le graphe est-il plat ? » a été
+> mesurée : il ne l'est pas, 21 chapitres sur 22 s'imbriquent, et le seul plat
+> l'est pour une raison qui vient de sa capture et non du code (registre §3.2).
+> Le contrat côté agent annonçait `0` et `0` sur ces deux lignes : ce n'est pas
+> une contradiction, il mesurait un graphe produit par autre chose que ce code.
 
 ### Ce que ça change pour l'agent
 
@@ -107,13 +126,21 @@ Le découpage maison coupait à la longueur en caractères. C'est désormais
 `HybridChunker`, le découpeur de Docling, qui s'en charge : il respecte la structure
 du document et reçoit **le tokenizer du modèle d'embedding lui-même**.
 
-| Mesure, sur le chapitre 1 de Practical MLOps | Découpage maison | `HybridChunker` |
+| Mesure, sur le chapitre 1 de *Practical MLOps* *(ouvrage absent du corpus actuel)* | Découpage maison | `HybridChunker` |
 |---|---|---|
 | Chunks | 146 | **100** |
 | Tokens, médiane | 67 | **91** |
 | Caractères, médiane | 269 | **353** |
 
 À contenu égal, quarante-six chunks de moins, chacun portant davantage de contexte.
+
+> **`Practical MLOps` n'est pas dans le corpus.** Les deux ouvrages actuels sont
+> *MLOps with Databricks* et *Practical MLflow for Generative AI on Databricks* —
+> les noms se ressemblent, et c'est précisément pourquoi la réserve est écrite ici
+> plutôt que supposée. Cette comparaison n'est donc pas rejouable (registre
+> §6.10) ; elle documente la décision de confier le découpage à Docling, et le
+> **découpage maison a depuis été retiré du dépôt** (registre §5.1), ce qui rend
+> la colonne de gauche définitivement non reproductible.
 
 **Rien ne change pour l'agent.** Les identifiants restent les nôtres : chaque chunk
 est rattaché à l'élément d'où part sa lecture, et un élément réparti sur plusieurs
