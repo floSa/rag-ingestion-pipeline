@@ -86,16 +86,42 @@ def inversions_de_page(aretes: Sequence[tuple[str, int, int]]) -> list[tuple[str
     qui est l'unicite sous un parent : une numerotation aleatoire distincte par
     parent la satisferait sans porter aucun ordre (registre 6.16).
 
-    Trois reserves, toutes mesurees, et qui dictent la forme de ce controle :
+    **SITE CANONIQUE DES TROIS RESERVES DE LECTURE DE ``sequence``** (registre
+    6.16). Elles dictent la forme de ce controle, et elles disent a un agent ce
+    qu'il ne doit PAS conclure. Leurs chiffres etaient ceux du lot 1, mesures sur
+    **3 documents et 2 285 aretes** et repris au registre sans ce perimetre :
+    remesures ici sur le corpus complet, le 2 septembre 2026, sur le graphe
+    vivant — **15 173 aretes, 763 parents, 23 documents, 0 arete sans
+    ``sequence``**, valeurs de 0 a 1 269.
 
     1. **``sequence`` repart a 0 dans chaque document.** Elle n'est donc pas
-       globalement monotone, et la verification est bornee au document. Sans ce
-       groupement, deux documents entrelaces rendraient des inversions fausses ;
+       globalement monotone, et tout « avant / apres » doit etre BORNE AU
+       DOCUMENT. `mesure` : **23 aretes portent ``sequence == 0`` pour exactement
+       23 documents**. Sans ce groupement, deux documents entrelaces rendraient
+       des inversions fausses ;
     2. **elle n'est pas contigue sous un parent, par construction** — c'est un
-       ordre de lecture global, pas un rang sous le parent ;
+       ordre de lecture global, pas un rang sous le parent. `mesure` : **167 des
+       763 parents (21,9 %) portent des ``sequence`` non contigues**, et l'ecart
+       est chaque fois la taille du sous-arbre du frere precedent. Le lot 1
+       mesurait 44 sur 185 ; la proportion tient, le compte est quatre fois plus
+       grand ;
     3. **le plus grand trou entre deux enfants consecutifs d'un meme parent vaut
-       993.** Un controle qui exigerait la contiguite rougirait sur un graphe
-       sain.
+       993** — `mesure`, et c'est la MEME valeur que sur les 3 documents du lot
+       1, le trou venant du PDF dont les sous-arbres dominent. Un controle qui
+       exigerait la contiguite rougirait sur un graphe sain.
+
+    **CE QUE CES DEUX DERNIERES INTERDISENT A UN AGENT, et c'est le motif de
+    §6.16.** Un agent qui implemente « la fenetre d'elements » comme « les
+    enfants de P dont ``sequence`` est dans [s-k, s+k] » rendra SILENCIEUSEMENT
+    moins d'elements que demande ; un agent qui lit la contiguite comme un indice
+    d'integrite conclura a une perte de donnees qui n'existe pas.
+
+    **§6.16 RESTE OUVERT, ET CE MODULE NE PEUT PAS LE FERMER.** La moitie qui
+    manque est la documentation de ``rag-agent-chat``, dans l'AUTRE depot : ces
+    reserves decrivent la facon dont l'agent LIT ``sequence``, et rien ici ne
+    peut l'y ecrire. Ce depot les rend trouvables — ici pour les chiffres, et
+    dans ``documentation/llm_integration_plan.md`` pour l'enonce destine a
+    l'agent. Le geste qui reste est de les reporter la-bas.
 
     Args:
         aretes: Triplets ``(document, sequence, page_no)``, dans n'importe quel

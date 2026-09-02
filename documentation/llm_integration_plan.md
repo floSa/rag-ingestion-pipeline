@@ -340,6 +340,46 @@ n'en decrit jamais un (registre 4.24). Un noeud ecrit avant le lot 3 porte
 | PARENT_OF  | sequence: int    | Document -> SectionHeader -> Elements      |
 | LINKED_TO  | relation: string | Caption -> Picture/Table ("describes")     |
 
+#### `sequence` : les TROIS RESERVES DE LECTURE — a lire avant de s'en servir
+
+**L'exigence 4 du contrat est tenue** : `sequence` est presente sur **toutes** les
+aretes `PARENT_OF`, et triee par `sequence`, `page_no` ne decroit jamais dans un
+document. `verify_contract` le verifie sur la totalite des aretes.
+
+Mais trois proprietes qu'aucun document ne portait, et **dont deux interdisent
+des controles qu'on serait tente d'ecrire a la place** :
+
+1. **`sequence` repart a 0 dans chaque document.** Elle n'est **pas** globalement
+   monotone : tout « avant / apres » doit etre **borne au document**. Comparer
+   deux `sequence` de documents differents n'a aucun sens.
+2. **Elle n'est pas contigue sous un parent, et c'est par construction.** C'est un
+   ordre de lecture **global au document**, pas un rang sous le parent : l'ecart
+   entre deux enfants consecutifs est la taille du sous-arbre du frere precedent.
+3. **Les trous sont grands.** Le plus grand ecart entre deux enfants consecutifs
+   d'un meme parent se compte en **centaines**.
+
+**Les deux consequences pour l'agent, et ce sont elles qui coutent :**
+
+- une « fenetre d'elements » implementee comme « les enfants de P dont `sequence`
+  est dans `[s-k, s+k]` » rendra **silencieusement moins** d'elements que demande.
+  Pour obtenir les `k` voisins, il faut **trier les enfants de P par `sequence`
+  puis prendre les rangs voisins**, jamais filtrer sur un intervalle de valeurs ;
+- lire la contiguite comme un indice d'integrite fera **conclure a une perte de
+  donnees qui n'existe pas**.
+
+Les chiffres de ces trois reserves ont **un seul site**, le docstring de
+`verify_contract.inversions_de_page` dans ce depot : ils y sont remesures sur le
+corpus complet, et non repris du lot 1 qui les avait mesures sur 3 documents.
+
+> **CE QUI RESTE A FAIRE, ET IL N'EST PAS FAISABLE D'ICI.** Le registre §6.16
+> reste **ouvert**, et sa moitie manquante est la documentation de
+> `rag-agent-chat`, dans l'**autre depot** : ces trois reserves decrivent la
+> facon dont l'AGENT lit `sequence`, et aucun commit de ce depot-ci ne peut
+> l'ecrire la-bas. Ce que ce depot pouvait faire est fait — les rendre
+> trouvables en un endroit nomme, avec leurs chiffres a un site unique. **Le
+> geste qui reste est de les reporter dans `pour_le_pipeline_ingestion.md` cote
+> agent.** Ne pas le confondre avec « §6.16 est ferme ».
+
 **VID format** : `FIXED_STRING(256)` — le site canonique est `VID_MAX_BYTES`
 dans `src/docling_service/ngql.py`. Ce plan annonçait 64 : un space créé à 64
 refuse les deux documents réels du corpus (identifiants de 65 et 67 octets),
