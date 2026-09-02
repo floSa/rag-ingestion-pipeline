@@ -703,7 +703,8 @@ def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
         colonne: Nom de la colonne cherchee.
 
     **CET INVARIANT ETAIT ENONCE ICI ET GARDE PAR RIEN — le treizieme garde
-    creux du chantier.** `mesure` le 2 septembre 2026 sur le code livre, AVANT ce garde :
+    creux du chantier** — le compte est derive au registre 4.31.B4, il ne se
+    recopie pas. `mesure` le 2 septembre 2026 sur le code livre, AVANT ce garde :
     remplacer `if colonne not in colonnes` par `if colonnes and colonne not in
     colonnes` laissait `make all` en `rc=0`, 857 tests, zero rouge. Le motif est
     celui des douze precedents — *le test observe une absence.* Ce que la

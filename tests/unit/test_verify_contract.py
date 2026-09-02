@@ -988,7 +988,8 @@ class TestUnDescribeEnEchecCompteCommeUneColonneAbsente:
     garde :
     `if colonne not in colonnes` remplace par `if colonnes and colonne not in
     colonnes` laisse `make all` en `rc=0`, 857 tests, ZERO rouge. Le motif est
-    celui des douze gardes creux precedents : *le test observe une absence.*
+    celui des douze gardes creux precedents : *le test observe une absence.* Le
+    compte de douze est derive au registre 4.31.B4 ; ne le recopie pas, renvoie-y.
 
     Ce que la mutation coute, et ce n'est pas une elegance : un graphd qui refuse
     le `DESCRIBE` rendrait `tags_sans_la_colonne == []`, donc

@@ -2381,13 +2381,30 @@ détecte tout passerait aussi).
 
 #### 4.31.B3 « Un suffixe inconditionnel fait DUPLIQUER tout l'index » : faux depuis le lot 4
 
-L'affirmation vivait à **huit** sites, et le mandat de la réparation en nommait
-quatre : le docstring de `chunking.chunk_id` (deux paragraphes), le commentaire
-de `vectors.build_chunks`, `tests/unit/test_chunking.py`,
-`tests/unit/test_vectors.py` (le docstring de classe, un docstring de test et un
-message d'assertion), `documentation/base_vectorielle.md`, et le §4.30.b de ce
-registre. *N'audite pas la liste qu'on te donne : construis la tienne, puis
-diffe.*
+L'affirmation vivait à **neuf passages** répartis dans **six fichiers**, et le
+mandat de la réparation en nommait quatre. L'inventaire, `mesuré` — `grep -rn
+'dupliqu' src/ tests/ documentation/ README.md`, puis lecture de chaque ligne
+pour écarter celles qui parlent d'autre chose (le déterminisme des `element_id`,
+le chevauchement de pages, la déduplication de `detect-secrets`) :
+
+| Fichier | Passages |
+|---|---|
+| `src/docling_service/chunking.py` — docstring de `chunk_id` | **2** |
+| `src/docling_service/vectors.py` — commentaire de `build_chunks` | 1 |
+| `tests/unit/test_chunking.py` | 1 |
+| `tests/unit/test_vectors.py` — docstring de classe, docstring de test, message d'assertion | **3** |
+| `documentation/base_vectorielle.md` | 1 |
+| ce registre, §4.30.b | 1 |
+
+*(Ce paragraphe a d'abord écrit « huit sites » : neuf passages, six fichiers, et
+« site » ne disait pas lequel des deux. **Une erreur de dénombrement dans la
+section qui traite des erreurs de dénombrement** — c'est la difficulté du
+travail, et elle se corrige en recomptant, pas en s'en méfiant.)*
+
+*N'audite pas la liste qu'on te donne : construis la tienne, puis diffe.* Le §5.1
+s'y ajoute d'une autre façon : il ne portait pas l'affirmation, il décrivait
+l'état d'**avant** le lot sous un titre qui annonce « traité par le lot 5 ». Il
+est réécrit.
 
 *Le juge est une mesure, et elle se lit dans le code livré sans rien exécuter :*
 
@@ -2452,7 +2469,10 @@ texte vérifié changé par empreinte SHA-256 :
 la bascule, et elle est mesurée sur le même arbre.)*
 
 **Le motif est celui des douze gardes creux précédents** : *le test observe une
-absence.* `_verifier_le_tag_document` porte le sien depuis le lot 3 ; la fonction
+absence.* Le compte de douze est `calculé` et il se dérive : **trois** au lot 3 —
+M15, M12, M20, les gardes neufs que rien ne gardait (§4.4, §4.5) — et **neuf** au
+lot 4, cinq trouvés par le lot lui-même et quatre par son audit (mandat
+§5.1 quinquies). Celui-ci est donc le treizième. `_verifier_le_tag_document` porte le sien depuis le lot 3 ; la fonction
 que le lot 5 vient d'écrire, non.
 
 **Ce que la mutation coûtait, et ce n'est pas une élégance** : un graphd qui
