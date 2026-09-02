@@ -2308,7 +2308,7 @@ reproductible.
 | Renvoi | État |
 |---|---|
 | `vectors.py:230` (5 sites) | **FAUX** — corrigé ci-dessus, par le symbole |
-| `ranking.py:56-71`, `ranking.py:83-84` | **justes** — vérifiés ligne à ligne : ce sont bien les corps de `docling_parent_rank` et `docling_level_rank` |
+| `ranking.py:56-71`, `ranking.py:83-84` | **justes à `e5103cf`** — vérifiés ligne à ligne : ce sont bien les corps de `docling_parent_rank` et `docling_level_rank`. La révision est nommée parce que c'est la moitié de la provenance qui manquait au §6.17, et ces deux-là rotteront comme les autres |
 | `README.md:317`, `extraction.py:335-337`, `index_report.py:75-84`, `nebula.py:49`, `nebula.py:160`, `schemas.py:94-95` | **citations, pas des renvois** : ils vivent dans le tableau du §6.17 qui les déclare périmés ou dérivés, et ce tableau existe pour dire qu'ils le sont. Les corriger en `fichier:ligne` neuf serait refaire le défaut à trois jours près |
 
 #### 4.31.B2 « Onze modules sans dépendance externe » : ils sont QUATORZE, et le sept niait le déverrouillage
