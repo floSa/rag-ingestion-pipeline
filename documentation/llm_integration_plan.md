@@ -382,8 +382,10 @@ corpus complet, et non repris du lot 1 qui les avait mesures sur 3 documents.
 
 **VID format** : `FIXED_STRING(256)` — le site canonique est `VID_MAX_BYTES`
 dans `src/docling_service/ngql.py`. Ce plan annonçait 64 : un space créé à 64
-refuse les deux documents réels du corpus (identifiants de 65 et 67 octets),
-et un `vid_type` ne se modifie pas après coup.
+refuse **16 des 23 documents du corpus**, ceux dont l'identifiant dépasse
+64 octets — jusqu'à **111** —, et un `vid_type` ne se modifie pas après coup.
+Les longueurs et leur méthode de mesure vivent à un seul site,
+`documentation/services/nebulagraph.md`, section « Schéma nGQL ».
 - Document : `doc_{source_path sans extension}` — **la clé, jamais le nom de
   fichier seul** : le corpus porte deux `Preface.html`, et `doc_{filename}`
   les ferait collisionner sur un seul sommet (contrat, exigence 3)

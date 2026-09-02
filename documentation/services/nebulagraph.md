@@ -19,10 +19,23 @@ noeuds (Document, SectionHeader, Paragraph, Table, Picture...) et relations
 
 > **`vid_type` vaut 256 octets et non 64, et l'écart n'était pas cosmétique.**
 > Ce bloc annonçait `FIXED_STRING(64)`, une requête directement copiable — et un
-> space créé à 64 **refuse** les deux documents réels du corpus, dont les
-> identifiants font 65 et 67 octets : « *Storage Error: The VID must be a 64-bit
-> integer or a string fitting space vertex id length limit* » (`mesuré` le
-> 1er septembre 2026 sur un space jetable). Nebula ne sait pas modifier un
+> space créé à 64 **refuse 16 des 23 documents du corpus**, ceux dont
+> l'identifiant dépasse 64 octets, jusqu'à **111** : « *Storage Error: The VID
+> must be a 64-bit integer or a string fitting space vertex id length limit* »
+> (`mesuré` le 1er septembre 2026 sur un space jetable ; les longueurs
+> remesurées le 2 septembre 2026 sur le graphe vivant,
+> `MATCH (v:Document) RETURN id(v)` puis `len(vid.encode())` — 23 identifiants,
+> de **38** à **111** octets, **16** au-dessus de 64).
+>
+> *(Cette phrase disait « les **deux** documents réels du corpus (65 et 67
+> octets) ». 65 et 67 sont les deux premiers trouvés au-dessus du seuil, pas les
+> deux seuls : ce sont
+> `doc_htms/MLOps with Databricks/1. MLOps Principles and Components` et
+> `doc_htms/Practical MLflow for Generative AI on Databricks/Preface` à 65, et
+> `…/5. Machine Learning Model Deployment` à 67. Les treize autres montent
+> jusqu'à 111. Le défaut est préexistant au lot 4 — mais il vit dans le bloc que
+> le lot 5 déclare relu et fermé au §6.18, et c'est pour cela qu'il est de sa
+> famille.)* Nebula ne sait pas modifier un
 > `vid_type` : la réparation coûte une purge complète des stores. Le site
 > canonique de cette valeur est `VID_MAX_BYTES` dans
 > `src/docling_service/ngql.py`, et `create_space_statement()` est la seule

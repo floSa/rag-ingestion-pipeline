@@ -2373,6 +2373,38 @@ Les mentions du registre renvoient au site canonique au lieu de recopier, et les
 chiffres du lot 1 qui y vivaient encore (44 parents sur 185) portent désormais
 leur périmètre — 3 documents, 2 285 arêtes.
 
+#### 4.31.C3 « Les DEUX documents réels du corpus » : ils sont SEIZE sur 23
+
+`services/nebulagraph.md` et `llm_integration_plan.md` écrivaient qu'un space
+créé à `FIXED_STRING(64)` « refuse les **deux** documents réels du corpus
+(identifiants de 65 et 67 octets) ».
+
+*Le juge est une mesure*, `mesuré` le 2 septembre 2026 sur le graphe vivant :
+
+```ngql
+MATCH (v:Document) RETURN id(v) AS vid;
+```
+puis `len(vid.encode("utf-8"))` côté client.
+
+| | |
+|---|---|
+| sommets `Document` | **23** |
+| identifiants **> 64 octets** | **16** |
+| minimum / maximum | **38** / **111** |
+
+65 et 67 sont les **deux premiers trouvés** au-dessus du seuil, pas les deux
+seuls : `…/1. MLOps Principles and Components` et
+`…/Practical MLflow…/Preface` à 65, `…/5. Machine Learning Model Deployment` à
+67 — et treize autres jusqu'à 111.
+
+**Le défaut est préexistant au lot 4**, et c'est la raison pour laquelle il
+compte quand même : il vit dans le bloc que le lot 5 déclare **relu et fermé au
+§6.18**. Un bloc déclaré relu porte la responsabilité de ce qu'il laisse.
+
+La longueur et sa méthode de mesure ont désormais **un seul site**,
+`services/nebulagraph.md`, section « Schéma nGQL » ; `llm_integration_plan.md`
+y renvoie.
+
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 
 `verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
