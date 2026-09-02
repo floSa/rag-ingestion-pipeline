@@ -777,7 +777,9 @@ porter aucun ordre. Les trois réserves mesurées dictent la forme du contrôle 
 sont écrites à son site : `sequence` repart à 0 par document — d'où un contrôle
 **borné au document**, sans quoi deux documents entrelacés rendraient des
 inversions fausses — elle n'est pas contiguë sous un parent, et le plus grand
-trou vaut 993, donc **exiger la contiguïté rougirait sur un graphe sain**.
+écart vaut **994** de différence, soit 993 valeurs intercalaires, donc **exiger
+la contiguïté rougirait sur un graphe sain**. Le site canonique de ces chiffres
+est le docstring d'`inversions_de_page` ; ne les recopie pas, renvoie-y.
 
 **La phrase d'exhaustivité est corrigée, et l'échantillon est SUPPRIMÉ.** « Une
 rupture de contrat est systématique » est vraie d'un FORMAT et fausse d'un ORDRE.
@@ -2321,6 +2323,46 @@ n'en lève **aucune anomalie**. C'est une lecture d'instrument, pas un garde —
 qui est exactement la raison pour laquelle la clause a besoin d'un test, et
 pourquoi retirer `chunk_ids` comme du code mort aurait été une perte.
 
+#### 4.31.C1 L'écart maximal de `sequence` : 994, sous un chapitre HTML, et « écart » n'était pas défini
+
+Le site canonique — le docstring de `verify_contract.inversions_de_page` —
+écrivait « le plus grand trou vaut **993**… le trou venant du **PDF** dont les
+sous-arbres dominent ».
+
+*Le juge est une mesure*, `mesuré` le 2 septembre 2026 sur le graphe vivant, en
+lecture seule, depuis le conteneur d'extraction :
+
+```ngql
+MATCH (a)-[e:PARENT_OF]->(b) RETURN id(a) AS parent, e.sequence AS seq;
+```
+puis, côté client, les `sequence` triées par parent et les différences entre
+valeurs consécutives (le §4.30.j interdit un `WHERE` sur une propriété d'arête).
+
+| | |
+|---|---|
+| arêtes `PARENT_OF` lues | **15 173** |
+| parents distincts | **763** |
+| parents à `sequence` non contiguës | **167** (21,9 %) |
+| **écart maximal — différence** | **994** |
+| **écart maximal — valeurs intercalaires** | **993** |
+| entre les `sequence` | **203** et **1197** |
+| sous le parent | `doc_htms/MLOps with Databricks/7. Foundation Models and Context Engineering` |
+
+**Deux corrections, et la seconde vaut plus que la première.**
+
+1. **Ce n'est pas le PDF.** C'est un **chapitre HTML**, et le parent est la
+   **racine du document elle-même**. « Le trou venant du PDF » était une
+   explication vraisemblable, jamais mesurée — la famille du §3.2 ;
+2. **« écart » n'était pas défini, et les deux lectures ne donnent pas le même
+   nombre.** 994 de différence ou 993 valeurs intercalaires : les deux sont
+   vraies, elles ne disent pas la même chose, et **aucune des deux n'était
+   écrite**. Un agent qui dimensionne une fenêtre sur « le trou vaut 993 » se
+   trompe d'un rang. La définition est désormais au site, avec les deux nombres.
+
+Les mentions du registre renvoient au site canonique au lieu de recopier, et les
+chiffres du lot 1 qui y vivaient encore (44 parents sur 185) portent désormais
+leur périmètre — 3 documents, 2 285 arêtes.
+
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 
 `verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
@@ -2571,15 +2613,23 @@ Trois réserves qu'aucun document ne porte, et dont l'agent peut se tromper :
 
 1. **`sequence` repart à 0 dans chaque document.** Elle n'est donc pas
    globalement monotone : tout « avant / après » doit être **borné au document**.
-2. **Elle n'est pas contiguë sous un parent, par construction.** Mesuré : 44 des
-   185 parents ont des `sequence` non contiguës, et **44 sur 44** sont exactement
-   expliqués par la taille du sous-arbre du frère précédent. Ce n'est pas un
-   défaut — c'est un ordre de lecture global, pas un rang sous le parent.
-3. **Le plus grand trou entre deux enfants consécutifs d'un même parent vaut
-   993.** Un agent qui implémente « la fenêtre d'éléments » comme « les enfants
-   de P dont `sequence ∈ [s−k, s+k]` » rendra **silencieusement moins**
-   d'éléments que demandé ; un agent qui lit la contiguïté comme un indice
-   d'intégrité conclura à une perte.
+2. **Elle n'est pas contiguë sous un parent, par construction.** Mesuré **par le
+   lot 1, sur 3 documents et 2 285 arêtes** : 44 des 185 parents ont des
+   `sequence` non contiguës, et **44 sur 44** sont exactement expliqués par la
+   taille du sous-arbre du frère précédent. Ce n'est pas un défaut — c'est un
+   ordre de lecture global, pas un rang sous le parent. *(Remesuré sur le corpus
+   complet — 15 173 arêtes, 763 parents, 167 non contigus — au site canonique.)*
+3. **Le plus grand écart entre deux `sequence` consécutives d'un même parent vaut
+   994**, c'est-à-dire une **différence** de 994 et **993 valeurs
+   intercalaires** — les deux lectures ne donnent pas le même nombre, et aucune
+   des deux n'était écrite. Un agent qui implémente « la fenêtre d'éléments »
+   comme « les enfants de P dont `sequence ∈ [s−k, s+k]` » rendra
+   **silencieusement moins** d'éléments que demandé ; un agent qui lit la
+   contiguïté comme un indice d'intégrité conclura à une perte.
+
+**Le site canonique des trois chiffres est le docstring de
+`verify_contract.inversions_de_page`**, où ils sont remesurés sur le corpus
+complet. Les mentions d'ici y renvoient.
 
 **Le garde existe désormais — écrit par le lot 3 avec §4.4.** La propriété que
 le lot 1 avait d'abord conclue — « aucun parent ne porte deux fois la même

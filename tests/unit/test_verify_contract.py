@@ -74,10 +74,13 @@ class TestInversionsDePage:
     def test_gaps_are_not_inversions(self):
         """Reserve 2 et 3 : `sequence` n'est pas contigue sous un parent.
 
-        Le plus grand trou mesure entre deux enfants d'un meme parent vaut 993.
-        Un controle qui exigerait la contiguite rougirait sur un graphe sain.
+        Le plus grand ecart mesure entre deux `sequence` consecutives d'un meme
+        parent est une DIFFERENCE de 994 — 993 valeurs intercalaires — entre les
+        rangs 203 et 1197. Les valeurs ci-dessous les reprennent telles quelles :
+        un controle qui exigerait la contiguite rougirait sur un graphe sain. Le
+        site canonique de ces chiffres est le docstring d'`inversions_de_page`.
         """
-        assert inversions_de_page([("doc", 0, 1), ("doc", 993, 4)]) == []
+        assert inversions_de_page([("doc", 203, 1), ("doc", 1197, 4)]) == []
 
     def test_a_repeated_sequence_is_not_an_inversion_by_itself(self):
         assert inversions_de_page([("doc", 4, 2), ("doc", 4, 2)]) == []

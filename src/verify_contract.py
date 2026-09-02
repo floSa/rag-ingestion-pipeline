@@ -105,10 +105,21 @@ def inversions_de_page(aretes: Sequence[tuple[str, int, int]]) -> list[tuple[str
        est chaque fois la taille du sous-arbre du frere precedent. Le lot 1
        mesurait 44 sur 185 ; la proportion tient, le compte est quatre fois plus
        grand ;
-    3. **le plus grand trou entre deux enfants consecutifs d'un meme parent vaut
-       993** — `mesure`, et c'est la MEME valeur que sur les 3 documents du lot
-       1, le trou venant du PDF dont les sous-arbres dominent. Un controle qui
-       exigerait la contiguite rougirait sur un graphe sain.
+    3. **le plus grand ecart entre deux ``sequence`` consecutives sous un meme
+       parent vaut 994**, et il faut dire ce que « ecart » veut dire, parce que
+       les deux lectures ne donnent pas le meme nombre : c'est la DIFFERENCE
+       entre les deux valeurs, `1197 - 203 = 994`, soit **993 valeurs
+       intercalaires**. Un controle qui exigerait la contiguite rougirait sur un
+       graphe sain.
+
+       **Et ce n'est pas le PDF.** Ce docstring a d'abord ecrit « le trou venant
+       du PDF dont les sous-arbres dominent ». `mesure` le 2 septembre 2026 sur
+       le graphe vivant : l'ecart maximal est sous
+       ``doc_htms/MLOps with Databricks/7. Foundation Models and Context
+       Engineering`` — **un chapitre HTML**, et le parent est la RACINE du
+       document elle-meme, entre ses deux enfants de rang 203 et 1197. Le sous-
+       arbre qui explique le trou est celui du frere precedent, comme le dit la
+       reserve 2 ; il n'a rien de particulier au PDF.
 
     **CE QUE CES DEUX DERNIERES INTERDISENT A UN AGENT, et c'est le motif de
     §6.16.** Un agent qui implemente « la fenetre d'elements » comme « les
