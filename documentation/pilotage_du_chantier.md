@@ -1100,22 +1100,27 @@ Ce que le lot 3 laisse, et qui vaut toujours :
   réserve mesurée qu'il faut connaître : `run_monitoring` couvre `STARTING`,
   `NOT_STARTED` et `STARTED`, **jamais `QUEUED`** — précisément l'état du run
   bloqué de ce poste ;
-- **`dagster-daemon` est arrêté — et ÇA N'A PAS TENU TOUT SEUL.** `mesuré` le
-  1er septembre 2026 : `exited`, les neuf autres services debout, et il l'était
-  resté à travers le redémarrage de l'instance. **`mesuré` le 2 septembre 2026 :
-  il TOURNAIT, et depuis quatre heures.** Le pilote l'a arrêté pour protéger
-  l'antécédent, et l'index est intact — **4 365 chunks, 15 196 sommets, 15 173
-  arêtes `PARENT_OF`, 23 documents, 13 objets MinIO** (`mesuré`, remesuré par la
-  réparation du lot 5 le 2 septembre 2026 : les cinq chiffres concordent). Le
-  §7.2 le dit arrêté, et c'est **redevenu** vrai. *Ce qu'il faut retenir n'est pas
-  l'incident, c'est que la propriété « le daemon est arrêté » n'est pas stable :
-  elle se remesure avant toute mesure qui en dépend, et les sensors étant livrés
-  armés (§4.18), un daemon qui repart réingère.* Un service arrêté par `docker compose stop` ne repart pas au
-  redémarrage de la machine, quelle que soit sa politique de redémarrage — c'est
-  ce qui a protégé l'index. `docker compose start dagster-daemon` pour le
-  reprendre, et **sache ce que tu déclenches** : les sensors sont livrés armés
-  (§4.18), donc le daemon reprend l'ingestion. Registre §4.28.c : un run est
-  `QUEUED` et l'historique porte 67 `ReindexError` ;
+- **`dagster-daemon` est arrêté — et « ARRÊTÉ » N'EST PAS UNE PROPRIÉTÉ STABLE.**
+  `mesuré` le 1er septembre 2026 : `exited`, les neuf autres services debout, et
+  il l'était resté à travers un redémarrage complet de l'instance — un service
+  arrêté par `docker compose stop` ne repart pas au redémarrage de la machine,
+  quelle que soit sa politique de redémarrage, et c'est ce qui a protégé l'index
+  ce jour-là. **`mesuré` le 2 septembre 2026 : il TOURNAIT, et depuis quatre
+  heures.** Le pilote l'a arrêté pour protéger l'antécédent. **La cause du
+  redémarrage n'a pas été cherchée et n'est donc pas écrite ici** — ce qui est
+  mesuré est l'état, jamais son origine.
+
+  **L'index est intact**, remesuré par la réparation du lot 5 le 2 septembre 2026,
+  les cinq chiffres concordant : **4 365 chunks, 15 196 sommets, 15 173 arêtes
+  `PARENT_OF`, 23 documents, 13 objets MinIO**. L'état « arrêté » est donc
+  **redevenu** vrai.
+
+  *La leçon n'est pas l'incident : c'est que la propriété générale ci-dessus —
+  vraie — a été lue comme une garantie, et qu'elle n'en est pas une.* **Remesure
+  l'état du daemon avant toute mesure qui en dépend.** `docker compose start
+  dagster-daemon` pour le reprendre, et **sache ce que tu déclenches** : les
+  sensors sont livrés armés (§4.18), donc le daemon reprend l'ingestion. Registre
+  §4.28.c : un run est `QUEUED` et l'historique porte 67 `ReindexError` ;
 - **le space `rag_space` a été recréé** : le lot y avait éprouvé la réversibilité
   d'un `ALTER ... DROP`, et Nebula refuse ensuite le ré-ajout de la colonne. Le
   corpus complet y est réingéré avec le code du lot.
