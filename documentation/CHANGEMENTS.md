@@ -89,7 +89,10 @@ Désormais un titre est rattaché **au titre qui le domine** :
   peut reconstruire « chapitre > section > sous-section » pour contextualiser
   une citation.
 - Nouvelle clé `depth` sur chaque chunk : profondeur dans la hiérarchie, 0 pour
-  un titre de tête, plafonnée à 3.
+  un titre de tête. *(Cette ligne ajoutait « plafonnée à 3 ». Le plafond a été
+  retiré par le lot 3 — registre §4.24 — et la profondeur atteint 5 sur le
+  corpus actuel. Le site canonique de la règle, et des deux échelles qui s'y
+  croisent, est `ChunkMetadata.depth` dans `src/pipeline/schemas.py`.)*
 - Rien ne casse si l'agent l'ignore : `reference_id` reste un identifiant
   d'élément valide.
 

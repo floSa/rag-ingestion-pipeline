@@ -212,7 +212,11 @@ Le code n'a aucune branche par format : il essaie les signaux dans l'ordre et pr
 
 Deux garde-fous : un titre dont la boîte est **contenue dans une image ou un tableau** est écarté (le texte d'une figure peut être grand), et un titre **pas plus grand que le corps du texte** n'ouvre pas de niveau. Un titre écarté prend le rang le plus profond, jamais le rang zéro — le promouvoir chapitre remettrait tout l'arbre à zéro.
 
-La profondeur est plafonnée à 3 : l'objectif est de reconstruire un bloc avec ses titres parents pour l'agent, pas de reproduire une arborescence complète.
+**La profondeur n'est plafonnée par rien**, et cette phrase disait le contraire. Le lot 3 a retiré `MAX_DEPTH` (registre §4.24) : `depth` est le nombre d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document, et il dépasse 3 sur une part mesurable du corpus. Le site canonique de cette règle, des **deux échelles** qui s'y croisent et de la distribution mesurée est `ChunkMetadata.depth` dans `src/pipeline/schemas.py` — la distribution n'est écrite que là, pour qu'elle n'ait pas quatre sites de plus.
+
+Le motif écrit du plafond — « l'objectif est de reconstruire un bloc avec ses titres parents, pas de reproduire une arborescence complète » — **décrivait une limitation de l'arbre qui n'a jamais existé** : `parent_id` n'a jamais été plafonné, donc les arêtes écrites dans le graphe étaient les mêmes avec ou sans lui. Son seul effet mesurable était de rendre `depth` non injectif, la valeur 4 recouvrant les profondeurs réelles 4 **et** 5.
+
+**Et `depth` mélange deux échelles**, ce qu'un agent doit savoir avant de s'en servir : sur un **titre**, il compte les titres au-dessus ; sur **tout autre** élément, il vaut celui de son titre **plus un**. Un paragraphe sous un titre de premier niveau vaut donc 1, comme un sous-titre — c'est `label` qui dit laquelle des deux on lit. Le site canonique de cette règle est `ChunkMetadata.depth` dans `src/pipeline/schemas.py`.
 
 **Vérifié contre le sommaire imprimé de l'ouvrage, ligne à ligne :**
 

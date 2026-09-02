@@ -125,6 +125,30 @@ class ChunkMetadata(BaseModel):
     # ``section_header`` n'est jamais un chunk (registre 4.24, mesure). Le
     # niveau d'un titre se lit sur le sommet du graphe, ou se compte sur la
     # chaine ``PARENT_OF`` — le seul signal exact.
+    #
+    # ── SITE CANONIQUE DE LA DISTRIBUTION, ET IL EN FALLAIT UN ───────────────
+    # `mesure` le 2 septembre 2026 sur l'index vivant
+    # (`collection.get(include=["metadatas"])`, distribution de `depth`) :
+    #
+    #     {1: 912, 2: 1993, 3: 1164, 4: 256, 5: 40}   maximum 5
+    #
+    # Soit 296 chunks sur 4 365 — 6,8 % — AU-DELA DE 3. Ce chiffre decide, parce
+    # que QUATRE documents annoncaient encore « la profondeur est plafonnee a
+    # 3 » : `README.md`, `documentation/graphe_connaissances.md`,
+    # `documentation/extraction_donnees.md` (dans un TITRE de section) et
+    # `documentation/CHANGEMENTS.md`. Le lot 3 a retire `MAX_DEPTH` et corrige
+    # `schemas.py`, `services/nebulagraph.md` et `llm_integration_plan.md` ;
+    # perimetre strict, il a laisse les quatre autres. Ils renvoient ici
+    # desormais, et ce commentaire est le seul endroit ou la distribution est
+    # ecrite.
+    #
+    # Le motif ecrit du plafond — « au-dela, un RAG n'y gagne rien : l'objectif
+    # est de reconstruire un bloc avec ses titres parents, pas de reproduire une
+    # arborescence complete » — decrivait une limitation de l'ARBRE QUI N'A
+    # JAMAIS EXISTE : `parent_id` n'a jamais ete plafonne, donc les aretes du
+    # graphe etaient les memes avec ou sans lui. Son seul effet mesurable etait
+    # de rendre `depth` NON INJECTIF : la valeur 4 recouvrait les profondeurs
+    # reelles 4 ET 5, et c'est exactement ce que les 40 chunks a 5 montrent.
     depth: int = 0
     section_title: str = ""
     page_position: int = 0

@@ -25,7 +25,7 @@ Ils stockent les informations inhérentes. L'identifiant d'un élément est un h
 
 **Arêtes (Les Edges) :**
 Elles définissent l'orientation et comment interagir.
-- **`PARENT_OF`** : Orientée d'un conteneur parent vers un élément. Le parent d'un titre est désormais **le titre qui le domine**, et non plus systématiquement le `Document` : un sous-titre est rattaché à sa section, elle-même rattachée à son chapitre. La profondeur est plafonnée à 3. Voir [extraction_donnees.md](extraction_donnees.md#4-hierarchie-et-positions) pour la règle et les signaux utilisés selon la source. Celle-ci intègre la propriété vitale `sequence` (integer) permettant la reconstruction temporelle/littérale du fichier lors d'une requête "Lis moi le livre".
+- **`PARENT_OF`** : Orientée d'un conteneur parent vers un élément. Le parent d'un titre est désormais **le titre qui le domine**, et non plus systématiquement le `Document` : un sous-titre est rattaché à sa section, elle-même rattachée à son chapitre. **La profondeur n'est plafonnée par rien** — cette ligne annonçait un plafond de 3, retiré par le lot 3 (registre §4.24), et il est dépassé sur une part mesurable du corpus. Le site canonique de cette règle, des **deux échelles** qui s'y croisent et de la distribution mesurée est `ChunkMetadata.depth` dans `src/pipeline/schemas.py`. Voir [extraction_donnees.md](extraction_donnees.md#4-hierarchie-et-positions) pour la règle et les signaux utilisés selon la source. Celle-ci intègre la propriété vitale `sequence` (integer) permettant la reconstruction temporelle/littérale du fichier lors d'une requête "Lis moi le livre".
 - **`LINKED_TO`** : Arête relationnelle entre une légende (`Caption`) découverte par l'IA d'extraction Docling et le conteneur visuel le plus proche à qui elle appartient (`Picture`, `Table`). Contient la propriété `relation` (string).
 
 ## Commandes utiles (Recherche / Agentique RAG)
@@ -50,31 +50,31 @@ Une fois accompli, voici le catalogue de recherches possibles (idéal lors du d�
     ```
 2.  **Récupérer tous les éléments liés directement au document (ex. Les enfants de la Racine) :**
     ```ngql
-    MATCH (d:Document)-[r:PARENT_OF]->(e) 
-    WHERE id(d) == "doc_pdfs/statisticsfordatascience" 
+    MATCH (d:Document)-[r:PARENT_OF]->(e)
+    WHERE id(d) == "doc_pdfs/statisticsfordatascience"
     RETURN e;
     ```
 3.  **Récupérer l'intégralité d'un document complet (Squelette et corps) :**
     ```ngql
-    MATCH p=(d:Document)-[:PARENT_OF*..]->(e) 
-    WHERE id(d) == "doc_pdfs/statisticsfordatascience" 
+    MATCH p=(d:Document)-[:PARENT_OF*..]->(e)
+    WHERE id(d) == "doc_pdfs/statisticsfordatascience"
     RETURN p;
     ```
 4.  **Lister tous les éléments rattachés à un "Section Header" donné (Titre/Chapitre) :**
     ```ngql
-    MATCH p=(s:SectionHeader)-[:PARENT_OF*..]->(e) 
-    WHERE id(s) == "<INSCRIRE_ID_DU_TITRE>" 
+    MATCH p=(s:SectionHeader)-[:PARENT_OF*..]->(e)
+    WHERE id(s) == "<INSCRIRE_ID_DU_TITRE>"
     RETURN p;
     ```
 5.  **Rechercher un élément précis et voir sa nature à partir de son Hash ID (Généré par une recherche ChromaDB) :**
     ```ngql
-    MATCH (v) 
-    WHERE id(v) == "<INSCRIRE_ID_ICI>" 
+    MATCH (v)
+    WHERE id(v) == "<INSCRIRE_ID_ICI>"
     RETURN tags(v), properties(v);
     ```
 
 ## Problèmes rencontrés et solutions
-- **Lenteurs et "Empty Set" en temps de Crash Console** : 
+- **Lenteurs et "Empty Set" en temps de Crash Console** :
   - *Problème* : Avec une ingestion sans micro-régulation ou une machine manquant de "Swap Memory", `Nebula` s'évanouissait soudainement et fermait ses conteneurs lors des flux continus de Docling. À la fermeture du terminal Ubuntu de commande manuel (WSL), plus aucun environnement daemon n'était maintenu par Docker Daemon.
   - *Solution système* : Application sur `storaged`, `metad` et `graphd` des politiques Docker `restart: unless-stopped`. La RAM de Docling ayant de plus été diminuée à **10 Go**, cela laisse **6 Go** de sécurité ferme pour ce moteur base de donnée C++, supprimant l'éventualité des crashs intempestifs.
 - **La commande interdite "DO NOT switch between graph spaces"** :

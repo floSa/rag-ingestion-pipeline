@@ -178,11 +178,23 @@ Deux garde-fous, parce que ce signal est le seul indirect :
 Un titre ecarte par l'un de ces garde-fous recoit le rang le plus profond, **jamais le rang
 zero** : le promouvoir chapitre remettrait tout l'arbre a zero.
 
-#### Profondeur plafonnee a 3
+#### Profondeur : aucun plafond
 
-L'objectif est de reconstruire un bloc avec ses titres parents pour l'agent, pas de
-reproduire une arborescence complete. La profondeur est en outre toujours celle du parent
-plus un, jamais le rang brut : un faux titre minuscule se range juste sous son
+**Cette section s'intitulait « Profondeur plafonnee a 3 », et le plafond n'existe plus.**
+Le lot 3 l'a retire avec `MAX_DEPTH` (registre 4.24). `depth` est le nombre d'aretes
+`PARENT_OF` qui separent l'element de la racine de son document, et il depasse 3 sur une
+part mesurable du corpus. Le site canonique de cette regle, des DEUX ECHELLES qui s'y
+croisent et de la distribution mesuree est `ChunkMetadata.depth` dans
+`src/pipeline/schemas.py`.
+
+Le motif ecrit du plafond — « l'objectif est de reconstruire un bloc avec ses titres
+parents, pas de reproduire une arborescence complete » — decrivait une limitation de
+l'ARBRE qui n'a jamais existe : `parent_id` n'a jamais ete plafonne, donc les aretes
+ecrites dans le graphe etaient les memes avec ou sans lui. Son seul effet mesurable etait
+de rendre `depth` NON INJECTIF, la valeur 4 recouvrant les profondeurs reelles 4 et 5.
+
+Ce qui reste vrai, et qui n'etait pas le plafond : la profondeur est toujours celle du
+parent plus un, jamais le rang brut. Un faux titre minuscule se range juste sous son
 predecesseur au lieu de tomber au niveau 9 et de trouer l'arbre.
 
 #### Resultat verifie
