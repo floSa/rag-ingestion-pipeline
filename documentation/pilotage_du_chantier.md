@@ -1170,9 +1170,42 @@ Conventions apprises à leurs dépens sur le dépôt jumeau.
 **L'identité Git, en premier** — §2.1 de ce fichier, mot pour mot. C'est la
 règle dont l'oubli a coûté un dépôt.
 
-**Aucune mention** de Claude, Claude Code, Anthropic, Copilot ou ChatGPT nulle
-part — code, documentation, messages de commit. **Aucun trailer
-`Co-Authored-By`.**
+**Aucune ATTRIBUTION du travail à un assistant de génération de code.** Aucun
+assistant ne doit apparaître comme **auteur ou contributeur** : ni dans un
+message de commit, ni dans un trailer — **aucun `Co-Authored-By`** — ni dans une
+signature, ni dans un en-tête de fichier, ni dans une ligne de documentation qui
+dirait qui a écrit quoi. C'est une règle de **paternité**, et son motif est celui
+du §2.1 : la liste des contributeurs d'un dépôt GitHub, une fois constituée, ne
+se défait pas.
+
+**Cette règle s'écrivait « aucune mention de Claude, Claude Code, Anthropic,
+Copilot ou ChatGPT nulle part — code, documentation, messages de commit ». Prise
+au mot, elle est FAUSSE, et c'est une phrase d'exhaustivité de plus.** `mesuré`
+le 2 septembre 2026 sur `main` à `27a6304`, fichiers versionnés hors `Datas/`,
+`git grep -nIiE 'claude|anthropic|copilot|chatgpt'` : **13 occurrences** sur
+12 lignes, **hors la ligne de la règle elle-même** — qui en porte cinq de plus,
+et qu'aucune formulation ne peut éviter.
+
+| Famille | Occurrences | Où |
+|---|---|---|
+| **noms de branche et d'arbre de travail** — `claude/<lot>-<sha>`, `.claude/worktrees/…` | **7** | les **deux documents de gouvernance**, écrits par le pilote lui-même : `axes_amelioration.md` (3) et ce fichier (4) |
+| **choix de fournisseur de modèle**, mentions **produit** | **6** | `llm_integration_plan.md` : le tableau des composants, un arbre de fichiers, `ANTHROPIC_API_KEY`, `LLM_MODEL=…`, et la ligne « intégration … via SDK » |
+
+**Aucune des treize ne viole la règle, et voici pourquoi.** Un **nom de branche
+créé par l'outillage** n'attribue rien : il nomme un fil de travail, il est
+imposé par le harnais qui crée l'arbre, et le refuser demanderait de renommer
+chaque branche du chantier — donc de mentir sur ce que `git branch` montre. Un
+**choix de fournisseur de modèle dans un document de conception** n'attribue rien
+non plus : il dit quel modèle le système *appellera*, exactement comme
+`EMBEDDING_MODEL_NAME` dit quel modèle d'embedding il charge. Ni l'un ni l'autre
+ne dit qui a **écrit** une ligne de ce dépôt.
+
+**Le geste est donc : borner, ne rien nettoyer.** Retirer ces treize mentions
+appauvrirait le dépôt — un plan d'intégration qui tait le modèle qu'il prescrit
+ne prescrit plus rien — sans rien fermer, la règle ne visant pas cela. Ce qui
+reste interdit est inchangé et n'a jamais été enfreint : **aucun commit de ce
+chantier ne porte un assistant en auteur, en committer, en trailer ou en
+signature** (`mesuré` à chaque fusion).
 
 **Commits atomiques en français**, dans le style du dépôt (`git log`). Une même
 affirmation fausse vivant dans le **code** et dans un **document** se corrige
