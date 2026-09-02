@@ -111,9 +111,11 @@ def embedding_inputs(
 def chunk_id(element_id: str, index: int, count: int) -> str:
     """Derive l'id ChromaDB d'un chunk, et c'est le SEUL site de cette forme.
 
-    Un element tenant en un seul chunk conserve son id nu : les documents deja
-    ingeres gardent leur identifiant et l'upsert les met a jour au lieu de les
-    dupliquer. Les elements multi-chunks recoivent un suffixe ``#n``.
+    Un element tenant en un seul chunk conserve son id nu ; les elements
+    multi-chunks recoivent un suffixe ``#n``. **C'est une clause du contrat, et
+    `verify_contract` la COMPTE** — « ids de chunk suffixes en #n » : 974 sur
+    4 365 sur l'index vivant (`mesure` le 2 septembre 2026). Un suffixe
+    inconditionnel porterait ce compte a 4 365 sur 4 365.
 
     Le contrat avec ``rag-agent-chat`` est preserve : le consommateur lit
     ``chunk_id`` (l'id ChromaDB) et ``element_id`` (le hash 10 hexa) dans deux
@@ -124,11 +126,28 @@ def chunk_id(element_id: str, index: int, count: int) -> str:
     APPELANT** (registre 5.1). Elle n'etait pas pour autant du code mort a
     amputer : `vectors.build_chunks` reconstruisait la MEME forme par une
     seconde expression en ligne, et **cette expression-la n'etait gardee par
-    rien**. `mesure` le 2 septembre 2026 sur le code livre par le lot 4 :
-    remplacer la ligne de `vectors.py` par un suffixe inconditionnel
-    (`f"{element_id}#{ancre.index}"`) laisse la suite ENTIEREMENT VERTE, 862
-    tests — alors que cette mutation fait qu'une reingestion DUPLIQUE chaque
-    element au lieu de le mettre a jour, l'id nu ayant disparu.
+    rien**. `mesure` sur `main` a `27a6304`, c'est-a-dire le code d'AVANT ce lot :
+    remplacer l'expression en ligne de `vectors.py` par un suffixe
+    inconditionnel (`f"{element_id}#{ancre.index}"`) laissait la suite
+    ENTIEREMENT VERTE, **857 tests, rc=0**. *(Ce docstring a d'abord ecrit
+    « 862 tests », un compte pris sur l'arbre du lot et non sur celui qu'il
+    decrit — la famille F2 du registre : un nombre exact, mesure, et perime par
+    l'arbre auquel on le rapporte.)*
+
+    **CE QUE CETTE MUTATION COUTE, ET LA PREMIERE REPONSE ETAIT FAUSSE.** Ce
+    docstring a ecrit qu'elle « fait qu'une reingestion DUPLIQUE chaque element ».
+    C'est faux depuis le lot 4 (`a54636c`), et il faut le lire dans le code :
+    `extraction.extract` appelle `storage.forget_document(identity)` **avant** la
+    conversion, et `vectors.delete_document` supprime par
+    ``where={"source_path": ...}``, **jamais par id**. Les chunks du document
+    partent donc en entier avant que les nouveaux ne soient ecrits, quelle que
+    soit la forme de leur id : aucun orphelin. Le seul chemin qui saute la purge
+    est le doublon exact (`_already_ingested`), et il n'ecrit rien non plus.
+
+    Ce que la mutation casse est une **clause du contrat**, et elle est
+    observable : la forme de l'id, que `verify_contract` compte. C'est un
+    compteur d'instrument et non une anomalie levee — raison de plus pour qu'un
+    test la tienne.
 
     Retirer la fonction aurait donc retire les seuls tests d'une clause du
     contrat dont le site de production n'a aucun garde. Elle est rendue

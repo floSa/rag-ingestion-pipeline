@@ -51,11 +51,13 @@ class TestChunkId:
     """
 
     def test_un_chunk_seul_garde_l_id_nu(self):
-        """SANS CELA, UNE REINGESTION DUPLIQUE AU LIEU DE METTRE A JOUR.
+        """LA CLAUSE, et `verify_contract` la compte : 974 ids suffixes sur 4 365.
 
-        L'upsert ChromaDB se fait par id : un element qui tient en un chunk et
-        dont l'id gagnerait un suffixe entrerait comme un NOUVEAU vecteur a
-        chaque reingestion, l'ancien restant en orphelin.
+        Ce docstring a d'abord ecrit « sans cela, une reingestion DUPLIQUE au
+        lieu de mettre a jour ». C'est faux depuis le lot 4 : `extract` purge le
+        document par `source_path` avant de le reecrire, donc aucune forme d'id
+        ne laisse d'orphelin (registre 4.31.B3). Ce qui se perdrait est la clause
+        elle-meme.
         """
         assert chunk_id("abc1234567", 0, 1) == "abc1234567"
 

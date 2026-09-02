@@ -2055,11 +2055,20 @@ laissé `README.md`, `documentation/graphe_connaissances.md`,
 §5.1 le range parmi les symboles sans appelant. Exact — et `vectors.build_chunks`
 reconstruisait la **même** forme par une expression en ligne, la seule que la
 production exécute, et **que rien ne gardait** : un suffixe inconditionnel
-laissait 862 tests verts. Or l'upsert ChromaDB se fait par id, donc cette
-mutation fait **dupliquer tout l'index à chaque réingestion**. L'amputer comme du
-code mort aurait retiré les seuls tests d'une clause du contrat dont le site
-d'exécution n'a aucun garde. **Traité par le lot 5** : la fonction devient
-`chunk_id`, unitaire, et l'appelant la traverse.
+laissait la suite entièrement verte (**857 tests, rc=0** sur `main` à `27a6304`,
+remesuré par la réparation ; ce constat écrivait 862, un compte pris sur l'arbre
+du lot et non sur celui qu'il décrit). L'amputer comme du code mort aurait retiré les seuls
+tests d'une clause du contrat dont le site d'exécution n'a aucun garde.
+**Traité par le lot 5** : la fonction devient `chunk_id`, unitaire, et
+l'appelant la traverse.
+
+> **La CONSÉQUENCE que ce constat écrivait — « cette mutation fait dupliquer tout
+> l'index à chaque réingestion » — est FAUSSE, et corrigée par la réparation.**
+> Elle l'est depuis le lot 4, et elle a survécu au commit qui l'a rendue fausse.
+> Ce que la mutation casse réellement est la clause elle-même, que
+> `verify_contract` compte : **974 ids suffixés sur 4 365**. Le détail et la
+> mesure sont au **§4.31.B3**. *L'écart, lui, reste justifié : le site de
+> production n'était gardé par rien.*
 
 **La leçon, et elle est neuve : « aucun appelant » et « code mort » ne sont pas la
 même chose.** Un symbole sans appelant dont un *doublon* est appelé est le
@@ -2258,6 +2267,60 @@ Trois témoins : le balayage doit avoir lu au moins 18 modules, il doit rendre
 et il doit rendre l'ensemble vide sur `ngql.py` (sans quoi un balayage qui
 détecte tout passerait aussi).
 
+#### 4.31.B3 « Un suffixe inconditionnel fait DUPLIQUER tout l'index » : faux depuis le lot 4
+
+L'affirmation vivait à **huit** sites, et le mandat de la réparation en nommait
+quatre : le docstring de `chunking.chunk_id` (deux paragraphes), le commentaire
+de `vectors.build_chunks`, `tests/unit/test_chunking.py`,
+`tests/unit/test_vectors.py` (le docstring de classe, un docstring de test et un
+message d'assertion), `documentation/base_vectorielle.md`, et le §4.30.b de ce
+registre. *N'audite pas la liste qu'on te donne : construis la tienne, puis
+diffe.*
+
+*Le juge est une mesure, et elle se lit dans le code livré sans rien exécuter :*
+
+```bash
+grep -n 'forget_document\|_already_ingested' src/docling_service/extraction.py
+grep -n 'where=' src/docling_service/vectors.py          # -> {"source_path": ...}
+git log --oneline -S 'storage.forget_document(identity)' -- src/docling_service/extraction.py
+```
+
+- `extraction.extract` appelle **`storage.forget_document(identity)` avant la
+  conversion** ; l'ordre est gardé (`test_extraction.py`,
+  `ordre == ["oubli", "conversion"]`) ;
+- `vectors.delete_document` supprime par `where={"source_path": …}`, **jamais par
+  id** — la clause vise `source_path` parce que c'est l'identité d'un document
+  (exigence 3) ;
+- donc **une forme d'id changée ne laisse aucun orphelin** : les chunks du
+  document partent en entier avant que les nouveaux ne soient écrits ;
+- le seul chemin qui saute la purge est le **doublon exact**
+  (`_already_ingested`), et il retourne sans rien écrire ;
+- et la ligne qui a rendu la phrase fausse est **`a54636c`, du lot 4**
+  (1er septembre 2026), « delete_document n'avait aucun appelant ». **La phrase a
+  survécu au commit qui l'a rendue fausse**, et elle vivait dans la
+  justification d'un écart du lot 5 : *sa propre famille, appliquée à lui-même.*
+
+**L'écart, lui, reste justifié et n'est pas rediscuté.** Le site de production —
+l'expression en ligne de `build_chunks` — n'était gardé par rien : la mutation
+« suffixe inconditionnel » laissait la suite entièrement verte sur `main` à
+`27a6304` — **857 tests, rc=0**, remesuré de mes mains dans un arbre dédié — et
+elle rougit maintenant à **2 tests**,
+`test_chunking.py::TestChunkId::test_un_chunk_seul_garde_l_id_nu` et
+`test_vectors.py::…::test_un_element_d_un_seul_chunk_est_ecrit_sous_son_id_nu`.
+*(Le lot annonçait 862 : c'est son propre arbre, pas celui qu'il décrivait —
+famille F2.)* Ce qui était faux est la **conséquence**, pas la décision.
+
+**La vraie conséquence, et elle est mesurée.** La forme de l'id de chunk est une
+**clause du contrat**, et `verify_contract` la compte : « ids de chunk suffixés
+en #n ». `mesuré` le 2 septembre 2026 sur l'index vivant, lecture directe de la
+collection `rag_documents` : **4 365 chunks, 974 ids suffixés, 3 391 ids nus**.
+Un suffixe inconditionnel porterait le compte à **4 365 sur 4 365**.
+
+**Et il faut dire ce que ce compteur est** : `verify_contract` l'**imprime**, il
+n'en lève **aucune anomalie**. C'est une lecture d'instrument, pas un garde — ce
+qui est exactement la raison pour laquelle la clause a besoin d'un test, et
+pourquoi retirer `chunk_ids` comme du code mort aurait été une perte.
+
 #### 4.31.B4 Le TREIZIÈME garde creux du chantier, et il était dans le lot qui les chasse
 
 `verify_contract._lire_les_tags_sans_la_colonne` **énonce** son invariant dans
@@ -2298,19 +2361,36 @@ tag verrouillé par une migration en cours.
 
 ### 5.1 → traité par le lot 5 — cinq symboles morts retirés, et le sixième était CONTOURNÉ
 
-`settings.chunk_size` (450) et `settings.chunk_overlap` (75)
-(`settings.py:49-50`), `chunk_text` et `DEFAULT_CHUNK_SIZE` /
-`DEFAULT_CHUNK_OVERLAP` (`chunking.py:18-74`), `chunk_ids`
-(`chunking.py:105-126`) : **aucun appelant en production**. Seuls
-`tests/unit/test_chunking.py` les exercent. Le découpage réel est
-`HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`
-(`vectors.py:79-87`).
+**Le constat, tel qu'il était ouvert.** `settings.chunk_size` (450) et
+`settings.chunk_overlap` (75), `chunk_text` et `DEFAULT_CHUNK_SIZE` /
+`DEFAULT_CHUNK_OVERLAP`, `chunk_ids` : **aucun appelant en production**. Seuls
+les tests les exerçaient. Le découpage réel est
+`HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`, construit par
+`vectors.get_chunker`. Le débat « 900 contre 450 » était donc vide — **les deux
+étaient faux** — et `services/docling.md` présentait `CHUNK_SIZE=900` /
+`CHUNK_OVERLAP=150` comme des variables d'environnement effectives, alors
+qu'elles ne faisaient rien. Le commentaire de `settings.py` justifiait 450 par
+une mesure qui documentait une constante morte.
 
-Le débat « 900 contre 450 » est donc vide : **les deux sont faux**.
-`documentation/services/docling.md:112-113` présente `CHUNK_SIZE=900` et
-`CHUNK_OVERLAP=150` comme des variables d'environnement effectives — elles ne
-font rien. Et le commentaire de `settings.py:45-48` justifie 450 par une mesure
-(« 31 % de troncature à 900, 1,3 % à 450 ») qui documente une constante morte.
+**Ce que le lot 5 a fait, et ce paragraphe décrivait encore l'état d'AVANT.**
+Cinq symboles sont retirés — `chunk_size`, `chunk_overlap`, `chunk_text`,
+`DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP` — et le motif est écrit à leur
+place, dans `settings.py`, pour que le débat ne se rouvre pas. `services/docling.md`
+ne les annonce plus. `mesuré` le 2 septembre 2026,
+`grep -rni 'chunk_size\|chunk_overlap\|chunk_text\|DEFAULT_CHUNK' src/ tests/`
+rend **quatre lignes, toutes des commentaires** qui disent pourquoi ces symboles
+sont partis — `settings.py`, `vectors.py`, `chunking.py` et
+`tests/unit/test_dagster_yaml.py`. Aucune n'est du code. *(Le `-i` n'est pas un
+détail : sans lui, le commentaire de `settings.py`, qui écrit `CHUNK_SIZE` en
+capitales, ne sort pas — et ce paragraphe l'avait d'abord compté à un site au
+lieu de quatre.)*
+
+**Le sixième n'était pas mort, il était CONTOURNÉ.** `chunk_ids` n'avait aucun
+appelant, mais `vectors.build_chunks` reconstruisait la **même** forme par une
+expression en ligne — le seul site que la production exécute, et **le seul que
+rien ne gardait**. La fonction devient `chunk_id`, unitaire, et l'appelant la
+traverse. Voir §4.30.b pour la leçon, et **§4.31.B3 pour la conséquence, que ce
+registre avait d'abord écrite fausse**.
 
 ### 5.2 → traité par le lot 5 — le module part en entier, son nom mentait aussi
 

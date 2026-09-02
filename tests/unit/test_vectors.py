@@ -381,13 +381,25 @@ class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
     **sans aucun appelant**, et une expression en ligne dans `build_chunks`, la
     seule que la production execute et **que rien ne gardait** (registre 5.1).
 
-    `mesure` le 2 septembre 2026 sur le code livre par le lot 4 : remplacer la
-    ligne de `vectors.py` par `f"{element_id}#{ancre.index}"` — un suffixe
-    inconditionnel — laisse la suite ENTIEREMENT VERTE, 862 tests. La
-    consequence de cette mutation n'est pas cosmetique : l'upsert ChromaDB se
-    fait par id, donc chaque reingestion ENTRERAIT DES VECTEURS NEUFS au lieu de
-    mettre a jour les anciens, qui resteraient en orphelins. L'index doublerait
-    sans qu'aucune erreur ne le dise.
+    `mesure` sur `main` a `27a6304`, le code d'AVANT ce lot : remplacer
+    l'expression en ligne de `vectors.py` par `f"{element_id}#{ancre.index}"` —
+    un suffixe inconditionnel — y laissait la suite ENTIEREMENT VERTE, **857
+    tests, rc=0**. La meme mutation, portee ici sur `chunking.chunk_id`, rougit
+    a deux tests.
+
+    **CE QUE CETTE MUTATION COUTE, ET CE DOCSTRING L'AVAIT SURDIT.** Il ecrivait
+    « chaque reingestion entrerait des vecteurs neufs, l'index doublerait ».
+    C'est faux depuis le lot 4 (`a54636c`) : `extraction.extract` appelle
+    `storage.forget_document` AVANT la conversion, et `vectors.delete_document`
+    supprime par `where={"source_path": ...}` et **jamais par id** — donc aucune
+    forme d'id ne laisse d'orphelin. Le seul chemin qui saute la purge est le
+    doublon exact, qui n'ecrit rien non plus.
+
+    Ce qui est casse est la **clause du contrat** elle-meme : la forme de l'id,
+    que `verify_contract` COMPTE — 974 ids suffixes sur 4 365 (`mesure` le
+    2 septembre 2026). Un suffixe inconditionnel porterait ce compte a 4 365 sur
+    4 365, et c'est un compteur d'instrument, pas une anomalie levee : raison de
+    plus pour qu'un test tienne la clause.
 
     C'est pourquoi la fonction n'a pas ete amputee comme du code mort : elle est
     devenue le seul site, et l'appelant la traverse. Ces tests assertent **depuis
@@ -446,14 +458,14 @@ class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
         """LE GARDE. Le suffixe inconditionnel rougit ici.
 
         Deux elements, un chunk chacun : les deux ids doivent etre nus. Un `#0`
-        ici signifie qu'une reingestion dupliquera tout l'index.
+        ici signifie que la clause du contrat est rompue au seul site qui ecrit.
         """
         ids = self._ids(monkeypatch, ["a" * 200, "b" * 200], meme_ancre=False)
 
         assert ids == ["aa3de10738", "bb3de10739"], (
             f"les ids portent un suffixe alors que chaque element tient en un "
-            f"chunk : {ids}. L'upsert ChromaDB se fait par id — une reingestion "
-            "entrerait des vecteurs neufs et laisserait les anciens en orphelins"
+            f"chunk : {ids}. C'est la clause du contrat sur la forme de l'id, "
+            "celle que `verify_contract` compte sous « ids de chunk suffixes »"
         )
 
     def test_un_element_multi_chunks_est_ecrit_suffixe(self, monkeypatch):

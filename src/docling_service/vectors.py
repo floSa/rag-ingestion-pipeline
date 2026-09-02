@@ -273,9 +273,15 @@ def build_chunks(
         # LA FORME DE L'ID VIENT DE `chunking.chunk_id`, ET ELLE ETAIT EN LIGNE
         # ICI. `chunking` portait la meme forme, testee, et sans appelant : deux
         # sites pour une clause du contrat, dont celui-ci — le seul qui ecrit —
-        # n'etait garde par rien. `mesure` : un suffixe inconditionnel laissait
-        # 862 tests verts, et faisait DUPLIQUER chaque element a la reingestion
-        # au lieu de le mettre a jour (registre 5.1).
+        # n'etait garde par rien. `mesure` sur `main` a `27a6304` : un suffixe
+        # inconditionnel y laissait 857 tests verts, rc=0 (registre 5.1).
+        #
+        # Ce que ce suffixe coute NE VA PAS jusqu'a la duplication, et ce
+        # commentaire l'a d'abord ecrit : `extraction.extract` purge le document
+        # par `storage.forget_document` AVANT la conversion depuis le lot 4, et
+        # `delete_document` supprime par `source_path` et jamais par id. Ce qui
+        # est casse est la clause elle-meme, que `verify_contract` compte —
+        # 974 ids suffixes sur 4 365 (`mesure`).
         ids.append(chunking.chunk_id(element_id, ancre.index, ancre.count))
         texts.append(texte)
         metadatas.append(
