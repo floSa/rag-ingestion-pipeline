@@ -240,7 +240,9 @@ Chaque chunk porte sa profondeur sous la clé `depth`. Le rapport d'index (`src/
 
 Chaque document est identifié dans l'une de sept langues (`en`, `fr`, `es`, `de`, `it`, `pt`, `nl`), et cette langue est portée par le nœud `Document` **et par chaque chunk** — l'agent peut donc filtrer sans repasser par le graphe. La valeur reste vide quand le doute est permis.
 
-C'est important : le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais. Une question française sur un livre anglais fait remonter les passages français, même hors sujet. Le détail, la mesure et les quatre façons de traiter le problème sont dans [base_vectorielle.md](documentation/base_vectorielle.md#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais).
+C'est important, et **cette phrase disait exactement le contraire de la vérité.** Elle annonçait que « le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais » : c'était vrai d'`all-MiniLM-L6-v2`, remplacé depuis `7b72854`. Le modèle du contrat est `paraphrase-multilingual-MiniLM-L12-v2`, **multilingue** — une question française retrouve les passages anglais, et réciproquement. Le contrat met explicitement en garde contre le modèle dont cette phrase portait encore la trace (registre §6.14).
+
+Le renvoi qui suivait pointait de surcroît une **ancre disparue** — `#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`, qui ne correspond à aucun titre de la cible. La mesure des deux modèles, les scores comparés et les quatre façons de traiter le multilingue sont dans [base_vectorielle.md](documentation/base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue).
 
 ### Ce qui n'est pas ingéré : index, sommaire, pages liminaires
 

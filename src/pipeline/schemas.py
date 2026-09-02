@@ -92,8 +92,20 @@ class ChunkMetadata(BaseModel):
     # Chemin complet relatif a Datas/, identite unique du document.
     source_path: str = ""
     # Code ISO 639-1 de la langue du document (``en``, ``fr``...), vide si
-    # indeterminee. Le modele d'embedding actuel n'etant entraine que sur de
-    # l'anglais, l'agent a besoin de cette cle pour filtrer ou ponderer.
+    # indeterminee.
+    #
+    # **LE MOTIF ECRIT ICI ETAIT UN VESTIGE, ET IL ETAIT FAUX** (registre 6.15).
+    # Il disait « le modele d'embedding actuel n'etant entraine que sur de
+    # l'anglais » : c'etait vrai d'`all-MiniLM-L6-v2`, remplace depuis
+    # `7b72854`. Le modele du contrat est
+    # `paraphrase-multilingual-MiniLM-L12-v2`, MULTILINGUE — une question
+    # francaise retrouve les passages anglais, et reciproquement. Le contrat
+    # met explicitement en garde contre le modele dont ce commentaire portait
+    # encore la trace, et c'est ce fichier qui EST le contrat de reference.
+    #
+    # La cle reste utile, pour deux raisons qui n'ont rien a voir avec celle-la :
+    # l'agent peut FILTRER par langue quand l'utilisateur le demande, et il peut
+    # DIRE a l'utilisateur dans quelle langue est la source qu'il cite.
     language: str = ""
     label: str = ""
     # PREMIERE page du chunk. `page_no_end` donne la derniere : un chunk peut

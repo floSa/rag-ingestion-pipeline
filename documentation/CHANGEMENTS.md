@@ -55,7 +55,7 @@ EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2
 La dimension étant identique (384), aucun autre changement n'est nécessaire :
 ni schéma, ni format de collection, ni code de recherche.
 
-> Détail et alternatives écartées : [base_vectorielle.md](base_vectorielle.md#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais)
+> Détail et alternatives écartées : [base_vectorielle.md](base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue) *(l'ancre précédente, `#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`, ne correspondait à aucun titre de la cible. Le registre §6.14 nomme un seul renvoi mort vers cette ancre ; il y en avait deux, celui-ci et celui du `README.md`.)*
 
 ---
 
