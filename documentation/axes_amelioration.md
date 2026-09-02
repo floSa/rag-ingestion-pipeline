@@ -2117,6 +2117,16 @@ cette purge — sans recompter la phrase d'exhaustivité du `README.md`. Le comp
 est mesuré sur la sortie du script, qui titre chacune des quatre.
 **Traité par le lot 5.**
 
+> **ET LE LOT 5 A LAISSÉ LA MÊME PHRASE UNE LIGNE PLUS LOIN.** `README.md`
+> écrivait encore « le script sort en code d'erreur si l'un des **trois** stores
+> résiste », **trente-cinq lignes sous le tableau qui en compte quatre, dans la
+> section que ce constat corrige**. `mesuré` sur le code : **quatre** branches
+> alimentent `echecs` dans `wipe_stores.main` — ChromaDB, MinIO, NebulaGraph,
+> HTML nettoyé — et la quatrième est gardée par le test que le lot a écrit
+> lui-même, `test_un_echec_de_purge_du_html_fait_sortir_en_un`. **Le lot prouvait
+> quatre et écrivait trois.** Corrigé par la réparation ; c'est la troisième
+> occurrence du motif de dénombrement dans ce lot, après §4.31.B2 et §4.31.C3.
+
 #### 4.30.h `CLEANED_SUBDIR` cassait les `element_id`, et personne ne l'avait mesuré
 
 §4.29.a nomme deux dégâts : les quatre valeurs qui visent la racine, et les

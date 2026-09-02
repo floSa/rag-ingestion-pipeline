@@ -345,7 +345,7 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 > sont à NULL, réingérer ». Les deux états demandaient des gestes différents et
 > se présentaient sous la même phrase.
 
-> Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'un des trois stores résiste : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes.
+> Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'une des **quatre** purges résiste — les trois stores *et* `Datas/.cleaned/` : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes. *(Cette phrase disait « les trois stores », trente-cinq lignes sous le tableau qui en compte quatre. `mesuré` sur le code : quatre branches alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par `test_un_echec_de_purge_du_html_fait_sortir_en_un`.)*
 
 ```bash
 docker compose restart docling-service
