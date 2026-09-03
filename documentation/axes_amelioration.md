@@ -1425,7 +1425,7 @@ sur les 3 documents du lot 1. Plusieurs chiffres du registre s'en trouvent
 élargis, et **la projection `calculé` du §3.2 est confirmée à l'unité près** :
 elle annonçait 746 titres au total, le graphe en porte **746**.
 
-### 4.27 Pièges de mesure — trois, et le troisième a failli passer inaperçu
+### 4.27 Pièges de mesure — quatre, et le quatrième est du PILOTE
 
 **1. `SHOW STATS` rend 0 sur un space peuplé.** `mesuré` : 0 partout sur
 `rag_space`, faute de `SUBMIT JOB STATS`. Un space qui porte 15 196 sommets y
@@ -1472,6 +1472,34 @@ docker run --rm --network rag_network \
   -e HOME=/tmp -e PYTHONPATH=/app -w /app \
   rag-ingestion-pipeline-docling-service python -m src.verify_contract
 ```
+
+**4. `git merge-tree` a DEUX formes, et l'ancienne rend `rc=0` sur un conflit.**
+Le piège est du **pilote**, et il est écrit ici parce qu'il appartient à la même
+famille que les trois précédents et que le F3 du §8 : *un code de retour lu comme
+un verdict alors qu'il répondait à une autre question.*
+
+Le prompt d'audit du lot 6 annonçait « `git merge-tree` : **0 conflit** » entre
+`main` et la branche du lot. **C'était faux** : il y a un conflit, dans
+`documentation/axes_amelioration.md`. Le pilote avait employé l'**ancienne**
+forme, puis grepé les marqueurs de conflit dans sa sortie, lu 0, et conclu.
+
+`mesuré` le 3 septembre 2026, `git` 2.53.0, base `efbbf0a`, `main` `eb140fd`,
+branche `499ecb2`, **`rc` lu sans tube** :
+
+| Invocation | `rc` | Ce qu'elle rend |
+|---|---|---|
+| `git merge-tree <base> <a> <b>` — **ancienne** forme | **0** | 116 713 octets d'un diff de fusion. **`grep -c '<<<<<<< HEAD'` rend 0** — elle écrit `<<<<<<< .our`, pas le marqueur conventionnel. Un `grep` du marqueur habituel ne trouve donc rien |
+| `git merge-tree --write-tree --messages <a> <b>` — **bonne** forme | **1** | l'arbre écrit, les trois étages du fichier en conflit, et la ligne `CONFLICT (content): Merge conflict in documentation/axes_amelioration.md` |
+
+**Ce qui distingue les deux, et c'est le fond : l'ancienne forme ne répond pas à
+la question « y a-t-il un conflit ».** Elle imprime un diff de fusion, et son
+`rc` vaut 0 dès qu'elle a pu s'exécuter — il ne dit rien du résultat. Seule la
+forme `--write-tree` porte un `rc` qui **est** un verdict, et elle nomme le
+fichier plutôt que de laisser un `grep` le deviner.
+
+**Le geste : `git merge-tree --write-tree --messages`, et lire son `rc`.** Jamais
+un `grep` de marqueurs sur l'ancienne — ni ceux de la bonne, dont les messages
+sont en clair.
 
 ### 4.28 → CONSIGNÉ par la réparation du lot 3, NON traité — pour le lot 4
 
