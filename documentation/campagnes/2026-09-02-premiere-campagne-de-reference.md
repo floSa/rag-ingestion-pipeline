@@ -254,7 +254,8 @@ tick de 30 s, **tous en échec**, tous sur `ReindexError` levée dans
 dépôt : `AGENT_SERVICE_URL=http://agent-api:8000` et **le service
 `rag-agent-chat` ne tourne pas sur ce poste** — il n'apparaît dans aucun
 conteneur. C'est l'exigence 5 du contrat, et le §7 de ce fichier dit pourquoi
-elle n'est **pas éprouvable** ici. Le compte de ces runs **croît tant que le
+elle n'est **pas éprouvée** ici — le §7 dit le motif, et ce n'est pas une
+impossibilité. Le compte de ces runs **croît tant que le
 daemon tourne** : il valait **49** au moment de la mesure ci-dessous, ce qui est
 un état de poste et non un résultat. Le §10 dit dans quel état la pile est
 laissée.
@@ -661,7 +662,31 @@ dimensionner un.
 Une réserve écrite vaut mieux qu'une conclusion tirée.
 
 **L'exigence 5 du contrat — `POST /reindex` en fin de pipeline — n'est PAS
-éprouvable sur ce poste, et elle n'est pas déclarée tenue.** `mesuré` : les **49**
+ÉPROUVÉE par cette campagne, et elle n'est pas déclarée tenue. Elle n'est pas
+pour autant inéprouvable sur ce poste, et ce paragraphe l'écrivait.** `mesuré`
+le 3 septembre 2026, trois commandes :
+
+```bash
+ls /home/ubuntu/RAG/rag-agent-chat                       # rc=0 — le depot EXISTE
+grep -n 'agent-api' /home/ubuntu/RAG/rag-agent-chat/docker-compose.yml
+test -e /home/ubuntu/RAG/rag-agent-chat/.env             # rc=1 — pas de .env
+```
+
+Le dépôt `rag-agent-chat` **est présent sur ce poste** ; son `docker-compose.yml`
+déclare un service **`agent-api`** raccroché à `rag_network` en `external: true`
+— c'est-à-dire **exactement l'hôte qu'`AGENT_SERVICE_URL=http://agent-api:8000`
+attend** — et il **n'a pas de `.env`**, seulement un `.env.example`.
+
+**Le motif de la non-épreuve est donc un choix de périmètre, pas une
+impossibilité** : monter la pile d'un **autre dépôt**, en lui fabriquant le
+`.env` qui lui manque, pour éprouver une exigence depuis celui-ci, dépasse le
+mandat de cette campagne et engagerait un service que personne n'a audité. La
+décision est de ne pas le faire, et elle est écrite ici plutôt que déguisée en
+fatalité. **Ce qui reste vrai sans réserve : l'exigence n'est pas tenue par
+cette campagne**, et le prochain qui voudra l'éprouver sait maintenant ce qu'il
+lui manque — un `.env` dans l'autre dépôt, et la décision de l'y mettre.
+
+`mesuré` : les **49**
 runs `agent_reindex_job` de la fenêtre de campagne ont **tous** échoué sur
 `ReindexError`, parce que `AGENT_SERVICE_URL=http://agent-api:8000` désigne un
 service qui ne tourne pas — `rag-agent-chat` n'existe dans aucun conteneur du

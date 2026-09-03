@@ -3207,9 +3207,14 @@ Ce que la campagne **confirme par la mesure**, et qui n'était jusque-là qu'ann
 - **§3.2 est confirmé à pleine portée** — **un** document reste plat sur 23.
 
 Et ce qu'elle **ne** peut pas mesurer est écrit au même titre : l'**exigence 5 du
-contrat n'est PAS éprouvable sur ce poste** et n'est pas déclarée tenue —
-`rag-agent-chat` ne tourne pas ici, et les runs de réindexation échouent tous sur
-`ReindexError`. Le déclenchement, lui, est mesuré.
+contrat n'est PAS ÉPROUVÉE** et n'est pas déclarée tenue — `rag-agent-chat` ne
+**tourne** pas ici, et les runs de réindexation échouent tous sur `ReindexError`.
+Le déclenchement, lui, est mesuré. **Le dépôt, en revanche, EXISTE sur ce poste**
+(`/home/ubuntu/RAG/rag-agent-chat`), son `docker-compose.yml` déclare le service
+`agent-api` sur `rag_network` — l'hôte même qu'`AGENT_SERVICE_URL` attend — et il
+lui manque son `.env` (`mesuré`). La non-épreuve est donc un **choix de
+périmètre** — autre dépôt, service non audité — et non une impossibilité de
+poste : c'est écrit au §7 du compte rendu.
 
 **Le lot 5 a été FUSIONNÉ dans `main` le 3 septembre 2026** par la fusion
 `--no-ff` `d8c67c5` : douze commits de livraison, puis **dix-huit de réparation**
