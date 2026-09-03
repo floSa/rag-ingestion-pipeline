@@ -983,6 +983,24 @@ que rien n'ancre — il se retire en `sudo` à l'occasion. Et un arbre de travai
 dédié au balayage de graines, `/home/ubuntu/RAG/lot6-graines`, en `HEAD` détaché,
 **sans `make install`** (`uv sync` seul, §9), à retirer avec la branche.
 
+**Et un troisième objet, que cette section aurait dû déclarer et ne déclarait
+pas : `runs.py`.** C'était mon script de mesure des `run_records` de l'instance
+Dagster — celui dont sortent les durées, les partitions et la chronologie du
+§3.3. Je l'avais laissé **non versionné à la racine du clone principal**, où il
+salissait le `git status` de `main` pour le suivant. Le pilote l'a lu, puis
+**déplacé hors du dépôt** — il ne l'a pas supprimé —, et le `git status` du clone
+principal est propre depuis (`mesuré` le 3 septembre 2026 : plus de `runs.py` à
+la racine, `git status --porcelain` ne rend que `?? .claude/`).
+
+**La forme est ce qu'il faut retenir, et elle vaut plus que l'objet.** Un script
+de mesure a deux destinations légitimes : **versionné** s'il doit être rejoué —
+c'est le cas des deux scripts de `scripts/campagne/`, et le registre §10 du
+mandat dit pourquoi : « une mesure qui décide du plan doit laisser un artefact
+rejouable » — ou **hors de l'arbre** s'il est jetable. La troisième, « non
+versionné dans l'arbre », n'en est pas une : elle laisse au suivant un
+`git status` sale qu'il n'a pas les moyens d'interpréter, et elle rend la mesure
+ni rejouable ni absente.
+
 ---
 
 ## 11. Deux pièges de mesure rencontrés, et la façon dont ils ont été pris
