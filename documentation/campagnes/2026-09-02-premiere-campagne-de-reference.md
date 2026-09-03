@@ -267,13 +267,16 @@ réindexation, ce qui est une preuve circonstancielle : un trou dit qu'aucun run
 n'est parti, jamais pourquoi. Le capteur, lui, écrit sa raison à chaque tick, et
 c'est cette preuve-là qui est rapportée ici.
 
-`mesuré` le 2 septembre 2026, `instance.get_ticks(...)` sur
-`agent_reindex_sensor`, **81 ticks** dans la fenêtre 12:40 → 13:40 UTC :
+`mesuré` le **3 septembre 2026** — la date de la mesure, non celle des ticks,
+qui sont du 2 — par `instance.get_ticks(...)` sur `agent_reindex_sensor`,
+**81 ticks** dans la fenêtre 12:40 → 13:40 UTC, et les trois familles se
+ferment : **68 + 12 + 1 = 81**.
 
-| Ticks | Ce qu'ils disent |
-|---|---|
-| **12 ticks consécutifs `SKIPPED`**, de **12:56:43 à 13:02:28** | chacun porte un `skip_reason` qui **nomme le garde et le run qui bloque** — « Ingestion en cours (`pdfs_job`) : la reindexation attend qu'elle retombe. Le run `13019b18…` est en STARTED depuis **66 s**. » Les trois derniers donnent l'âge du run : 2 s, 33 s, 66 s |
-| tous les autres ticks de la fenêtre | `SUCCESS`, un run créé |
+| Ticks | Compte | Ce qu'ils disent |
+|---|---|---|
+| `SKIPPED` **consécutifs**, de **12:56:43 à 13:02:28** | **12** | chacun porte un `skip_reason` qui **nomme le garde et le run qui bloque** — « Ingestion en cours (`pdfs_job`) : la reindexation attend qu'elle retombe. Le run `13019b18…` est en STARTED depuis **66 s**. » Les trois derniers donnent l'âge du run : 2 s, 33 s, 66 s |
+| `SUCCESS` | **68** | un run de réindexation créé à chacun — ce sont les 68 runs du §10 |
+| `SKIPPED` **à `skip_reason = None`**, à **13:32:31** | **1** | le dernier tick, à l'instant où le daemon est arrêté (§10). Il n'appartient pas au garde |
 
 **Et l'ingestion a été lancée en DEUX vagues, ce qui explique le reste**
 (`mesuré`, `create_timestamp` et `start_time` des 23 runs) : une **partition
