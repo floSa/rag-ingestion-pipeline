@@ -4,21 +4,39 @@
 # section 1 « La conception du jeu d'evaluation » : cinq strates, 12 / 8 / 4 / 4
 # / 2, trente questions. Les questions pieges sont reportees au second tour.
 #
-# CE FICHIER EST EN YAML ET NON EN JSON, ET C'EST POUR UNE RAISON MESUREE.
-# `detect-secrets` lit les empreintes et une partie des `element_id` comme des
-# « Hex High Entropy String » : le commit est refuse tant que les faux positifs
-# ne sont pas declares AU SITE par un `pragma: allowlist secret` justifie. JSON
-# n'admet pas de commentaire, donc pas de pragma, donc pas de justification
-# qu'un relecteur voit dans le diff. C'est exactement l'arbitrage du registre
-# section 3.6 bis pour `tests/fixtures/arbres_docling.yaml`, et il vaut ici.
-# Benefice de plus : le hook `check-yaml` valide ce fichier a chaque commit.
+# CE FICHIER EST EN YAML ET NON EN JSON, ET C'EST POUR UNE RAISON MESUREE —
+# MAIS PAS CELLE QUI ETAIT ECRITE ICI. Ce bloc disait que le JSON etait refuse
+# parce qu'il n'admet pas de commentaire, donc pas de `pragma: allowlist secret`
+# pour declarer les faux positifs au site. L'arbitrage tient ; le mecanisme
+# n'etait pas celui-la.
 #
-# LES PRAGMAS DE CE FICHIER SONT TOUS DE MEME NATURE, ET AUCUN NE MASQUE UN
-# SECRET. Ce sont des `element_id` du contrat — dix hexadecimaux derives du
-# contenu d'un passage public (exigence 2) — et l'empreinte SHA-256 de la liste
-# des fichiers du corpus versionne. Rien de tout cela n'est confidentiel : les
-# `element_id` sont precisement ce que le jeu de questions doit designer pour
-# que le rappel soit calculable.
+# Mesure du 3 septembre 2026, `detect-secrets-hook` v1.5.0, MEME CONTENU rendu
+# dans les deux formats :
+#     le contenu en JSON              -> rc=1, 11 detections
+#                                        (1 empreinte + 10 `element_id`)
+#     ce fichier YAML                 -> rc=0
+#     ce fichier PRIVE de son pragma  -> rc=1, UNE detection : l'empreinte seule
+#
+# La troisieme ligne tranche : LES DIX `element_id` NE SONT JAMAIS DETECTES EN
+# YAML. La cause est une propriete du transformateur YAML de `detect-secrets` —
+# il rend les VALEURS DE MAPPING et pas les ELEMENTS DE SEQUENCE. Verifie sur un
+# fichier d'essai de trois chaines hexadecimales, deux en elements de liste et
+# une en valeur de mapping : YAML 1 detection, le meme contenu en JSON 3. Or les
+# `element_id` d'ici vivent en elements de sequence, et l'empreinte en valeur de
+# mapping.
+#
+# IL N'Y A DONC QU'UN SEUL PRAGMA DANS CE FICHIER, sur l'empreinte, et ce bloc
+# parlait des « pragmas » au pluriel comme s'ils couvraient les `element_id` :
+# DIX DES ONZE FAUX POSITIFS NE SONT DECLARES NULLE PART, parce que rien ne le
+# demande. Le YAML reste le bon format — le pragma de l'empreinte y est possible
+# et visible dans le diff, et le hook `check-yaml` valide ce fichier a chaque
+# commit, ce que le JSON n'avait pas.
+#
+# ET AUCUNE DES ONZE VALEURS NE MASQUE UN SECRET. Ce sont des `element_id` du
+# contrat — dix hexadecimaux derives du contenu d'un passage public (exigence 2)
+# — et l'empreinte SHA-256 de la liste des fichiers du corpus versionne. Rien de
+# tout cela n'est confidentiel : les `element_id` sont precisement ce que le jeu
+# de questions doit designer pour que le rappel soit calculable.
 #
 # CE QUI GARDE CE FICHIER, et aucun des deux ne remplace l'autre :
 #   - `tests/unit/test_jeu_de_questions.py`  la FORME, contre la specification ;

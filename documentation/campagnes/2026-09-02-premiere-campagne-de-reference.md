@@ -469,16 +469,40 @@ chunk avec son `element_id`, son `label`, son `depth` et son `section_title`, pa
 Le jeu vit dans
 [`2026-09-02-jeu-de-questions.yaml`](2026-09-02-jeu-de-questions.yaml).
 
-**Il est en YAML et non en JSON, et le motif est une mesure et non un goût.**
-Écrit d'abord en JSON, il a fait **refuser le commit** : `detect-secrets` lit
-l'empreinte SHA-256 du corpus comme une « Hex High Entropy String », et le dépôt
-déclare ses faux positifs **au site**, par un `pragma: allowlist secret`
-justifié — or JSON n'admet pas de commentaire, donc pas de pragma, donc pas de
-justification qu'un relecteur voit dans le diff. C'est **exactement** l'arbitrage
-déjà pris au registre §3.6 bis pour `tests/fixtures/arbres_docling.yaml`, et il
-se reproduit ici sans qu'on l'ait cherché. `rc=1`, `HEAD` inchangé : le garde a
-fait son travail. Aucun `--no-verify`, aucune baseline, aucune règle relâchée.
-Bénéfice de plus, gratuit : le hook `check-yaml` valide désormais ce fichier à
+**Il est en YAML et non en JSON, l'arbitrage est bon — et le motif que ce
+paragraphe donnait n'était pas le vrai.** Écrit d'abord en JSON, il a fait
+**refuser le commit**. `rc=1`, `HEAD` inchangé : le garde a fait son travail.
+Aucun `--no-verify`, aucune baseline, aucune règle relâchée. C'est l'arbitrage
+déjà pris au registre §3.6 bis pour `tests/fixtures/arbres_docling.yaml`.
+
+**Mais le YAML ne passe PAS parce que ses faux positifs y sont déclarés.**
+`mesuré` le 3 septembre 2026, `detect-secrets-hook` v1.5.0, sur le **même
+contenu** rendu dans les deux formats :
+
+| Fichier | `rc` | détections |
+|---|---|---|
+| le contenu en **JSON** | **1** | **11** « Hex High Entropy String » — 1 empreinte + **10 `element_id`** |
+| le **YAML livré** | **0** | 0 |
+| le **YAML privé de son unique pragma** | **1** | **1** — l'empreinte, et **elle seule** |
+
+La troisième ligne est celle qui tranche : sans le pragma, le YAML ne rend
+**qu'une** détection. **Les dix `element_id` ne sont jamais détectés en YAML.**
+
+**La cause mesurée est une propriété du transformateur YAML de `detect-secrets`,
+et c'est plus étroit que « YAML n'est pas scanné »** : il rend les **valeurs de
+mapping** et **pas les éléments de séquence**. Vérifié sur un fichier d'essai de
+trois chaînes hexadécimales — deux en éléments de liste, une en valeur de
+mapping — **YAML : 1 détection** (la valeur de mapping) ; **le même contenu en
+JSON : 3**. Or les `element_id` de ce jeu vivent en **éléments de séquence**
+(`element_ids:` puis `- 3af1392862`), et l'empreinte en **valeur de mapping**.
+
+**Conséquence sur ce que l'en-tête du fichier affirmait :** il parlait des
+« pragmas » au **pluriel** comme couvrant les `element_id`. Il n'y a **qu'un
+seul** pragma, sur l'empreinte (`grep -c 'pragma: allowlist secret'` rend 2, dont
+**une occurrence en prose** dans l'en-tête). **Dix des onze faux positifs ne sont
+déclarés nulle part — parce que rien ne le demande.** L'en-tête est corrigé.
+
+Bénéfice de plus, gratuit et inchangé : le hook `check-yaml` valide ce fichier à
 chaque commit, ce que le JSON n'avait pas.
 
 | Strate | Attendu (registre §1) | Livré |
