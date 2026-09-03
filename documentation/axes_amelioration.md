@@ -2828,8 +2828,14 @@ le hook `ruff` voit **tout ce qui est indexé**, donc `scripts/`. `mesuré` le
 
 Le dépôt portait déjà `scripts/capturer-larbre-docling.py` et
 `scripts/installer-les-garde-fous.sh` dans cet angle ; le lot 6 y ajoute deux
-fichiers Python. Les quatre passent `ruff check` et `ruff format --check`
-(`mesuré`), **et la porte ne le dira pas à la place du suivant** : un script qui
+fichiers Python. **`ruff` n'en voit que TROIS**, et ce sont les trois `.py` :
+`installer-les-garde-fous.sh` est du **shell**, que `ruff` ne lit pas. *(Ce
+paragraphe écrivait « les quatre passent `ruff check` » — un fichier qu'un outil
+ne lit pas ne « passe » pas cet outil ; il en est hors de portée, ce qui est un
+état différent et moins rassurant.)* Les trois passent `ruff check` et
+`ruff format --check` — `mesuré` le 3 septembre 2026, « All checks passed! » et
+« **3** files already formatted » —, **et la porte ne le dira pas à la place du
+suivant** : un script qui
 dériverait serait déclaré propre par `make all` et refusé au commit, avec le
 message qui arrive au mauvais moment — exactement le récit de D7 et celui des
 deux commits du lot 4 refusés pour des règles que `make all` venait de déclarer
@@ -2880,8 +2886,12 @@ pas se permettre que la date soit fausse.
 | « `mesuré` le 3 septembre 2026 » sur les cinq points du §7.2 | l'horloge du poste rendait `2026-09-02 12:40 UTC` au début du lot 6 |
 
 Commandes : `git log -1 --format='%ai %ci' main`, `date -u`, et
-`git log --format='%ad' --date=short | sort -u`, qui rend **six** dates de
-`2026-08-03` à **`2026-09-02`** — et **aucune** au 3 septembre.
+`git log --format='%ad' --date=short | sort -u`, qui rend **14** dates distinctes
+— de `2026-04-29` à `2026-09-02` —, dont **six** dans la plage `2026-08-03` →
+`2026-09-02` que ce constat citait, et **aucune** au 3 septembre. *(Cette ligne
+écrivait « qui rend six dates » : six est le compte de la plage du chantier, pas
+ce que la commande rend. Une commande citée doit rendre le chiffre qu'on lui
+prête, sans quoi le lecteur qui la rejoue croit avoir trouvé une divergence.)*
 
 **L'écart total est de neuf mentions** : `git grep -c '3 septembre 2026'` rend
 **7** au mandat et **2** au registre.

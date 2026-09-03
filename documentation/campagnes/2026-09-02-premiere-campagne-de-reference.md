@@ -1065,13 +1065,22 @@ deux le **vide** : aucune ligne de production touchée, corpus hors du diff. Et 
 corpus **sur le disque** est intact à l'octet dans les deux arbres, même
 empreinte qu'avant le premier geste.
 
-**Deux occurrences de « claude » et « ChatGPT » subsistent dans le diff, et
-aucune n'est une attribution** : `claude/session-c608cd` est un nom de branche
-créé par l'outillage, que le §9 du mandat borne explicitement comme n'attribuant
-rien ; et « ChatGPT » est **cité dans le corpus lui-même**, dans la réponse
-attendue de `q20` — le PDF écrit que les utilisateurs attendent une latence
-« comparable to those of the publicly available ChatGPT ». Recopier fidèlement une
-phrase du corpus n'attribue pas ce dépôt à quiconque.
+**TROIS occurrences de « claude » et « ChatGPT » subsistent dans le diff hors du
+paragraphe qui les commente, et aucune n'est une attribution.** *(Ce paragraphe
+en annonçait **deux** : il avait oublié la troisième, qui vit dans son propre
+§10. Le fond tenait, le compte non — c'est la famille de dénombrement du
+§4.31.B2, commise dans la ligne qui compte.)* `mesuré` le 3 septembre 2026,
+`git diff <base> HEAD | grep '^+' | grep -inE 'claude|chatgpt'` :
+
+1. **`claude/session-c608cd`**, au §8 du registre — un nom de branche créé par
+   l'outillage, que le §9 du mandat borne explicitement comme n'attribuant rien ;
+2. **`.claude/worktrees/lot-1-observation-b12761`**, au **§10 de ce fichier** —
+   le répertoire mort, désigné par le chemin que le harnais lui a donné. Même
+   borne, même motif ;
+3. **« ChatGPT »**, dans la réponse attendue de `q20` — **cité dans le corpus
+   lui-même** : le PDF écrit que les utilisateurs attendent une latence
+   « comparable to those of the publicly available ChatGPT ». Recopier fidèlement
+   une phrase du corpus n'attribue pas ce dépôt à quiconque.
 
 ---
 
