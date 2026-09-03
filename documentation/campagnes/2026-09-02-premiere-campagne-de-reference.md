@@ -15,7 +15,18 @@ contre l'index qui en sort.
 > toujours par franchir, et c'est pour cela qu'elle est écrite ici en tête.
 
 Toute valeur porte son étiquette `mesuré`, `calculé` ou `supposé`, sa commande et
-sa date. Le poste : GNU Make 4.4.1, `uv` 0.11.28, pile Compose
+sa date.
+
+> **ET CETTE PHRASE ÉTAIT UNE PROMESSE QUE LE FICHIER NE TENAIT PAS.** `mesuré`
+> le 3 septembre 2026 sur la version livrée : `` `mesuré` `` y apparaît **31
+> fois**, `` `calculé` `` **une seule** et `` `supposé` `` **une seule** — les
+> deux dernières dans cette phrase-ci. **Aucune valeur du compte rendu n'était
+> donc jamais étiquetée `calculé` ni `supposé`**, alors que les pourcentages, les
+> sommes de durées et la durée murale le sont par définition : ils sont dérivés
+> de valeurs mesurées, pas relevés par une commande. Une étiquette qu'on annonce
+> et qu'on n'emploie jamais est une phrase d'exhaustivité de plus. Les valeurs
+> dérivées portent désormais `calculé` **et leur dérivation**, au §3.3 et au
+> §6.4. Le poste : GNU Make 4.4.1, `uv` 0.11.28, pile Compose
 `rag-ingestion-pipeline`, neuf services debout plus le daemon démarré par cette
 campagne (`mesuré`, `docker compose ps`).
 
@@ -233,8 +244,8 @@ de ce fichier, à sa taille exacte.
 | dont `livres_html_job` | 22 |
 | dont `pdfs_job` | 1 |
 | durée par run | min **8,8 s**, médiane **21,3 s**, max **93,1 s** (le PDF) |
-| somme des durées | **556,4 s** |
-| durée **murale** de l'ingestion | **451,2 s**, de 12:55:24 à 13:02:55 UTC |
+| somme des durées | **556,4 s** (`calculé` — somme des 23 `end_time − start_time`) |
+| durée **murale** de l'ingestion | **451,2 s** (`calculé` — `max(end_time) − min(start_time)`), de 12:55:24 à 13:02:55 UTC |
 | plafond de parallélisme | `max_concurrent_runs: 2` (`dagster.yaml`) |
 
 **Ce qui a rougi, et c'est un seul objet : `agent_reindex_job`.** Un run par
@@ -560,18 +571,45 @@ puis corrigé ici.)*
 
 ### 6.4 Le rappel vectoriel brut — ce qu'il mesure, et ce qu'il ne mesure pas
 
-`mesuré` le 2 septembre 2026 par
 `scripts/campagne/mesurer-le-rappel-vectoriel.py`, `rc=0`, contre les **4 367**
 chunks. La question est encodée **exactement comme la production encode** :
 `get_embedding_model().encode(...)` sans normalisation, la collection ne déclarant
 pas `hnsw:space` — ChromaDB retombe donc sur `l2` (§4.29.f).
+
+> **LES AGRÉGATS DE CETTE SECTION SONT `calculé`, ET ILS ÉTAIENT DONNÉS `mesuré`
+> SOUS UNE COMMANDE QUI NE LES PRODUIT PAS.** `mesuré` le 3 septembre 2026 : la
+> commande citée ci-dessus rend `rc=0` et **610 lignes de JSON — une entrée par
+> question**, et **aucune** des valeurs des deux tables qui suivent n'y figure.
+> Le script imprime `trouves@k`, `rappel@k` et `au_moins_un@k` **par question** ;
+> il n'imprime ni micro, ni macro, ni « au moins un », ni la table par strate.
+> Un chiffre présenté `mesuré` sous une commande citée qui ne le rend pas est un
+> chiffre que personne ne peut rejouer.
+>
+> **Ce qui est `mesuré` est la sortie du script** ; ce qui suit en est **dérivé**,
+> et voici la dérivation, sur les seules questions à réponse — 26 sur 30, les 4
+> `sans_reponse` n'ayant pas de rappel :
+>
+> | Valeur | Dérivation depuis les lignes du script |
+> |---|---|
+> | **rappel micro** à `k` | `somme(trouves@k) / somme(attendus)` sur les 26 lignes |
+> | **rappel macro** à `k` | `moyenne(rappel@k)` sur les 26 lignes — chaque question pèse 1, quel que soit son nombre d'ancrages |
+> | **au moins un** à `k` | `compte(au_moins_un@k vrai) / 26` |
+> | **table par strate** | les mêmes deux premières formules, restreintes aux lignes d'une strate |
+>
+> Les valeurs elles-mêmes sont **inchangées** : elles ont été redérivées de la
+> sortie du script le 3 septembre 2026 et concordent au dixième de point près.
+> Ce qui change est l'étiquette et l'écriture de la dérivation — sans quoi la
+> table n'est pas rejouable, et c'est la seule chose qui la rendait fausse.
 
 **Ce que cette mesure NE couvre pas, et il faut le lire avant les chiffres :** ni
 BM25, ni la reconstruction par le graphe, ni le reranker, ni l'abstention. Tout
 cela vit dans `rag-agent-chat`. C'est un **plancher dense**, mesuré de ce côté-ci
 de la frontière.
 
-| k | rappel micro | rappel macro | au moins un passage |
+Toutes les valeurs des deux tables qui suivent sont `calculé` — dérivées comme
+ci-dessus de la sortie `mesuré`e du script.
+
+| k | rappel micro (`calculé`) | rappel macro (`calculé`) | au moins un passage (`calculé`) |
 |---|---|---|---|
 | 5 | **26 / 47 = 55,3 %** | 61,5 % | **20 / 26 = 76,9 %** |
 | 10 | **29 / 47 = 61,7 %** | 66,0 % | 20 / 26 = 76,9 % |
@@ -581,7 +619,7 @@ de la frontière.
 
 Par strate, à k = 10 :
 
-| Strate | n | rappel micro | au moins un |
+| Strate | n | rappel micro (`calculé`) | au moins un (`calculé`) |
 |---|---|---|---|
 | simple | 8 | **8 / 8 = 100 %** | **8 / 8** |
 | multi-passages | 12 | 18 / 31 = 58,1 % | 10 / 12 |
