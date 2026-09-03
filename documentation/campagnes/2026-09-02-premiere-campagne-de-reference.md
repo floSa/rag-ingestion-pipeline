@@ -503,11 +503,27 @@ correcte — elle mesurerait l'inverse de ce qu'elle prétend. `mesuré` sur les
 chunks : balayage lexical des termes discriminants, puis lecture des cinq plus
 proches voisins vectoriels.
 
+**Le critère du balayage, parce qu'un balayage dont le critère n'est pas écrit
+n'est pas reproductible** : recherche d'une expression régulière, **en minuscules
+et sur mot entier**, dans le texte des 4 367 chunks rendus par
+`collection.get(include=["documents"])`.
+
+*(La ligne de `q23` donnait comme terme discriminant « **un F1 chiffré associé à
+arXiv** ». **Ce n'est pas un terme, c'est un jugement** — et c'était la seule des
+quatre lignes qu'un tiers ne pouvait pas rejouer depuis le texte. Elle est
+remplacée par le balayage, qui la **confirme** : `mesuré` le 3 septembre 2026,
+**97** chunks nomment arXiv, **aucun d'eux** ne porte `f1` ni `f-score`, donc
+aucun ne porte de score chiffré. Le fait tenait ; c'est sa preuve qui n'était pas
+rejouable. Réserve honnête : le compte de `f-score` que l'audit indépendant
+annonçait — 6 — ne se reproduit sous aucune des variantes essayées ici
+(`\bf-score\b`, `\bf[- ]?scores?\b`, `\bf1[- ]score\b` rendent **3**) ; le
+chiffre écrit ci-dessus est le mien, avec son critère.)*
+
 | Question | terme discriminant | porteurs |
 |---|---|---|
 | prix horaire en USD d'un `CU_8` en `eu-west-1` | `usd`, `eu-west` | **0**, **0** |
 | contrôleur d'ingress Kubernetes de Model Serving | `ingress`, `nginx`, `istio`, `traefik` | **0** partout |
-| F1-score atteint par l'arXiv Curator | un F1 chiffré associé à arXiv | **0** |
+| F1-score atteint par l'arXiv Curator | `\bf1\b`, `\bf-score\b`, `arxiv` | **4**, **3**, **97** — et **0** chunk arXiv portant l'un des deux |
 | nombre de pages du manuel Samsung | `samsung … page` | **0** |
 
 Et leurs plus proches voisins sont **précisément les passages plausibles** — la
@@ -695,6 +711,20 @@ prévue**, pas que quelque chose est cassé.
 français sur un passage anglais dont elle ne partage aucun mot, retrouve ses deux
 ancrages. La moitié survivante de la mesure translinguistique fonctionne — **à
 n = 1**, ce qui est un échantillon et non une mesure.
+
+**Et la même réserve vaut pour l'autre moitié de cette strate, ce que ce compte
+rendu n'écrivait que d'un côté.** La strate `reformulee` compte **n = 2**, et ses
+deux questions n'éprouvent pas le même axe : `q29` est une **reformulation**
+monolingue — même langue que le passage, vocabulaire délibérément disjoint — et
+`q30` est **translinguistique**. Chaque axe est donc à **n = 1**, et le
+« 2 / 3 = 66,7 % » de la ligne `reformulee` agrège deux choses différentes : `q29`
+rend 0 / 1, `q30` rend 2 / 2.
+
+**Aucun des deux axes n'est mesuré ; les deux sont échantillonnés.** Le compte
+rendu appliquait cette réserve à l'axe translinguistique et la taisait pour la
+reformulation — or c'est le même n, et le même argument. Un lecteur pressé
+lirait « la reformulation rend 66,7 % » comme un résultat de strate ; c'est une
+question qui échoue et une qui réussit, sur deux axes distincts.
 
 **Une observation qu'il faut écrire sans en tirer de réglage.** La distance L2 du
 premier voisin, `mesuré` : questions à réponse, min **6,11**, médiane **9,72**,
