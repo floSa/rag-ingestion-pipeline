@@ -3196,9 +3196,12 @@ Ce que la campagne **confirme par la mesure**, et qui n'était jusque-là qu'ann
 - **§4.29.e est fermé des deux côtés** — la colonne `page_no_end` existe *et* les
   données la portent : 0 sommet sur 15 173 à `NULL`, contre 15 173 sur 15 173
   avant. Sa clé entre dans les métadonnées ChromaDB ;
-- **§4.15 est observé en vol pour la première fois** — le capteur de
-  réindexation n'a produit aucun run pendant **403 secondes**, exactement la
-  fenêtre d'ingestion, et a repris 9 secondes après sa fin ;
+- **§4.15 est observé en vol pour la première fois, et le garde n'a aucun
+  trou** — **12 ticks `SKIPPED` consécutifs**, de 12:56:43 à 13:02:28, chacun
+  nommant le garde et le run d'ingestion qui bloque, l'un avec son âge. Les deux
+  runs de réindexation créés à l'intérieur de la fenêtre d'ingestion le sont
+  **entre les deux vagues**, où aucun run d'ingestion n'était non terminal :
+  c'est le capteur qui a raison, pas la fenêtre qui a un trou ;
 - **§3.4 est reproduit à l'identique sur un index neuf** — 137 chunks tronqués,
   3,1 %, médiane 95, maximum 149 tokens ;
 - **§3.2 est confirmé à pleine portée** — **un** document reste plat sur 23.

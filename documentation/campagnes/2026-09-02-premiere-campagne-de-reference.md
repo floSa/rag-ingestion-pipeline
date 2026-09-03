@@ -248,16 +248,43 @@ daemon tourne** : il valait **49** au moment de la mesure ci-dessous, ce qui est
 un état de poste et non un résultat. Le §10 dit dans quel état la pile est
 laissée.
 
-**Et le garde du §4.15 a été observé en vol pour la première fois, mesuré.** Sur
-les **49** ticks de réindexation, **un seul** a démarré alors qu'un run
-d'ingestion était non terminal — à **12:55:19 UTC**, c'est-à-dire trois secondes
-après la création du premier run d'ingestion, l'évaluation du capteur ayant donc
-commencé avant que ce run ne soit enregistré. Puis **plus rien pendant 403
-secondes**, de 12:56:21 à 13:03:04 UTC : le plus grand trou de toute la série, et
-il recouvre exactement la fenêtre d'ingestion (12:55:24 → 13:02:55). La
-réindexation a repris **9 secondes** après la fin du dernier run d'ingestion.
-*(Le compte de 49 est celui de la mesure ; il croît d'un run toutes les 30
-secondes.)*
+**Et le garde du §4.15 a été observé en vol pour la première fois — il n'a AUCUN
+trou, et la preuve directe vit dans le capteur lui-même.** Ce paragraphe a
+d'abord prouvé le garde par un **trou entre les départs de runs** de
+réindexation, ce qui est une preuve circonstancielle : un trou dit qu'aucun run
+n'est parti, jamais pourquoi. Le capteur, lui, écrit sa raison à chaque tick, et
+c'est cette preuve-là qui est rapportée ici.
+
+`mesuré` le 2 septembre 2026, `instance.get_ticks(...)` sur
+`agent_reindex_sensor`, **81 ticks** dans la fenêtre 12:40 → 13:40 UTC :
+
+| Ticks | Ce qu'ils disent |
+|---|---|
+| **12 ticks consécutifs `SKIPPED`**, de **12:56:43 à 13:02:28** | chacun porte un `skip_reason` qui **nomme le garde et le run qui bloque** — « Ingestion en cours (`pdfs_job`) : la reindexation attend qu'elle retombe. Le run `13019b18…` est en STARTED depuis **66 s**. » Les trois derniers donnent l'âge du run : 2 s, 33 s, 66 s |
+| tous les autres ticks de la fenêtre | `SUCCESS`, un run créé |
+
+**Et l'ingestion a été lancée en DEUX vagues, ce qui explique le reste**
+(`mesuré`, `create_timestamp` et `start_time` des 23 runs) : une **partition
+d'essai** créée à 12:55:18, démarrée à 12:55:24, **terminée à 12:55:33** ; puis
+les **22 autres** créées à partir de **12:56:37**. Entre les deux, **aucun run
+d'ingestion non terminal pendant 64 secondes** — de 12:55:33 à 12:56:37.
+
+C'est pourquoi **deux runs de réindexation ont été créés à l'intérieur de la
+fenêtre d'ingestion** — ticks `SUCCESS` à **12:55:43** et **12:56:13** — et c'est
+le garde qui a **raison** : il n'y avait à ces instants-là rien à attendre. La
+phrase que ce paragraphe portait — « le trou recouvre **exactement** la fenêtre
+d'ingestion » — était donc fausse, et elle prêtait au garde un périmètre qu'il
+n'a pas eu : le trou entre départs va de **12:56:21 à 13:03:04**, soit **403
+secondes**, et il **commence 57 secondes après** l'ouverture de la fenêtre
+(12:55:24). La réindexation a repris **9 secondes** après la fin du dernier run
+d'ingestion.
+
+Deux décorations de ce paragraphe étaient fausses, et elles sont corrigées :
+**une** seconde et non trois séparent la création du premier run d'ingestion
+(12:55:18) du départ du run de réindexation qui l'enjambe (12:55:19) ; et **49**
+était un compte de **runs**, non de ticks — les ticks de la fenêtre sont **81**.
+*(Le compte de runs croît d'un toutes les 30 secondes tant que le daemon
+tourne ; c'est un état de poste, pas un résultat.)*
 
 Deux compteurs du registre se reproduisent **au chiffre près** dans le journal du
 service, sur le PDF :
@@ -601,8 +628,10 @@ runs `agent_reindex_job` de la fenêtre de campagne ont **tous** échoué sur
 `ReindexError`, parce que `AGENT_SERVICE_URL=http://agent-api:8000` désigne un
 service qui ne tourne pas — `rag-agent-chat` n'existe dans aucun conteneur du
 poste. Ce qui **est** mesuré, et qui n'est pas rien : le déclenchement fonctionne
-— le capteur arme le job, il **saute pendant 403 secondes** tant qu'un run
-d'ingestion est en vol (§4.15, observé en vol pour la première fois, §3.3), et
+— le capteur arme le job, et il **saute tant qu'un run d'ingestion est en vol**,
+en nommant à chaque tick le garde et le run qui bloque : **12 ticks `SKIPPED`
+consécutifs**, de 12:56:43 à 13:02:28 (§4.15, observé en vol pour la première
+fois, §3.3), et
 l'échec **rougit son run** au lieu de se perdre dans une métadonnée verte, ce qui
 était la charge utile de la réparation du lot 0. Ce qui n'est pas mesuré est la
 seule chose qui compte pour l'agent : que l'index BM25 d'en face ait été
