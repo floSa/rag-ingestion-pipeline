@@ -48,7 +48,8 @@ Le débit est cadencé à deux niveaux : la file Dagster (`max_concurrent_runs: 
 
 | Document | Contenu |
 |---|---|
-| **[CHANGEMENTS.md](documentation/CHANGEMENTS.md)** | **Ce qui a changé et ce que ça implique côté `rag-agent-chat` — à lire en premier** |
+| **[etat_des_lieux.md](documentation/etat_des_lieux.md)** | **L'ÉTAT DES LIEUX — ce que le pipeline garantit, ce qu'il ne garantit pas, et ce qu'il reste à faire. Se lit sans lancer le projet. À LIRE EN PREMIER** |
+| **[CHANGEMENTS.md](documentation/CHANGEMENTS.md)** | **Ce qui a changé et ce que ça implique côté `rag-agent-chat`** |
 | [architecture.md](documentation/architecture.md) | Services, flux de bout en bout, décisions d'architecture |
 | [SECURITY.md](documentation/SECURITY.md) | Secrets, isolation réseau, audit des dépendances |
 | [services/](documentation/services/) | Une fiche technique par service (ChromaDB, Dagster, Docling, MinIO, NebulaGraph, PostgreSQL) |

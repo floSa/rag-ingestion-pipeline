@@ -11,9 +11,10 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 2 septembre 2026, après la fusion du lot 5**
-> (`d8c67c5`). L'action suivante est le **lot 6**, dernier du plan, et son prompt
-> est en annexe A.
+> **Dernière mise à jour : 3 septembre 2026, après la fusion du lot 6** (`69a6786`).
+> **LE PLAN EST ÉPUISÉ** : les six lots sont dans `main`, et la première campagne de
+> référence est faite. Il n'y a plus de lot à distribuer — l'annexe A porte
+> désormais la passation, et le §7 dit ce qui monte au plan ensuite.
 > Toute valeur chiffrée ci-dessous porte son étiquette `mesuré`, `calculé` ou
 > `supposé`. Une valeur non remesurée ne se recopie pas : on renvoie à son site
 > canonique.
@@ -582,6 +583,12 @@ branches et leurs arbres de travail — les deux du lot 3 et les trois des lots 
 3 qui ne portaient plus rien hors `main`. Un clone frais ne voit qu'une seule
 branche et un tag (`mesuré`, 1er septembre 2026).
 
+**Le lot 6 a été fusionné le 3 septembre 2026** (`--no-ff`, `69a6786`) : 4
+commits de campagne, 15 de réparation, `499ecb2` intact comme ancêtre. **C'est le
+dernier lot du plan.** Ses quatre arbres de travail et ses trois branches ont été
+supprimés, la branche du lot des deux côtés, et `make install` relancé depuis le
+clone principal **après** la suppression.
+
 **Le lot 5 a été fusionné le 2 septembre 2026** (`--no-ff`, `d8c67c5`) : 12
 commits de livraison, 18 de réparation, `e5103cf` intact comme ancêtre. Ses trois
 arbres de travail et ses trois branches ont été supprimés, la branche du lot des
@@ -875,6 +882,43 @@ supprime par `source_path` et **jamais par id**, donc la duplication annoncée �
 impossible ; `make all` rend **0** sur le résultat de la fusion d'essai, **865
 tests**, balayage de graines **26/26 vertes**, corpus intact à l'octet.
 
+### 5.1 septies Le lot 6 : la campagne — et le seul lot dont la trouvaille n'est pas dans son diff
+
+Quatre commits de campagne, quinze de réparation, fusionnés le 3 septembre 2026
+(`--no-ff`, `69a6786`). **Zéro ligne de `src/`** : ce lot mesure, il ne corrige
+pas. Son compte rendu vit à son site canonique,
+`documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`.
+
+**Ce que la campagne a fermé par la mesure**, sur un index réingéré par le code de
+`main` : la chaîne d'images HTML passe de **0 sur 199** à **199 sur 199** et le
+bucket de 13 à **212** objets ; les jeux de chunks troués de **2 à 0** et les
+chunks de 4 365 à **4 367**, exactement la prédiction du §4.28.a ; `page_no_end`
+est peuplé — **0 sommet sur 15 173** à `NULL` contre 15 173 avant ; et le garde du
+§4.15 est **observé en vol pour la première fois**, 12 ticks `SKIPPED` consécutifs
+nommant chacun le run qui bloque.
+
+**Sa trouvaille matérielle n'est pas dans son diff, et c'est le fait le plus
+important de ce mandat aujourd'hui.** Réingérer par le chemin nominal **ne marche
+pas, en silence** : le capteur demande 23 runs, Dagster en crée **zéro**,
+`skip_reason` vaut `None`. La clé de run dérive du `mtime`, donc elle est consommée
+pour toujours — le défaut exact que la réparation du lot 0 avait fermé dans
+`reindex_job.py` et laissé intact dans `factory.py`. Registre **§4.32.a**.
+
+**Et il porte une ironie qu'il faut connaître avant de le corriger** : *c'est ce
+défaut qui protège l'index en ce moment même.* Le daemon a démarré **trois fois**
+sans qu'aucune conversation du chantier le décide, et rien n'a été réingéré
+par-dessus la campagne — uniquement parce que la clé était déjà consommée. **Le
+jour où on répare §4.32.a, il faut avoir tranché si les capteurs restent armés.**
+
+**La leçon de ce lot, et elle est neuve.** On lui demandait « un récit et non du
+code », et son audit a montré que **le récit se vérifie comme du code** : chaque
+chiffre remesuré s'est reproduit exactement, mais quatre affirmations ont été
+prises en défaut — une phrase qui prêtait au garde un périmètre qu'il n'avait pas,
+des agrégats donnés `mesuré` sous une commande qui ne les produit pas, un compte de
+constats faux d'une unité, et un « pas éprouvable » qui n'était qu'un choix de
+périmètre. **Un rapport de mesure n'est pas plus fiable qu'un test : il faut un
+juge pour chacune de ses phrases.**
+
 ### 5.2 Le lot 0 : livré, audité, réparé, fusionné
 
 Le détail complet — les six points de réparation, la conception retenue pour
@@ -968,7 +1012,7 @@ mais inerte attend ; un défaut mineur qui bloque une mesure passe devant.
 | **3** | ✅ **FUSIONNÉ le 1er septembre 2026** (`--no-ff`, `4e28594`). **Instruments et gardes.** §3.4 (l'instrument sous-comptait la troncature **de moitié**), §4.4 (dont le garde de `sequence`, §6.16), §4.14, §4.5, §4.11 — le niveau du titre dans le graphe — §4.21, §4.23, §4.24, et le test de non-platitude que l'audit du lot 1 réclamait | la confiance dans tout chiffre produit après l'ingestion, **et** un agent capable de lire la hiérarchie qui existe | ✅ **livré le 31 août 2026** — **onze** commits, **les six points du mandat**, plus §4.5 et §4.14. Il a fermé §3.4, §4.4, §4.5, §4.11, §4.14, §4.21, §4.23, §4.24 et §5.3. **Audité, puis RÉPARÉ, puis fusionné** : l'audit n'a trouvé aucune régression et a reproduit tous ses chiffres, mais cinq bloquants — dont la fixture du test de non-platitude, qui assertait 39 titres là où la production en produit 41. Les cinq sont fermés, le juge de la réparation est passé sous la main du pilote, et `make all` rend **0** sur `main`. Voir §5.1 quater. Il laisse **deux mutations survivantes** consignées et non fermées (§4.12, §4.28.d) et **cinq constats** au lot 4 (§4.28). *(Cette case portait « dix commits » : un compte ne peut pas s'inclure lui-même, et le lot 0b s'était fait prendre pareil. Elle portait aussi « il a fermé §6.16 » : le registre le garde **ouvert**, et le registre a raison — la moitié « écrire au contrat côté agent » n'est pas faite. Le compte de tests a été retiré : son site canonique est `README.md`, section Tests.)*
 | **4** | ✅ **FUSIONNÉ le 2 septembre 2026** (`--no-ff`, `79cd2bc`) — 16 constats fermés, 857 tests, neuf constats versés au §4.29. La perte silencieuse : §4.1, §4.2, §4.6, §4.7, §4.3, §4.10, §5.6, plus §4.15 à §4.17 et §4.19 — la famille « un run bloqué gèle tout », qui se ferme d'un geste par le *run monitoring* absent de `dagster.yaml`. **Plus §4.22** (six pages du PDF sans aucun élément, leur texte attribué à la page précédente) et **§4.25** (les URL du graphe rendent 403 en GET anonyme). **Plus les cinq constats que la réparation du lot 3 lui a versés, §4.28** : `chunk_count` mensonger (a), les 199 images HTML absentes du bucket **et** `Datas/.cleaned/` que `wipe_stores` ne purge pas — à lire **avant** d'attaquer §3.5 (b), le daemon arrêté et l'exigence 5 inéprouvable (c), et le déverrouillage de `nebula.py` pour que `document_vid` soit enfin gardé (d) | la certitude que le corpus ingéré est le corpus complet | **à faire — c'est l'action suivante, §7** |
 | **5** | ✅ **FUSIONNÉ le 2 septembre 2026** (`--no-ff`, `d8c67c5`) — et il n'était pas cosmétique : voir §5.1 sexies. Code mort et documentation contre code : §5.1, §5.2, §5.7, §5.8, tout le §6 — **dont §6.16 (les trois réserves de `sequence` à écrire au contrat) et §6.17 (chiffres et renvois faux)**, et les deux docstrings de `vectors.py` qui promettent « plus de troncature » alors que 8 chunks sortent de la fenêtre. **Plus, en PREMIER point et tranché par le pilote le 2 septembre 2026 : `CLEANED_SUBDIR` cesse d'être un réglage** (§4.29.a). Personne ne configure où l'étape de nettoyage écrit — c'est un détail d'implémentation — et c'est le seul chemin par lequel un outil de purge peut viser le corpus versionné ou les bind mounts des stores. `mesuré` sur un faux corpus : `CLEANED_SUBDIR=htms` passe le containment livré par le lot 4 et détruit 24 des 25 fichiers ; `=database` détruit les stores. **Un réglage annoncé à l'opérateur dont trois valeurs sur quatre détruisent le corpus coûte plus qu'il ne rend, et une configuration que rien ne configure est de la configuration morte** — c'est le périmètre de ce lot au mot près. **Plus les huit autres constats du §4.29** que le lot 4 a versés | la lisibilité, et l'arrêt des faux réglages | **à faire — c'est l'action suivante, §7** |
-| **6** | Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché le 1er septembre 2026 : les 30 questions attendent le lot 4. La conclusion tient toujours, mais SON MOTIF EST TOMBÉ — et c'est instructif.** Le motif était : `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`, donc §4.22, §4.6 et §4.7 déplaceraient les `element_id`. **Mesuré trois fois — par le lot 4, reproduit par son audit, confirmé statiquement par le pilote — c'est FAUX** : les ensembles d'`element_id` sont rigoureusement égaux de part et d'autre du lot 4, 15 173 des deux côtés, différence symétrique nulle, parce que `page_no_end` est **additif** et que `pages[0]` vaut exactement ce que valait `prov[0].page_no`.
+| **6** | ✅ **FUSIONNÉ le 3 septembre 2026** (`--no-ff`, `69a6786`) — voir §5.1 septies. Ingestion complète → `verify_contract` → `index_report` → **puis** les 30 questions | la première campagne de référence | **à faire — et ses trois premières étapes sont déjà faites par accident** (§4.28.e). **Tranché le 1er septembre 2026 : les 30 questions attendent le lot 4. La conclusion tient toujours, mais SON MOTIF EST TOMBÉ — et c'est instructif.** Le motif était : `compute_id` dérive de `(identity.key, page_no, position_in_page, text[:50])`, donc §4.22, §4.6 et §4.7 déplaceraient les `element_id`. **Mesuré trois fois — par le lot 4, reproduit par son audit, confirmé statiquement par le pilote — c'est FAUX** : les ensembles d'`element_id` sont rigoureusement égaux de part et d'autre du lot 4, 15 173 des deux côtés, différence symétrique nulle, parce que `page_no_end` est **additif** et que `pages[0]` vaut exactement ce que valait `prov[0].page_no`.
 
 L'ordre tient quand même, pour deux raisons neuves et mesurées : le jeu de **chunks** change (4 365 → 4 367, §4.28.a) et **`page_no_end` n'est peuplé sur aucun sommet** — la colonne **existe** depuis le redémarrage de `docling-service` du 2 septembre 2026, et les 7 251 `Paragraph` sont à `NULL` (`mesuré` ; registre §4.29.e). Une réingestion reste donc requise. *La ligne précédente disait « la colonne n'existe pas encore » : c'était vrai le 1er septembre et faux le 2. **Un état de poste n'est vrai qu'à une date** — remesure-le, ne le lis pas ici.* Un jeu de questions écrit avant est un jeu à refaire, et l'écrire *quand même* pour « avancer » est le piège : il paraîtrait bon jusqu'à la réingestion.
 
@@ -1009,61 +1053,66 @@ correction était un no-op. Un constat étiqueté `supposé` et traité comme te
 
 ---
 
-## 7. L'action suivante
+## 7. L'action suivante — le plan est épuisé, et voici ce qui monte
 
-**Livrer le lot 6 — la première campagne de référence. C'est le dernier lot du
-plan.** Le prompt prêt à distribuer est en **annexe A**, et il va à une
-conversation NEUVE.
+**Les six lots sont dans `main`. La première campagne de référence est faite.
+Il n'y a plus de lot à distribuer.**
 
-Tout ce que les cinq lots précédents ont fait servait à ce que **les chiffres de
-cette campagne veuillent dire quelque chose**. Les instruments existent et sont
-gardés, les compteurs rougissent, le contrat est vérifié, la documentation ne
-survit plus au code. Il reste à s'en servir.
+L'action suivante n'est donc pas un lot : c'est **une décision de plan**, et le
+pilote l'a prise le 3 septembre 2026. Elle est écrite ici pour que personne ne la
+reprenne à zéro.
 
-**Ce que le lot 6 doit produire, dans cet ordre et l'ordre est forcé :**
+### 7.0 La décision : on s'arrête au bord de ce dépôt
 
-1. **une réingestion complète du corpus par le code de `main`** — et pas
-   n'importe comment : le §7.2 dit les trois gestes qui la précèdent, dont un qui
-   n'est pas intuitif et un que « réextraire » ne remplace pas ;
-2. **`verify_contract`**, qui doit rendre son verdict sur un index produit par le
-   code d'aujourd'hui et non par celui du lot 3 ;
-3. **`index_report`** ;
-4. **puis, et seulement puis, les 30 questions.**
+Deux des six points qui restent vivent dans **l'autre dépôt**, `rag-agent-chat`.
+Trois options ont été posées : étendre le mandat là-bas, s'arrêter au bord en
+écrivant une passation, ou ne rien décider. **Retenu : s'arrêter au bord.**
 
-**Pourquoi cet ordre n'est pas négociable, et la raison a changé deux fois.** Elle
-n'est plus celle qui était écrite : les `element_id` ne bougent pas (§4.28.e,
-retourné). Les deux raisons qui tiennent sont mesurées — le jeu de **chunks**
-change (4 365 → 4 367, §4.28.a) et `page_no_end` existe dans le graphe mais est
-**NULL sur 7 251 sommets sur 7 251** : seule une réingestion le peuple. Un jeu de
-questions écrit avant est un jeu à refaire, et **il ne rougirait pas** — il
-deviendrait faux en silence.
+Le motif, en deux phrases. L'exigence 5 n'est pas éprouvable d'ici sans démarrer
+un service qu'on n'a pas audité, et étendre le mandat maintenant **doublerait le
+périmètre juste après avoir épuisé le premier**. Une passation coûte une heure et
+ne referme aucune porte.
 
-Puis, dans l'ordre invariable :
+**Son livrable est [`etat_des_lieux.md`](etat_des_lieux.md)** — l'état des lieux,
+écrit pour être lu **sans lancer le projet**, par une personne comme par une
+conversation neuve. Il porte ce que le pipeline garantit, ce qu'il ne garantit
+pas, comment lire le graphe, et ce qui reste à faire de chaque côté. **C'est le
+point d'entrée de quiconque part travailler sur `rag-agent-chat`**, et l'annexe A
+ci-dessous porte le prompt qui l'y envoie.
+
+### 7.0 bis Ce qui monte au plan, par ordre
+
+| | Ce que c'est | Qui | Pourquoi ce rang |
+|---|---|---|---|
+| **1** | **§4.32.a** — réingérer par le chemin nominal ne marche pas, en silence | ici | c'est un **chemin de récupération cassé vers lequel un message d'erreur pointe** : `verify_contract` dit « réingérez », le `README` dit « redémarrez puis réingérez », et le capteur perd ses 23 runs sans une ligne au journal. **Et lis l'ironie du §5.1 septies avant d'y toucher** : ce défaut protège l'index en ce moment même |
+| **2** | l'**exigence 5** — prévenir l'agent en fin de chaîne | **`rag-agent-chat`** | seule exigence du contrat non prouvée. Le dépôt de l'agent est sur le poste, service `agent-api` sur `rag_network`, **sans `.env`** : il ne tourne pas. Ce n'est pas un lot d'ici |
+| **3** | les **trois réserves de `sequence`** (§6.16) | **`rag-agent-chat`** | le garde existe ici, l'explication manque là-bas. Petit, et ça débloque l'agent |
+| **4** | **§4.29.i** — écrire sous une clé provisoire puis basculer | ici | amélioration franche, mais c'est un chantier. La campagne dira si la panne est fréquente : décider avant serait décider sur un `supposé` |
+| **5** | le **second tour de questions** — les pièges | **humain** | c'est la strate où l'on écrit le plus facilement un faux piège. Elle demande une relecture humaine, pas une conversation |
+| **6** | **F7** — faire lire le `Makefile` et les documents par un test | ici | **le dernier angle mort de la méthode** : la documentation peut encore dériver sans que rien ne rougisse, et c'est le seul endroit où le chantier ne s'applique pas à lui-même |
+
+**Le rang 1 a été relevé d'un cran par l'audit du lot 6, et le pilote l'a suivi**
+— il passe **devant §4.29.i**, qui était en tête. Le motif : §4.29.i est une
+amélioration, §4.32.a est une panne qu'un message d'erreur du système invite à
+déclencher.
+
+### 7.0 ter Si un lot est distribué malgré tout, l'ordre invariable ne change pas
 
 1. lire le rapport ;
-2. **faire auditer par une conversation qui n'en a écrit aucune ligne.** En quinze
-   passages, l'audit indépendant n'a **jamais** rien manqué, et il a trouvé
-   quelque chose de matériel à chacun — y compris sur un lot qui n'avait produit
-   aucun commit et sur un lot dont tous les chiffres étaient justes ;
-3. lire le diff soi-même et faire tourner `make all` de ses mains, **y compris
-   sur le résultat de la fusion** ;
+2. **faire auditer par une conversation qui n'en a écrit aucune ligne.** Sur ce
+   chantier : **quinze passages, quinze trouvailles matérielles** ;
+3. lire le diff soi-même et faire tourner `make all` de ses mains, **y compris sur
+   le résultat de la fusion** — et **résoudre soi-même tout conflit** : sur le lot
+   6, la résolution naïve réintroduisait une date fausse que le lot venait de
+   trouver ;
 4. **alors seulement**, trancher la fusion ;
 5. si fusion : `--no-ff`, jamais `--ff-only`, jamais de rebase. Puis **relancer
-   `make install` depuis le clone principal**, **vérifier qu'aucun projet Compose
-   ni bind mount n'ancre l'arbre de travail**, supprimer la branche local **et**
-   distant, **retirer l'arbre de travail** — et **relancer `make install` une fois
-   de plus après ce retrait**, parce que le hook y avait peut-être figé son
-   interpréteur (§11) ;
-6. mettre le registre à jour ;
-7. **et pour ce lot-ci seulement : il n'y a pas de prompt suivant à écrire.** Le
-   plan est épuisé. Ce qui reste après lui vit au registre, et la première décision
-   du prochain pilote est de choisir ce qui monte au plan — la bascule à clé
-   provisoire du §4.29.i, les constats du §4.30 et du §4.31, et la moitié du §6.16
-   qui vit dans l'autre dépôt.
-
-**N'annonce jamais le résultat attendu d'une mesure que tu commandes** — donne le
-mécanisme, pas le chiffre. Et pour ce lot en particulier : **n'annonce aucun
-chiffre de campagne.** Un développeur qui sait ce qu'on attend le trouve.
+   `make install` depuis le clone principal**, vérifier qu'aucun projet Compose ni
+   bind mount n'ancre l'arbre, supprimer la branche local **et** distant, retirer
+   l'arbre — et **relancer `make install` une fois de plus après ce retrait** ;
+6. mettre le registre **et** `etat_des_lieux.md` à jour ;
+7. **n'annonce jamais le résultat attendu d'une mesure que tu commandes.** Le
+   pilote l'a fait deux fois et s'est trompé une fois : voir §11.
 
 ### 7.1 L'état de la pile — §4.26 est TRAITÉ
 
@@ -1097,57 +1146,45 @@ comportement voulu — mais c'est un effet à connaître avant de remonter la pi
 Il en est sorti un bénéfice : le lot 3 a mesuré ses antécédents sur le **corpus
 complet** ingéré par le code de `main`, et non sur les 3 documents du lot 1.
 
-### 7.2 Ce que les lots 3, 4 et 5 laissent au poste — les trois gestes avant la campagne
+### 7.2 L'état du poste après la campagne — mesuré le 3 septembre 2026
 
-**Tout ce qui suit est un ÉTAT DE POSTE : il périme, et il a déjà périmé une fois
-pendant qu'un lot travaillait. Mesure-le, ne le lis pas.**
+**Tout ce qui suit est un ÉTAT DE POSTE : il périme, et il a déjà périmé trois
+fois pendant ce chantier. Mesure-le, ne le lis pas.**
 
-**Les trois gestes qui précèdent la réingestion du lot 6, dans cet ordre :**
+| | `mesuré` le 3 septembre 2026 |
+|---|---|
+| pile Docker | 9 services debout, projet `rag-ingestion-pipeline`, montés depuis le clone principal, aucun bind mount vers un arbre de travail |
+| `dagster-daemon` | **arrêté** — et « arrêté » n'est PAS une propriété stable : il a démarré **trois fois** sans qu'aucune conversation le décide, cause jamais cherchée |
+| l'index | 4 367 chunks, 15 196 sommets, 15 173 `PARENT_OF`, 23 documents, 212 objets MinIO — **produit par le code de `main`**, c'est l'antécédent de tout ce qui suivra |
+| `verify_contract` | `rc=1`, **une seule anomalie** : 52 sommets visuels sur 264 sans URL, et ce sont **52 tables HTML sur 55** — une table HTML est du Markdown, il n'y a rien à téléverser. **`rc=0` est inatteignable sur ce corpus**, et le pilote s'est trompé en l'attendant (§11) |
+| le schéma du graphe | à jour : les 11 tags d'élément portent leurs 6 colonnes, `page_no_end` comprise, et **0 sommet sur 15 173** est à `NULL` |
+| corpus | 25 fichiers, 57 381 999 octets, empreinte inchangée depuis le versionnement |
 
-1. **Redémarrer `docling-service`** — et c'est déjà fait, ce qui est justement le
-   piège. C'est `init_schema()`, joué **au démarrage** du service, qui exécute
-   l'`ALTER TAG … ADD (page_no_end int)`. `mesuré` le 2 septembre 2026 :
-   `DESCRIBE TAG Paragraph` et `SectionHeader` rendent **six** colonnes,
-   `page_no_end` comprise, et **7 251 sommets sur 7 251 y sont à `NULL`**. Le poste
-   est donc passé du premier état que `anomalie_de_colonne` distingue — colonne
-   absente — au **second** : colonne présente, données vides. Toute phrase qui dit
-   « la colonne n'existe pas encore » est datée d'avant le 3 septembre ;
-2. **Purger, avec `wipe_stores`, qui purge désormais QUATRE choses** — les trois
-   stores **et** `Datas/.cleaned/`. Cette quatrième est celle qui compte : le HTML
-   nettoyé porte les URL MinIO des images, et l'asset `cleaned_html` ne se
-   rematérialise pas si son fichier existe déjà. Sans elle, une réingestion repart
-   du HTML **périmé** et pointe des objets absents ;
-3. **Faire exécuter l'asset Dagster `cleaned_html`** — et **réextraire ne suffit
-   pas** (§4.28.b). C'est le seul chemin qui re-téléverse les 199 images des
-   captures HTML. Sans lui, la campagne mesurera encore 251 sommets visuels sur 264
-   sans `minio_url`, et l'agent ne pourra en servir aucune.
+**Les gestes à connaître, dans l'ordre, si une réingestion redevient nécessaire :**
 
-**L'état de la pile, `mesuré` le 2 septembre 2026 :**
+1. **redémarrer `docling-service`** — c'est `init_schema()`, joué **au démarrage**
+   du service, qui met le schéma du graphe à jour. Sans lui on écrit contre un
+   schéma incomplet ;
+2. **purger avec `wipe_stores`, qui purge QUATRE choses** — les trois stores **et**
+   `Datas/.cleaned/`. Cette quatrième est celle qui compte : sans elle, la
+   réingestion repart du HTML nettoyé **périmé** et pointe des objets absents ;
+3. **faire exécuter l'asset `cleaned_html`** — **réextraire ne suffit pas**
+   (§4.28.b). C'est le seul chemin qui re-téléverse les images des captures HTML ;
+4. **et sache que le chemin nominal est mort** : démarrer le daemon ne déclenche
+   rien, parce que la clé de run est déjà consommée (§4.32.a). Le lot 6 a lancé les
+   23 partitions par `dagster job launch`, après avoir vidé les curseurs.
 
-- **`dagster-daemon` est arrêté — et « arrêté » n'est PAS une propriété stable.**
-  Il a tourné **quatre heures** le 3 septembre sans que personne l'ait décidé dans
-  le chantier, et **la cause n'a pas été cherchée**. Le pilote l'a arrêté pour
-  protéger l'antécédent. Les capteurs sont livrés armés (§4.18) : le démarrer
-  **déclenche l'ingestion**. Pour le lot 6 c'est ce qu'on veut — mais que ce soit
-  un acte délibéré, pas un tick ;
-- **l'index vivant est celui du code du lot 3**, et il est intact : 4 365 chunks,
-  15 196 sommets, 15 374 arêtes, 23 documents, 13 objets MinIO. Il n'est **plus
-  l'antécédent de rien** dès que la campagne réingère — c'est le but ;
-- **`verify_contract` sort en 1**, et c'est le verdict juste tant que la
-  réingestion n'a pas eu lieu : les 2 éléments au jeu de chunks troué, les 251
-  sommets visuels sans URL, `page_no_end` NULL partout et sa clé absente des
-  métadonnées ChromaDB. **Les quatre doivent se fermer à la campagne**, les 251
-  images à condition du geste 3 ci-dessus. Si l'un survit, c'est une trouvaille et
-  non un bruit de fond ;
+**Deux faits d'outillage qui ne se devinent pas :**
+
 - **`verify_data` et `verify_contract` ne tournent pas côté hôte** : `chromadb`
-  appartient aux dépendances du service Docling. Le geste est
-  `docker exec rag_assistant-docling-service-1 python -m src.<module>` — et ce
+  appartient aux dépendances du service Docling, pas à celles du dépôt. Le geste
+  est `docker exec rag_assistant-docling-service-1 python -m src.<module>` — et ce
   conteneur monte `/app/src` depuis le **clone principal**, donc il exécute le code
   de `main` quelle que soit la branche sortie. Monter son propre `src` est au
   registre §4.27 ;
 - **un répertoire mort subsiste** : `.claude/worktrees/lot-1-observation-b12761`,
-  484 Mo, `Datas/database/` écrit par Docker en `root`. Git n'en sait plus rien,
-  rien ne l'ancre, il se retire en `sudo` à l'occasion.
+  484 Mo, écrit par Docker en `root`. Git n'en sait plus rien, rien ne l'ancre, il
+  se retire en `sudo` à l'occasion.
 
 ## 8. Comment on pilote
 
@@ -1375,6 +1412,13 @@ relire.**
   L'annexe A portait « `main` = 77d4f5b, avance rapide possible » — vrai le jour
   où elle a été écrite, faux dès que `main` a bougé. Un prompt prêt à
   distribuer périme : relis-le contre `git`, pas contre ta mémoire.
+- **Corriger une erreur sur la forme qu'on a cherchée, et la laisser vivre sous
+  une autre.** Le pilote a corrigé ses neuf dates fausses en remplaçant la chaîne
+  `3 septembre 2026`. **Deux occurrences de « 3 septembre » sans l'année ont
+  survécu**, et elles étaient fausses elles aussi — trouvées en relisant le mandat
+  au lot suivant. *Une correction bornée au motif qu'on a tapé n'est pas une
+  correction : c'est un échantillon.* Le geste juste est de mesurer le reste après
+  avoir corrigé — `grep '3 septembre'`, pas `grep '3 septembre 2026'`.
 - **Écrire une date sans la mesurer.** Le pilote a daté tout le lot 5 du
   « 3 septembre 2026 » — **neuf mentions** dans le mandat et le registre. La date
   était le **2** : aucun commit du dépôt ne porte le 3, et `date -u` le dit en un
@@ -1431,148 +1475,132 @@ chiffre. Relis le code avant d'affirmer ce qu'il fait.
 
 ---
 
-# Annexe A — Prompt prêt à distribuer : le lot 6, dernier du plan
+# Annexe A — Prompt de passation vers `rag-agent-chat`
 
-> **Routage : ceci va à une conversation NEUVE, à nommer `Conv' <n> LOT-6`.
-> Rien d'autre à envoyer, à personne.**
+> **Le plan de ce dépôt est épuisé. Il n'y a plus de lot à distribuer.**
 >
-> Les prompts des lots 0, 0b, 1, 3, 4 et 5 sont consommés. Ce qu'ils ont produit
-> vit au registre §8 et aux §5.1 bis à 5.1 sexies ci-dessus. **Le lot 2 a été
-> supprimé du plan** : voir §6.
+> Les prompts des lots 0, 0b, 1, 3, 4, 5 et 6 sont consommés. Ce qu'ils ont
+> produit vit au registre §8 et aux §5.1 bis à 5.1 septies ci-dessus. **Le lot 2 a
+> été supprimé du plan** : voir §6.
 >
-> **Relis cette annexe contre `git` avant de la coller.** La pointe de `main`, le
-> chemin du dépôt, la présence de `make` et l'état de la pile sont des faits de
-> POSTE. Ce prompt a été périmé une fois par un `main` qui avait bougé dans
-> l'heure, et une fois par un `page_no_end` qui est apparu dans le graphe pendant
-> qu'un lot travaillait.
+> Cette annexe porte désormais **la passation**, décidée au §7.0 : deux des six
+> points qui restent vivent dans l'autre dépôt, et on s'arrête au bord de
+> celui-ci. **Routage : conversation NEUVE, à nommer `Conv' <n> AGENT-1`.**
+>
+> **Relis-la contre `git` avant de la coller.** La pointe de `main` et l'état du
+> poste sont des faits qui périment.
 
 ---
 
-Tu livres le **lot 6 du chantier de refonte de `rag-ingestion-pipeline` : la
-première campagne de référence. C'est le dernier lot du plan.**
+Tu reprends **`rag-agent-chat`**, l'agent conversationnel qui interroge le
+pipeline d'ingestion `rag-ingestion-pipeline`.
 
 ## Avant d'écrire une ligne
 
-Lis **en entier** `documentation/pilotage_du_chantier.md` et
-`documentation/axes_amelioration.md`, à la pointe de `main`. Ils sont
-autosuffisants. **Le §0 du registre — le contrat avec `rag-agent-chat` — et la
-spécification des 30 questions qui vit dans sa Partie II sont les deux textes que
-tu dois connaître par cœur** : ta campagne n'a de sens que si elle mesure ce que
-le contrat promet.
+Lis **en entier** `documentation/etat_des_lieux.md` du dépôt
+`rag-ingestion-pipeline`. Il est écrit pour être lu **sans lancer le projet** et
+il est autosuffisant : ce que le pipeline garantit, ce qu'il ne garantit pas,
+comment lire le graphe, et ce qui reste à faire de chaque côté.
 
-Puis **mesure l'état du poste au lieu de le lire** : la pointe de `main`, la
-présence de `make`, l'état de la pile, la porte qualité. Le §7.2 décrit un état de
-poste qui a déjà périmé une fois : **remesure ses cinq points**.
+Puis, et seulement si tu as besoin du détail : le **§0 du registre**
+(`documentation/axes_amelioration.md`) porte le contrat mot pour mot, et
+`documentation/CHANGEMENTS.md` raconte ce qui a changé et pourquoi.
 
-## Ce que tu produis, et l'ordre est forcé
+**Ne lis pas `pilotage_du_chantier.md` en entier** — c'est le mandat du pilote de
+l'autre dépôt, et il ne te concerne que par son §7.0.
 
-**Étape 0 — les trois gestes qui précèdent la réingestion**, au §7.2, dans
-l'ordre : redémarrer `docling-service` (c'est `init_schema()` qui joue l'`ALTER
-TAG`), purger avec `wipe_stores` (qui purge désormais **quatre** choses, et la
-quatrième est celle qui compte), et **faire exécuter l'asset Dagster
-`cleaned_html`** — réextraire ne suffit pas, et c'est le seul chemin qui
-re-téléverse les images des captures HTML. **Mesure l'effet de chacun avant de
-passer au suivant.** Un geste dont on ne mesure pas l'effet n'a pas eu lieu.
+Puis **mesure l'état du poste au lieu de le lire.** Cette consigne a attrapé, sur
+l'autre dépôt : un poste qu'on croyait être le poste d'origine, une colonne
+apparue dans le graphe pendant qu'un lot travaillait, un démon rallumé trois fois
+tout seul, un arbre de travail que le pilote croyait avoir supprimé, et neuf dates
+écrites sans regarder l'horloge.
 
-**Étape 1 — la réingestion complète du corpus par le code de `main`.** Le daemon
-est arrêté et les capteurs sont livrés armés : le démarrer déclenche l'ingestion.
-**Que ce soit un acte délibéré et daté, pas un tick.** Note le temps, les
-partitions, et tout ce qui rougit.
+## Tes deux points, et ils sont dans cet ordre
 
-**Étape 2 — `verify_contract`.** Il sort en 1 aujourd'hui sur quatre anomalies, et
-c'est le verdict juste tant que l'index est celui du lot 3. **Les quatre doivent se
-fermer** — les 251 images à condition du geste `cleaned_html`. Si l'une survit,
-c'est une trouvaille et non un bruit de fond : mesure-la, nomme sa cause, ne
-l'explique pas par le passé.
+**1 — Prouver l'exigence 5 du contrat : `POST /reindex` en fin de pipeline.**
 
-**Étape 3 — `index_report`.**
+C'est la **seule des cinq exigences qui ne soit pas prouvée**. Le pipeline émet
+bien l'appel — c'est mesuré de son côté — mais l'agent ne tourne pas sur ce poste,
+donc l'aller-retour n'a jamais été observé.
 
-**Étape 4 — et seulement alors, les 30 questions.** Leur spécification est écrite
-au registre, Partie II : les cinq strates et leurs effectifs, ce que 30 questions
-peuvent et ne peuvent pas, et pourquoi les questions pièges sont reportées au
-second tour. **Ne réinvente pas la spécification, applique-la** — et si tu la juges
-mauvaise, dis-le dans ton rapport plutôt que de la contourner.
+Ce qui est mesuré et t'évite de le redécouvrir : `/home/ubuntu/RAG/rag-agent-chat`
+existe, son `docker-compose.yml` déclare un service **`agent-api`** sur le réseau
+`rag_network` — l'hôte même qu'`AGENT_SERVICE_URL` attend — et **il n'a pas de
+`.env`**. C'est ce qui manque pour le démarrer.
 
-**Pourquoi l'ordre n'est pas négociable, et la raison a changé deux fois.** Elle
-n'est plus celle qui était écrite : les `element_id` **ne bougent pas** (§4.28.e,
-retourné après trois mesures). Les deux raisons qui tiennent sont mesurées — le jeu
-de **chunks** change, et `page_no_end` est `NULL` sur tous les sommets tant qu'on
-n'a pas réingéré. **Les questions désignent des `element_id` réels lus dans le
-store**, et un jeu écrit avant la réingestion ne rougirait pas : il deviendrait
-faux en silence.
+Pourquoi cette exigence compte : l'agent tient un index lexical **en mémoire**.
+Sans cet appel, un document ingéré après son démarrage est **invisible en
+recherche lexicale**. Et son filet interne compare un compte de collection au
+nombre de chunks indexés : il est donc **aveugle à une réingestion qui retire
+autant de chunks qu'elle en ajoute** — exactement le cas de ce corpus.
 
-## Les deux pièges propres à ce lot
+**Avant de démarrer quoi que ce soit, lis le §9 de l'état des lieux.** Deux
+gestes du pipeline peuvent détruire l'antécédent de mesure, et l'un d'eux est de
+démarrer un démon.
 
-**1 — on échantillonne les questions, JAMAIS le corpus.** C'est écrit au registre
-et c'est une correction que l'utilisateur a dû faire une fois : échantillonner
-l'ingestion rend le rappel trivial et la mesure creuse. Grosse meule de foin,
-échantillon d'aiguilles.
+**2 — Écrire les trois réserves de lecture de `sequence` dans la documentation de
+l'agent.**
 
-**2 — ta campagne est un CONTRÔLE DE BON FONCTIONNEMENT, pas une décision
-d'architecture.** Trente questions suffisent à prouver que la chaîne marche de bout
-en bout et à voir un défaut grossier. Elles ne suffisent pas à arbitrer un réglage :
-un écart de deux points est du bruit. **N'en tire aucune conclusion de réglage**, et
-écris cette réserve à côté de tes chiffres — c'est la ligne que la première campagne
-d'un système finit toujours par franchir.
+Elles sont au §5.3 de l'état des lieux, mesurées et chiffrées. Le garde existe
+côté pipeline — `sequence` est complète et monotone, 0 arête sans valeur sur
+15 173, 0 inversion — mais **rien ne dit à l'agent comment la lire**, et deux des
+trois réserves interdisent des implémentations qu'on écrirait naturellement.
 
-Et une conséquence à consigner, qui n'est pas un défaut : le corpus est
-**entièrement anglais**. La mesure translinguistique est donc coupée en deux —
-« question française → document anglais » reste possible, l'inverse disparaît.
+La troisième est la plus coûteuse : **le plus grand écart entre deux enfants d'un
+même parent vaut 994.** Un agent qui implémente « la fenêtre d'éléments » comme
+« les enfants de P dont `sequence ∈ [s−k, s+k]` » rendra **silencieusement moins**
+d'éléments que demandé.
 
-## Ce que je juge à la lecture de ton rapport
+C'est le seul point du contrat qui reste ouvert, et **il ne peut être fermé que de
+ton côté** : le registre le porte au §6.16 depuis le lot 3.
 
-1. **chaque chiffre porte sa commande, sa date et son étiquette** `mesuré`,
-   `calculé` ou `supposé`. C'est le lot où la tentation de la prose est la plus
-   forte, parce qu'il produit un récit et non du code ;
-2. **tout garde neuf rougit à la mutation du code livré** — et **vérifie que le
-   texte a changé avant de croire un 0 rouge, et que l'arbre est propre avant de
-   croire un rouge.** Treize gardes creux ont été trouvés sur ce chantier, dont
-   trois par le lot qui les avait écrits ;
-3. **`make all` rend 0 sur chacun de tes commits**, plus le balayage de graines
-   `PYTHONHASHSEED` — graine 0 **plus 25 aléatoires**, sur chacun, **dans un arbre
-   DÉDIÉ**. Un audit s'est fabriqué un faux rouge en basculant l'arbre pendant que
-   son balayage tournait : *un harnais de mesure peut muter ce qu'il observe*. Ce
-   poste coûte un tiers du temps d'un lot ; parallélise-le en tâche de fond plutôt
-   que de le raboter ;
-4. **ne filtre pas la sortie d'une porte** : un `grep` sur la sortie de `make all` a
-   déjà masqué un `rc=2` ;
-5. **tes écarts au mandat, déclarés au moment où tu les prends, et à leur taille
-   exacte.** Un écart surdéclaré coûte la confiance dans les autres ;
-6. **ce que la campagne n'a pas pu mesurer, et pourquoi.** Une réserve écrite vaut
-   mieux qu'une conclusion tirée. L'exigence 5 du contrat — `POST /reindex` en fin
-   de pipeline — n'est peut-être pas éprouvable sur ce poste : dis-le si c'est le
-   cas plutôt que de la déclarer tenue.
+## Ce que tu ne fais pas
 
-## Les règles
+- **tu ne modifies pas `rag-ingestion-pipeline`.** Si tu trouves un défaut chez
+  lui, écris-le et rends-le : son registre est le site canonique, et son pilote
+  tranche ;
+- **tu ne renommes aucun fichier du corpus.** Le chemin entre dans le calcul des
+  identifiants : un renommage après ingestion **tue le jeu de 30 questions** qui
+  vient d'être écrit ;
+- **tu ne changes pas le modèle d'embedding d'un seul côté.** Un désaccord est la
+  panne la plus coûteuse du système et elle est **parfaitement silencieuse** : les
+  deux modèles candidats rendent 384 dimensions, donc rien ne bronche et la
+  recherche rend des passages plausibles et faux. C'est le **nom** qui discrimine,
+  jamais la dimension ;
+- **tu ne réingères pas**, et tu ne démarres pas le démon d'orchestration du
+  pipeline. L'index actuel est l'antécédent de la campagne de référence.
 
-Elles sont au **§9 du mandat**, en entier. Les quatre plus coûteuses :
+## Ce dont tu disposes, et qui n'existait pas avant
 
-- **l'identité git se vérifie sur l'ADRESSE, jamais sur le nom** — deux identités
-  portent le même nom, et sept commits partis avec la mauvaise adresse ont coûté un
-  dépôt entier. Jamais de `--no-verify` ;
-- **aucune ATTRIBUTION à un assistant de génération de code** — auteur, committer,
-  trailer, signature, en-tête. La règle vise l'attribution du travail ; un nom de
-  branche créé par l'outillage n'en est pas une (§9, borné par le lot 5) ;
-- **ne modifie JAMAIS le corpus.** Si une mesure y touche, restaure et vérifie le
-  sha. `source_path` et le contenu entrent dans le calcul d'`element_id`, et **ne
-  renomme rien** : un renommage après ingestion tue le jeu de questions ;
-- **aucun test désactivé**, aucun `skip`, `xfail`, `type: ignore`, `noqa`, aucune
-  règle relâchée, aucun `except` élargi sans justification écrite au site.
+Un **jeu de 30 questions** écrit après l'ingestion, désignant **44 identifiants
+réels**, avec ses cinq strates et son plancher de rappel mesuré — 55,3 % à k=5,
+61,7 % à k=10, 72,3 % à k=20 en recherche vectorielle seule. Il vit à
+`documentation/campagnes/2026-09-02-jeu-de-questions.yaml`.
 
-Trois pièges payés par les lots précédents : `git checkout <branche> -- .` dans un
-arbre portant des commits **écrase sans avertir** — utilise `git show
-<rev>:<fichier>` ; ne lance pas `make install` depuis un arbre temporaire, `uv
-sync` seul suffit ; et **le service Docling monte `/app/src` depuis le clone
-principal**, donc `docker exec … python -m src.<module>` exécute le code de `main`
-— monte ton propre `src` (§4.27) ou tu mesureras `main` en croyant mesurer ta
-branche, et un `rc=1` peut être un `ImportError` plutôt qu'un garde.
+**Lis sa réserve avant de t'en servir pour arbitrer quoi que ce soit** : trente
+questions prouvent que la chaîne fonctionne et montrent un défaut grossier. Elles
+**ne suffisent pas à arbitrer un réglage** — un écart de deux points est du bruit.
+Et deux bornes sont mesurées : la strate « de suivi » rend 20 % parce que la
+question est encodée **sans son historique** (60 % avec), et le corpus est
+**entièrement anglais**, donc l'axe « question anglaise → document français » a
+disparu.
 
-**Tu démarres le daemon, et c'est le seul lot qui en a le droit** — c'est ton
-étape 1. Tu ne démontes pas la pile pour autant, et tu dis dans quel état tu la
-laisses.
+## La méthode, si tu veux reprendre celle qui a marché
 
-Travaille sur une branche à toi. **Ne fusionne rien** : tu livres, une conversation
-qui n'a écrit aucune de tes lignes t'audite, et le pilote tranche. En quinze
-passages, l'audit indépendant n'a jamais rien manqué.
+Six lots ont été audités sur l'autre dépôt, chacun par une conversation qui n'en
+avait écrit aucune ligne. **Quinze passages, quinze trouvailles matérielles** — y
+compris sur un lot qui n'avait produit aucun commit, et sur un lot dont tous les
+chiffres étaient justes. Deux règles ont produit presque tout :
 
-Quand tu as fini : un rapport, et **estime honnêtement le temps**.
+1. **un garde ne se juge jamais à sa lecture, seulement à la mutation qui doit le
+   faire rougir.** On casse volontairement le code livré ; si le test reste vert,
+   le garde est décoratif. **Treize gardes décoratifs** ont été trouvés ainsi,
+   dont trois par le lot qui venait de les écrire ;
+2. **une phrase ne rougit pas.** Une documentation fausse survit indéfiniment,
+   contrairement à un bug. D'où : chaque chiffre porte sa commande et sa date, et
+   toute phrase du genre « le seul », « aucun », « les trois » est soit bornée,
+   soit gardée par un test.
+
+Le §10 du mandat de l'autre dépôt porte les leçons complètes, et son §11 les
+erreurs de pilotage à ne pas refaire. **Elles valent la lecture même en dehors de
+ce chantier.**

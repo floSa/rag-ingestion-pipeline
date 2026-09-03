@@ -6,6 +6,11 @@
 > Ce document liste les changements de fond, ce qu'ils impliquent côté agent, et
 > renvoie vers la page détaillée de chacun. Il ne remplace pas ces pages, il sert
 > de point d'entrée.
+>
+> **Si vous cherchez l'ÉTAT plutôt que les CHANGEMENTS** — ce que le pipeline
+> garantit aujourd'hui, ce qu'il ne garantit pas, et ce qu'il reste à faire —
+> c'est [`etat_des_lieux.md`](etat_des_lieux.md). Ce document-ci raconte le
+> chemin ; celui-là dit où on est arrivé.
 
 ---
 

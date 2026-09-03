@@ -3285,8 +3285,28 @@ un chantier, pas un correctif.
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
 pas.
 
-**Le lot 6 — la première campagne de référence — a été mené le 2 septembre
-2026**, sur la branche `claude/session-c608cd`. Il ne ferme aucun constat : il
+**Le lot 6 a été FUSIONNÉ dans `main` le 3 septembre 2026** par la fusion
+`--no-ff` `69a6786` : 4 commits de campagne, puis **15 de réparation** exigés par
+le pilote après l'audit indépendant. `499ecb2` est **intact** comme ancêtre — zéro
+réécriture, **zéro ligne de `src/`**. C'est le **dernier lot du plan**.
+
+Le conflit unique du registre a été résolu par le pilote dans le sens qui garde
+l'insertion du lot **et** la date corrigée : une résolution naïve réintroduisait
+la date fausse que ce lot avait lui-même trouvée (§4.32.d). Les quatre juges de sa
+réparation passent, remesurés — 81 ticks dont 12 `SKIPPED`, la commande citée ne
+produit pas les agrégats donc ils portent `calculé`, `grep -c '^#### 4.32'` rend
+4, et l'exigence 5 est « non éprouvée » avec son motif. `make all` rend **0** sur
+la fusion résolue, **884 tests**, balayage de graines **26/26 vertes**, corpus
+intact à l'octet.
+
+**LE PLAN EST ÉPUISÉ, et la suite est décidée** : on s'arrête au bord de ce dépôt,
+et la passation vers `rag-agent-chat` vit à
+[`etat_des_lieux.md`](etat_des_lieux.md). L'ordre de ce qui monte au plan est au
+§7.0 bis du mandat — **§4.32.a en tête, devant §4.29.i**, sur la cotation relevée
+par l'audit du lot 6.
+
+**La campagne, telle qu'elle a été menée le 2 septembre 2026**, sur la branche
+`claude/session-c608cd`. Il ne ferme aucun constat : il
 **mesure** ce que les cinq lots précédents avaient fermé, sur un index produit
 par le code de `main`, et il en verse **quatre** neufs au §4.32. Son compte rendu
 est à son site canonique,
