@@ -739,7 +739,13 @@ vide).
 
 ## 9. Ce que la campagne laisse au registre
 
-Deux constats neufs, mesurés, **hors du diff** — périmètre strict.
+**Quatre** constats neufs, mesurés, **hors du diff** — périmètre strict.
+
+*(Cette section annonçait **trois** constats — deux nommés, un « troisième point,
+plus petit » — alors que le registre en porte **quatre**. Le manquant était
+`§4.32.d`, les neuf dates fausses. Un résumé qui ne compte pas ce que sa source
+porte est la famille de dénombrement que ce chantier traque, et elle se corrige
+en recomptant : le juge est ci-dessous.)*
 
 - **§4.32.a** — le `run_key` déterministe du capteur d'ingestion interdit toute
   réingestion d'un fichier non modifié, et la remise à zéro du curseur ne
@@ -749,13 +755,24 @@ Deux constats neufs, mesurés, **hors du diff** — périmètre strict.
 - **§4.32.b** — `verify_contract` compte les `Table` parmi les sommets visuels
   alors que le producteur exclut les tables par construction et l'écrit à son
   site. Il ne peut donc pas rendre 0 sur ce corpus.
+- **§4.32.c** — `make lint` et `make format-check` portent sur `src/ tests/` et
+  **ne voient pas `scripts/`**, alors que le hook `ruff` voit tout ce qui est
+  indexé. C'est la divergence de portée de la famille D7, une nouvelle fois, et
+  ce lot y ajoute deux fichiers. Les deux scripts livrés passent `ruff check` et
+  `ruff format --check` — `mesuré` — et la porte ne le dira pas à ma place.
+- **§4.32.d** — tout le lot 5 est daté du 3 septembre 2026 dans les deux
+  documents de gouvernance, **neuf mentions**, et aucun commit du dépôt ne porte
+  cette date. Inerte — aucune décision n'en dépend — et corriger la date d'un lot
+  fusionné est un geste de pilote, pas de branche.
 
-Un troisième point, plus petit, est consigné au même endroit : `make lint` et
-`make format-check` portent sur `src/ tests/` et **ne voient pas `scripts/`**,
-alors que le hook `ruff` voit tout ce qui est indexé. C'est la divergence de
-portée de la famille D7, une nouvelle fois, et ce lot y ajoute deux fichiers.
-Les deux scripts livrés passent `ruff check` et `ruff format --check` — mesuré,
-et la porte ne le dira pas à ma place.
+**Le juge de ce compte est une mesure**, et il doit égaler le nombre annoncé
+ci-dessus :
+
+```bash
+grep -c '^#### 4.32' documentation/axes_amelioration.md
+```
+
+`mesuré` le 3 septembre 2026 : **4**.
 
 ---
 
