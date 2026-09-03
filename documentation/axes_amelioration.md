@@ -2813,10 +2813,33 @@ deux commits du lot 4 refusés pour des règles que `make all` venait de déclar
 propres.
 
 **La forme du geste**, et c'est un geste et non un garde : étendre les deux
-cibles à `scripts/`. Le coût est mesuré et nul — les quatre fichiers sont déjà
-propres. Ce qui l'a retenu ici est le périmètre : changer la portée de la porte
-qualité n'est pas le mandat d'une campagne de mesure, et le §5.4 montre qu'un
-changement de portée mérite d'être décidé, pas glissé.
+cibles à `scripts/`. Le coût est mesuré et nul — les fichiers sont déjà propres.
+Ce qui l'a retenu ici est le périmètre : changer la portée de la porte qualité
+n'est pas le mandat d'une campagne de mesure, et le §5.4 montre qu'un changement
+de portée mérite d'être décidé, pas glissé.
+
+**ET LA MÊME DÉCISION DE PORTÉE EN PORTE UNE SECONDE, PLUS COÛTEUSE :
+`scripts/campagne/verifier-le-jeu-de-questions.py` n'est appelé par RIEN.**
+`mesuré` le 3 septembre 2026 —
+`grep -rn 'verifier-le-jeu-de-questions' Makefile .pre-commit-config.yaml
+pyproject.toml $(git ls-files '*.sh')` rend **`rc=1`, aucune occurrence**.
+
+Ce script est le seul garde de la **provenance** du jeu de 30 questions : il
+relit chaque ancrage dans l'index vivant et sort en 1 au premier désaccord. Il
+rougit vraiment — trois mutations le prouvent (compte rendu §6.3). Mais rien ne
+le déclenche.
+
+La justification écrite au compte rendu — `chromadb` n'est pas dans le venv du
+dépôt — explique pourquoi ce n'est pas un **test**. Elle n'explique ni pourquoi
+ce n'est pas une **cible `make`**, ni pourquoi ce n'est pas une ligne de
+procédure d'avant-campagne : ces deux-là peuvent lancer le geste du §4.27, comme
+la campagne l'a fait.
+
+**En l'état, le jour où le corpus est renommé ou réingéré, `make all` reste vert
+et le jeu de questions devient faux en silence** — exactement ce que le script
+existe pour empêcher, et exactement la famille « un garde-fou qui repose sur la
+mémoire du suivant n'est pas un garde-fou ». **À trancher avec le geste
+ci-dessus : c'est la même décision.**
 
 #### 4.32.d Tout le lot 5 est daté du 3 septembre 2026, et aucun commit du dépôt ne l'est
 

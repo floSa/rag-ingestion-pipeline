@@ -542,6 +542,29 @@ ne serait collectable sur aucun poste sans l'image d'extraction.
 `mesuré` sur l'index de la campagne : **`rc=0`, les 44 ancrages concordent, champ
 par champ.**
 
+> **ET AUCUNE PORTE NE L'APPELLE — c'est un garde réel que rien ne déclenche.**
+> `mesuré` le 3 septembre 2026 :
+>
+> ```bash
+> grep -rn 'verifier-le-jeu-de-questions' Makefile .pre-commit-config.yaml >   pyproject.toml $(git ls-files '*.sh')      # rc=1, aucune occurrence
+> ```
+>
+> **La justification ci-dessus explique pourquoi ce n'est pas un TEST ; elle
+> n'explique ni pourquoi ce n'est pas une cible `make`, ni pourquoi ce n'est pas
+> une ligne de procédure d'avant-campagne.** Or ces deux-là ne demandent pas
+> `chromadb` dans le venv du dépôt : une cible `make` peut lancer le geste du
+> §4.27, exactement comme la campagne l'a fait.
+>
+> **Ce que l'état actuel coûte, et c'est précisément ce que le script existe pour
+> empêcher :** le jour où le corpus est renommé ou réingéré, les `element_id`
+> changent, le jeu de questions devient faux — et **`make all` reste vert**. Le
+> jeu ne rougit pas ; il devient faux en silence, ce que ce §6.3 annonce en tête
+> et que le montage ne referme qu'à moitié.
+>
+> **À trancher avec le §4.32.c du registre : c'est la même décision de portée** —
+> ce que la porte qualité de ce dépôt accepte de couvrir. Elle n'appartient pas à
+> une campagne de mesure, et elle est écrite là pour le pilote.
+
 **Les deux moitiés sont prouvées par mutation du fichier livré**, texte vérifié
 changé à chaque fois et empreinte restaurée après chacune. Onze mutations
 rougissent les gardes de forme, et **la douzième les laisse entièrement verts** —
