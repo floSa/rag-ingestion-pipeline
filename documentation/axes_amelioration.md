@@ -2668,6 +2668,32 @@ Ne recopie pas ses chiffres ici : renvoie-y.
 mot celui que la réparation du lot 0 a fermé dans `reindex_job.py` — resté
 intact dans `factory.py`, et consigné nulle part.**
 
+> **COTATION RELEVÉE D'UN CRAN, ET TRANCHÉ PAR LE PILOTE LE 3 SEPTEMBRE 2026 :
+> ce constat passe DEVANT §4.29.i en tête du plan d'après-lot-6.** Le motif est
+> un lien que la première rédaction de ce constat ne faisait pas, et qui le fait
+> passer d'une gêne à **un chemin de récupération cassé vers lequel un message
+> d'erreur pointe** :
+>
+> - **le message d'anomalie de `verify_contract` prescrit lui-même le geste
+>   mort.** `anomalie_de_colonne` rend, mot pour mot, « Le geste est REDEMARRER
+>   docling-service PUIS **reingerer** » sur sa première branche, et « seule une
+>   **reingestion** les renseigne » sur la seconde (`mesuré`, lecture de
+>   `src/verify_contract.py`) ;
+> - **le `README.md` prescrit le même geste, et ne dit jamais comment le
+>   déclencher.** Sa section « Ré-ingérer proprement » donne la **purge** —
+>   `wipe_stores` — puis « redémarrer, puis réingérer », sans une ligne sur ce
+>   qui provoque la réingestion. Le chemin nominal est le capteur, et il est
+>   mort ;
+> - **donc le système ordonne un geste dont le chemin nominal échoue EN
+>   SILENCE** — `skip_reason=None`, aucune ligne au journal du tick qui perd 22
+>   runs. **Un opérateur qui purge puis attend garde des stores vides
+>   indéfiniment**, en ayant suivi la documentation à la lettre, sans qu'aucun
+>   message ne lui dise que rien ne viendra.
+>
+> C'est ce qui le fait passer devant §4.29.i : la bascule à clé provisoire
+> améliore un troc déjà tranché et déjà bon, tandis que celui-ci laisse la
+> procédure de récupération documentée sans issue.
+
 `factory.py`, `file_sensor` :
 `run_key=f"{source.name}_{partition_key}_{mtime}"`. La clé est donc déterministe
 sur `(source, partition, mtime)`. Or Dagster cherche un `run_key` consommé dans

@@ -740,8 +740,28 @@ puis démarré le daemon comme acte daté. Cela n'a toujours pas suffi, et les 2
 partitions ont été lancées par `dagster job launch` avec le tag de partition.
 **Taille exacte : la création du run par le capteur n'est pas exercée ; tout le
 reste du chemin l'est.** Le corpus n'a pas été touché — j'ai écarté d'emblée le
-geste qui aurait « marché » (un `touch` sur les 23 fichiers), parce que le mtime
-est ce que le capteur lit et que le mandat interdit de modifier le corpus.
+geste qui aurait « marché » : un `touch` sur les 23 fichiers.
+
+**Le motif que je donnais — « le mtime est ce que le capteur lit » — est le plus
+faible des trois.** Les deux autres valent d'être écrits, parce que ce sont eux
+qui font de ce refus la bonne décision et non seulement une obéissance :
+
+1. **un `touch` est invisible à git ET à mon propre témoin de non-modification.**
+   L'empreinte que cette campagne rejoue après chaque geste porte sur le
+   **contenu** (`git ls-files -z -- Datas | xargs -0 sha256sum | sort`), et
+   `git status` ne voit pas davantage un changement de `mtime`. C'est donc
+   **exactement la mutation du corpus qu'un audit ne peut pas voir** : j'aurais
+   pu la commettre, la déclarer, et personne n'aurait eu de moyen de la vérifier
+   — ni de la défaire ;
+2. **toucher aurait masqué §4.32.a pour un TROISIÈME lot d'affilée.** Le défaut
+   ne se voit que lorsqu'on réingère un corpus **dont les `mtime` n'ont pas
+   bougé**. Au lot 3 il était caché par un Postgres reparti vierge ; un `touch`
+   ici l'aurait caché par des `mtime` neufs, et la phrase du mandat « le démarrer
+   déclenche l'ingestion » aurait survécu un lot de plus, cette fois avec une
+   campagne de référence pour la corroborer.
+
+Le mandat interdit de modifier le corpus ; ces deux raisons disent **pourquoi**
+l'interdiction est bonne ici, et elles auraient suffi seules.
 
 **Écart 2 — un quatrième geste s'est ajouté aux trois du §7.2** : un second
 redémarrage de `docling-service` après la purge, parce que `wipe_stores` joue
