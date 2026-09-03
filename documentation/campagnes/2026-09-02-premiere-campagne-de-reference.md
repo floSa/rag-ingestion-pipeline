@@ -658,11 +658,38 @@ bout — le texte est extrait, découpé, encodé, indexé avec ses métadonnée
 retrouvé par une question posée dans d'autres mots que le passage.
 
 **Le 20 % des questions de suivi n'est pas un défaut de l'index : c'est le
-périmètre de la mesure.** Le script encode la question **seule**, sans son
-`chat_history` — « Et laquelle des trois demande un identifiant de plus dans la
-charge ? » ne porte, hors contexte, presque aucun signal. La résolution de
-l'antécédent est le travail de l'agent. Ce chiffre dit que la strate est **dure
-comme prévu**, pas que quelque chose est cassé.
+périmètre de la mesure — et c'est désormais MESURÉ, alors que ce paragraphe
+l'affirmait.** Le script encode la question **seule**, sans son `chat_history` —
+« Et laquelle des trois demande un identifiant de plus dans la charge ? » ne
+porte, hors contexte, presque aucun signal. La résolution de l'antécédent est le
+travail de l'agent.
+
+**L'affirmation a été éprouvée, et elle tient.** `mesuré` le 3 septembre 2026,
+même index, même modèle, même `k` = 10, **seule l'entrée change** — la question
+seule contre `chat_history` concaténé + question :
+
+| | question seule | historique + question |
+|---|---|---|
+| rappel micro de la strate `de_suivi` | **1 / 5 = 20,0 %** | **3 / 5 = 60,0 %** |
+| distance L2 du 1er voisin, `q26` | 20,01 | **7,56** |
+| distance L2 du 1er voisin, `q27` | 15,68 | **4,13** |
+| distance L2 du 1er voisin, `q28` | 15,94 | **9,12** |
+
+Le rappel triple et les trois distances s'effondrent : le signal manquant était
+bien l'antécédent, et il est bien dans l'historique. *(`q25` reste à 0/2 dans les
+deux cas — l'historique ne suffit pas partout, et c'est une réserve, pas une
+infirmation.)*
+
+**Et c'est le point, plus que le chiffre.** Ce paragraphe affirmait « c'est le
+périmètre de la mesure » **sans étiquette**, alors que rien ne l'avait éprouvé :
+c'était un `supposé` présenté comme une explication. La conclusion était juste —
+ce qui est exactement ce qui rend la faute difficile à voir, et c'est la leçon la
+plus chère de ce chantier, payée au §3.2 puis au §4.28.e : **étiquette `supposé`
+tout ce qui n'a pas été mesuré, même quand ta conclusion te paraît sûre.** Ici la
+mesure existait pour trois lignes de script ; elle n'avait pas été faite.
+
+Ce chiffre dit donc que la strate est **dure comme prévu, pour la raison
+prévue**, pas que quelque chose est cassé.
 
 **La question française rend 2 sur 2 dans les cinq premiers.** `q30`, posée en
 français sur un passage anglais dont elle ne partage aucun mot, retrouve ses deux
