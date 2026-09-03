@@ -2829,7 +2829,7 @@ englobe une catégorie que la chaîne qu'il mesure n'alimente pas.
 > les 3 tables du PDF qui portent une URL, **2 commencent aussi par `|`**
 > (`mesuré`). Ce qui discrimine est le **chemin d'origine**, lisible en remontant
 > la chaîne `PARENT_OF` jusqu'au document — ce qui est exactement ce que la
-> première branche de l'arbitrage ci-dessus demande de savoir faire.
+> première branche de l'arbitrage ci-dessous demande de savoir faire.
 >
 > Ce qui reste inchangé, et qui est le cœur du constat : **ne pas retirer `Table`
 > du contrôle**. Les 3 tables du PDF portent une URL réelle, et cesser de les

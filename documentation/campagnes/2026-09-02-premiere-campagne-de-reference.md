@@ -642,8 +642,10 @@ puis corrigé ici.)*
 
 ### 6.4 Le rappel vectoriel brut — ce qu'il mesure, et ce qu'il ne mesure pas
 
+`mesuré` le 2 septembre 2026 par
 `scripts/campagne/mesurer-le-rappel-vectoriel.py`, `rc=0`, contre les **4 367**
-chunks. La question est encodée **exactement comme la production encode** :
+chunks — **et cette étiquette porte sur la SORTIE du script, pas sur les agrégats
+qui en sont tirés** : voir l'encadré ci-dessous. La question est encodée **exactement comme la production encode** :
 `get_embedding_model().encode(...)` sans normalisation, la collection ne déclarant
 pas `hnsw:space` — ChromaDB retombe donc sur `l2` (§4.29.f).
 
