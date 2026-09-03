@@ -2784,6 +2784,29 @@ Les deux sites :
 **Ce n'est pas le §3.5 rouvert.** C'est un instrument dont le dénominateur
 englobe une catégorie que la chaîne qu'il mesure n'alimente pas.
 
+> **LE PARTAGE EST LE BON ; LA FORMULATION PEUT ÊTRE PLUS PRÉCISE, et c'est le
+> compteur qu'elle vise.** Ce constat se lit comme si le tort du contrôle était
+> de **compter les tables**. Ce n'en est pas un : `mesuré` le 3 septembre 2026
+> sur le graphe vivant — **55 sommets `Table`**, dont **3 portent une URL
+> réelle**, et ce sont les trois tables du **PDF**.
+>
+> **Le tort du compteur est de FUSIONNER DEUX CHEMINS sous un seul
+> dénominateur**, pas de compter une catégorie de trop. La chaîne PDF
+> (`images.py`) téléverse un crop pour ses tables ; la chaîne HTML n'a rien à
+> téléverser pour les siennes, une table HTML étant du Markdown. Le contrôle
+> additionne les deux et rapporte un manque là où il n'y a **qu'un chemin sur
+> deux** qui devait pourvoir.
+>
+> **Et « le texte commence par `|` » n'est pas le discriminant non plus** : sur
+> les 3 tables du PDF qui portent une URL, **2 commencent aussi par `|`**
+> (`mesuré`). Ce qui discrimine est le **chemin d'origine**, lisible en remontant
+> la chaîne `PARENT_OF` jusqu'au document — ce qui est exactement ce que la
+> première branche de l'arbitrage ci-dessus demande de savoir faire.
+>
+> Ce qui reste inchangé, et qui est le cœur du constat : **ne pas retirer `Table`
+> du contrôle**. Les 3 tables du PDF portent une URL réelle, et cesser de les
+> vérifier ouvrirait un angle mort là où la chaîne fonctionne.
+
 **La forme du garde à écrire, et la décision qui la précède.** La décision
 n'appartient pas à une branche : soit le contrôle borne son dénominateur à ce que
 la chaîne téléverse — `Picture` sur le chemin HTML, `Picture` et `Table` sur le

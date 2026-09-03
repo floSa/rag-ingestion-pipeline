@@ -377,7 +377,11 @@ interdisant un `WHERE` sur une propriété d'arête) :
 portent leur URL, contre 0 sur 199 mesurés par le lot 1 sur le producteur.
 
 **Les 52 restants sont, à 52 sur 52, des tables HTML — et aucune ingestion ne
-pourra jamais les pourvoir.** La cause est un désaccord entre deux sites du code
+pourra jamais les pourvoir.** *(`mesuré` le 3 septembre 2026 sur le graphe :
+55 sommets `Table`, 3 avec URL — les trois du PDF —, 52 sans, et les 52 textes
+sans URL commencent tous par `|`. Réserve à ne pas perdre : **2 des 3 tables du
+PDF commencent aussi par `|`**, donc le `|` n'est pas ce qui discrimine — c'est
+le chemin d'origine.)* La cause est un désaccord entre deux sites du code
 livré, et l'un des deux l'écrit noir sur blanc :
 
 - `extraction.propager_les_url_dimages` **exclut délibérément** les tables, et son
