@@ -1425,7 +1425,7 @@ sur les 3 documents du lot 1. Plusieurs chiffres du registre s'en trouvent
 élargis, et **la projection `calculé` du §3.2 est confirmée à l'unité près** :
 elle annonçait 746 titres au total, le graphe en porte **746**.
 
-### 4.27 Pièges de mesure — trois, et le troisième a failli passer inaperçu
+### 4.27 Pièges de mesure — quatre, et le quatrième est du PILOTE
 
 **1. `SHOW STATS` rend 0 sur un space peuplé.** `mesuré` : 0 partout sur
 `rag_space`, faute de `SUBMIT JOB STATS`. Un space qui porte 15 196 sommets y
@@ -1472,6 +1472,34 @@ docker run --rm --network rag_network \
   -e HOME=/tmp -e PYTHONPATH=/app -w /app \
   rag-ingestion-pipeline-docling-service python -m src.verify_contract
 ```
+
+**4. `git merge-tree` a DEUX formes, et l'ancienne rend `rc=0` sur un conflit.**
+Le piège est du **pilote**, et il est écrit ici parce qu'il appartient à la même
+famille que les trois précédents et que le F3 du §8 : *un code de retour lu comme
+un verdict alors qu'il répondait à une autre question.*
+
+Le prompt d'audit du lot 6 annonçait « `git merge-tree` : **0 conflit** » entre
+`main` et la branche du lot. **C'était faux** : il y a un conflit, dans
+`documentation/axes_amelioration.md`. Le pilote avait employé l'**ancienne**
+forme, puis grepé les marqueurs de conflit dans sa sortie, lu 0, et conclu.
+
+`mesuré` le 3 septembre 2026, `git` 2.53.0, base `efbbf0a`, `main` `eb140fd`,
+branche `499ecb2`, **`rc` lu sans tube** :
+
+| Invocation | `rc` | Ce qu'elle rend |
+|---|---|---|
+| `git merge-tree <base> <a> <b>` — **ancienne** forme | **0** | 116 713 octets d'un diff de fusion. **`grep -c '<<<<<<< HEAD'` rend 0** — elle écrit `<<<<<<< .our`, pas le marqueur conventionnel. Un `grep` du marqueur habituel ne trouve donc rien |
+| `git merge-tree --write-tree --messages <a> <b>` — **bonne** forme | **1** | l'arbre écrit, les trois étages du fichier en conflit, et la ligne `CONFLICT (content): Merge conflict in documentation/axes_amelioration.md` |
+
+**Ce qui distingue les deux, et c'est le fond : l'ancienne forme ne répond pas à
+la question « y a-t-il un conflit ».** Elle imprime un diff de fusion, et son
+`rc` vaut 0 dès qu'elle a pu s'exécuter — il ne dit rien du résultat. Seule la
+forme `--write-tree` porte un `rc` qui **est** un verdict, et elle nomme le
+fichier plutôt que de laisser un `grep` le deviner.
+
+**Le geste : `git merge-tree --write-tree --messages`, et lire son `rc`.** Jamais
+un `grep` de marqueurs sur l'ancienne — ni ceux de la bonne, dont les messages
+sont en clair.
 
 ### 4.28 → CONSIGNÉ par la réparation du lot 3, NON traité — pour le lot 4
 
@@ -2646,6 +2674,271 @@ n'est pas l'incident mais sa leçon : **« le daemon est arrêté » n'est pas u
 propriété stable**, elle se remesure avant toute mesure qui en dépend — et les
 sensors étant livrés armés (§4.18), un daemon qui repart réingère.
 
+### 4.32 → CONSIGNÉ par le lot 6, la première campagne de référence — NON traité
+
+**Quatre** constats trouvés en menant la campagne, tous mesurés, laissés **hors
+du diff**. Périmètre strict. Chacun porte la **forme du garde à écrire** —
+sauf le dernier, qui n'en admet pas, et qui dit pourquoi à son site.
+
+*(Cette phrase a d'abord écrit « trois », comptés avant que le quatrième ne soit
+mesuré. Une erreur de dénombrement dans la section qui en consigne une : c'est
+la difficulté du travail, et elle se corrige en recomptant.)*
+
+Le détail de la campagne elle-même — les trois gestes et l'effet de chacun, les
+23 runs, le verdict des deux instruments, le jeu de 30 questions et son plancher
+de rappel dense — vit à son site canonique,
+[`documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`](campagnes/2026-09-02-premiere-campagne-de-reference.md).
+Ne recopie pas ses chiffres ici : renvoie-y.
+
+#### 4.32.a Le `run_key` du capteur d'ingestion interdit toute réingestion, et il le fait EN SILENCE
+
+**C'est le défaut le plus grave que la campagne ait trouvé, et il est mot pour
+mot celui que la réparation du lot 0 a fermé dans `reindex_job.py` — resté
+intact dans `factory.py`, et consigné nulle part.**
+
+> **COTATION RELEVÉE D'UN CRAN, ET TRANCHÉ PAR LE PILOTE LE 3 SEPTEMBRE 2026 :
+> ce constat passe DEVANT §4.29.i en tête du plan d'après-lot-6.** Le motif est
+> un lien que la première rédaction de ce constat ne faisait pas, et qui le fait
+> passer d'une gêne à **un chemin de récupération cassé vers lequel un message
+> d'erreur pointe** :
+>
+> - **le message d'anomalie de `verify_contract` prescrit lui-même le geste
+>   mort.** `anomalie_de_colonne` rend, mot pour mot, « Le geste est REDEMARRER
+>   docling-service PUIS **reingerer** » sur sa première branche, et « seule une
+>   **reingestion** les renseigne » sur la seconde (`mesuré`, lecture de
+>   `src/verify_contract.py`) ;
+> - **le `README.md` prescrit le même geste, et ne dit jamais comment le
+>   déclencher.** Sa section « Ré-ingérer proprement » donne la **purge** —
+>   `wipe_stores` — puis « redémarrer, puis réingérer », sans une ligne sur ce
+>   qui provoque la réingestion. Le chemin nominal est le capteur, et il est
+>   mort ;
+> - **donc le système ordonne un geste dont le chemin nominal échoue EN
+>   SILENCE** — `skip_reason=None`, aucune ligne au journal du tick qui perd 22
+>   runs. **Un opérateur qui purge puis attend garde des stores vides
+>   indéfiniment**, en ayant suivi la documentation à la lettre, sans qu'aucun
+>   message ne lui dise que rien ne viendra.
+>
+> C'est ce qui le fait passer devant §4.29.i : la bascule à clé provisoire
+> améliore un troc déjà tranché et déjà bon, tandis que celui-ci laisse la
+> procédure de récupération documentée sans issue.
+
+`factory.py`, `file_sensor` :
+`run_key=f"{source.name}_{partition_key}_{mtime}"`. La clé est donc déterministe
+sur `(source, partition, mtime)`. Or Dagster cherche un `run_key` consommé dans
+**tout** l'historique, sans borne de temps. **Un fichier du corpus dont le
+`mtime` n'a pas changé ne peut donc JAMAIS être réingéré par le capteur** — et
+le geste de récupération naturel, vider le curseur, ne rattrape rien.
+
+`mesuré` le 2 septembre 2026, sur l'objet que Dagster enregistre :
+
+| | `livres_html_sensor` | `pdfs_sensor` |
+|---|---|---|
+| curseur vidé, vérifié à 0 entrée | oui | oui |
+| premier tick après démarrage du daemon | 12:52:02.534 UTC | 12:52:01.822 UTC |
+| **`run_keys` demandées** | **22** | **1** |
+| **runs créés** | **0** | **0** |
+| **`skip_reason`** | **`None`** | **`None`** |
+| curseur après le tick | **revenu à 22 entrées** | revenu à 1 |
+
+Le curseur revenu à 22 entrées est la seconde preuve, indépendante de la
+première : il n'est réécrit que dans la branche qui vient d'ajouter une demande
+de run. Le capteur a donc bien construit ses 23 demandes, et Dagster en a créé
+**zéro**.
+
+**Et l'échec ne ressemble pas à un échec.** Le tick qui perd 22 runs porte
+`skip_reason = None` : le journal du daemon ne dit rien à ce tick-là, et la
+phrase « Sensor function returned an empty result » n'apparaît qu'aux ticks
+**suivants**, quand le curseur est de nouveau plein — donc pour une raison qui
+n'est plus celle-là. **22 runs perdus sans un mot.**
+
+**Ce qui a fait croire le contraire pendant deux lots.** Au lot 3, le Postgres de
+Dagster était reparti **vierge** (§4.26) : l'historique ne portait aucun
+`run_key`, et `docker compose up -d` a bien déclenché l'ingestion complète. C'est
+de cet épisode que vient la phrase du mandat « le démarrer déclenche
+l'ingestion ». Elle était vraie **de ce poste-là, ce jour-là**, et elle est
+fausse dès que le Postgres survit — c'est-à-dire dans le cas nominal.
+
+**La forme du garde à écrire.** Le patron existe déjà dans ce dépôt : la
+réparation du lot 0 a fait porter au `run_key` de `reindex_job` **la rafale et la
+tentative** plutôt qu'un repère seul. Ici, la propriété à garder est *« deux
+évaluations successives du capteur, curseur vidé entre les deux, produisent des
+`run_key` distincts »* — et son témoin, sans lequel le garde serait creux : *deux
+évaluations successives sans vider le curseur ne doivent produire **aucune**
+demande*, sinon un `run_key` rendu aléatoire relancerait l'ingestion à chaque
+tick. Le harnais de `test_factory.py` appelle déjà la fabrique et exerce le
+capteur ; ce qui manque est une assertion sur la clé, pas un montage.
+
+**Attention à la borne, et elle est étroite** : `run_key=None` supprimerait la
+seule protection contre deux évaluations concurrentes, ce que la réparation du
+lot 0 a explicitement écarté. Le geste n'est pas « retirer la clé », c'est « lui
+faire porter la tentative ».
+
+*Contournement mesuré, en attendant :* lancer les partitions explicitement,
+`dagster job launch -j <job> --tags '{"dagster/partition": "<clé>"}'`. Il passe
+par le vrai coordinateur et le vrai lanceur, et il exerce tout le chemin
+d'ingestion — seule la création du run par le capteur reste hors d'atteinte.
+
+#### 4.32.b `verify_contract` compte des sommets que son producteur exclut par construction
+
+`verify_contract` ne peut **pas** rendre 0 sur ce corpus, quoi qu'on ingère, et
+ce n'est pas un défaut d'ingestion : c'est un désaccord entre deux sites du code
+livré, dont un seul l'écrit.
+
+`mesuré` le 2 septembre 2026 sur l'index de la campagne, en remontant les chaînes
+`PARENT_OF` côté client (§4.30.j interdisant un `WHERE` sur une propriété
+d'arête) :
+
+| origine | tag | avec `minio_url` | sans |
+|---|---|---|---|
+| HTML | `Picture` | **199** | **0** |
+| HTML | `Table` | 0 | **52** |
+| PDF | `Picture` | **10** | 0 |
+| PDF | `Table` | **3** | 0 |
+
+Les 52 sommets que `verify_contract` rapporte sont donc **52 tables HTML sur
+52**, et la chaîne d'images HTML du §3.5 est **entièrement fermée** — 199 sur
+199, contre 0 sur 199 mesurés par le lot 1 sur le producteur.
+
+Les deux sites :
+
+- `extraction.propager_les_url_dimages` **exclut délibérément** les tables, et
+  son docstring dit pourquoi : « Seuls les `picture` sont ciblés… un `table` est
+  visuel mais n'est pas une `<img>` du HTML. Le compter décalerait toutes les
+  URL. » Une table HTML est rendue par Docling en Markdown — les 52 textes
+  commencent tous par `|` — il n'y a **aucune image à téléverser** ;
+- `verify_contract._lire_les_urls_visuelles` lit `minio_url` sur les sommets
+  `Picture` **et** `Table`, et compte l'absence comme une anomalie.
+
+**Ce n'est pas le §3.5 rouvert.** C'est un instrument dont le dénominateur
+englobe une catégorie que la chaîne qu'il mesure n'alimente pas.
+
+> **LE PARTAGE EST LE BON ; LA FORMULATION PEUT ÊTRE PLUS PRÉCISE, et c'est le
+> compteur qu'elle vise.** Ce constat se lit comme si le tort du contrôle était
+> de **compter les tables**. Ce n'en est pas un : `mesuré` le 3 septembre 2026
+> sur le graphe vivant — **55 sommets `Table`**, dont **3 portent une URL
+> réelle**, et ce sont les trois tables du **PDF**.
+>
+> **Le tort du compteur est de FUSIONNER DEUX CHEMINS sous un seul
+> dénominateur**, pas de compter une catégorie de trop. La chaîne PDF
+> (`images.py`) téléverse un crop pour ses tables ; la chaîne HTML n'a rien à
+> téléverser pour les siennes, une table HTML étant du Markdown. Le contrôle
+> additionne les deux et rapporte un manque là où il n'y a **qu'un chemin sur
+> deux** qui devait pourvoir.
+>
+> **Et « le texte commence par `|` » n'est pas le discriminant non plus** : sur
+> les 3 tables du PDF qui portent une URL, **2 commencent aussi par `|`**
+> (`mesuré`). Ce qui discrimine est le **chemin d'origine**, lisible en remontant
+> la chaîne `PARENT_OF` jusqu'au document — ce qui est exactement ce que la
+> première branche de l'arbitrage ci-dessous demande de savoir faire.
+>
+> Ce qui reste inchangé, et qui est le cœur du constat : **ne pas retirer `Table`
+> du contrôle**. Les 3 tables du PDF portent une URL réelle, et cesser de les
+> vérifier ouvrirait un angle mort là où la chaîne fonctionne.
+
+**La forme du garde à écrire, et la décision qui la précède.** La décision
+n'appartient pas à une branche : soit le contrôle borne son dénominateur à ce que
+la chaîne téléverse — `Picture` sur le chemin HTML, `Picture` et `Table` sur le
+chemin PDF, ce qui demande de connaître le chemin depuis le graphe — soit il
+garde son dénominateur et **dit** que les tables HTML n'en portent jamais, en
+sortant 0. Le garde, dans les deux cas : un témoin qui compte les deux
+catégories séparément, sans quoi un contrôle qui les fusionne resterait vert sur
+une vraie perte d'image HTML. **Ce qu'il ne faut PAS faire est de retirer
+`Table` du contrôle** : les 3 tables du PDF portent une URL réelle, et cesser de
+les vérifier ouvrirait un angle mort là où la chaîne fonctionne.
+
+#### 4.32.c `make lint` et `make format-check` ne voient pas `scripts/`, le hook si
+
+La divergence de portée de la famille **D7**, une nouvelle fois, et à un
+troisième endroit. `make lint` et `make format-check` portent sur `src/ tests/` ;
+le hook `ruff` voit **tout ce qui est indexé**, donc `scripts/`. `mesuré` le
+2 septembre 2026 : `ruff format --check src/ tests/` voit **74** fichiers,
+`src/ tests/ scripts/` en voit **77**.
+
+Le dépôt portait déjà `scripts/capturer-larbre-docling.py` et
+`scripts/installer-les-garde-fous.sh` dans cet angle ; le lot 6 y ajoute deux
+fichiers Python. **`ruff` n'en voit que TROIS**, et ce sont les trois `.py` :
+`installer-les-garde-fous.sh` est du **shell**, que `ruff` ne lit pas. *(Ce
+paragraphe écrivait « les quatre passent `ruff check` » — un fichier qu'un outil
+ne lit pas ne « passe » pas cet outil ; il en est hors de portée, ce qui est un
+état différent et moins rassurant.)* Les trois passent `ruff check` et
+`ruff format --check` — `mesuré` le 3 septembre 2026, « All checks passed! » et
+« **3** files already formatted » —, **et la porte ne le dira pas à la place du
+suivant** : un script qui
+dériverait serait déclaré propre par `make all` et refusé au commit, avec le
+message qui arrive au mauvais moment — exactement le récit de D7 et celui des
+deux commits du lot 4 refusés pour des règles que `make all` venait de déclarer
+propres.
+
+**La forme du geste**, et c'est un geste et non un garde : étendre les deux
+cibles à `scripts/`. Le coût est mesuré et nul — les fichiers sont déjà propres.
+Ce qui l'a retenu ici est le périmètre : changer la portée de la porte qualité
+n'est pas le mandat d'une campagne de mesure, et le §5.4 montre qu'un changement
+de portée mérite d'être décidé, pas glissé.
+
+**ET LA MÊME DÉCISION DE PORTÉE EN PORTE UNE SECONDE, PLUS COÛTEUSE :
+`scripts/campagne/verifier-le-jeu-de-questions.py` n'est appelé par RIEN.**
+`mesuré` le 3 septembre 2026 —
+`grep -rn 'verifier-le-jeu-de-questions' Makefile .pre-commit-config.yaml
+pyproject.toml $(git ls-files '*.sh')` rend **`rc=1`, aucune occurrence**.
+
+Ce script est le seul garde de la **provenance** du jeu de 30 questions : il
+relit chaque ancrage dans l'index vivant et sort en 1 au premier désaccord. Il
+rougit vraiment — trois mutations le prouvent (compte rendu §6.3). Mais rien ne
+le déclenche.
+
+La justification écrite au compte rendu — `chromadb` n'est pas dans le venv du
+dépôt — explique pourquoi ce n'est pas un **test**. Elle n'explique ni pourquoi
+ce n'est pas une **cible `make`**, ni pourquoi ce n'est pas une ligne de
+procédure d'avant-campagne : ces deux-là peuvent lancer le geste du §4.27, comme
+la campagne l'a fait.
+
+**En l'état, le jour où le corpus est renommé ou réingéré, `make all` reste vert
+et le jeu de questions devient faux en silence** — exactement ce que le script
+existe pour empêcher, et exactement la famille « un garde-fou qui repose sur la
+mémoire du suivant n'est pas un garde-fou ». **À trancher avec le geste
+ci-dessus : c'est la même décision.**
+
+#### 4.32.d Tout le lot 5 est daté du 3 septembre 2026, et aucun commit du dépôt ne l'est
+
+C'est la famille que le lot 5 existe pour fermer, appliquée à la trace qu'il a
+laissée de lui-même. Elle est **inerte** — aucune décision n'en dépend — et elle
+est consignée parce qu'un chantier qui étiquette ses mesures par une date ne peut
+pas se permettre que la date soit fausse.
+
+`mesuré` le 2 septembre 2026 :
+
+| Ce qui est écrit | Ce que git dit |
+|---|---|
+| « Dernière mise à jour : 3 septembre 2026, après la fusion du lot 5 » (mandat) | `d8c67c5` porte `2026-09-02 12:29:51 +0000` en auteur **et** en committer |
+| « Le lot 5 a été fusionné le 3 septembre 2026 » (mandat §5.1, §5.1 sexies, §8 du registre) | idem |
+| « `mesuré` le 3 septembre 2026 » sur les cinq points du §7.2 | l'horloge du poste rendait `2026-09-02 12:40 UTC` au début du lot 6 |
+
+Commandes : `git log -1 --format='%ai %ci' main`, `date -u`, et
+`git log --format='%ad' --date=short | sort -u`, qui rend **14** dates distinctes
+— de `2026-04-29` à `2026-09-02` —, dont **six** dans la plage `2026-08-03` →
+`2026-09-02` que ce constat citait, et **aucune** au 3 septembre. *(Cette ligne
+écrivait « qui rend six dates » : six est le compte de la plage du chantier, pas
+ce que la commande rend. Une commande citée doit rendre le chiffre qu'on lui
+prête, sans quoi le lecteur qui la rejoue croit avoir trouvé une divergence.)*
+
+**L'écart total est de neuf mentions** : `git grep -c '3 septembre 2026'` rend
+**7** au mandat et **2** au registre.
+
+**Ce que la campagne en a fait** : elle a daté **toutes** ses mesures du
+2 septembre 2026, celle de l'horloge du poste, et l'a écrit en tête de son
+compte rendu. Les neuf mentions ne sont **pas** corrigées ici — corriger la date
+d'un lot fusionné dans les deux documents de gouvernance est un geste de pilote,
+pas de branche, et le §4.28.e pose la règle : « il n'appartient pas à une
+branche de réécrire le plan ». La part de ce lot est d'écrire la mesure pour que
+le pilote l'ait sous les yeux.
+
+**Il n'y a pas de garde à écrire pour celui-ci, et c'est le point.** Aucun test
+ne peut vérifier qu'une date écrite en prose est celle du commit qu'elle décrit.
+Ce qui peut se faire est plus étroit et plus utile : **prendre la date du poste
+au moment de mesurer** — `date -u` — plutôt que de la déduire du contexte. Le
+§4.31.N le dit déjà pour les états de poste ; il vaut aussi pour la date qui les
+étiquette.
+
 ---
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
@@ -2991,6 +3284,47 @@ un chantier, pas un correctif.
 
 Un constat fermé se déplace ici avec le commit qui l'a fermé, il ne s'efface
 pas.
+
+**Le lot 6 — la première campagne de référence — a été mené le 2 septembre
+2026**, sur la branche `claude/session-c608cd`. Il ne ferme aucun constat : il
+**mesure** ce que les cinq lots précédents avaient fermé, sur un index produit
+par le code de `main`, et il en verse **quatre** neufs au §4.32. Son compte rendu
+est à son site canonique,
+[`documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`](campagnes/2026-09-02-premiere-campagne-de-reference.md) ;
+le jeu de 30 questions est à côté, en YAML pour la raison mesurée du §3.6 bis.
+
+Ce que la campagne **confirme par la mesure**, et qui n'était jusque-là qu'annoncé :
+
+- **§3.5 est entièrement fermé** — 199 images HTML sur 199 portent leur
+  `minio_url`, contre 0 sur 199 mesurés par le lot 1 sur le producteur, et les
+  199 objets sont dans le bucket, référencés, sans orphelin ni manquant ;
+- **§4.28.a est fermé et son effet est attribué** — les éléments au jeu de
+  chunks troué passent de 2 à 0, les chunks de 4 365 à **4 367** exactement, et
+  les deux chunks retrouvés sont `aa3de10738` index 4 et `eb52c4ec8f` index 3,
+  tous deux `label=code`, ce qui explique au chiffre près le seul mouvement des
+  labels d'`index_report` — `code` de 973 à 975 ;
+- **§4.29.e est fermé des deux côtés** — la colonne `page_no_end` existe *et* les
+  données la portent : 0 sommet sur 15 173 à `NULL`, contre 15 173 sur 15 173
+  avant. Sa clé entre dans les métadonnées ChromaDB ;
+- **§4.15 est observé en vol pour la première fois, et le garde n'a aucun
+  trou** — **12 ticks `SKIPPED` consécutifs**, de 12:56:43 à 13:02:28, chacun
+  nommant le garde et le run d'ingestion qui bloque, l'un avec son âge. Les deux
+  runs de réindexation créés à l'intérieur de la fenêtre d'ingestion le sont
+  **entre les deux vagues**, où aucun run d'ingestion n'était non terminal :
+  c'est le capteur qui a raison, pas la fenêtre qui a un trou ;
+- **§3.4 est reproduit à l'identique sur un index neuf** — 137 chunks tronqués,
+  3,1 %, médiane 95, maximum 149 tokens ;
+- **§3.2 est confirmé à pleine portée** — **un** document reste plat sur 23.
+
+Et ce qu'elle **ne** peut pas mesurer est écrit au même titre : l'**exigence 5 du
+contrat n'est PAS ÉPROUVÉE** et n'est pas déclarée tenue — `rag-agent-chat` ne
+**tourne** pas ici, et les runs de réindexation échouent tous sur `ReindexError`.
+Le déclenchement, lui, est mesuré. **Le dépôt, en revanche, EXISTE sur ce poste**
+(`/home/ubuntu/RAG/rag-agent-chat`), son `docker-compose.yml` déclare le service
+`agent-api` sur `rag_network` — l'hôte même qu'`AGENT_SERVICE_URL` attend — et il
+lui manque son `.env` (`mesuré`). La non-épreuve est donc un **choix de
+périmètre** — autre dépôt, service non audité — et non une impossibilité de
+poste : c'est écrit au §7 du compte rendu.
 
 **Le lot 5 a été FUSIONNÉ dans `main` le 2 septembre 2026** par la fusion
 `--no-ff` `d8c67c5` : douze commits de livraison, puis **dix-huit de réparation**
