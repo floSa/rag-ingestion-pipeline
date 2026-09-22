@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from contextlib import contextmanager
+from pathlib import Path
 
 from dagster import (
     AssetKey,
@@ -821,3 +822,44 @@ class TestLaCleNominaleEstInchangee:
             assert {r.run_key for r in resultat.run_requests} == attendues
         finally:
             get_settings.cache_clear()
+
+
+class TestLaDocumentationNommeLeGesteQuExisteVraiment:
+    """Registre 4.32.a — **une documentation qui prescrit un chemin mort EST le defaut.**
+
+    Le `README` donnait la purge par `wipe_stores`, puis « redemarrer, puis
+    reingerer », sans une ligne sur ce qui provoque la reingestion. Le chemin
+    nominal etait le capteur, et il en etait incapable. Un operateur qui purgeait
+    puis attendait gardait des stores VIDES indefiniment.
+
+    Ce garde ne verifie pas que le README « parle de reingestion » — il en
+    parlait deja, et c'est bien le probleme. Il verifie que le marqueur qu'il
+    prescrit est celui que le capteur LIT, en interrogeant la constante qui en
+    est le seul site canonique.
+    """
+
+    README = Path(__file__).resolve().parents[2] / "README.md"
+
+    def test_le_readme_prescrit_le_marqueur_que_le_capteur_lit(self):
+        texte = self.README.read_text(encoding="utf-8")
+
+        assert PREFIXE_REINGESTION in texte, (
+            "le README ne nomme pas le marqueur de reingestion : il prescrit donc "
+            "un geste sans dire comment le faire, ce qui est le defaut 4.32.a"
+        )
+
+    def test_le_readme_nomme_les_capteurs_sur_lesquels_le_poser(self):
+        """Le marqueur se pose SUR UN CAPTEUR, un par source.
+
+        Sans les nommer, le README prescrirait un geste qu'on ne sait ou faire.
+        La borne est INFERIEURE et porte sur les sources reellement declarees :
+        une quatrieme source devra etre nommee elle aussi.
+        """
+        texte = self.README.read_text(encoding="utf-8")
+        manquants = [
+            f"{source.name}_sensor"
+            for source in load_sources()
+            if f"{source.name}_sensor" not in texte
+        ]
+
+        assert not manquants, f"capteurs absents du README : {manquants}"
