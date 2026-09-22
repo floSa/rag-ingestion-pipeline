@@ -179,10 +179,22 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     designent. Or `cleaned_html` est le SEUL chemin qui re-televerse ces images
     (`mesure` de la campagne du 2 septembre 2026 : 0 objet dans le bucket avant
     le geste 3, 199 apres), et il ne s'executera jamais pour un document absent.
-    Sans cette purge, `wipe_stores` laisserait donc derriere lui le seul endroit
-    du systeme qui decrive encore un document que le corpus n'a plus, en pointant
-    des objets qui n'existent plus. C'est tout ce que cette purge fait, et c'est
-    ce que « repartir propre » veut dire ici.
+    Sans cette purge, `wipe_stores` laisserait donc derriere lui un artefact
+    DERIVE d'un document que le corpus n'a plus, pointant des objets qui
+    n'existent plus. C'est tout ce que cette purge fait, et c'est ce que
+    « repartir propre » veut dire ici.
+
+    **CETTE PHRASE A DIT « LE SEUL ENDROIT DU SYSTEME », ET C'ETAIT FAUX.** La
+    passe de relecture du lot 9 l'a mise en defaut sur son propre depot : la
+    PARTITION DYNAMIQUE Dagster d'un document retire du corpus n'est jamais
+    supprimee non plus, ni son historique de materialisations, et `wipe_stores`
+    n'y touche pas davantage. Le depot ne porte AUCUN appel de suppression de
+    partition dynamique — mesure et commande au registre 4.34.g, site canonique
+    de ce chiffre.
+
+    Ce que cette purge retire est donc le seul artefact derive qui porte des URL
+    MinIO mortes, ce qui est plus etroit que la phrase precedente, et ce qui se
+    garde.
 
     Le garde de cette propriete est `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`,
     dans `tests/unit/test_factory.py` : il tient les DEUX natures, celle qui est

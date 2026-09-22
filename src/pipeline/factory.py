@@ -480,11 +480,14 @@ class CurseurIllisibleError(RuntimeError):
     reste en place. Bruyant et persistant : c'est exactement ce qu'on veut d'un
     curseur qu'un humain vient d'ecrire de travers.
 
-    L'attraper pour « reinitialiser le curseur » serait PIRE, et c'est la seule
-    autre forme qui vienne a l'esprit : le curseur vide, le capteur redemande
-    TOUT le corpus, et la sortie bruyante est remplacee par un silence — la
-    famille exacte du 4.32.a. Ce lot ne change donc pas ce que l'echec FAIT ; il
-    change ce qu'il DIT. `float(...)` rendait
+    L'attraper pour « reinitialiser le curseur » serait PIRE, et c'est la forme
+    que la branche voisine prend deja pour un curseur non-JSON : le curseur vide,
+    le capteur redemande TOUT le corpus, et la sortie bruyante est remplacee par
+    un silence — la famille exacte du 4.32.a. Cette docstring ecrivait « la seule
+    autre forme qui vienne a l'esprit » : une phrase d'exhaustivite sur des
+    idees, que rien ne borne et qu'aucun test ne peut rougir.
+
+    Ce lot ne change donc pas ce que l'echec FAIT ; il change ce qu'il DIT. `float(...)` rendait
     ``ValueError: could not convert string to float: 'reingerer:2026-09-22'``,
     qui ne nomme ni la cle fautive, ni le geste a refaire.
     """

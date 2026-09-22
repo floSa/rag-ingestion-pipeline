@@ -3124,9 +3124,15 @@ blocs plus haut dans le même `main()` — vient de supprimer les objets qu'elle
 désignent, et `cleaned_html` est le seul chemin qui les re-téléverse (`mesuré`
 par la campagne du 2 septembre 2026 : 0 objet avant le geste 3, 199 après).
 
-Sans cette purge, `wipe_stores` laisserait donc derrière lui **le seul endroit du
-système qui décrive encore un document que le corpus n'a plus**, en pointant des
-objets qui n'existent plus.
+Sans cette purge, `wipe_stores` laisserait donc derrière lui **le seul artefact
+dérivé qui porte des URL MinIO mortes** pour un document que le corpus n'a plus.
+
+*(Cette phrase a d'abord été écrite « le seul endroit du système qui décrive
+encore un document que le corpus n'a plus », à trois sites, et la passe de
+relecture du lot 9 l'a mise en défaut sur son propre dépôt : la partition
+dynamique Dagster de ce document survit elle aussi, et `wipe_stores` n'y touche
+pas. C'est le §4.34.g, et c'est la septième fois que ce registre attrape une
+phrase d'exhaustivité — celle-ci écrite par le lot qui les traque.)*
 
 Le garde est `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`
 (`tests/unit/test_factory.py`) et il tient les **deux** natures — une seule
@@ -3315,10 +3321,12 @@ mérite d'être consigné est **pourquoi personne ne l'a vue**.
 
 ### 4.34 → CONSIGNÉ par le lot 9 — NON traité
 
-**Six** constats, tous mesurés le 22 septembre 2026, laissés **hors du diff**.
-Périmètre strict. Le compte est `calculé`, `grep -c '^#### 4.34'` rend six. Le
-`a` est le plus coûteux des six, et c'est la moitié du §4.33.c que le lot 9 n'a
-pas fermée.
+**Sept** constats, tous mesurés le 22 septembre 2026, laissés **hors du diff**.
+Périmètre strict. Le compte est `calculé`, `grep -c '^#### 4.34'` rend sept. Le
+`a` est le plus coûteux des sept, et c'est la moitié du §4.33.c que le lot 9 n'a
+pas fermée. Le `g` est le seul des sept qui ne vienne pas du mandat : il vient de
+la passe de relecture, qui a mis en défaut une phrase que le lot 9 venait
+d'écrire.
 
 #### 4.34.a Le chemin NOMINAL du capteur n'a pas de garde de concurrence, et la vraie racine est dans `dagster.yaml`
 
@@ -3425,6 +3433,43 @@ Rien ne signale celui qu'on oublie. Le §4.33.d porte déjà la forme du garde �
 que de les y recopier — et elle reste à écrire. Ce constat ne la répète pas : il
 en compte la **troisième** occurrence, parce qu'un constat qu'on paie trois fois
 n'est plus un constat, c'est un coût.
+
+#### 4.34.g La partition dynamique d'un document retiré du corpus n'est jamais supprimée
+
+Trouvé en relisant le lot 9 lui-même. Le §4.33.a écrivait, à trois sites, que
+`Datas/.cleaned/` serait « **le seul endroit du système** qui décrive encore un
+document que le corpus n'a plus ». **C'est faux, et c'est une phrase
+d'exhaustivité exactement du genre que ce registre traque.**
+
+`mesuré` le 22 septembre 2026, et **ceci est le site canonique du chiffre** — la
+commande est donnée ici et nulle part ailleurs, pour qu'aucun docstring citant
+son motif ne la fasse mentir :
+
+```bash
+grep -rn 'build_delete_request' src/ | wc -l    # rend 0
+```
+
+Aucun appel de suppression de partition dynamique n'existe dans le dépôt. Quand
+un document quitte le corpus :
+
+- sa **partition dynamique** Dagster reste déclarée, donc visible dans
+  l'interface, et sélectionnable pour une matérialisation ;
+- son **historique de matérialisations** reste, avec ses métadonnées ;
+- `wipe_stores` ne touche ni l'un ni l'autre — il purge trois stores et le HTML
+  nettoyé, pas le stockage Dagster.
+
+**Ce que cela change au §4.33.a, et rien de plus** : la purge de `.cleaned/`
+retire le seul artefact dérivé qui porte des **URL MinIO mortes**, ce qui reste
+sa raison d'être et ce que le garde tient. Elle n'assainit pas le système entier,
+et le §4.33.a ne le prétend plus.
+
+**Pourquoi ce n'est pas traité ici.** Supprimer une partition dynamique est une
+perte d'historique irréversible, et la décision n'appartient pas à un capteur :
+un fichier absent d'un tick peut l'être parce qu'il a été retiré, ou parce qu'un
+montage n'était pas là. Le §4.26 raconte déjà ce que coûte un état perdu qu'on
+croyait dérivable. Le geste juste est probablement un **rapport** — nommer les
+partitions dont la source a disparu — avant toute suppression, et il rejoint le
+§4.34.c : personne ne compte les orphelins, sous aucune de leurs deux formes.
 
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
