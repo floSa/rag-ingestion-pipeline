@@ -58,6 +58,32 @@ from typing import Any
 
 FORMAT_ELEMENT_ID = re.compile(r"^[a-f0-9]{10}$")
 
+# LE GESTE QUI DECLENCHE VRAIMENT UNE REINGESTION, ET IL MANQUAIT (registre
+# 4.32.a). Les deux branches d'`anomalie_de_colonne` prescrivaient « reingerer »
+# sans dire par quoi, et le chemin nominal — le capteur de source — en etait
+# incapable : son `run_key` etait deterministe sur le `mtime`, donc deja
+# consomme, donc zero run cree et `skip_reason=None`. Un operateur qui lisait ce
+# message et purgeait gardait des stores VIDES indefiniment, en ayant suivi la
+# consigne a la lettre. Une documentation qui prescrit un chemin mort EST le
+# defaut, pas son symptome.
+#
+# La chaine « reingerer: » n'est PAS recopiee d'un autre site : elle est celle
+# que `src/pipeline/factory.py` lit, et `test_verify_contract.py` compare les
+# deux — plus un temoin qui exerce le CAPTEUR sur ce marqueur, sans quoi les
+# deux constantes pourraient deriver ensemble vers une chaine que personne
+# n'honore. Elle est recopiee ici parce que ce module tourne dans le conteneur
+# d'extraction, ou Dagster n'est pas installe : l'importer le rendrait
+# inexecutable la ou il sert.
+COMMENT_REINGERER = (
+    "La reingestion ne part pas toute seule, elle SE DEMANDE : posez le curseur du "
+    "capteur de la source (pdfs_sensor, livres_html_sensor, ...) sur "
+    "« reingerer:<etiquette> » — interface Dagster, Overview > Sensors > le capteur > "
+    "Cursor. L'etiquette est libre et obligatoire, et elle doit etre NEUVE a chaque "
+    "geste : deux gestes portant la meme etiquette construisent les memes cles de run, "
+    "et Dagster refuse la seconde. Le capteur journalise alors le nombre de demandes "
+    "perdues."
+)
+
 # L'ECHANTILLON D'ANCRES EST SUPPRIME, et c'est une dette tranchee sur une
 # mesure.
 #
@@ -679,13 +705,14 @@ def anomalie_de_colonne(
             f"C'est init_schema() qui joue les ALTER TAG, et il n'est appele qu'au "
             f"DEMARRAGE du service. Le geste est REDEMARRER docling-service PUIS "
             f"reingerer — une reingestion seule ecrirait contre un tag sans la "
-            f"colonne, et le graphd rejetterait chaque INSERT ({registre})"
+            f"colonne, et le graphd rejetterait chaque INSERT ({registre}). "
+            f"{COMMENT_REINGERER}"
         )
     if sommets_sans_valeur:
         return (
             f"{sommets_sans_valeur} sommets sur {sommets_lus} sans {colonne} : la "
             f"colonne EXISTE, le schema a donc migre, mais les donnees non — seule "
-            f"une reingestion les renseigne ({registre})"
+            f"une reingestion les renseigne ({registre}). {COMMENT_REINGERER}"
         )
     return None
 
