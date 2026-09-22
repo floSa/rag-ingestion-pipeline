@@ -861,6 +861,44 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
         finally:
             get_settings.cache_clear()
 
+    def test_le_marqueur_est_honore_avec_un_espace_de_tete(self, tmp_path, monkeypatch):
+        """LE PREMIER `curseur.strip()`, ET IL ETAIT NU (H21).
+
+        Deux `.strip()` vivent dans `_etiquette_de_reingestion`, et le test
+        voisin ne garde que le SECOND — celui qui normalise l'etiquette. Le
+        premier absorbe un espace de TETE, et coller une chaine dans un champ de
+        l'interface Dagster est le geste manuel le plus banal qui soit. `mesure`
+        le 22 septembre 2026 : le retirer laissait les 904 tests verts.
+
+        CE QUE LA SUBSTITUTION PRODUIT, ET C'EST MESURE. Sur une instance dont
+        l'historique porte deja les cles nominales — la production, donc — le
+        curseur « ␣␣reingerer:2026-09-22 » cesse d'etre un ordre : il repart en
+        curseur JSON, echoue a se decoder, et le capteur redemande le corpus
+        avec les cles NOMINALES. Dagster n'en cree aucun run. Le geste
+        **n'a pas lieu**, et il le dit — mais il le dit de travers, par
+        « Invalid cursor format, resetting » puis « 3 demande(s) de run sur 3
+        portent un run_key DEJA CONSOMME ». Aucune des deux lignes ne nomme
+        l'espace, et le geste refait echoue a l'identique.
+
+        L'assertion porte sur la FORME des cles, et non sur leur nombre : les
+        trois demandes existent des deux cotes du defaut.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                colle = build_sensor_context(
+                    instance=instance, cursor=f"  {PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                cles = {r.run_key for r in built.sensor(colle).run_requests}
+        finally:
+            get_settings.cache_clear()
+
+        attendues = {
+            f"reing_captures/page_{numero:02d}.html_reingestion_{self.ETIQUETTE}"
+            for numero in range(3)
+        }
+        assert cles == attendues, (cles, attendues)
+
     def test_le_marqueur_n_est_honore_qu_en_tete_du_curseur(self, tmp_path, monkeypatch):
         """`startswith` EST PORTEUR, ET `in` SURVIVAIT A TOUTE LA SUITE.
 
@@ -1039,6 +1077,46 @@ class TestLeTickQuiPerdSesRunsLeDit:
         finally:
             get_settings.cache_clear()
 
+    def test_l_alerte_nomme_les_trois_premieres_cles_perdues(self, tmp_path, monkeypatch):
+        """LE DIAGNOSTIC, ET IL ETAIT NU (H3).
+
+        `perdues[:3]` n'etait garde par rien : `mesure` le 22 septembre 2026,
+        le remplacer par `perdues[:0]` laissait les 904 tests verts. L'alerte
+        annoncait alors son compte et **plus aucune cle** — le chiffre restait,
+        le diagnostic etait ampute, et l'operateur n'avait plus de quoi savoir
+        quelle partition avait ete perdue.
+
+        Les DEUX bornes sont tenues ici, et la seconde sans la premiere serait
+        creuse : l'alerte nomme **trois** cles quand quatre sont perdues, et ce
+        sont les trois PREMIERES dans l'ordre des demandes. Une borne haute
+        seule laisserait passer zero.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 4)
+            built = build_source(_html_source(name="reing"))
+            with DagsterInstance.ephemeral() as instance:
+                premier = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                cles = [r.run_key for r in built.sensor(premier).run_requests]
+                assert len(cles) == 4, cles
+                self._instance_avec_les_cles(instance, cles, "reing_sensor")
+
+                second = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                with _ecoute(second) as journal:
+                    built.sensor(second)
+        finally:
+            get_settings.cache_clear()
+
+        perdu = [ligne for ligne in journal.avertissements if "run_key" in ligne]
+        assert perdu, journal.avertissements
+        nommees = [cle for cle in cles if cle in perdu[0]]
+        assert nommees == cles[:3], (nommees, cles)
+
     def test_des_cles_neuves_ne_declenchent_aucun_avertissement(self, tmp_path, monkeypatch):
         """LE TEMOIN. Sans lui, un avertissement pose en dur passerait le test ci-dessus.
 
@@ -1134,6 +1212,97 @@ class TestLeTickQuiPerdSesRunsLeDit:
             )
         finally:
             get_settings.cache_clear()
+
+
+class TestLeCurseurAvanceEtLOrdreNeBougePas:
+    """Deux bornes du capteur que la mutation a trouvees nues (registre 4.33, H7 et H13).
+
+    Elles n'ont rien de commun sauf cela : chacune laissait les 904 tests verts,
+    `mesure` le 22 septembre 2026, et chacune arme une reingestion perpetuelle
+    ou un diagnostic qui bouge d'un tick a l'autre.
+    """
+
+    def _capteur(self, tmp_path, monkeypatch, fichiers: int = 3):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        _corpus(tmp_path, fichiers)
+        return build_source(_html_source(name="reing"))
+
+    def test_un_fichier_modifie_voit_son_nouveau_mtime_ecrit_au_curseur(
+        self, tmp_path, monkeypatch
+    ):
+        """H7 — `str(mtime)` et non `str(last_mtime or mtime)`.
+
+        La substitution ne se voit pas au premier tick : `last_mtime` y est
+        `None`, donc les deux expressions coincident. Elle ne se voit que sur un
+        fichier **deja connu** et **modifie** — le capteur reecrit alors son
+        ANCIEN mtime au curseur, donc le retrouve en retard au tick suivant, donc
+        le redemande. A chaque tick, indefiniment, toutes les 30 secondes.
+
+        Le troisieme tick est ce qui fait de ce test un garde et non une lecture :
+        asserter la seule valeur du curseur dirait que le capteur a ECRIT le bon
+        nombre, pas qu'il en a FINI avec ce fichier.
+        """
+        cle = "captures/page_00.html"
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            chemin = tmp_path / cle
+            with DagsterInstance.ephemeral() as instance:
+                premier = build_sensor_context(instance=instance)
+                built.sensor(premier)
+                curseur = premier.cursor
+
+                # Le fichier est MODIFIE : contenu ET mtime, comme un vrai depot.
+                chemin.write_text("<html>modifie</html>", encoding="utf-8")
+                plus_tard = os.path.getmtime(chemin) + 10
+                os.utime(chemin, (plus_tard, plus_tard))
+
+                second = build_sensor_context(instance=instance, cursor=curseur)
+                demandes = built.sensor(second).run_requests
+                curseur_apres = second.cursor
+
+                troisieme = build_sensor_context(instance=instance, cursor=curseur_apres)
+                encore = built.sensor(troisieme).run_requests
+        finally:
+            get_settings.cache_clear()
+
+        assert [r.partition_key for r in demandes] == [cle], demandes
+        assert json.loads(curseur_apres)[cle] == str(plus_tard), curseur_apres
+        assert encore == [], "le fichier modifie est redemande une seconde fois"
+
+    def test_l_ordre_des_demandes_est_celui_du_tri_et_non_celui_du_disque(
+        self, tmp_path, monkeypatch
+    ):
+        """H13 — `sorted(glob(...))` et non `list(glob(...))`.
+
+        `glob` rend l'ordre de `os.scandir`, qui est celui du systeme de
+        fichiers : il n'est ni trie, ni stable d'une machine ou d'un tick a
+        l'autre. Sans le tri, l'ordre des demandes de run et celui des
+        « premieres cles perdues » de l'alerte du 4.32.a changent sans que rien
+        n'ait change — et un diagnostic qui bouge tout seul ne se compare pas
+        d'un tick au suivant.
+
+        Le desordre est POSE, il n'est pas espere : compter sur `scandir` pour
+        rendre un ordre faux serait un test qui passe par accident. C'est
+        `glob` qui est bouchonne — l'environnement — et non le capteur, qui
+        reste celui qui produit l'ordre asserte.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch, fichiers=5)
+            vrai_glob = globlib.glob
+
+            def glob_a_l_envers(motif, **kwargs):
+                return list(reversed(sorted(vrai_glob(motif, **kwargs))))
+
+            monkeypatch.setattr(globlib, "glob", glob_a_l_envers)
+            with DagsterInstance.ephemeral() as instance:
+                context = build_sensor_context(instance=instance)
+                cles = [r.partition_key for r in built.sensor(context).run_requests]
+        finally:
+            get_settings.cache_clear()
+
+        assert cles == sorted(cles), cles
+        assert len(cles) == 5, cles
 
 
 class TestLaCleNominaleEstInchangee:
