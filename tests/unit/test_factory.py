@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import os
+from contextlib import contextmanager
+
 from dagster import (
     AssetKey,
     DagsterInstance,
@@ -12,9 +17,11 @@ from dagster import (
     build_sensor_context,
     sensor,
 )
+from dagster._core.storage.tags import RUN_KEY_TAG, SENSOR_NAME_TAG
+from dagster._core.test_utils import create_run_for_test
 
 from src.docling_service.jobs import Job
-from src.pipeline.factory import _record_metadata, build_source
+from src.pipeline.factory import PREFIXE_REINGESTION, _record_metadata, build_source
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig, load_sources
 
@@ -485,3 +492,332 @@ class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
         assert contexte.metadonnees["elements"] == 12
         assert "duplicate_of" not in contexte.metadonnees
         assert contexte.metadonnees["failed_batches"] == 0
+
+
+# --- La reingestion, et le silence qui la cachait (registre 4.32.a) -----------
+
+
+class JournalDuCapteur(logging.Handler):
+    """Retient les lignes que le capteur ecrit reellement a son journal.
+
+    `caplog` ne convient pas : le logger « dagster » ne propage pas
+    (`mesure` — le message atteint stderr, `caplog.records` reste vide). C'est
+    donc un handler attache au logger que le capteur utilise, c'est-a-dire a
+    l'objet rendu par `context.log`, et non une interception du module logging.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.avertissements: list[str] = []
+        self.infos: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.levelno >= logging.WARNING:
+            self.avertissements.append(record.getMessage())
+        else:
+            self.infos.append(record.getMessage())
+
+
+@contextmanager
+def _ecoute(context):
+    """Ecoute le journal du capteur le temps d'une evaluation."""
+    journal = JournalDuCapteur()
+    context.log.addHandler(journal)
+    try:
+        yield journal
+    finally:
+        context.log.removeHandler(journal)
+
+
+def _corpus(tmp_path, fichiers: int = 3) -> list[str]:
+    """Depose `fichiers` HTML sous `captures/`, et rend leurs cles de partition."""
+    captures = tmp_path / "captures"
+    captures.mkdir(exist_ok=True)
+    cles = []
+    for numero in range(fichiers):
+        chemin = captures / f"page_{numero:02d}.html"
+        chemin.write_text("<html></html>", encoding="utf-8")
+        cles.append(f"captures/page_{numero:02d}.html")
+    return cles
+
+
+class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
+    """Registre 4.32.a : le `run_key` etait deterministe sur `(source, partition, mtime)`.
+
+    Dagster cherche un `run_key` consomme dans TOUT l'historique, sans borne de
+    temps : un fichier dont le `mtime` n'a pas bouge ne pouvait donc JAMAIS etre
+    reingere par le capteur. `mesure` le 2 septembre 2026, curseur vide et
+    verifie a 0 entree : 23 `run_key` demandees, **0 run cree**,
+    `skip_reason=None` — le site canonique du chiffre est la campagne,
+    `documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`.
+
+    Les trois tests qui suivent sont les trois questions que la reparation doit
+    fermer, et le quatrieme est leur TEMOIN : sans lui, un `run_key` rendu
+    aleatoire les rendrait tous verts en relancant l'ingestion a chaque tick.
+    """
+
+    ETIQUETTE = "2026-09-22-apres-purge"
+
+    def _capteur(self, tmp_path, monkeypatch, fichiers: int = 3):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        _corpus(tmp_path, fichiers)
+        return build_source(_html_source(name="reing"))
+
+    def test_sans_marqueur_un_corpus_inchange_ne_demande_rien(self, tmp_path, monkeypatch):
+        """QUESTION 2 — ce qui garantit qu'une reingestion ne part pas toute seule.
+
+        C'est le curseur, et rien d'autre. Il vit dans le stockage de l'instance,
+        il survit au rechargement du code, et aucune ligne de `factory.py` ne
+        l'efface. Dix ticks de suite sur un corpus inchange : zero demande.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                context = build_sensor_context(instance=instance)
+                premier = built.sensor(context)
+                curseur = context.cursor
+                suivants = []
+                for _ in range(10):
+                    suite = build_sensor_context(instance=instance, cursor=curseur)
+                    suivants.append(built.sensor(suite))
+                    curseur = suite.cursor or curseur
+
+            assert len(premier.run_requests) == 3
+            assert [len(r.run_requests) for r in suivants] == [0] * 10
+        finally:
+            get_settings.cache_clear()
+
+    def test_le_marqueur_redemande_tout_le_corpus_avec_des_cles_neuves(self, tmp_path, monkeypatch):
+        """QUESTION 1 — ce qui declenche une reingestion : le marqueur, pose a la main.
+
+        L'assertion porte sur les CLES et non sur le nombre de demandes. C'est le
+        point du 4.32.a : le capteur construisait deja ses 23 demandes, et
+        Dagster n'en creait aucun run parce que les cles etaient celles de la
+        premiere ingestion. Un test qui compte les demandes est vert des deux
+        cotes du defaut.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                premier = built.sensor(build_sensor_context(instance=instance))
+                nominales = {r.run_key for r in premier.run_requests}
+
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                reingestion = built.sensor(marque)
+
+            neuves = {r.run_key for r in reingestion.run_requests}
+            assert len(reingestion.run_requests) == 3
+            assert neuves.isdisjoint(nominales), (neuves, nominales)
+            assert all(self.ETIQUETTE in str(cle) for cle in neuves), neuves
+        finally:
+            get_settings.cache_clear()
+
+    def test_le_marqueur_est_consomme_par_le_tick_qui_l_honore(self, tmp_path, monkeypatch):
+        """QUESTION 3, premiere moitie — le geste ne vaut que pour UN tick.
+
+        Sans cela, le marqueur resterait en place et le capteur relancerait
+        l'ingestion complete a chaque tick, indefiniment : le defaut inverse de
+        celui que ce lot ferme, et le pire des deux.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                built.sensor(marque)
+                apres = marque.cursor
+                suite = build_sensor_context(instance=instance, cursor=apres)
+                second = built.sensor(suite)
+
+            assert apres and not apres.startswith(PREFIXE_REINGESTION), apres
+            assert len(json.loads(apres)) == 3
+            assert len(second.run_requests) == 0
+        finally:
+            get_settings.cache_clear()
+
+    def test_un_corpus_vide_consomme_le_marqueur_lui_aussi(self, tmp_path, monkeypatch):
+        """LE CAS QUE LE CODE NATUREL LAISSE BOUCLER.
+
+        Le capteur n'ecrivait son curseur que s'il avait change. Sur un corpus
+        vide, le curseur calcule vaut `{}` — egal au curseur de depart une fois
+        le marqueur lu — donc le marqueur serait RESTE en place, et chaque tick
+        l'aurait rejoue. Il n'y a pas de demande a perdre, mais le marqueur doit
+        quand meme etre consomme.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            (tmp_path / "captures").mkdir()
+            built = build_source(_html_source(name="vide"))
+            with DagsterInstance.ephemeral() as instance:
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                built.sensor(marque)
+
+            assert marque.cursor == "{}", marque.cursor
+        finally:
+            get_settings.cache_clear()
+
+    def test_un_marqueur_sans_etiquette_est_refuse_et_dit_pourquoi(self, tmp_path, monkeypatch):
+        """L'etiquette n'est pas decorative : c'est elle qui distingue deux gestes.
+
+        Sans elle, le second geste porterait les memes cles que le premier, et
+        Dagster le refuserait EN SILENCE — exactement le defaut 4.32.a, rouvert
+        par le geste cense le fermer. Le capteur refuse donc, et il le dit.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                marque = build_sensor_context(instance=instance, cursor=PREFIXE_REINGESTION)
+                with _ecoute(marque) as journal:
+                    resultat = built.sensor(marque)
+
+            assert len(resultat.run_requests) == 0
+            assert marque.cursor in (None, PREFIXE_REINGESTION), marque.cursor
+            assert any("etiquette" in ligne for ligne in journal.avertissements), (
+                journal.avertissements
+            )
+        finally:
+            get_settings.cache_clear()
+
+
+class TestLeTickQuiPerdSesRunsLeDit:
+    """Registre 4.32.a, seconde moitie : **22 runs perdus sans un mot**.
+
+    Le tick qui perd ses runs porte `skip_reason=None` : le journal du daemon ne
+    dit rien, et « Sensor function returned an empty result » n'apparait qu'aux
+    ticks SUIVANTS, pour une autre raison. Sans cette ligne-ci, personne
+    n'aurait jamais trouve le reste du constat.
+
+    Le controle reproduit la regle du daemon, et non une approximation : il
+    interroge `RunsFilter(tags={RUN_KEY_TAG: cle})` puis retient les runs dont
+    `SENSOR_NAME_TAG` est celui du capteur — c'est mot pour mot
+    `dagster/_daemon/sensor.py::fetch_existing_runs` (`mesure`, dagster 1.13.16,
+    lignes 1290-1333).
+    """
+
+    ETIQUETTE = "geste-refait"
+
+    def _instance_avec_les_cles(self, instance, cles, nom_du_capteur: str) -> None:
+        """Consomme ces `run_key` comme le daemon les consomme : par des runs tagues."""
+        for cle in cles:
+            create_run_for_test(
+                instance,
+                job_name="reing_job",
+                tags={RUN_KEY_TAG: str(cle), SENSOR_NAME_TAG: nom_du_capteur},
+            )
+
+    def test_des_cles_deja_consommees_sont_annoncees_avec_leur_compte(self, tmp_path, monkeypatch):
+        """QUESTION 3, seconde moitie — le geste refait a l'identique.
+
+        Deux fois le MEME marqueur : le second tick reconstruit les memes cles,
+        Dagster n'en creera aucun run. Le capteur doit le dire, et dire COMBIEN.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 3)
+            built = build_source(_html_source(name="reing"))
+            with DagsterInstance.ephemeral() as instance:
+                premier = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                demande = built.sensor(premier)
+                self._instance_avec_les_cles(
+                    instance, [r.run_key for r in demande.run_requests], "reing_sensor"
+                )
+
+                second = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                with _ecoute(second) as journal:
+                    built.sensor(second)
+
+            perdu = [ligne for ligne in journal.avertissements if "run_key" in ligne]
+            assert perdu, journal.avertissements
+            assert "3" in perdu[0], perdu[0]
+        finally:
+            get_settings.cache_clear()
+
+    def test_des_cles_neuves_ne_declenchent_aucun_avertissement(self, tmp_path, monkeypatch):
+        """LE TEMOIN. Sans lui, un avertissement pose en dur passerait le test ci-dessus.
+
+        Un capteur qui crie a chaque tick est aussi muet qu'un capteur qui se
+        tait : l'oeil s'habitue, et la ligne cesse d'etre lue.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 3)
+            built = build_source(_html_source(name="reing"))
+            with DagsterInstance.ephemeral() as instance:
+                context = build_sensor_context(instance=instance)
+                with _ecoute(context) as journal:
+                    resultat = built.sensor(context)
+
+            assert len(resultat.run_requests) == 3
+            assert not [ligne for ligne in journal.avertissements if "run_key" in ligne], (
+                journal.avertissements
+            )
+        finally:
+            get_settings.cache_clear()
+
+    def test_une_cle_consommee_par_un_autre_capteur_ne_compte_pas(self, tmp_path, monkeypatch):
+        """Le daemon filtre sur `SENSOR_NAME_TAG`, et ce controle doit filtrer pareil.
+
+        Sans ce filtre, le controle annoncerait des pertes qui n'en sont pas —
+        une alerte fausse se desapprend aussi vite qu'une alerte absente.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 3)
+            built = build_source(_html_source(name="reing"))
+            with DagsterInstance.ephemeral() as instance:
+                sonde = build_sensor_context(instance=instance)
+                cles = [r.run_key for r in built.sensor(sonde).run_requests]
+                self._instance_avec_les_cles(instance, cles, "un_autre_sensor")
+
+                context = build_sensor_context(instance=instance)
+                with _ecoute(context) as journal:
+                    built.sensor(context)
+
+            assert not [ligne for ligne in journal.avertissements if "run_key" in ligne], (
+                journal.avertissements
+            )
+        finally:
+            get_settings.cache_clear()
+
+
+class TestLaCleNominaleEstInchangee:
+    """CE QUI REND PREUVABLE LE PREMIER TICK APRES LA FUSION.
+
+    Fusionner dans `main` est un deploiement : les conteneurs montent `src/`
+    depuis le clone principal (`mesure` le 22 septembre 2026,
+    `docker inspect`). Le premier tick apres la fusion ne doit rien faire — et
+    il ne le peut que si, SANS marqueur, la cle construite est exactement celle
+    que l'historique porte deja.
+
+    Ce test fige donc la forme litterale de la cle nominale. Il rougit si un lot
+    futur la touche, et c'est bien ce qu'on lui demande : la toucher relancerait
+    l'ingestion complete du corpus au chargement du code.
+    """
+
+    def test_la_cle_sans_marqueur_est_source_partition_mtime(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            cles = _corpus(tmp_path, 2)
+            built = build_source(_html_source(name="forme"))
+            with DagsterInstance.ephemeral() as instance:
+                resultat = built.sensor(build_sensor_context(instance=instance))
+
+            attendues = {f"forme_{cle}_{os.path.getmtime(tmp_path / cle)}" for cle in cles}
+            assert {r.run_key for r in resultat.run_requests} == attendues
+        finally:
+            get_settings.cache_clear()
