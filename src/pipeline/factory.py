@@ -143,7 +143,9 @@ EXTRACTION_RETRY_POLICY = RetryPolicy(max_retries=2, delay=120, backoff=Backoff.
 #    une etiquette NEUVE, la reingestion repart. Le geste est donc repetable, et
 #    sa repetition a l'identique est bruyante au lieu d'etre muette.
 #
-# 4. ET SI UNE REINGESTION TOURNE DEJA ? Le marqueur n'est PAS honore, et il
+# 4. ET SI UNE INGESTION DE CETTE SOURCE TOURNE DEJA ? Le controle porte sur le
+#    JOB, donc sur tout run de la source — une reingestion precedente comme une
+#    ingestion nominale. Le marqueur n'est PAS honore, et il
 #    n'est pas consomme non plus : le tick rend un ``SkipReason`` nomme, le
 #    curseur reste en place, et le tick suivant relira le marqueur. Le geste est
 #    DIFFERE, pas perdu. Sans cette garde, un second marqueur d'etiquette NEUVE
@@ -695,11 +697,35 @@ def _build_sensor(
             # partition sont atteignables, et ils ecriraient tous les deux
             # `Datas/.cleaned/<fichier>` en meme temps.
             #
+            # LE FILTRE PORTE SUR LE JOB, DONC SUR TOUT RUN DE CETTE SOURCE —
+            # une reingestion precedente comme une ingestion nominale. C'est
+            # voulu : ce qui est dangereux n'est pas « deux reingestions », c'est
+            # deux runs sur la meme partition, et le nominal en cree autant que
+            # le marque. Le message dit donc « une INGESTION est deja en vol »,
+            # et non « une reingestion » : nommer le mauvais coupable enverrait
+            # l'operateur chercher un second marqueur qu'il n'a pas pose.
+            #
             # Le patron est celui de `reindex_job` : « une reindexation en vol
             # n'est ni faite ni perdue : on attend son issue ». Ici de meme —
             # le refus DIFFERE le geste, il ne le perd pas, et c'est
             # `SkipReason` qui le garantit : `update_cursor` n'est pas atteint,
             # donc le marqueur reste en place et le tick suivant le relira.
+            #
+            # CE GARDE PARTAGE SON MODE DE PANNE AVEC CELUI DU 4.15, ET IL EN
+            # PARTAGE L'ISSUE. Un run coince en `STARTED` — worker tue, daemon
+            # interrompu — n'est jamais terminal, donc ce refus se repeterait a
+            # chaque tick. Ce n'est pas indefini : `dagster.yaml` arme
+            # `run_monitoring` avec un `max_runtime_seconds` pose juste au-dessus
+            # du plafond que le pipeline s'accorde lui-meme, et le daemon marque
+            # alors le run en ECHEC — donc terminal, donc le marqueur repart. Le
+            # delai de garde vit la-bas et pas ici, exprès : un sensor qui
+            # deciderait lui-meme qu'un run est mort empieterait sur le travail du
+            # daemon, et il faudrait la meme regle dans chaque sensor a venir.
+            #
+            # Le prix de ce mode de panne est donc BORNE, et il est haut : le
+            # plafond est de 24 h. Un operateur dont le marqueur reste refuse doit
+            # lire la raison de saut — elle NOMME le run et son age, et un age de
+            # plusieurs heures se lit tout seul.
             #
             # LA PORTEE EST LE MARQUEUR, ET PAS LE CHEMIN NOMINAL. Le chemin
             # nominal n'a pas besoin de cette garde pour ne PAS repartir — sa
@@ -714,7 +740,7 @@ def _build_sensor(
             )
             if en_vol:
                 return SkipReason(
-                    f"Une reingestion de {source.name} est deja en vol : le marqueur "
+                    f"Une ingestion de {source.name} est deja en vol : le marqueur "
                     f"« {PREFIXE_REINGESTION}{etiquette} » n'est PAS consomme, et sera "
                     f"relu au prochain tick. Deux runs simultanes sur la meme partition "
                     f"reecriraient le meme HTML nettoye en meme temps (registre 4.33.c). "

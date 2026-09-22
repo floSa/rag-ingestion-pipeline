@@ -1425,7 +1425,7 @@ sur les 3 documents du lot 1. Plusieurs chiffres du registre s'en trouvent
 élargis, et **la projection `calculé` du §3.2 est confirmée à l'unité près** :
 elle annonçait 746 titres au total, le graphe en porte **746**.
 
-### 4.27 Pièges de mesure — quatre, et le quatrième est du PILOTE
+### 4.27 Pièges de mesure — cinq, le quatrième est du PILOTE et le cinquième est du dépôt
 
 **1. `SHOW STATS` rend 0 sur un space peuplé.** `mesuré` : 0 partout sur
 `rag_space`, faute de `SUBMIT JOB STATS`. Un space qui porte 15 196 sommets y
@@ -1500,6 +1500,39 @@ fichier plutôt que de laisser un `grep` le deviner.
 **Le geste : `git merge-tree --write-tree --messages`, et lire son `rc`.** Jamais
 un `grep` de marqueurs sur l'ancienne — ni ceux de la bonne, dont les messages
 sont en clair.
+
+**5. `pytest -q` sur ce dépôt donne `-qq`, qui SUPPRIME la ligne `N passed` en
+laissant `rc=0`.** Même famille que les quatre précédents et que le F3 du §8 :
+*une sortie lue comme un verdict alors qu'elle répondait à une autre question* —
+ici, l'absence de compte lue comme l'absence de mesure à faire.
+
+`pyproject.toml` porte déjà `addopts = "-q --tb=short"`. Un `-q` ajouté en ligne
+de commande s'y **additionne**, et `-qq` retire la ligne de résumé.
+
+`mesuré` le 22 septembre 2026, `pytest` 9.1.1, sur `tests/unit/test_wipe_stores.py`,
+**`rc` lu sans tube** :
+
+| Invocation | `rc` | Dernière ligne de sortie |
+|---|---|---|
+| `uv run pytest tests/unit/test_wipe_stores.py` | 0 | `50 passed in 3.95s` |
+| `uv run pytest -q tests/unit/test_wipe_stores.py` | **0** | les points de progression, **et rien d'autre** — la sortie entière tient en **une** ligne |
+
+**La borne est étroite, et c'est elle qui rend le piège vicieux** : `mesuré` sur
+un couple vert + rouge, `-qq` imprime toujours `1 failed, 1 passed`, le
+`FAILURES` et le `short test summary info`. **Le compte ne disparaît que quand
+tout passe.** Un balayage de graines entièrement vert est donc exactement le cas
+où l'on n'a plus rien à lire, et un balayage rouge ne prévient pas du piège. Un
+vérificateur de ce chantier a produit **cinq** mesures de graines « vertes » sans
+aucun compte de tests avant de s'en apercevoir.
+
+**Le geste : ne jamais ajouter `-q`.** `addopts` le porte déjà, et la cible
+`make test` ne l'ajoute pas non plus. Un compte de tests qui manque n'est pas un
+détail de présentation : c'est ce qui distingue « 925 verts » de « 900 verts ».
+Un fichier de tests qui cesse d'être **collecté** — renommé hors de `test_*.py`,
+déplacé hors de `testpaths` — retire ses tests **sans un seul rouge** et sans
+changer le `rc`. *(Le cas « zéro test collecté », lui, se voit : `pytest` rend
+alors **5**, `mesuré`. C'est la réduction PARTIELLE et silencieuse qui est
+dangereuse, pas la disparition totale.)*
 
 ### 4.28 → CONSIGNÉ par la réparation du lot 3, NON traité — pour le lot 4
 
@@ -3021,15 +3054,21 @@ au moment de mesurer** — `date -u` — plutôt que de la déduire du contexte.
 
 ---
 
-### 4.33 → CONSIGNÉ par le lot 8 et sa réparation, en fermant le §4.32.a — NON traité
+### 4.33 → CONSIGNÉ par le lot 8 et sa réparation — le **a** et le **c** sont TRAITÉS par le lot 9
 
-**Cinq** constats, tous mesurés, laissés **hors du diff**. Périmètre strict. Le
-compte est `calculé`, `grep -c '^#### 4.33'` rend cinq. Les deux premiers viennent du lot 8 lui-même ; les trois suivants de
-sa réparation, le 22 septembre 2026. Le `c` est le plus urgent des cinq, et il
-porte sa forme de garde : **il doit être tranché avant le premier geste de
-réingestion réel.**
+**Cinq** constats, tous mesurés, laissés **hors du diff par le lot 8**. Périmètre
+strict. Le compte est `calculé`, `grep -c '^#### 4.33'` rend cinq. Les deux
+premiers viennent du lot 8 lui-même ; les trois suivants de sa réparation, le
+22 septembre 2026. Le `c` était le plus urgent des cinq, et il portait sa forme
+de garde : **il devait être tranché avant le premier geste de réingestion réel.**
 
-#### 4.33.a Le `README` justifie la purge de `Datas/.cleaned/` par un mécanisme qui n'existe pas dans le code
+**ÉTAT AU 22 SEPTEMBRE 2026, APRÈS LE LOT 9 : deux sur cinq sont traités**, le
+`a` et le `c` — et le `c` l'est **avec sa borne écrite**, parce qu'il n'est fermé
+que du côté du marqueur. Restent ouverts le `b` (un geste de campagne, pas un
+développement), le `d` et le `e`. Le compte est `calculé` :
+`grep -c '^#### 4.33.* → TRAITÉ'` rend deux.
+
+#### 4.33.a → TRAITÉ par le lot 9 — le `README` justifiait la purge de `Datas/.cleaned/` par un mécanisme qui n'existe pas
 
 La section « Ré-ingérer proprement » range `Datas/.cleaned/` parmi les quatre
 purges avec ce motif, mot pour mot : « le HTML nettoyé porte les URL MinIO des
@@ -3062,6 +3101,52 @@ laissée en place*. Le harnais existe déjà —
 `TestLeNettoyagePublieCeQuIlAJete._executer` appelle le corps livré de l'asset
 sur un `tmp_path`. Ce qui manque est un second appel et une assertion sur le
 fichier écrit, pas un montage.
+
+**CE QUE LE LOT 9 A TRANCHÉ, ET C'EST LA SECONDE LECTURE : la purge est
+NÉCESSAIRE, pour une raison que personne n'avait écrite.** Les deux mesures sont
+du 22 septembre 2026, sur des copies temporaires, en appelant le corps livré de
+l'asset :
+
+1. **la phrase est fausse**, confirmé par la mesure et plus seulement par la
+   lecture : une destination remplie d'un contenu périmé est **réécrite**, et
+   l'octet rendu est celui du premier nettoyage ;
+2. **ce que la purge retire, et elle seule, ce sont les ORPHELINS** : deux
+   documents nettoyés, la source de l'un retirée du corpus, l'autre
+   rematérialisé — la copie nettoyée du document disparu est **toujours là**.
+
+Rien ne la relit, rien ne l'efface, et c'est borné par un troisième test : le
+glob d'une source est ancré sous son propre sous-répertoire (`htms/**/*.html`),
+et `.cleaned` porte de surcroît un point de tête que `glob` n'ouvre jamais, même
+derrière `**` ; `cleaned_html` ne peut pas s'exécuter pour elle, son contrôle
+d'existence portant sur la **source**. Et un orphelin est périmé **sans
+recours** : il porte les URL MinIO de ses images, la purge du bucket — trois
+blocs plus haut dans le même `main()` — vient de supprimer les objets qu'elles
+désignent, et `cleaned_html` est le seul chemin qui les re-téléverse (`mesuré`
+par la campagne du 2 septembre 2026 : 0 objet avant le geste 3, 199 après).
+
+Sans cette purge, `wipe_stores` laisserait donc derrière lui **le seul endroit du
+système qui décrive encore un document que le corpus n'a plus**, en pointant des
+objets qui n'existent plus.
+
+Le garde est `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`
+(`tests/unit/test_factory.py`) et il tient les **deux** natures — une seule
+serait creuse. Mutations : un court-circuit `if not dest_path.exists()` devant le
+`write_text` de `clean_html_file` → **1 rouge** ; `shutil.rmtree(cible)` → `pass`
+→ **14 rouges**, dont l'orphelin.
+
+**ET LA BORNE DU `rmtree` A ÉTÉ RESSERRÉE AU PASSAGE.** `purge_cleaned` est une
+fonction **publique**, et son containment acceptait toute cible contenue dans la
+racine — dont `Datas/htms`, qui portait 24 des 25 fichiers du corpus versionné.
+Le réglage qui produisait ces valeurs est mort avec le lot 5 ; le garde, lui, ne
+tenait plus que par la constante de son appelant. La cible doit désormais être
+`SOURCE_DIR/.cleaned` ou l'un de ses descendants, par un refus **distinct**
+(`CibleHorsDuNettoyeError`). La forme nominale est comparée **non résolue** :
+la résoudre ferait suivre au garde le même lien que la cible, et un `.cleaned`
+qui serait un lien vers `Datas/htms` résoudrait des deux côtés vers la même
+chose. Le test `test_une_cible_profondement_contenue_est_acceptee` visait
+`Datas/a/b/c` et se justifiait par « une cible légitime si le réglage la
+désigne » — ce réglage n'existe plus ; il est rétréci au contrat que le code
+compose vraiment, et son témoin conservé.
 
 #### 4.33.b La stabilité des `element_id` à travers une réingestion est prouvée à moitié, et la moitié manquante est celle du convertisseur
 
@@ -3102,7 +3187,7 @@ store et sort en `1` au premier désaccord. Le lot qui réingère doit le lancer
 **avant** et **après**, et consigner les deux sorties. C'est un geste, pas un
 développement.
 
-#### 4.33.c Aucune garde « une réingestion est déjà en vol », alors que le dépôt en porte le patron
+#### 4.33.c → TRAITÉ par le lot 9, et la borne est écrite — aucune garde « une réingestion est déjà en vol »
 
 **À trancher AVANT le premier geste de réingestion réel.** C'est le seul des
 cinq qui puisse coûter des données.
@@ -3132,6 +3217,52 @@ geste serait perdu au lieu d'être différé. Le harnais existe :
 `TestLeTickQuiPerdSesRunsLeDit._instance_avec_les_cles` peuple déjà une instance
 éphémère de runs tagués ; ce qui manque est un statut non terminal, pas un
 montage.
+
+**CE QUE LE LOT 9 EN A FAIT.** Le marqueur lu pendant qu'un run **de ce job** est
+non terminal rend un `SkipReason` nommé, qui décrit le run en vol et son âge. Le
+filtre porte sur le **job**, donc sur tout run de la source — une réingestion
+précédente comme une ingestion nominale — et le message dit donc « une
+**ingestion** est déjà en vol » : ce qui est dangereux n'est pas « deux
+réingestions », c'est deux runs sur la même partition, et nommer le mauvais
+coupable enverrait l'opérateur chercher un second marqueur qu'il n'a pas posé.
+
+**Le mode de panne de ce garde est celui du §4.15, et il en partage l'issue.** Un
+run coincé en `STARTED` n'est jamais terminal, donc le refus se répéterait. Ce
+n'est pas indéfini : `dagster.yaml` arme `run_monitoring` avec un
+`max_runtime_seconds` posé juste au-dessus du plafond que le pipeline s'accorde
+lui-même, et le daemon marque alors le run en échec. Le prix est donc **borné, et
+haut** — 24 h au pire —, ce qui est écrit au site plutôt que laissé à découvrir. Le
+refus est un `SkipReason` et non un `SensorResult` vide, parce qu'un résultat
+vide porterait `skip_reason=None` — le silence exact du §4.32.a. Et parce que
+c'est un `SkipReason`, `update_cursor` n'est pas atteint : **le marqueur reste en
+place et le tick suivant le relira.** Le geste est différé, pas perdu.
+
+`STATUTS_EN_COURS` et `_decrire_le_run` sont **importés** de `reindex_job` et non
+recopiés : le premier se définit par soustraction des trois états terminaux, et
+une seconde énumération classerait comme terminé tout statut que Dagster
+ajouterait. Le sens de l'import est sûr — `reindex_job` ne connaît que les *noms*
+des jobs d'ingestion, passés par `definitions.py`.
+
+Quatre natures sont échantillonnées, et il en faut quatre : le refus ; le témoin
+(*la même étiquette, une fois le run terminal, émet ses demandes* — sans lui le
+garde serait le §4.32.a par l'autre bout) ; le marqueur non consommé ; et un run
+d'un **autre** job qui ne bloque rien, sans quoi la réindexation bloquerait la
+réingestion. Mutations : `if en_vol:` → `if False:` → **3 rouges** ; le
+`SkipReason` remplacé par un `SensorResult` vide → **2 rouges** ;
+`RunsFilter(job_name=job_name, …)` → `RunsFilter(…)` → **1 rouge** ;
+`statuses=list(STATUTS_EN_COURS)` → `statuses=None` → **5 rouges**.
+
+**LA PORTÉE EST LE MARQUEUR, et un cinquième test l'écrit** plutôt que de le
+laisser croire : *le chemin nominal n'est **pas** gardé*. Il n'en a pas besoin
+pour ne pas repartir — sa clé est `(source, partition, mtime)` — mais un fichier
+**modifié** pendant une réingestion produit bien une clé neuve sur une partition
+en vol. Ce cas reste **ouvert** : voir §4.34.a.
+
+`_instance_avec_les_cles` créait des runs `NOT_STARTED`, c'est-à-dire **en vol**,
+alors qu'elle modélise une ingestion **passée**. Le défaut ne gênait pas tant que
+rien ne regardait les statuts ; la garde les regarde, et elle skippait donc
+quatre tests au lieu de les laisser mesurer ce qu'ils mesurent. Le statut est
+désormais terminal, et le motif est écrit à la fixture.
 
 #### 4.33.d Les trois copies de la prose du geste de réingestion ne sont tenues par rien
 
@@ -3178,6 +3309,122 @@ côté.
 C'est le même angle mort que le D7 du registre, déplacé une fois de plus : deux
 gardes qui voient des choses différentes. La correction est d'une ligne ; ce qui
 mérite d'être consigné est **pourquoi personne ne l'a vue**.
+
+
+---
+
+### 4.34 → CONSIGNÉ par le lot 9 — NON traité
+
+**Six** constats, tous mesurés le 22 septembre 2026, laissés **hors du diff**.
+Périmètre strict. Le compte est `calculé`, `grep -c '^#### 4.34'` rend six. Le
+`a` est le plus coûteux des six, et c'est la moitié du §4.33.c que le lot 9 n'a
+pas fermée.
+
+#### 4.34.a Le chemin NOMINAL du capteur n'a pas de garde de concurrence, et la vraie racine est dans `dagster.yaml`
+
+La garde du §4.33.c porte sur le **marqueur**, et le lot 9 l'a bornée par un test
+plutôt que par une phrase (`test_le_chemin_nominal_n_est_pas_garde_et_c_est_borne_expres`).
+Ce qu'elle ne couvre pas : **un fichier modifié pendant une réingestion**. Son
+`mtime` change, donc sa clé est neuve, donc le run est réellement créé — sur une
+partition dont un run est peut-être encore en vol. C'est la **même** collision,
+par l'autre porte.
+
+**Pourquoi le lot 9 ne l'a pas fermée.** Bloquer le chemin nominal derrière une
+réingestion de plusieurs heures rendrait invisible tout dépôt de fichier pendant
+ce temps, et un capteur qui ne détecte plus est exactement ce que le §4.32.a
+punissait. Le geste juste n'est pas dans le capteur.
+
+**Il est dans `dagster.yaml`, et il y manque.** `mesuré` : le fichier fixe
+`max_concurrent_runs: 2` et ne porte **aucune** clé `tag_concurrency_limits`.
+Deux runs simultanés sur la **même** partition sont donc autorisés par la file
+elle-même, quelle que soit la prudence des capteurs. Une limite de concurrence
+**par partition** fermerait la famille entière d'un geste, capteurs compris, là
+où le §4.15 a déjà mis le délai de garde « pour que la famille entière se ferme
+d'un geste ».
+
+**Ce n'est pas un développement de branche, c'est un réglage de déploiement** :
+le démon tourne, `src/` du clone principal est monté dedans, et fusionner est un
+déploiement. Un réglage de file qui changerait le comportement de la production
+dans la minute qui suit une fusion mérite d'être décidé, pas glissé.
+
+#### 4.34.b Un curseur qui n'est pas du JSON repart toujours à zéro, et redemande tout
+
+Le lot 9 a nommé les curseurs **JSON mais pas curseurs** sans les rendre muets.
+Il n'a **pas** touché la branche voisine : `except json.JSONDecodeError` →
+`context.log.warning("Invalid cursor format, resetting.")` → `cursor_data = {}` →
+**tout le corpus est redemandé**.
+
+Cette branche a la propriété que le §4.33 met en garde contre : elle transforme
+un curseur illisible en réingestion complète. Elle est moins grave que l'était
+l'autre — elle **avertit**, et les clés reconstruites sont les clés nominales,
+donc l'historique les refuse et le §4.32.a le dit avec son compte. Elle reste
+une remise à zéro décidée par le code et non par un humain.
+
+**Elle n'est pas traitée parce que c'est le comportement de premier tick**, et
+qu'un curseur absent est indistinguable ici d'un curseur corrompu. Les séparer
+demande de savoir si le capteur a déjà tourné, c'est-à-dire de regarder ailleurs
+que dans le curseur. C'est une décision, pas une correction.
+
+#### 4.34.c Rien ne compte ni ne nomme les orphelins de `Datas/.cleaned/`
+
+Le §4.33.a établit que les orphelins sont **la seule** chose que la purge
+retire. Personne ne sait combien il y en a. `wipe_stores` imprime « N fichiers
+retirés », un total qui ne distingue pas la copie d'un document vivant de celle
+d'un document disparu, et aucun autre outil ne regarde ce répertoire.
+
+`mesuré` par la campagne du 2 septembre 2026 : `Datas/.cleaned/` portait **22**
+fichiers pour **22** HTML au corpus — **zéro orphelin** ce jour-là. C'est un état
+de poste, il périme, et rien ne le remesure.
+
+**Le geste utile est petit** : compter, à la purge, les fichiers de `.cleaned/`
+dont la source n'existe plus, et les nommer. Un opérateur qui lit « 22 fichiers
+retirés, dont 0 orphelin » apprend que son corpus et ses copies nettoyées sont
+en accord ; « dont 7 orphelins » lui apprend que sept documents ont quitté le
+corpus sans que personne ne l'ait noté.
+
+#### 4.34.d `set(files)` est reconstruit à chaque itération du journal des écartés
+
+`src/pipeline/factory.py`, dans le capteur :
+
+```python
+ecartes = [os.path.relpath(f, source_dir) for f in discovered if f not in set(files)]
+```
+
+`set(files)` est dans la **condition**, donc réévalué pour chaque élément de
+`discovered` — un coût quadratique là où un ensemble construit une fois donnerait
+un coût linéaire.
+
+**Inerte sur ce corpus, et c'est pourquoi il n'est pas traité** : `discovered`
+vaut 22 pour `livres_html` et 1 pour `pdfs`. Le constat est écrit parce qu'un
+corpus de quelques milliers de fichiers le rendrait visible à chaque tick, et
+parce que la ligne se lit comme si l'ensemble était construit une fois.
+
+#### 4.34.e Le §4.33.e est toujours vrai, et il est désormais BORNÉ
+
+`mesuré` le 22 septembre 2026, sur la branche du lot 9 :
+`git grep -c ' $' -- '*.md'` rend **un seul fichier**,
+`documentation/stockage_objets.md`, avec **une seule** ligne — la 29. C'est donc
+la **seule** ligne à espace terminal de tout le Markdown du dépôt, et le hook
+`trailing-whitespace` la refuse toujours sur un `pre-commit run --all-files`.
+
+Ce que cette borne ajoute au §4.33.e : la correction n'est pas « une ligne parmi
+d'autres à chercher », c'est **cette** ligne, et il n'y en a pas d'autre. Le lot
+9 ne la corrige pas — périmètre strict, et le fichier n'a rien à voir avec son
+mandat — mais le suivant sait exactement où il va.
+
+#### 4.34.f Le §4.33.d a coûté un troisième redressement manuel, et rien ne le garde toujours
+
+La prose du geste de réingestion vit à **trois** endroits : le bloc au-dessus de
+`PREFIXE_REINGESTION`, le tableau « Ré-ingérer proprement » du `README.md`, et le
+§4.32.a. La garde de concurrence du §4.33.c ajoute un cas au geste — « si une
+réingestion tourne déjà » — et le lot 9 a donc dû écrire la même chose **trois
+fois, à la main**, comme la réparation du lot 8 l'avait fait avant lui.
+
+Rien ne signale celui qu'on oublie. Le §4.33.d porte déjà la forme du garde à
+écrire — faire **lire** au `README` les formes construites par le capteur plutôt
+que de les y recopier — et elle reste à écrire. Ce constat ne la répète pas : il
+en compte la **troisième** occurrence, parce qu'un constat qu'on paie trois fois
+n'est plus un constat, c'est un coût.
 
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
