@@ -434,6 +434,85 @@ def _record_metadata(context: AssetExecutionContext, result: dict[str, Any]) -> 
     context.add_output_metadata(metadonnees)
 
 
+class CurseurIllisibleError(RuntimeError):
+    """Le curseur est du JSON bien forme, mais ce n'est pas un curseur de capteur.
+
+    Le cas declencheur est exactement la maladresse que le geste de reingestion
+    invite : poser le marqueur DANS le JSON au lieu de remplacer le curseur
+    entier — ``{"captures/p.html": "reingerer:2026-09-22"}``. La valeur n'est
+    alors pas un mtime, et ``float`` leve.
+
+    **CETTE ERREUR N'EST PAS RATTRAPEE PAR LE CAPTEUR, ET C'EST LE POINT.** Elle
+    remonte, le tick echoue, et il echoue a NOUVEAU trente secondes plus tard,
+    parce que ``update_cursor`` n'est jamais atteint et que le curseur fautif
+    reste en place. Bruyant et persistant : c'est exactement ce qu'on veut d'un
+    curseur qu'un humain vient d'ecrire de travers.
+
+    L'attraper pour « reinitialiser le curseur » serait PIRE, et c'est la seule
+    autre forme qui vienne a l'esprit : le curseur vide, le capteur redemande
+    TOUT le corpus, et la sortie bruyante est remplacee par un silence — la
+    famille exacte du 4.32.a. Ce lot ne change donc pas ce que l'echec FAIT ; il
+    change ce qu'il DIT. `float(...)` rendait
+    ``ValueError: could not convert string to float: 'reingerer:2026-09-22'``,
+    qui ne nomme ni la cle fautive, ni le geste a refaire.
+    """
+
+
+def _mtimes_du_curseur(brut: str) -> dict[str, str]:
+    """Lit le curseur nominal : une cle de partition, un mtime, et rien d'autre.
+
+    `mesure` le 22 septembre 2026, sur le capteur livre par le lot 8, trois
+    curseurs BIEN FORMES au sens de JSON faisaient echouer le tick sans qu'aucun
+    `except` ne les couvre :
+
+    ===================================== ==========================================
+    Curseur                               Ce que le tick levait
+    ===================================== ==========================================
+    ``{"captures/p.html": "reingerer:…"}`` ``ValueError`` — sur ``float(last_mtime)``
+    ``[1, 2, 3]``                          ``TypeError`` — sur ``dict(cursor_data)``
+    ``3``                                  ``TypeError`` — sur ``dict(cursor_data)``
+    ===================================== ==========================================
+
+    Les deux `TypeError` tombaient HORS du `try`, qui n'entoure que `json.loads`.
+    Le `TypeError` que cet `except` enumere est d'ailleurs INATTEIGNABLE :
+    `json.loads` d'une `str` ne le leve pas, et le curseur est une `str` non vide
+    a cet endroit. Il est retire, et c'est un retrecissement, pas un
+    elargissement.
+
+    Args:
+        brut: Curseur tel que Dagster le rend, non vide et sans marqueur.
+
+    Returns:
+        Les mtimes, par cle de partition, normalises en chaines.
+
+    Raises:
+        json.JSONDecodeError: Si le curseur n'est pas du JSON — le cas que
+            l'appelant traite en repartant a zero, comme avant ce lot.
+        CurseurIllisibleError: Si c'est du JSON qui n'est pas un curseur.
+    """
+    charge = json.loads(brut)
+    if not isinstance(charge, dict):
+        raise CurseurIllisibleError(
+            f"Le curseur de ce capteur est du JSON bien forme, mais ce n'est pas un "
+            f"objet : {type(charge).__name__}. Un curseur nominal associe une cle de "
+            f"partition a son mtime. Le curseur n'est PAS touche par ce tick : "
+            f"corrigez-le, le capteur repartira seul."
+        )
+    for cle, valeur in charge.items():
+        try:
+            float(valeur)
+        except (TypeError, ValueError) as exc:
+            raise CurseurIllisibleError(
+                f"Le curseur de ce capteur est du JSON bien forme, mais la valeur de "
+                f"la cle « {cle} » n'est pas un mtime : {valeur!r}. LE MARQUEUR DE "
+                f"REINGESTION SE POSE A LA PLACE DU CURSEUR ENTIER, pas dans le JSON : "
+                f"le curseur doit valoir « {PREFIXE_REINGESTION}<etiquette> » et rien "
+                f"d'autre. Le curseur n'est PAS touche par ce tick : corrigez-le, le "
+                f"capteur repartira seul."
+            ) from exc
+    return {str(cle): str(valeur) for cle, valeur in charge.items()}
+
+
 def _etiquette_de_reingestion(curseur: str | None) -> str | None:
     """Lit l'ordre de reingestion pose dans le curseur, s'il y en a un.
 
@@ -594,8 +673,13 @@ def _build_sensor(
             )
         elif context.cursor:
             try:
-                cursor_data = json.loads(context.cursor)
-            except (json.JSONDecodeError, TypeError):
+                cursor_data = _mtimes_du_curseur(context.cursor)
+            except json.JSONDecodeError:
+                # Un curseur qui n'est pas du JSON du tout : le comportement
+                # d'avant ce lot est conserve tel quel. `CurseurIllisibleError`,
+                # elle, N'EST PAS rattrapee — voir sa docstring : la rattraper
+                # pour repartir a zero remplacerait un echec bruyant par un
+                # silence qui reingere tout.
                 context.log.warning("Invalid cursor format, resetting.")
 
         run_requests: list[RunRequest] = []

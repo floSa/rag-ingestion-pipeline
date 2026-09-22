@@ -24,7 +24,12 @@ from dagster._core.test_utils import create_run_for_test
 
 from src.docling_service.elements import cleaned_path, cleaned_root
 from src.docling_service.jobs import Job
-from src.pipeline.factory import PREFIXE_REINGESTION, _record_metadata, build_source
+from src.pipeline.factory import (
+    PREFIXE_REINGESTION,
+    CurseurIllisibleError,
+    _record_metadata,
+    build_source,
+)
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig, load_sources
 from src.wipe_stores import purge_cleaned
@@ -1303,6 +1308,132 @@ class TestLeCurseurAvanceEtLOrdreNeBougePas:
 
         assert cles == sorted(cles), cles
         assert len(cles) == 5, cles
+
+
+class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
+    """Registre 4.33 — trois curseurs BIEN FORMES faisaient planter le tick.
+
+    Antériorité verifiee : la ligne `float(last_mtime)` vient de `b157e84`,
+    11 juin 2026. NON imputable au lot 8 — mais elle est sur le chemin du geste
+    qu'il a ouvert, et le cas declencheur est exactement la maladresse que ce
+    geste invite : poser le marqueur DANS le JSON au lieu de remplacer le
+    curseur.
+
+    **CE QUI N'EST PAS CHANGE, ET C'EST LE PLUS IMPORTANT.** Le tick echoue
+    toujours, et il echoue encore au tick suivant : `update_cursor` n'est jamais
+    atteint, le curseur fautif reste en place, et chaque tick echoue a son tour
+    toutes les 30 secondes jusqu'a correction manuelle. Rattraper l'erreur pour
+    « reinitialiser le curseur » aurait remplace cette sortie bruyante par un
+    SILENCE qui redemande tout le corpus — le 4.32.a par l'autre bout. Ce qui
+    change est ce que l'echec DIT.
+
+    Le TEMOIN de cette classe est le dernier test : un curseur qui n'est pas du
+    JSON du tout continue de repartir a zero avec son avertissement. Sans lui,
+    un capteur qui leverait sur TOUT curseur non nominal rendrait les trois
+    premiers verts.
+    """
+
+    def _capteur(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        _corpus(tmp_path, 2)
+        return build_source(_html_source(name="reing"))
+
+    def _tick(self, built, curseur):
+        with DagsterInstance.ephemeral() as instance:
+            context = build_sensor_context(instance=instance, cursor=curseur)
+            with _ecoute(context) as journal:
+                try:
+                    resultat = built.sensor(context)
+                except CurseurIllisibleError as exc:
+                    return None, str(exc), context.cursor, journal
+                return resultat, None, context.cursor, journal
+
+    def test_le_marqueur_pose_dans_le_json_est_nomme_et_le_geste_explique(
+        self, tmp_path, monkeypatch
+    ):
+        """LE CAS DECLENCHEUR, et le message doit porter les trois choses utiles.
+
+        La cle fautive, sa valeur, et le geste a refaire. `ValueError: could not
+        convert string to float: 'reingerer:2026-09-22'` n'en portait qu'une, la
+        moins actionnable des trois.
+        """
+        curseur = json.dumps({"captures/page_00.html": f"{PREFIXE_REINGESTION}2026-09-22"})
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            resultat, message, apres, _ = self._tick(built, curseur)
+        finally:
+            get_settings.cache_clear()
+
+        assert resultat is None, "le tick devait echouer, pas reussir en silence"
+        assert message is not None
+        assert "captures/page_00.html" in message, message
+        assert f"{PREFIXE_REINGESTION}2026-09-22" in message, message
+        assert "A LA PLACE DU CURSEUR ENTIER" in message, message
+
+    def test_le_curseur_fautif_n_est_pas_consomme_par_le_tick_qui_echoue(
+        self, tmp_path, monkeypatch
+    ):
+        """CE QUI REND L'ECHEC PERSISTANT, donc visible, donc reparable.
+
+        Un tick qui avalerait le curseur fautif en le remplacant ferait
+        disparaitre la trace du geste rate — et, le curseur vide, redemanderait
+        tout le corpus au tick suivant. C'est la forme qu'il ne faut PAS prendre.
+        """
+        curseur = json.dumps({"captures/page_00.html": "hier"})
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            _, message, apres, _ = self._tick(built, curseur)
+        finally:
+            get_settings.cache_clear()
+
+        assert message is not None
+        assert apres == curseur, (apres, curseur)
+
+    def test_un_json_bien_forme_qui_n_est_pas_un_objet_est_refuse_pareil(
+        self, tmp_path, monkeypatch
+    ):
+        """Les deux autres curseurs mesures, et ils levaient un `TypeError` NU.
+
+        Il tombait hors du `try`, sur `dict(cursor_data)`, donc aucun `except` ne
+        le couvrait. Le message ne nommait pas meme le curseur.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            rendus = {}
+            for curseur in ("[1, 2, 3]", "3"):
+                _, message, apres, _ = self._tick(built, curseur)
+                rendus[curseur] = (message, apres)
+        finally:
+            get_settings.cache_clear()
+
+        for curseur, (message, apres) in rendus.items():
+            assert message is not None, curseur
+            assert "n'est pas un objet" in message, message
+            assert apres == curseur, (apres, curseur)
+
+    def test_un_curseur_qui_n_est_pas_du_json_repart_a_zero_comme_avant(
+        self, tmp_path, monkeypatch
+    ):
+        """LE TEMOIN. Un garde qui leverait sur tout curseur non nominal serait creux.
+
+        Ce cas-la n'est PAS traite par ce lot : il avertit et repart a zero,
+        exactement comme avant. La distinction est ce que cette classe garde —
+        « ce n'est pas du JSON » et « c'est du JSON qui n'est pas un curseur »
+        ne demandent pas le meme geste.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            resultat, message, _, journal = self._tick(built, "pas du json du tout {")
+        finally:
+            get_settings.cache_clear()
+
+        assert message is None, message
+        assert resultat is not None
+        assert len(resultat.run_requests) == 2, resultat.run_requests
+        assert any("Invalid cursor format" in ligne for ligne in journal.avertissements), (
+            journal.avertissements
+        )
 
 
 class TestLaCleNominaleEstInchangee:
