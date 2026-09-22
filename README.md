@@ -941,8 +941,15 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**884 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
-révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
+**897 tests verts** (`mesuré` le 22 septembre 2026 par `make all` sur cette
+révision, `rc=0` du processus ; `ruff`, `mypy` et `ruff format --check` propres
+au même moment, puisque `make all` les enchaîne. Le compte tient sur cinq
+graines de hachage — `PYTHONHASHSEED` à 0, 1, 42, 1337 et 65535 —, `rc=0` aux
+cinq.) *La commande est `make all`, et elle a remplacé « `mypy --strict` » dans
+cette phrase : `pyproject.toml` porte déjà `strict = true` ET une exception
+motivée ligne 84, `disallow_untyped_decorators = false`, pour les décorateurs
+Dagster et FastAPI. Passer `--strict` à la main ÉCRASE l'exception et fabrique
+des erreurs qui n'existent pas ; la porte de ce dépôt est `make all`.* C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
 recopié cesse d'être une mesure — « 407 tests » a circulé pour une révision qui
