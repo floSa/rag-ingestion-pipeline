@@ -115,7 +115,8 @@ Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autre
 ### 4. Lancer l'ingestion
 1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML, `Datas/mds/` pour le Markdown).
 2. Ouvrez l'interface **Dagster** : chaque source déclarée dans `src/pipeline/sources.yaml` a son propre sensor (`pdfs_sensor`, `livres_html_sensor`, ...), actif par défaut dans **Overview -> Sensors**.
-3. Le système détecte automatiquement un nouveau fichier (une partition par fichier) et lance le pipeline complet pour l'ingérer dans Nebula, ChromaDB, et MinIO !
+3. Le système détecte automatiquement un fichier **nouveau ou modifié** (une partition par fichier) et lance le pipeline complet pour l'ingérer dans Nebula, ChromaDB, et MinIO !
+4. Un fichier **inchangé** n'est jamais réingéré tout seul **tant que le curseur du sensor survit**, et c'est voulu : la réingestion se demande, voir [Ré-ingérer proprement](#ré-ingérer-proprement). La subordonnée n'est pas une précaution de style — sans elle la phrase est fausse, et elle l'a déjà été sur ce poste. Curseurs et historique des runs vivent dans le **même** Postgres : s'il repart vierge, les deux se perdent ensemble et un simple `docker compose up -d` réingère le corpus **entier**, sans un mot. C'est arrivé sur ce poste, au lot 3 (registre §4.26).
 
 ---
 
@@ -311,6 +312,46 @@ docker compose logs -f docling-service
 docker compose exec docling-service python -m src.wipe_stores
 ```
 
+> **LA PURGE NE DÉCLENCHE RIEN, ET CETTE SECTION NE LE DISAIT PAS.** Elle donnait
+> la purge, puis « redémarrer, puis réingérer », sans une ligne sur ce qui
+> provoque la réingestion. Le chemin nominal est le capteur de source, et il en
+> était **incapable** : sa clé de run était déterministe sur `(source, partition,
+> mtime)`, Dagster cherche une clé consommée dans **tout** l'historique sans borne
+> de temps, donc un fichier dont le `mtime` n'a pas bougé ne pouvait jamais être
+> réingéré — et l'échec ne ressemblait pas à un échec (`skip_reason=None`, pas une
+> ligne au journal). `mesuré` le **2 septembre 2026**, curseur vidé et vérifié à 0
+> entrée : **23 clés demandées, 0 run créé** ; le détail vit à son site canonique,
+> [`documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`](documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md).
+> **Un opérateur qui purgeait puis attendait gardait des stores vides
+> indéfiniment**, en ayant suivi cette section à la lettre. Registre §4.32.a.
+
+**Déclencher la réingestion.** Elle **ne part jamais toute seule** : elle se
+demande, en posant le curseur du capteur de la source sur `reingerer:<étiquette>`.
+Un capteur par source — `pdfs_sensor`, `livres_html_sensor`, `markdown_sensor`.
+
+Par l'interface Dagster, **Overview → Sensors → le capteur → Cursor → Edit cursor** :
+
+```
+reingerer:2026-09-22-apres-purge
+```
+
+ou en ligne de commande, dans le conteneur qui porte déjà le workspace du daemon :
+
+```bash
+docker compose exec dagster-daemon dagster sensor cursor -w /opt/dagster/app/src/workspace.yaml --set 'reingerer:2026-09-22-apres-purge' livres_html_sensor
+```
+
+| | |
+|---|---|
+| **Ce qui déclenche** | ce marqueur, et rien d'autre. Le tick qui le lit repart sans aucun `mtime` connu — le marqueur a pris la place du curseur JSON qui les portait —, redemande une partition par fichier, et fait porter **l'étiquette** à la clé de run : c'est ce qui la rend neuve pour Dagster. |
+| **Ce qui garantit qu'elle ne parte pas seule** | **deux** choses, et elles ne couvrent pas le même cas. D'abord **le curseur** : il vit dans le stockage de l'instance, survit au rechargement du code, aucune ligne du dépôt ne l'efface, et tant qu'il est là le capteur ne demande rien sur un corpus inchangé. Ensuite, **sans marqueur, la clé garde exactement sa forme historique** `{source}_{partition}_{mtime}` — mais cela ne sert que si le curseur est perdu **seul, historique intact** : remise à zéro à la main, capteur renommé, code location renommée. Là, le capteur redemande tout, Dagster ne crée aucun run, et il le **dit**. `TestLaCleNominaleEstInchangee` fige cette forme. |
+| **Ce qu'aucune des deux ne couvre** | la perte **simultanée** du curseur et de l'historique — ils sont dans le même Postgres. Le corpus entier est alors réingéré, en silence, et la forme de la clé n'y change rien. Registre §4.26. |
+| **Si le geste est fait deux fois** | avec la **même** étiquette, les clés sont identiques et Dagster ne crée aucun run — le capteur le **dit**, avec le nombre de demandes perdues, et le curseur a avancé : le geste est à refaire. Avec une étiquette **neuve**, la réingestion repart. |
+| **Un marqueur sans étiquette** | est refusé, le curseur laissé intact, et la raison journalisée. L'honorer rendrait la clé constante, donc le second geste muet — le défaut §4.32.a rouvert par le geste censé le fermer. |
+
+L'étiquette est libre : une date, un motif. La seule règle est qu'elle soit **neuve
+à chaque geste**.
+
 Il purge **quatre** choses, et non trois. Cette phrase disait « les trois stores — collection ChromaDB, space NebulaGraph et bucket MinIO » : c'était une phrase d'exhaustivité, et le lot 4 l'a rendue fausse en ajoutant la quatrième sans la compter ici. Le compte est `mesuré` sur la sortie du script, qui titre chacune (`--- ChromaDB ---`, `--- MinIO ---`, `--- NebulaGraph ---`, `--- HTML nettoyé ---`) :
 
 | Ce qui est purgé | Pourquoi il y est |
@@ -350,7 +391,9 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 >
 > L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
 > lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
-> redémarrer ne répare rien.
+> redémarrer ne répare rien. Et « réingérer » est un geste précis, pas une
+> attente : le curseur du capteur, posé sur `reingerer:<étiquette>` — le message
+> d'anomalie le dit désormais lui-même, il ne le disait pas.
 >
 > **Et le message d'anomalie le dit désormais lui-même.** Il égarait : il
 > annonçait « le tag a migré, les données non — il faut une réingestion » alors
@@ -899,8 +942,15 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**884 tests verts** (`mesuré` le 2 septembre 2026 par `make test` sur cette
-révision ; `ruff` et `mypy --strict` propres au même moment). C'est le site
+**904 tests verts** (`mesuré` le 22 septembre 2026 par `make all` sur cette
+révision, `rc=0` du processus ; `ruff`, `mypy` et `ruff format --check` propres
+au même moment, puisque `make all` les enchaîne. Le compte tient sur cinq
+graines de hachage — `PYTHONHASHSEED` à 0, 1, 42, 1337 et 65535 —, `rc=0` aux
+cinq.) *La commande est `make all`, et elle a remplacé « `mypy --strict` » dans
+cette phrase : `pyproject.toml` porte déjà `strict = true` ET une exception
+motivée ligne 84, `disallow_untyped_decorators = false`, pour les décorateurs
+Dagster et FastAPI. Passer `--strict` à la main ÉCRASE l'exception et fabrique
+des erreurs qui n'existent pas ; la porte de ce dépôt est `make all`.* C'est le site
 canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
 toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
 recopié cesse d'être une mesure — « 407 tests » a circulé pour une révision qui

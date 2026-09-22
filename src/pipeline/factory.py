@@ -17,6 +17,7 @@ import glob as globlib
 import json
 import os
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -29,11 +30,13 @@ from dagster import (
     AssetsDefinition,
     AssetSelection,
     Backoff,
+    DagsterInstance,
     DefaultSensorStatus,
     DynamicPartitionsDefinition,
     Failure,
     RetryPolicy,
     RunRequest,
+    RunsFilter,
     SensorDefinition,
     SensorEvaluationContext,
     SensorResult,
@@ -41,6 +44,15 @@ from dagster import (
     define_asset_job,
     sensor,
 )
+
+# Les deux tags que le daemon pose sur un run cree depuis une ``RunRequest``, et
+# sur lesquels il interroge l'historique pour decider si la cle est deja
+# consommee. Ils sont IMPORTES et non recopies : deux chaines litterales qui
+# doivent coincider avec un detail interne de Dagster divergeraient en silence
+# le jour d'une montee de version, et le controle ci-dessous cesserait de voir
+# quoi que ce soit sans qu'aucun test ne rougisse. Importes, un deplacement du
+# module leve au CHARGEMENT — bruyant, donc reparable.
+from dagster._core.storage.tags import RUN_KEY_TAG, SENSOR_NAME_TAG
 
 if TYPE_CHECKING:
     from dagster._core.definitions.unresolved_asset_job_definition import (
@@ -59,6 +71,68 @@ from src.pipeline.sources import SourceConfig
 # de retrouver des partitions rouges pour une raison sans rapport avec les
 # documents. Les echecs propres au document, eux, ne sont pas retentes.
 EXTRACTION_RETRY_POLICY = RetryPolicy(max_retries=2, delay=120, backoff=Backoff.EXPONENTIAL)
+
+# LE GESTE DE REINGESTION, ET LES TROIS QUESTIONS QU'IL DOIT FERMER AU SITE
+# (registre 4.32.a). Le defaut etait un ``run_key`` deterministe sur
+# ``(source, partition, mtime)`` : Dagster cherche une cle consommee dans TOUT
+# l'historique, sans borne de temps, donc un fichier dont le ``mtime`` n'a pas
+# bouge ne pouvait JAMAIS etre reingere par le capteur. `mesure` le 2 septembre
+# 2026, curseur vide et verifie a 0 entree : 23 cles demandees, ZERO run cree,
+# `skip_reason=None`. Le chiffre vit a son site canonique,
+# ``documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md``.
+#
+# 1. QU'EST-CE QUI DECLENCHE UNE REINGESTION ? Le curseur du capteur, pose a la
+#    main sur ``reingerer:<etiquette>``. Rien d'autre. Le tick qui lit ce
+#    marqueur repart sans AUCUN ``mtime`` connu — le marqueur a pris la place du
+#    curseur JSON qui les portait —, redemande une partition par fichier, et
+#    fait porter L'ETIQUETTE a la cle de run plutot que le ``mtime`` : c'est ce
+#    qui la rend neuve pour Dagster.
+#
+# 2. QU'EST-CE QUI GARANTIT QU'ELLE NE PART PAS SANS QU'ON L'AIT DEMANDEE ?
+#    DEUX choses, et elles ne couvrent pas le meme scenario. Les confondre
+#    fabrique une fausse assurance, et c'est exactement ce que la premiere
+#    redaction de ce bloc a fait.
+#
+#    LA PREMIERE EST LE CURSEUR. Il vit dans le stockage de l'instance, survit
+#    au rechargement du code, et aucune ligne de ce module ne l'efface. Tant
+#    qu'il est la, le capteur ne demande RIEN sur un corpus inchange — quelle
+#    que soit la forme de la cle, qui n'entre alors jamais en jeu.
+#
+#    LA SECONDE EST QUE, SANS MARQUEUR, LA CLE GARDE EXACTEMENT SA FORME
+#    HISTORIQUE ``{source}_{partition}_{mtime}``. Elle ne sert que quand la
+#    premiere a lache, et seulement dans un cas precis : LE CURSEUR PERDU SEUL,
+#    HISTORIQUE DES RUNS INTACT. Cet etat s'atteint sans rien casser — une
+#    remise a zero du curseur a la main depuis l'interface, un capteur renomme,
+#    une code location renommee : dans les trois cas le curseur repart vide et
+#    l'historique reste. Le capteur redemande alors tout le corpus, et Dagster
+#    n'en cree aucun run. La difference que ce lot apporte est la : sous la
+#    forme prescrite au registre, ce refus etait MUET ; ici, les cles
+#    reconstruites sont celles de l'historique et le capteur LE DIT, avec son
+#    compte (:func:`_cles_deja_consommees`). C'est la propriete que
+#    ``TestLaCleNominaleEstInchangee`` fige.
+#
+#    CE QUE LA SECONDE NE COUVRE PAS, ecrit pour que personne ne s'y fie : le
+#    cas ou le curseur ET l'historique disparaissent ENSEMBLE. Ils vivent dans
+#    le MEME Postgres (``dagster.yaml`` : ``run_storage`` et
+#    ``schedule_storage`` y pointent tous les deux), donc ils se perdent
+#    ensemble. C'est ce qui est arrive au registre 4.26 — le Postgres reparti
+#    vierge, « les curseurs des sensors avec lui » —, et cet episode ne
+#    departage donc PAS les deux formes de cle : sous l'une comme sous l'autre,
+#    tout est reingere, en silence. La preuve est dans ce depot et elle est a
+#    charge : ``test_des_cles_neuves_ne_declenchent_aucun_avertissement`` monte
+#    une instance VIERGE, obtient ses demandes, et n'obtient AUCUN
+#    avertissement. Le 4.26 ne peut donc pas servir a justifier cette forme-ci.
+#
+# 3. ET SI LE GESTE EST FAIT DEUX FOIS DE SUITE ? Avec la MEME etiquette, le
+#    second tick reconstruit les memes cles : Dagster n'en creera aucun run, et
+#    c'est exactement le silence du 4.32.a. Le capteur le controle donc AVANT
+#    d'emettre, et le DIT avec son compte (:func:`_cles_deja_consommees`). Avec
+#    une etiquette NEUVE, la reingestion repart. Le geste est donc repetable, et
+#    sa repetition a l'identique est bruyante au lieu d'etre muette.
+#
+# L'etiquette est libre et obligatoire — une date, un motif. Un marqueur sans
+# etiquette est refuse, parce qu'il rendrait le geste non repetable.
+PREFIXE_REINGESTION = "reingerer:"
 
 
 @dataclass
@@ -360,21 +434,145 @@ def _record_metadata(context: AssetExecutionContext, result: dict[str, Any]) -> 
     context.add_output_metadata(metadonnees)
 
 
+def _etiquette_de_reingestion(curseur: str | None) -> str | None:
+    """Lit l'ordre de reingestion pose dans le curseur, s'il y en a un.
+
+    Le marqueur est du TEXTE et non du JSON, et c'est delibere : il se pose a la
+    main, depuis l'interface Dagster ou en une ligne de commande, sans
+    echappement de guillemets. Un curseur nominal est un objet JSON, qui ne
+    commence jamais par ``reingerer:``.
+
+    DEUX BORNES DE CETTE LECTURE SONT PORTEUSES, et aucune n'etait gardee avant
+    la reparation du lot 8 :
+
+    - ``startswith`` et non ``in`` : le marqueur n'est un ordre qu'en TETE du
+      curseur. Avec ``in``, un curseur qui contient la chaine ailleurs devient
+      un ordre, et l'etiquette la decoupe a l'aveugle des dix premiers
+      caracteres. Garde par
+      ``test_le_marqueur_n_est_honore_qu_en_tete_du_curseur`` ;
+    - le ``.strip()`` FINAL, qui normalise l'etiquette. Le marqueur se pose a la
+      main : « reingerer: 2026-09-22 » et « reingerer:2026-09-22 » sont le meme
+      geste pour celui qui les tape, et doivent donner les memes cles de run.
+      Sans lui, l'espace en trop rend les cles neuves, donc le geste refait
+      reingere tout une seconde fois EN SILENCE au lieu d'etre refuse et
+      annonce. Garde par
+      ``test_l_etiquette_est_la_meme_avec_ou_sans_espace_apres_le_marqueur``.
+      (Il ne joue AUCUN role sur « marqueur suivi de seuls espaces » : le
+      ``curseur.strip()`` de la ligne precedente les a deja manges, et
+      l'etiquette est vide dans les deux cas.)
+
+    Args:
+        curseur: Curseur du capteur, tel que Dagster le rend.
+
+    Returns:
+        ``None`` s'il n'y a pas d'ordre — le cas nominal, et celui de tout
+        deploiement. L'etiquette s'il y en a une. La chaine VIDE si le marqueur
+        est la sans etiquette : c'est un ordre mal forme, distinct de l'absence
+        d'ordre, et l'appelant le refuse en le disant.
+    """
+    if not curseur:
+        return None
+    texte = curseur.strip()
+    if not texte.startswith(PREFIXE_REINGESTION):
+        return None
+    return texte[len(PREFIXE_REINGESTION) :].strip()
+
+
+def _cles_deja_consommees(
+    instance: DagsterInstance, nom_du_capteur: str, cles: Sequence[str]
+) -> list[str]:
+    """Rend, parmi ces cles de run, celles dont Dagster ne creera AUCUN run.
+
+    **C'EST L'AUTRE MOITIE DU 4.32.a, ET LA PLUS COUTEUSE** : sans elle,
+    personne n'aurait jamais trouve le reste. Le tick qui a perdu 22 runs le 2
+    septembre 2026 portait ``skip_reason=None`` — le daemon n'ecrit rien quand
+    il ecarte une demande dont la cle est deja consommee, et la phrase « Sensor
+    function returned an empty result » n'apparait qu'aux ticks SUIVANTS, pour
+    une autre raison. Le capteur regarde donc lui-meme, avant d'emettre.
+
+    La regle reproduite ici est celle du daemon, et non une approximation :
+    ``dagster/_daemon/sensor.py::fetch_existing_runs`` interroge
+    ``RunsFilter(tags={RUN_KEY_TAG: cle})`` une cle a la fois — il commente
+    lui-meme que le faire en une requete ``IN`` est plus lent — puis ne retient
+    que les runs dont ``SENSOR_NAME_TAG`` est celui du capteur, pour que deux
+    capteurs homonymes de depots differents ne se genent pas. Le filtre sur le
+    nom est ce qui evite une alerte FAUSSE, et une alerte fausse se desapprend
+    aussi vite qu'une alerte absente.
+
+    LE COUT, ET IL EST BORNE. Il suit le nombre de DEMANDES de ce tick — pas le
+    nombre de fichiers de la source, et surtout pas la taille de l'historique.
+    `mesure` le 22 septembre 2026, instance ephemere et corpus reel, en comptant
+    les appels :
+
+    - regime nominal ETABLI, corpus inchange : **0** — le capteur n'emet aucune
+      demande, donc cette fonction n'est pas appelee ;
+    - **un** document ajoute ou modifie : **1 requete**. C'est le but meme du
+      capteur, donc le cas le plus frequent apres le precedent ;
+    - premier tick, curseur perdu, ou reingestion : **une requete par fichier
+      retenu** — 22 pour `livres_html`, 1 pour `pdfs`.
+
+    La phrase que cette docstring portait — « en regime nominal cette fonction
+    n'est JAMAIS appelee, elle ne coute ses N requetes que sur le tick d'une
+    REINGESTION » — etait fausse de sa seconde moitie, et fausse dans le sens
+    qui rassure : le cas a une requete est le cas ORDINAIRE, pas l'exception.
+    Le plafond, lui, tient — il est celui du corpus, et il ne grandit pas avec
+    l'historique.
+
+    Args:
+        instance: Instance Dagster interrogee.
+        nom_du_capteur: Nom du capteur, celui que le daemon tague.
+        cles: Cles de run sur le point d'etre emises.
+
+    Returns:
+        Les cles deja consommees, dans l'ordre ou elles ont ete presentees.
+    """
+    consommees: list[str] = []
+    for cle in cles:
+        runs = instance.get_runs(filters=RunsFilter(tags={RUN_KEY_TAG: cle}))
+        if any((run.tags or {}).get(SENSOR_NAME_TAG) == nom_du_capteur for run in runs):
+            consommees.append(cle)
+    return consommees
+
+
 def _build_sensor(
     source: SourceConfig,
     partitions_name: str,
     partitions: DynamicPartitionsDefinition,
     job_name: str,
 ) -> SensorDefinition:
-    """Sensor de detection de fichiers : une partition + un run par fichier nouveau/modifie."""
+    """Sensor de detection de fichiers : une partition + un run par fichier nouveau/modifie.
+
+    Il porte aussi le GESTE DE REINGESTION, decrit au-dessus de
+    :data:`PREFIXE_REINGESTION` : le chemin nominal detecte ce qui a change, le
+    marqueur redemande tout, et les deux se distinguent par la forme de la cle
+    de run.
+    """
+    nom_du_capteur = f"{source.name}_sensor"
 
     @sensor(
-        name=f"{source.name}_sensor",
+        name=nom_du_capteur,
         minimum_interval_seconds=30,
         job_name=job_name,
         default_status=DefaultSensorStatus.RUNNING,
     )
     def file_sensor(context: SensorEvaluationContext) -> SensorResult:
+        etiquette = _etiquette_de_reingestion(context.cursor)
+        if etiquette == "":
+            # Ordre mal forme : on ne fait RIEN, et on laisse le curseur tel
+            # quel pour que l'operateur le corrige. Honorer un marqueur sans
+            # etiquette rouvrirait le 4.32.a par le geste cense le fermer — la
+            # cle serait constante, donc le second geste serait refuse en
+            # silence.
+            context.log.warning(
+                f"Curseur pose sur « {PREFIXE_REINGESTION} » SANS etiquette : aucune "
+                "reingestion n'est lancee, et le curseur n'est pas touche. L'etiquette "
+                "est ce qui distingue deux gestes successifs ; sans elle, le second "
+                "porterait les memes cles de run et Dagster le refuserait sans un mot "
+                f"(registre 4.32.a). Posez par exemple « {PREFIXE_REINGESTION}"
+                "2026-09-22-apres-purge »."
+            )
+            return SensorResult(run_requests=[], dynamic_partitions_requests=[])
+
         source_dir = get_settings().source_dir
         pattern = str(Path(source_dir) / source.glob)
         discovered = sorted(globlib.glob(pattern, recursive=True))
@@ -387,13 +585,21 @@ def _build_sensor(
             ecartes = [os.path.relpath(f, source_dir) for f in discovered if f not in set(files)]
             context.log.info(f"Ignored (front/back matter): {', '.join(sorted(ecartes))}")
 
-        try:
-            cursor_data: dict[str, str] = json.loads(context.cursor) if context.cursor else {}
-        except (json.JSONDecodeError, TypeError):
-            context.log.warning("Invalid cursor format, resetting.")
-            cursor_data = {}
+        cursor_data: dict[str, str] = {}
+        if etiquette:
+            context.log.info(
+                f"Reingestion demandee, etiquette « {etiquette} » : les {len(files)} "
+                "fichiers de la source sont redemandes, quel que soit leur mtime. "
+                "Le marqueur est consomme par ce tick."
+            )
+        elif context.cursor:
+            try:
+                cursor_data = json.loads(context.cursor)
+            except (json.JSONDecodeError, TypeError):
+                context.log.warning("Invalid cursor format, resetting.")
 
         run_requests: list[RunRequest] = []
+        cles_demandees: list[str] = []
         partition_requests = []
         new_cursor = dict(cursor_data)
 
@@ -409,16 +615,37 @@ def _build_sensor(
             last_mtime = cursor_data.get(partition_key)
 
             if not last_mtime or float(last_mtime) < mtime:
-                context.log.info(f"Requesting run for partition: {partition_key}")
-                run_requests.append(
-                    RunRequest(
-                        run_key=f"{source.name}_{partition_key}_{mtime}",
-                        partition_key=partition_key,
-                    )
+                # LA CLE NOMINALE NE BOUGE PAS, et c'est ce qui rend un
+                # deploiement inoffensif : sur un corpus inchange, elle est
+                # celle que l'historique porte deja, donc rien ne repart. Seul
+                # le marqueur fabrique une cle neuve, et il porte SON etiquette.
+                run_key = (
+                    f"{source.name}_{partition_key}_reingestion_{etiquette}"
+                    if etiquette
+                    else f"{source.name}_{partition_key}_{mtime}"
                 )
+                context.log.info(f"Requesting run for partition: {partition_key}")
+                run_requests.append(RunRequest(run_key=run_key, partition_key=partition_key))
+                cles_demandees.append(run_key)
                 new_cursor[partition_key] = str(mtime)
 
-        if new_cursor != cursor_data:
+        if cles_demandees:
+            perdues = _cles_deja_consommees(context.instance, nom_du_capteur, cles_demandees)
+            if perdues:
+                context.log.warning(
+                    f"{len(perdues)} demande(s) de run sur {len(cles_demandees)} portent un "
+                    "run_key DEJA CONSOMME : Dagster n'en creera aucun run, et il ne le dira "
+                    "pas — le tick portera skip_reason=None (registre 4.32.a). Le curseur, "
+                    "lui, avance : le geste est a refaire avec une etiquette NEUVE, "
+                    f"« {PREFIXE_REINGESTION}<etiquette> ». Premieres cles perdues : "
+                    f"{', '.join(perdues[:3])}"
+                )
+
+        # `or etiquette` : sans lui, un marqueur pose sur une source dont le
+        # corpus est VIDE ne serait jamais consomme — le curseur calcule vaut
+        # alors `{}`, egal a celui dont ce tick est parti — et chaque tick le
+        # rejouerait indefiniment.
+        if new_cursor != cursor_data or etiquette:
             context.update_cursor(json.dumps(new_cursor))
 
         return SensorResult(

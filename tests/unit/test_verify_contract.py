@@ -18,9 +18,12 @@ import sys
 from pathlib import Path
 
 import pytest
+from dagster import DagsterInstance, build_sensor_context
 
 from src.docling_service.elements import TAG_MAP
 from src.docling_service.ngql import DOCUMENT_PROPERTIES, VERTEX_PROPERTIES
+from src.pipeline.factory import PREFIXE_REINGESTION, build_source
+from src.pipeline.sources import SourceConfig
 from src.verify_contract import (
     _lire_les_aretes,
     _lire_les_tags_sans_la_colonne,
@@ -953,6 +956,52 @@ class TestLesDeuxEtatsDUneColonneNeSeConfondentPlus:
         assert message is not None
         assert "REDEMARRER" in message, (
             f"les deux etats sont vrais et c'est la REINGESTION qui a ete prescrite : {message}"
+        )
+
+    def test_les_deux_branches_nomment_le_geste_qui_declenche_la_reingestion(self) -> None:
+        """Registre 4.32.a — LES DEUX BRANCHES PRESCRIVAIENT UN CHEMIN MORT.
+
+        « reingerer » n'est pas un geste : c'est un resultat. Le chemin nominal
+        qui le produit est le capteur de source, et il etait incapable de
+        reingerer quoi que ce soit — `run_key` deterministe sur le `mtime`, donc
+        cle deja consommee, donc zero run cree et `skip_reason=None`. Un
+        operateur qui lisait ce message et purgeait gardait des stores VIDES
+        indefiniment, en ayant suivi la consigne a la lettre.
+
+        Les deux branches doivent donc nommer le geste REEL. La chaine est
+        comparee a la constante de `factory.py`, qui en est le SEUL site
+        canonique : un message qui prescrirait un marqueur different de celui
+        que le capteur lit serait un chemin mort de plus.
+        """
+        for message in (
+            anomalie_de_colonne("page_no_end", self.TAGS, 0, 0, "registre 4.22"),
+            anomalie_de_colonne("page_no_end", [], 15173, 15173, "registre 4.22"),
+        ):
+            assert message is not None
+            assert PREFIXE_REINGESTION in message, (
+                f"la branche ne dit pas COMMENT reingerer : {message}"
+            )
+
+    def test_le_geste_nomme_est_celui_que_le_capteur_lit_vraiment(self) -> None:
+        """LE TEMOIN, et il ne porte pas sur le message.
+
+        Sans lui, `PREFIXE_REINGESTION` pourrait devenir n'importe quelle chaine
+        — y compris une que le capteur n'honore pas — et le test ci-dessus
+        resterait vert : il compare deux fois la meme constante. C'est le
+        CAPTEUR qui est interroge ici, sur un curseur portant le marqueur que le
+        message prescrit.
+        """
+        source = SourceConfig(name="temoin", glob="captures/**/*.html", type="html")
+        built = build_source(source)
+        with DagsterInstance.ephemeral() as instance:
+            contexte = build_sensor_context(
+                instance=instance, cursor=f"{PREFIXE_REINGESTION}etiquette-du-temoin"
+            )
+            built.sensor(contexte)
+
+        assert contexte.cursor == "{}", (
+            "le capteur n'a pas reconnu le marqueur que le message d'anomalie "
+            f"prescrit : curseur inchange ({contexte.cursor!r})"
         )
 
     def test_les_deux_etats_rendent_des_messages_differents(self) -> None:
