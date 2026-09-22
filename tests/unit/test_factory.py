@@ -12,9 +12,11 @@ from pathlib import Path
 from dagster import (
     AssetKey,
     DagsterInstance,
+    DagsterRunStatus,
     DefaultSensorStatus,
     Definitions,
     SensorEvaluationContext,
+    SensorResult,
     SkipReason,
     build_sensor_context,
     sensor,
@@ -995,11 +997,21 @@ class TestLeTickQuiPerdSesRunsLeDit:
     ETIQUETTE = "geste-refait"
 
     def _instance_avec_les_cles(self, instance, cles, nom_du_capteur: str) -> None:
-        """Consomme ces `run_key` comme le daemon les consomme : par des runs tagues."""
+        """Consomme ces `run_key` comme le daemon les consomme : par des runs tagues.
+
+        LE STATUT EST TERMINAL, ET IL NE L'ETAIT PAS. `create_run_for_test` cree
+        un run `NOT_STARTED` par defaut, c'est-a-dire un run EN VOL — et cette
+        fixture modelise l'inverse : une ingestion PASSEE, dont les cles sont
+        deja consommees et que l'on redemande maintenant. Le defaut n'a jamais
+        gene tant que rien ne regardait les statuts ; la garde de concurrence du
+        4.33.c les regarde, et elle skippait donc ces quatre tests au lieu de les
+        laisser mesurer ce qu'ils mesurent.
+        """
         for cle in cles:
             create_run_for_test(
                 instance,
                 job_name="reing_job",
+                status=DagsterRunStatus.SUCCESS,
                 tags={RUN_KEY_TAG: str(cle), SENSOR_NAME_TAG: nom_du_capteur},
             )
 
@@ -1217,6 +1229,164 @@ class TestLeTickQuiPerdSesRunsLeDit:
             )
         finally:
             get_settings.cache_clear()
+
+
+class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
+    """Registre 4.33.c — le seul des cinq constats qui puisse couter des DONNEES.
+
+    Un second marqueur, etiquette NEUVE, pose pendant qu'une reingestion tourne
+    encore, produisait un second jeu COMPLET de demandes : les cles etant
+    neuves, Dagster n'en refusait aucune, donc les runs etaient reellement
+    crees. `mesure` : `pdfs_sensor` ne porte qu'UN fichier, donc une seule
+    partition, et `dagster.yaml` fixe `max_concurrent_runs: 2` SANS aucune cle
+    de concurrence par partition. Deux runs simultanes sur la MEME partition
+    sont atteignables, et ils ecriraient tous les deux `Datas/.cleaned/<fichier>`
+    en meme temps.
+
+    Le depot portait deja le patron, avec son motif :
+    `reindex_job.py` — « une reindexation en vol n'est ni faite ni perdue : on
+    attend son issue ».
+
+    Les QUATRE natures sont echantillonnees ici, et il en faut quatre :
+
+    - le refus, quand un run de CE job est non terminal ;
+    - le temoin : la meme etiquette, une fois le run terminal, emet ses
+      demandes. Sans lui, un garde qui refuserait toujours rendrait la
+      reingestion impossible — le 4.32.a par l'autre bout ;
+    - le marqueur n'est PAS consomme par le tick qui refuse : le geste est
+      DIFFERE, pas perdu ;
+    - un run d'un AUTRE job ne bloque rien : le filtre porte sur `job_name`, et
+      une garde qui verrait tous les runs bloquerait sur la reindexation.
+    """
+
+    ETIQUETTE = "2026-09-22-seconde-vague"
+
+    def _capteur(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        _corpus(tmp_path, 3)
+        return build_source(_html_source(name="reing"))
+
+    def _tick_marque(self, built, instance):
+        context = build_sensor_context(
+            instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+        )
+        return built.sensor(context), context.cursor
+
+    def test_un_marqueur_lu_pendant_un_run_en_vol_n_emet_rien_et_le_dit(
+        self, tmp_path, monkeypatch
+    ):
+        """LA PROPRIETE. Le refus doit etre NOMME, pas un resultat vide.
+
+        Un `SensorResult` sans demande porterait `skip_reason=None` — le silence
+        exact du 4.32.a. C'est un `SkipReason`, et il nomme le run en vol.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                create_run_for_test(instance, job_name="reing_job", status=DagsterRunStatus.STARTED)
+                resultat, _ = self._tick_marque(built, instance)
+        finally:
+            get_settings.cache_clear()
+
+        assert isinstance(resultat, SkipReason), resultat
+        assert "deja en vol" in resultat.skip_message, resultat.skip_message
+        assert f"{PREFIXE_REINGESTION}{self.ETIQUETTE}" in resultat.skip_message
+
+    def test_le_marqueur_n_est_pas_consomme_par_le_tick_qui_refuse(self, tmp_path, monkeypatch):
+        """LE GESTE EST DIFFERE, PAS PERDU.
+
+        Si le tick qui refuse consommait le curseur, l'operateur aurait pose son
+        marqueur pour rien et ne le saurait qu'en relisant le journal. Le
+        marqueur reste, donc le tick suivant le relira.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                create_run_for_test(instance, job_name="reing_job", status=DagsterRunStatus.STARTED)
+                _, apres = self._tick_marque(built, instance)
+        finally:
+            get_settings.cache_clear()
+
+        assert apres == f"{PREFIXE_REINGESTION}{self.ETIQUETTE}", apres
+
+    def test_le_meme_marqueur_emet_ses_demandes_une_fois_le_run_terminal(
+        self, tmp_path, monkeypatch
+    ):
+        """LE TEMOIN, et sans lui le garde serait la panne qu'il pretend eviter.
+
+        Le run en vol est termine entre les deux ticks. Le MEME marqueur, relu,
+        doit alors produire le jeu complet de demandes. Un garde qui refuserait
+        toujours rendrait la reingestion impossible — c'est le 4.32.a par
+        l'autre bout, celui que le lot 8 vient de fermer.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                run = create_run_for_test(
+                    instance, job_name="reing_job", status=DagsterRunStatus.STARTED
+                )
+                refus, _ = self._tick_marque(built, instance)
+
+                instance.report_run_canceled(run)
+                apres, curseur = self._tick_marque(built, instance)
+        finally:
+            get_settings.cache_clear()
+
+        assert isinstance(refus, SkipReason), refus
+        assert isinstance(apres, SensorResult), apres
+        cles = {r.run_key for r in apres.run_requests}
+        assert cles == {
+            f"reing_captures/page_{numero:02d}.html_reingestion_{self.ETIQUETTE}"
+            for numero in range(3)
+        }, cles
+        assert curseur != f"{PREFIXE_REINGESTION}{self.ETIQUETTE}", curseur
+
+    def test_un_run_d_un_autre_job_ne_bloque_pas_le_marqueur(self, tmp_path, monkeypatch):
+        """LE SECOND TEMOIN : le filtre porte sur `job_name`.
+
+        Sans lui, une garde qui verrait TOUS les runs non terminaux serait verte
+        sur le premier test et bloquerait la reingestion des qu'une
+        reindexation, ou l'ingestion d'une AUTRE source, serait en cours. Le
+        4.15 a deja paye ce prix une fois.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                create_run_for_test(
+                    instance,
+                    job_name="agent_reindex_job",
+                    status=DagsterRunStatus.STARTED,
+                )
+                resultat, _ = self._tick_marque(built, instance)
+        finally:
+            get_settings.cache_clear()
+
+        assert isinstance(resultat, SensorResult), resultat
+        assert len(resultat.run_requests) == 3, resultat.run_requests
+
+    def test_le_chemin_nominal_n_est_pas_garde_et_c_est_borne_expres(self, tmp_path, monkeypatch):
+        """LA BORNE DE CE GARDE, ecrite comme un test plutot que comme une phrase.
+
+        La garde porte sur le MARQUEUR et sur lui seul. Le chemin nominal n'en a
+        pas besoin pour ne pas repartir — sa cle est `(source, partition, mtime)`,
+        donc un corpus inchange ne redemande rien. Il en aurait besoin pour autre
+        chose : un fichier MODIFIE pendant une reingestion produit bien une cle
+        neuve sur une partition en vol. Ce cas reste OUVERT, il est au registre,
+        et ce test dit exactement ou passe la limite plutot que de laisser croire
+        que le 4.33.c est clos des deux cotes.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                create_run_for_test(instance, job_name="reing_job", status=DagsterRunStatus.STARTED)
+                context = build_sensor_context(instance=instance)
+                resultat = built.sensor(context)
+        finally:
+            get_settings.cache_clear()
+
+        assert isinstance(resultat, SensorResult), resultat
+        assert len(resultat.run_requests) == 3, resultat.run_requests
 
 
 class TestLeCurseurAvanceEtLOrdreNeBougePas:

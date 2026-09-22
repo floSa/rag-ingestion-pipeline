@@ -40,6 +40,7 @@ from dagster import (
     SensorDefinition,
     SensorEvaluationContext,
     SensorResult,
+    SkipReason,
     asset,
     define_asset_job,
     sensor,
@@ -62,6 +63,18 @@ if TYPE_CHECKING:
 from src.docling_service.elements import cleaned_path
 from src.pipeline.cleaning import clean_html_file
 from src.pipeline.media import MinioImageExporter
+
+# IMPORTES, ET NON RECOPIES. `STATUTS_EN_COURS` se definit par SOUSTRACTION des
+# trois etats terminaux : une enumeration en dur des etats actifs serait une
+# phrase d'exhaustivite, et le jour ou Dagster ajoute un statut elle le
+# classerait comme termine — donc le capteur emettrait ses demandes au milieu
+# d'une reingestion. Deux definitions du meme ensemble divergeraient en silence.
+# `_decrire_le_run` a le meme motif : la phrase « le run X est en Y depuis N s »
+# est celle du 4.15, ecrite une fois, et un `SkipReason` qui ne nomme que le job
+# est identique au tick 1 et au tick 10 000. Le sens de l'import est sur : ce
+# module n'est pas importe par `reindex_job`, qui ne connait que les NOMS des
+# jobs d'ingestion, passes par `definitions.py`.
+from src.pipeline.reindex_job import STATUTS_EN_COURS, _decrire_le_run
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig
 
@@ -129,6 +142,23 @@ EXTRACTION_RETRY_POLICY = RetryPolicy(max_retries=2, delay=120, backoff=Backoff.
 #    d'emettre, et le DIT avec son compte (:func:`_cles_deja_consommees`). Avec
 #    une etiquette NEUVE, la reingestion repart. Le geste est donc repetable, et
 #    sa repetition a l'identique est bruyante au lieu d'etre muette.
+#
+# 4. ET SI UNE REINGESTION TOURNE DEJA ? Le marqueur n'est PAS honore, et il
+#    n'est pas consomme non plus : le tick rend un ``SkipReason`` nomme, le
+#    curseur reste en place, et le tick suivant relira le marqueur. Le geste est
+#    DIFFERE, pas perdu. Sans cette garde, un second marqueur d'etiquette NEUVE
+#    produisait un second jeu complet de demandes — cles neuves, donc aucun refus
+#    de Dagster, donc des runs reellement crees en parallele des premiers. Deux
+#    runs sur la MEME partition reecriraient ``Datas/.cleaned/<fichier>`` en meme
+#    temps, et c'est atteignable : ``max_concurrent_runs: 2`` dans
+#    ``dagster.yaml``, sans aucune cle de concurrence par partition
+#    (registre 4.33.c).
+#
+#    LA PORTEE EST LE MARQUEUR. Le chemin nominal n'est pas garde, et c'est
+#    ecrit ici pour que personne ne s'y fie : un fichier MODIFIE pendant une
+#    reingestion produit bien une cle neuve sur une partition en vol. Le fermer
+#    bloquerait la detection legitime d'un depot de fichier derriere une
+#    reingestion de plusieurs heures ; le cas reste ouvert au registre.
 #
 # L'etiquette est libre et obligatoire — une date, un motif. Un marqueur sans
 # etiquette est refuse, parce qu'il rendrait le geste non repetable.
@@ -634,7 +664,7 @@ def _build_sensor(
         job_name=job_name,
         default_status=DefaultSensorStatus.RUNNING,
     )
-    def file_sensor(context: SensorEvaluationContext) -> SensorResult:
+    def file_sensor(context: SensorEvaluationContext) -> SensorResult | SkipReason:
         etiquette = _etiquette_de_reingestion(context.cursor)
         if etiquette == "":
             # Ordre mal forme : on ne fait RIEN, et on laisse le curseur tel
@@ -651,6 +681,45 @@ def _build_sensor(
                 "2026-09-22-apres-purge »."
             )
             return SensorResult(run_requests=[], dynamic_partitions_requests=[])
+
+        if etiquette:
+            # REGISTRE 4.33.c — LE SEUL DES CINQ QUI PUISSE COUTER DES DONNEES.
+            #
+            # Un second marqueur, etiquette NEUVE, pose pendant qu'une
+            # reingestion tourne encore, produit un second jeu COMPLET de
+            # demandes : les cles sont neuves, donc Dagster ne refuse rien, donc
+            # les runs sont reellement crees. Ce n'est pas theorique — `mesure` :
+            # `pdfs_sensor` ne porte qu'UN fichier, donc une seule partition, et
+            # `dagster.yaml` fixe `max_concurrent_runs: 2` SANS aucune cle de
+            # concurrence par partition. Deux runs simultanes sur la MEME
+            # partition sont atteignables, et ils ecriraient tous les deux
+            # `Datas/.cleaned/<fichier>` en meme temps.
+            #
+            # Le patron est celui de `reindex_job` : « une reindexation en vol
+            # n'est ni faite ni perdue : on attend son issue ». Ici de meme —
+            # le refus DIFFERE le geste, il ne le perd pas, et c'est
+            # `SkipReason` qui le garantit : `update_cursor` n'est pas atteint,
+            # donc le marqueur reste en place et le tick suivant le relira.
+            #
+            # LA PORTEE EST LE MARQUEUR, ET PAS LE CHEMIN NOMINAL. Le chemin
+            # nominal n'a pas besoin de cette garde pour ne PAS repartir — sa
+            # cle est `(source, partition, mtime)`, donc un corpus inchange ne
+            # redemande rien. Il en aurait besoin pour autre chose : un fichier
+            # MODIFIE pendant une reingestion produit bien une cle neuve sur une
+            # partition en vol. Ce cas reste ouvert, il est au registre, et le
+            # fermer ici bloquerait la detection legitime d'un depot de fichier
+            # derriere une reingestion de plusieurs heures.
+            en_vol = context.instance.get_run_records(
+                RunsFilter(job_name=job_name, statuses=list(STATUTS_EN_COURS)), limit=1
+            )
+            if en_vol:
+                return SkipReason(
+                    f"Une reingestion de {source.name} est deja en vol : le marqueur "
+                    f"« {PREFIXE_REINGESTION}{etiquette} » n'est PAS consomme, et sera "
+                    f"relu au prochain tick. Deux runs simultanes sur la meme partition "
+                    f"reecriraient le meme HTML nettoye en meme temps (registre 4.33.c). "
+                    f"{_decrire_le_run(en_vol[0])}"
+                )
 
         source_dir = get_settings().source_dir
         pattern = str(Path(source_dir) / source.glob)
