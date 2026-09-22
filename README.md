@@ -116,7 +116,7 @@ Seuls Dagster et Nebula Studio sont exposés par `docker-compose.yml`. Les autre
 1. Placez vos fichiers dans le dossier `./Datas` de la racine du projet (par défaut : `Datas/pdfs/` pour les PDF, `Datas/htms/` pour les HTML, `Datas/mds/` pour le Markdown).
 2. Ouvrez l'interface **Dagster** : chaque source déclarée dans `src/pipeline/sources.yaml` a son propre sensor (`pdfs_sensor`, `livres_html_sensor`, ...), actif par défaut dans **Overview -> Sensors**.
 3. Le système détecte automatiquement un fichier **nouveau ou modifié** (une partition par fichier) et lance le pipeline complet pour l'ingérer dans Nebula, ChromaDB, et MinIO !
-4. Un fichier **inchangé** n'est jamais réingéré tout seul, et c'est voulu : la réingestion se demande, voir [Ré-ingérer proprement](#ré-ingérer-proprement).
+4. Un fichier **inchangé** n'est jamais réingéré tout seul **tant que le curseur du sensor survit**, et c'est voulu : la réingestion se demande, voir [Ré-ingérer proprement](#ré-ingérer-proprement). La subordonnée n'est pas une précaution de style — sans elle la phrase est fausse, et elle l'a déjà été sur ce poste. Curseurs et historique des runs vivent dans le **même** Postgres : s'il repart vierge, les deux se perdent ensemble et un simple `docker compose up -d` réingère le corpus **entier**, sans un mot. C'est arrivé sur ce poste, au lot 3 (registre §4.26).
 
 ---
 
@@ -343,8 +343,9 @@ docker compose exec dagster-daemon dagster sensor cursor -w /opt/dagster/app/src
 
 | | |
 |---|---|
-| **Ce qui déclenche** | ce marqueur, et rien d'autre. Le tick qui le lit oublie les `mtime` qu'il connaissait, redemande une partition par fichier, et fait porter **l'étiquette** à la clé de run — c'est ce qui la rend neuve pour Dagster. |
-| **Ce qui garantit qu'elle ne parte pas seule** | le curseur. Il vit dans le stockage de l'instance, survit au rechargement du code comme au redémarrage du daemon, et aucune ligne du dépôt ne l'efface. **Sans marqueur, la clé garde exactement sa forme historique** `{source}_{partition}_{mtime}` : un déploiement reconstruit des clés que l'historique porte déjà, donc rien ne repart. `TestLaCleNominaleEstInchangee` fige cette forme. |
+| **Ce qui déclenche** | ce marqueur, et rien d'autre. Le tick qui le lit repart sans aucun `mtime` connu — le marqueur a pris la place du curseur JSON qui les portait —, redemande une partition par fichier, et fait porter **l'étiquette** à la clé de run : c'est ce qui la rend neuve pour Dagster. |
+| **Ce qui garantit qu'elle ne parte pas seule** | **deux** choses, et elles ne couvrent pas le même cas. D'abord **le curseur** : il vit dans le stockage de l'instance, survit au rechargement du code, aucune ligne du dépôt ne l'efface, et tant qu'il est là le capteur ne demande rien sur un corpus inchangé. Ensuite, **sans marqueur, la clé garde exactement sa forme historique** `{source}_{partition}_{mtime}` — mais cela ne sert que si le curseur est perdu **seul, historique intact** : remise à zéro à la main, capteur renommé, code location renommée. Là, le capteur redemande tout, Dagster ne crée aucun run, et il le **dit**. `TestLaCleNominaleEstInchangee` fige cette forme. |
+| **Ce qu'aucune des deux ne couvre** | la perte **simultanée** du curseur et de l'historique — ils sont dans le même Postgres. Le corpus entier est alors réingéré, en silence, et la forme de la clé n'y change rien. Registre §4.26. |
 | **Si le geste est fait deux fois** | avec la **même** étiquette, les clés sont identiques et Dagster ne crée aucun run — le capteur le **dit**, avec le nombre de demandes perdues, et le curseur a avancé : le geste est à refaire. Avec une étiquette **neuve**, la réingestion repart. |
 | **Un marqueur sans étiquette** | est refusé, le curseur laissé intact, et la raison journalisée. L'honorer rendrait la clé constante, donc le second geste muet — le défaut §4.32.a rouvert par le geste censé le fermer. |
 
@@ -941,7 +942,7 @@ le corpus est une capture de documentation publique, et l'alternative consiste �
 altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
 et lui seul.
 
-**897 tests verts** (`mesuré` le 22 septembre 2026 par `make all` sur cette
+**904 tests verts** (`mesuré` le 22 septembre 2026 par `make all` sur cette
 révision, `rc=0` du processus ; `ruff`, `mypy` et `ruff format --check` propres
 au même moment, puisque `make all` les enchaîne. Le compte tient sur cinq
 graines de hachage — `PYTHONHASHSEED` à 0, 1, 42, 1337 et 65535 —, `rc=0` aux
