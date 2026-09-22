@@ -83,20 +83,45 @@ EXTRACTION_RETRY_POLICY = RetryPolicy(max_retries=2, delay=120, backoff=Backoff.
 #
 # 1. QU'EST-CE QUI DECLENCHE UNE REINGESTION ? Le curseur du capteur, pose a la
 #    main sur ``reingerer:<etiquette>``. Rien d'autre. Le tick qui lit ce
-#    marqueur oublie les ``mtime`` qu'il connaissait, redemande une partition
-#    par fichier, et fait porter L'ETIQUETTE a la cle de run plutot que le
-#    ``mtime`` — c'est ce qui la rend neuve pour Dagster.
+#    marqueur repart sans AUCUN ``mtime`` connu — le marqueur a pris la place du
+#    curseur JSON qui les portait —, redemande une partition par fichier, et
+#    fait porter L'ETIQUETTE a la cle de run plutot que le ``mtime`` : c'est ce
+#    qui la rend neuve pour Dagster.
 #
-# 2. QU'EST-CE QUI GARANTIT QU'ELLE NE PART PAS SANS QU'ON L'AIT DEMANDEE ? Le
-#    curseur, et le fait que SANS marqueur la cle garde exactement sa forme
-#    historique ``{source}_{partition}_{mtime}``. Le curseur vit dans le
-#    stockage de l'instance, survit au rechargement du code et au redemarrage du
-#    daemon, et aucune ligne de ce module ne l'efface. Un deploiement ne
-#    reingere donc rien : les cles qu'il reconstruirait sont celles que
-#    l'historique porte deja. C'est la propriete que
-#    ``TestLaCleNominaleEstInchangee`` fige, et ce n'est pas un detail — jusqu'a
-#    ce lot, c'est CE DEFAUT qui protegeait l'index contre une reingestion
-#    accidentelle a chaque redemarrage du daemon.
+# 2. QU'EST-CE QUI GARANTIT QU'ELLE NE PART PAS SANS QU'ON L'AIT DEMANDEE ?
+#    DEUX choses, et elles ne couvrent pas le meme scenario. Les confondre
+#    fabrique une fausse assurance, et c'est exactement ce que la premiere
+#    redaction de ce bloc a fait.
+#
+#    LA PREMIERE EST LE CURSEUR. Il vit dans le stockage de l'instance, survit
+#    au rechargement du code, et aucune ligne de ce module ne l'efface. Tant
+#    qu'il est la, le capteur ne demande RIEN sur un corpus inchange — quelle
+#    que soit la forme de la cle, qui n'entre alors jamais en jeu.
+#
+#    LA SECONDE EST QUE, SANS MARQUEUR, LA CLE GARDE EXACTEMENT SA FORME
+#    HISTORIQUE ``{source}_{partition}_{mtime}``. Elle ne sert que quand la
+#    premiere a lache, et seulement dans un cas precis : LE CURSEUR PERDU SEUL,
+#    HISTORIQUE DES RUNS INTACT. Cet etat s'atteint sans rien casser — une
+#    remise a zero du curseur a la main depuis l'interface, un capteur renomme,
+#    une code location renommee : dans les trois cas le curseur repart vide et
+#    l'historique reste. Le capteur redemande alors tout le corpus, et Dagster
+#    n'en cree aucun run. La difference que ce lot apporte est la : sous la
+#    forme prescrite au registre, ce refus etait MUET ; ici, les cles
+#    reconstruites sont celles de l'historique et le capteur LE DIT, avec son
+#    compte (:func:`_cles_deja_consommees`). C'est la propriete que
+#    ``TestLaCleNominaleEstInchangee`` fige.
+#
+#    CE QUE LA SECONDE NE COUVRE PAS, ecrit pour que personne ne s'y fie : le
+#    cas ou le curseur ET l'historique disparaissent ENSEMBLE. Ils vivent dans
+#    le MEME Postgres (``dagster.yaml`` : ``run_storage`` et
+#    ``schedule_storage`` y pointent tous les deux), donc ils se perdent
+#    ensemble. C'est ce qui est arrive au registre 4.26 — le Postgres reparti
+#    vierge, « les curseurs des sensors avec lui » —, et cet episode ne
+#    departage donc PAS les deux formes de cle : sous l'une comme sous l'autre,
+#    tout est reingere, en silence. La preuve est dans ce depot et elle est a
+#    charge : ``test_des_cles_neuves_ne_declenchent_aucun_avertissement`` monte
+#    une instance VIERGE, obtient ses demandes, et n'obtient AUCUN
+#    avertissement. Le 4.26 ne peut donc pas servir a justifier cette forme-ci.
 #
 # 3. ET SI LE GESTE EST FAIT DEUX FOIS DE SUITE ? Avec la MEME etiquette, le
 #    second tick reconstruit les memes cles : Dagster n'en creera aucun run, et
@@ -417,6 +442,25 @@ def _etiquette_de_reingestion(curseur: str | None) -> str | None:
     echappement de guillemets. Un curseur nominal est un objet JSON, qui ne
     commence jamais par ``reingerer:``.
 
+    DEUX BORNES DE CETTE LECTURE SONT PORTEUSES, et aucune n'etait gardee avant
+    la reparation du lot 8 :
+
+    - ``startswith`` et non ``in`` : le marqueur n'est un ordre qu'en TETE du
+      curseur. Avec ``in``, un curseur qui contient la chaine ailleurs devient
+      un ordre, et l'etiquette la decoupe a l'aveugle des dix premiers
+      caracteres. Garde par
+      ``test_le_marqueur_n_est_honore_qu_en_tete_du_curseur`` ;
+    - le ``.strip()`` FINAL, qui normalise l'etiquette. Le marqueur se pose a la
+      main : « reingerer: 2026-09-22 » et « reingerer:2026-09-22 » sont le meme
+      geste pour celui qui les tape, et doivent donner les memes cles de run.
+      Sans lui, l'espace en trop rend les cles neuves, donc le geste refait
+      reingere tout une seconde fois EN SILENCE au lieu d'etre refuse et
+      annonce. Garde par
+      ``test_l_etiquette_est_la_meme_avec_ou_sans_espace_apres_le_marqueur``.
+      (Il ne joue AUCUN role sur « marqueur suivi de seuls espaces » : le
+      ``curseur.strip()`` de la ligne precedente les a deja manges, et
+      l'etiquette est vide dans les deux cas.)
+
     Args:
         curseur: Curseur du capteur, tel que Dagster le rend.
 
@@ -455,9 +499,24 @@ def _cles_deja_consommees(
     nom est ce qui evite une alerte FAUSSE, et une alerte fausse se desapprend
     aussi vite qu'une alerte absente.
 
-    Le cout suit le nombre de demandes, pas celui des fichiers : en regime
-    nominal le capteur n'emet rien, donc cette fonction n'est jamais appelee.
-    Elle ne coute ses N requetes que sur le tick d'une reingestion.
+    LE COUT, ET IL EST BORNE. Il suit le nombre de DEMANDES de ce tick — pas le
+    nombre de fichiers de la source, et surtout pas la taille de l'historique.
+    `mesure` le 22 septembre 2026, instance ephemere et corpus reel, en comptant
+    les appels :
+
+    - regime nominal ETABLI, corpus inchange : **0** — le capteur n'emet aucune
+      demande, donc cette fonction n'est pas appelee ;
+    - **un** document ajoute ou modifie : **1 requete**. C'est le but meme du
+      capteur, donc le cas le plus frequent apres le precedent ;
+    - premier tick, curseur perdu, ou reingestion : **une requete par fichier
+      retenu** — 22 pour `livres_html`, 1 pour `pdfs`.
+
+    La phrase que cette docstring portait — « en regime nominal cette fonction
+    n'est JAMAIS appelee, elle ne coute ses N requetes que sur le tick d'une
+    REINGESTION » — etait fausse de sa seconde moitie, et fausse dans le sens
+    qui rassure : le cas a une requete est le cas ORDINAIRE, pas l'exception.
+    Le plafond, lui, tient — il est celui du corpus, et il ne grandit pas avec
+    l'historique.
 
     Args:
         instance: Instance Dagster interrogee.
