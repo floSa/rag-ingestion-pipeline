@@ -2802,7 +2802,33 @@ aléatoire. Elle porte l'étiquette du geste, comme celle de `reindex_job` porte
 la tentative. Deux évaluations concurrentes du même curseur marqué construisent
 les **mêmes** clés, donc un seul run par partition : le témoin que ce constat
 réclamait est `test_sans_marqueur_un_corpus_inchange_ne_demande_rien`, doublé de
-`TestLaCleNominaleEstInchangee`, qui fige la forme littérale de la clé nominale.
+`TestLaCleNominaleEstInchangee`, qui fige la forme littérale de la clé nominale,
+et de `TestLaCleDeReingestionNePorteQueLEtiquette`, qui fige celle de l'autre.
+
+*La dérogation à la forme prescrite reste bonne, et sa justification était
+fausse.* Le registre prescrivait « lui faire porter la tentative » ; le lot 8 a
+laissé la clé **nominale** intacte et fait porter l'étiquette à la seule clé
+marquée. Il a d'abord justifié ce choix par la protection contre « une
+réingestion accidentelle à chaque redémarrage du daemon » — c'est-à-dire par le
+§4.26. **Cet événement ne départage pas les deux formes.** Le §4.26 dit mot pour
+mot : « Le Postgres de Dagster est donc reparti **vierge**, les curseurs des
+sensors avec lui ». Curseurs et historique des runs vivent dans le **même**
+Postgres : ils se perdent ensemble, et sous l'une comme sous l'autre forme de
+clé, tout est alors réingéré **en silence**. La preuve vit dans ce dépôt et elle
+est à charge : `test_des_cles_neuves_ne_declenchent_aucun_avertissement` monte
+une instance vierge, obtient ses trois demandes et **aucun** avertissement.
+
+Ce que la clé nominale inchangée couvre **vraiment** est un autre scénario, plus
+étroit et bien réel : **le curseur perdu seul, historique intact**. Une remise à
+zéro du curseur à la main depuis l'interface, un capteur renommé, une code
+location renommée — dans les trois cas le curseur repart vide et l'historique
+reste. Sous la forme prescrite au registre, ce cas réingérait tout en silence ;
+sous celle du lot 8, le capteur reconstruit des clés consommées **et le dit**,
+avec son compte. C'est cela, et cela seul, que la dérogation achète. Les deux
+sites qui portaient la fausse justification — le bloc au-dessus de
+`PREFIXE_REINGESTION` et le tableau du `README` — ont été redressés (commits
+`f416a2f` et `f9742b0`). Sans ce redressement, le lot suivant héritait d'une
+assurance qu'aucune mesure ne soutient.
 
 *Le silence est fermé par `_cles_deja_consommees`*, qui reproduit la règle du
 daemon — même `run_key` **et** même `sensor_name`, `dagster/_daemon/sensor.py::
@@ -2995,11 +3021,13 @@ au moment de mesurer** — `date -u` — plutôt que de la déduire du contexte.
 
 ---
 
-### 4.33 → CONSIGNÉ par le lot 8, en fermant le §4.32.a — NON traité
+### 4.33 → CONSIGNÉ par le lot 8 et sa réparation, en fermant le §4.32.a — NON traité
 
-**Deux** constats, tous deux mesurés, laissés **hors du diff**. Périmètre
-strict. Le premier porte la forme du garde à écrire ; le second est une question
-ouverte que le lot 8 a bornée sans pouvoir la fermer, et il dit pourquoi.
+**Cinq** constats, tous mesurés, laissés **hors du diff**. Périmètre strict. Le
+compte est `calculé`, `grep -c '^#### 4.33'` rend cinq. Les deux premiers viennent du lot 8 lui-même ; les trois suivants de
+sa réparation, le 22 septembre 2026. Le `c` est le plus urgent des cinq, et il
+porte sa forme de garde : **il doit être tranché avant le premier geste de
+réingestion réel.**
 
 #### 4.33.a Le `README` justifie la purge de `Datas/.cleaned/` par un mécanisme qui n'existe pas dans le code
 
@@ -3050,8 +3078,15 @@ Le lot 8 devait répondre en lecture seule à : *les 44 `element_id` que le jeu 
   passes du nettoyage rendent le **même octet** (22/22), et surtout le texte
   extrait, le nombre de balises et le nombre de `<img>` du HTML rejoué sont
   identiques à ceux de la copie `.cleaned/` produite le 2 septembre — 22/22 sur
-  les trois. Les deux entrées de `compute_id` que le HTML fournit, le texte et
-  le rang, sont donc reproduites à vingt jours d'intervalle ;
+  les trois. Ce que cette mesure prouve est donc **le texte**, et lui seul,
+  parmi les quatre entrées de `compute_id`. **Le rang n'en est pas** :
+  `position_in_page` n'est pas fourni par le HTML, c'est un compteur tenu sur
+  l'itération de Docling (`src/docling_service/elements.py:393-394`). Un HTML
+  identique à l'octet rend l'**entrée** du convertisseur identique, pas
+  l'**ordre** de sa sortie — ce que la puce suivante déclare justement non
+  prouvé. La première rédaction de cette puce comptait le rang parmi les acquis,
+  et mettait donc les deux en contradiction : elle donnait pour mesuré le seul
+  point que ce constat existe pour laisser ouvert ;
 - **NON prouvé, et non prouvable sans réingérer** : que Docling, pour un même
   fichier, rende la même segmentation — mêmes items, même ordre, mêmes pages.
   C'est une propriété du **convertisseur et de ses modèles**, pas du dépôt, et
@@ -3066,6 +3101,83 @@ Le lot 8 devait répondre en lecture seule à : *les 44 `element_id` que le jeu 
 store et sort en `1` au premier désaccord. Le lot qui réingère doit le lancer
 **avant** et **après**, et consigner les deux sorties. C'est un geste, pas un
 développement.
+
+#### 4.33.c Aucune garde « une réingestion est déjà en vol », alors que le dépôt en porte le patron
+
+**À trancher AVANT le premier geste de réingestion réel.** C'est le seul des
+cinq qui puisse coûter des données.
+
+Le capteur de source n'a **aucune** garde de concurrence. Un second marqueur,
+étiquette neuve, posé pendant qu'une réingestion tourne encore, produit un
+**second jeu complet** de demandes de run — clés neuves, donc aucun refus de
+Dagster, donc des runs réellement créés. Le dépôt porte pourtant le patron
+exact, écrit avec son motif : `src/pipeline/reindex_job.py:356-368` interroge
+`RunsFilter(job_name=..., statuses=STATUTS_EN_COURS)` et rend un `SkipReason`
+nommé — « une réindexation en vol n'est ni faite ni perdue : on attend son
+issue ».
+
+**Ce n'est pas théorique, et c'est `mesuré`.** `pdfs_sensor` ne porte qu'**un**
+fichier — donc une seule partition — et `dagster.yaml` fixe
+`max_concurrent_runs: 2` **sans aucune clé de concurrence par partition**. Deux
+runs simultanés sur la **même** partition sont donc atteignables. Ils écriraient
+tous les deux `Datas/.cleaned/<fichier>`, en même temps.
+
+**La forme du garde à écrire.** La propriété est *« un marqueur lu alors qu'un
+run de ce job est non terminal n'émet aucune demande, et le dit »*, et son
+témoin, sans lequel le garde serait creux : *le même marqueur, une fois le run
+précédent terminal, doit émettre ses demandes* — sinon un garde qui refuse
+toujours rendrait la réingestion impossible, c'est-à-dire le §4.32.a par l'autre
+bout. Le curseur ne doit pas être consommé par le tick qui refuse, sans quoi le
+geste serait perdu au lieu d'être différé. Le harnais existe :
+`TestLeTickQuiPerdSesRunsLeDit._instance_avec_les_cles` peuple déjà une instance
+éphémère de runs tagués ; ce qui manque est un statut non terminal, pas un
+montage.
+
+#### 4.33.d Les trois copies de la prose du geste de réingestion ne sont tenues par rien
+
+La même prose vit à **trois** endroits : le bloc au-dessus de
+`PREFIXE_REINGESTION` dans `src/pipeline/factory.py`, le tableau de la section
+« Ré-ingérer proprement » du `README.md`, et ce §4.32.a. Rien ne garde leur
+concordance. La réparation du 22 septembre l'a vérifié en le vivant : la
+justification par le mauvais scénario était écrite au site du code **et** dans
+le tableau du `README`, dans des mots différents, et le registre n'en disait
+rien du tout. Il a fallu redresser les trois à la main, un par un, sans qu'aucun
+test ne signale ceux qui restaient.
+
+Le tableau du `README` n'est gardé par **rien** en particulier : `mesuré`, une
+reformulation qui le rendrait faux laisse la suite entièrement verte. Les deux
+gardes existants (`TestLaDocumentationNommeLeGesteQuExisteVraiment`) vérifient
+que le `README` **nomme** le marqueur et les capteurs — pas ce qu'il en **dit**.
+
+**La forme du garde à écrire, et elle est modeste.** Garder la concordance
+littérale de trois proses est un piège : le garde deviendrait un frein à toute
+reformulation. Ce qui se garde utilement est le petit nombre de **faits
+vérifiables** qu'elles partagent — le préfixe (déjà gardé), la liste des
+capteurs (déjà gardée), et la forme des **deux** clés, nominale et marquée, que
+`TestLaCleNominaleEstInchangee` et `TestLaCleDeReingestionNePorteQueLEtiquette`
+figent désormais côté code. Ce qui manque est de faire **lire ces deux formes au
+`README`** plutôt que de les y recopier : un garde qui construit la clé par le
+capteur et exige la chaîne dans le `README`, comme le garde du préfixe le fait
+déjà pour la constante.
+
+#### 4.33.e `pre-commit run --all-files` échoue sur `main` déjà, et ce n'est imputable à aucun lot
+
+`mesuré` le 22 septembre 2026, sur `main` (`db8e7b5`) :
+`documentation/stockage_objets.md` porte **une** ligne à espace terminal (la 29),
+et le hook `trailing-whitespace` la refuse — `rc=1`, « files were modified by
+this hook ». Il ne se contente pas de refuser : **il écrit**.
+
+Ce n'est imputable à aucun lot récent, et c'est précisément ce qui le rend
+piégeux. Le défaut est **hors de portée de `make all`**, dont les cibles ne
+regardent que `src/` et `tests/`, et **invisible des hooks**, qui ne voient que
+ce qui est **indexé** — ce fichier n'a été touché par aucun commit depuis que le
+framework est installé. Quiconque lance un balayage `--all-files` pour vérifier
+l'état du dépôt conclura que `main` est cassé, et cherchera la cause du mauvais
+côté.
+
+C'est le même angle mort que le D7 du registre, déplacé une fois de plus : deux
+gardes qui voient des choses différentes. La correction est d'une ligne ; ce qui
+mérite d'être consigné est **pourquoi personne ne l'a vue**.
 
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
