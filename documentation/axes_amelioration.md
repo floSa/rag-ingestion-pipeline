@@ -2674,7 +2674,11 @@ n'est pas l'incident mais sa leçon : **« le daemon est arrêté » n'est pas u
 propriété stable**, elle se remesure avant toute mesure qui en dépend — et les
 sensors étant livrés armés (§4.18), un daemon qui repart réingère.
 
-### 4.32 → CONSIGNÉ par le lot 6, la première campagne de référence — NON traité
+### 4.32 → CONSIGNÉ par le lot 6, la première campagne de référence — **un des quatre traité**
+
+> **§4.32.a est FERMÉ par le lot 8** (22 septembre 2026). Les **trois** autres
+> — `b`, `c`, `d` — restent ouverts : le lot 8 était borné au `a` et n'y a pas
+> touché. Le compte est `calculé`, `grep -c '^#### 4.32' ` rend quatre.
 
 **Quatre** constats trouvés en menant la campagne, tous mesurés, laissés **hors
 du diff**. Périmètre strict. Chacun porte la **forme du garde à écrire** —
@@ -2690,7 +2694,12 @@ de rappel dense — vit à son site canonique,
 [`documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`](campagnes/2026-09-02-premiere-campagne-de-reference.md).
 Ne recopie pas ses chiffres ici : renvoie-y.
 
-#### 4.32.a Le `run_key` du capteur d'ingestion interdit toute réingestion, et il le fait EN SILENCE
+#### 4.32.a → TRAITÉ par le lot 8 — le `run_key` du capteur interdisait toute réingestion, et il le faisait EN SILENCE
+
+> **FERMÉ le 22 septembre 2026.** Le constat ci-dessous est conservé **tel qu'il
+> a été écrit**, parce qu'il est la seule trace de l'état mesuré le 2 septembre.
+> Ce qui a changé vit à la fin du constat, sous « Ce que le lot 8 a fait ».
+
 
 **C'est le défaut le plus grave que la campagne ait trouvé, et il est mot pour
 mot celui que la réparation du lot 0 a fermé dans `reindex_job.py` — resté
@@ -2777,6 +2786,51 @@ faire porter la tentative ».
 `dagster job launch -j <job> --tags '{"dagster/partition": "<clé>"}'`. Il passe
 par le vrai coordinateur et le vrai lanceur, et il exerce tout le chemin
 d'ingestion — seule la création du run par le capteur reste hors d'atteinte.
+
+**CE QUE LE LOT 8 A FAIT** — trois commits, `d4e336e`, `1dea19c`, `2440dd1`.
+
+*La réingestion se demande, et elle ne part jamais toute seule.* Le geste est un
+marqueur posé à la main dans le curseur du capteur, `reingerer:<étiquette>`. Les
+trois questions sont répondues au site, au-dessus de `PREFIXE_REINGESTION` dans
+`src/pipeline/factory.py` : ce qui déclenche (ce marqueur, et rien d'autre), ce
+qui garantit que rien ne parte seul (le curseur, plus le fait que **sans
+marqueur la clé garde exactement sa forme historique**), et ce que fait le geste
+refait à l'identique (les mêmes clés, donc aucun run — et le capteur le dit).
+
+*La borne du registre est tenue* : la clé n'est ni supprimée ni rendue
+aléatoire. Elle porte l'étiquette du geste, comme celle de `reindex_job` porte
+la tentative. Deux évaluations concurrentes du même curseur marqué construisent
+les **mêmes** clés, donc un seul run par partition : le témoin que ce constat
+réclamait est `test_sans_marqueur_un_corpus_inchange_ne_demande_rien`, doublé de
+`TestLaCleNominaleEstInchangee`, qui fige la forme littérale de la clé nominale.
+
+*Le silence est fermé par `_cles_deja_consommees`*, qui reproduit la règle du
+daemon — même `run_key` **et** même `sensor_name`, `dagster/_daemon/sensor.py::
+fetch_existing_runs` — et journalise le **compte** des demandes perdues avant de
+les émettre. C'était la moitié du constat : le tick qui a perdu 22 runs n'a rien
+écrit du tout.
+
+*Les deux messages qui prescrivaient le geste mort nomment le geste réel* :
+`COMMENT_REINGERER` dans `src/verify_contract.py`, porté par les **deux**
+branches d'`anomalie_de_colonne`, et la section « Ré-ingérer proprement » du
+`README.md`. Trois gardes tiennent la correspondance, dont un qui exerce le
+**capteur** sur le marqueur que le message prescrit — sans lui, les deux
+constantes pourraient dériver ensemble vers une chaîne que personne n'honore.
+
+*Quinze mutations du producteur, quinze rouges, `rc=1` chacune.* Le détail vit
+au rapport du lot 8 ; les gardes vivent dans `tests/unit/test_factory.py` et
+`tests/unit/test_verify_contract.py`.
+
+**CE QUE LE LOT 8 N'A PAS PU MESURER, ET IL FAUT LE LIRE AVANT LE LOT SUIVANT.**
+Il lui était interdit de réingérer — l'index en place est l'antécédent de la
+campagne. Il a donc prouvé **autrement**, et voici la limite exacte de sa
+preuve : le capteur a été rejoué **hors du daemon**, contre le curseur réel lu
+au `SELECT` et contre le corpus réel, sur une instance Dagster éphémère ; ce
+rejeu dit ce que le capteur **demande**, et la règle du daemon, reproduite et
+recoupée sur l'historique réel, dit ce que Dagster **en fait**. Ce qui n'est pas
+prouvé, et qui ne pouvait pas l'être : qu'un run réellement créé par ce chemin
+aille au bout. Le premier geste de réingestion reste donc à faire sous les yeux
+de quelqu'un.
 
 #### 4.32.b `verify_contract` compte des sommets que son producteur exclut par construction
 
@@ -2940,6 +2994,79 @@ au moment de mesurer** — `date -u` — plutôt que de la déduire du contexte.
 étiquette.
 
 ---
+
+### 4.33 → CONSIGNÉ par le lot 8, en fermant le §4.32.a — NON traité
+
+**Deux** constats, tous deux mesurés, laissés **hors du diff**. Périmètre
+strict. Le premier porte la forme du garde à écrire ; le second est une question
+ouverte que le lot 8 a bornée sans pouvoir la fermer, et il dit pourquoi.
+
+#### 4.33.a Le `README` justifie la purge de `Datas/.cleaned/` par un mécanisme qui n'existe pas dans le code
+
+La section « Ré-ingérer proprement » range `Datas/.cleaned/` parmi les quatre
+purges avec ce motif, mot pour mot : « le HTML nettoyé porte les URL MinIO des
+images, et **l'asset `cleaned_html` ne se rematérialise pas si son fichier
+existe déjà** : une purge suivie d'une réingestion repartait du HTML périmé ».
+
+La seconde moitié de la phrase est fausse sur le code livré. `mesuré` le
+22 septembre 2026, par lecture : `clean_html_file`
+(`src/pipeline/cleaning.py:627-631`) lit la source, nettoie, **écrit
+inconditionnellement** la destination ; l'asset `cleaned_html`
+(`src/pipeline/factory.py`) l'appelle sans condition. `grep -rn "exists()"` sur
+`src/pipeline/cleaning.py` et `src/pipeline/factory.py` rend **deux** lignes, et
+aucune ne porte sur la destination du nettoyage : ce sont les deux contrôles
+d'existence de la **source**, aux assets `cleaned_html` et `extracted_document`.
+Il n'y a **aucun** court-circuit « le fichier nettoyé existe, on ne refait pas ».
+
+**Pourquoi ce n'est pas qu'une phrase à corriger.** La purge de `.cleaned/` est
+la seule des quatre dont la nécessité repose entièrement sur cette
+justification. Si elle est fausse, deux lectures restent possibles, et le lot 8
+n'a pas tranché entre elles : ou bien la purge de `.cleaned/` est inutile et le
+`rmtree` le plus risqué du dépôt — celui dont le registre §4.29.a raconte qu'un
+réglage mal posé emportait 24 des 25 fichiers du corpus versionné — ne sert à
+rien ; ou bien elle est nécessaire pour une **autre** raison, qui n'est écrite
+nulle part. Les deux demandent une réponse, et ce n'est pas la même.
+
+**La forme du garde à écrire.** La propriété est *« une seconde matérialisation
+de `cleaned_html` réécrit sa destination »*, et son témoin, sans lequel le garde
+serait creux : *une destination au contenu différent doit être remplacée, pas
+laissée en place*. Le harnais existe déjà —
+`TestLeNettoyagePublieCeQuIlAJete._executer` appelle le corps livré de l'asset
+sur un `tmp_path`. Ce qui manque est un second appel et une assertion sur le
+fichier écrit, pas un montage.
+
+#### 4.33.b La stabilité des `element_id` à travers une réingestion est prouvée à moitié, et la moitié manquante est celle du convertisseur
+
+Le lot 8 devait répondre en lecture seule à : *les 44 `element_id` que le jeu de
+30 questions désigne survivent-ils à une réingestion ?* La réponse complète vit
+à son rapport. Ce qui doit rester au registre est la **borne** :
+
+- **prouvé par lecture** : `compute_id`
+  (`src/docling_service/elements.py:200-217`) ne prend ni le `mtime`, ni la
+  date, ni le moindre compteur global. Ses quatre entrées sont la clé du
+  document, le numéro de page, le rang dans la page et les 50 premiers
+  caractères du texte. Rien dans la formule ne périme ;
+- **prouvé par mesure**, le 22 septembre 2026, sur les 22 HTML du corpus : deux
+  passes du nettoyage rendent le **même octet** (22/22), et surtout le texte
+  extrait, le nombre de balises et le nombre de `<img>` du HTML rejoué sont
+  identiques à ceux de la copie `.cleaned/` produite le 2 septembre — 22/22 sur
+  les trois. Les deux entrées de `compute_id` que le HTML fournit, le texte et
+  le rang, sont donc reproduites à vingt jours d'intervalle ;
+- **NON prouvé, et non prouvable sans réingérer** : que Docling, pour un même
+  fichier, rende la même segmentation — mêmes items, même ordre, mêmes pages.
+  C'est une propriété du **convertisseur et de ses modèles**, pas du dépôt, et
+  elle est hors d'atteinte du venv de l'hôte. Elle est surtout la seule qui
+  porte sur le PDF, où l'OCR entre en jeu et où `pages_skipped` et
+  `failed_batches` existent précisément parce que la conversion peut échouer
+  **par endroits** — un lot de pages perdu à une ingestion et pas à l'autre
+  retire ses éléments sans déplacer ceux des autres pages, mais il les retire.
+
+**Ce qui la fermera, et il existe déjà** :
+`scripts/campagne/verifier-le-jeu-de-questions.py` relit chaque ancrage dans le
+store et sort en `1` au premier désaccord. Le lot qui réingère doit le lancer
+**avant** et **après**, et consigner les deux sorties. C'est un geste, pas un
+développement.
+
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
