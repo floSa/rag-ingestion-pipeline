@@ -686,6 +686,117 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
         finally:
             get_settings.cache_clear()
 
+    def test_l_etiquette_est_la_meme_avec_ou_sans_espace_apres_le_marqueur(
+        self, tmp_path, monkeypatch
+    ):
+        """LE `.strip()` DE L'ETIQUETTE EST PORTEUR, ET RIEN NE LE GARDAIT.
+
+        Le marqueur se pose **a la main**, dans un champ de saisie de l'interface
+        Dagster ou sur une ligne de commande. « reingerer: 2026-09-22 » et
+        « reingerer:2026-09-22 » sont le MEME geste pour celui qui les tape.
+        Sans le `.strip()`, ce sont deux etiquettes differentes, donc deux jeux
+        de cles de run differents — et la propriete que tout le 4.32.a repose
+        dessus tombe : le geste refait a l'identique cesse d'etre bruyant, il
+        reingere tout une seconde fois **en silence**, parce que l'espace en
+        trop a rendu ses cles neuves. `mesure` : retirer ce `.strip()` laissait
+        la suite entierement verte.
+
+        La borne de ce garde est exacte, et elle corrige une lecture repandue :
+        `reingerer:` suivi de SEULS espaces ne teste PAS ce `.strip()`-ci — le
+        `curseur.strip()` de la ligne precedente a deja mange ces espaces, et
+        l'etiquette est vide dans les deux cas. Ce qui est en jeu est la
+        NORMALISATION d'une etiquette reelle, pas le refus du marqueur nu, que
+        `test_un_marqueur_sans_etiquette_est_refuse_et_dit_pourquoi` garde.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                serre = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                lache = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}   {self.ETIQUETTE}"
+                )
+                cles_serrees = {r.run_key for r in built.sensor(serre).run_requests}
+                cles_laches = {r.run_key for r in built.sensor(lache).run_requests}
+
+            assert cles_serrees, cles_serrees
+            assert cles_laches == cles_serrees, (cles_laches, cles_serrees)
+        finally:
+            get_settings.cache_clear()
+
+    def test_le_marqueur_n_est_honore_qu_en_tete_du_curseur(self, tmp_path, monkeypatch):
+        """`startswith` EST PORTEUR, ET `in` SURVIVAIT A TOUTE LA SUITE.
+
+        Un curseur qui **contient** `reingerer:` sans commencer par lui n'est pas
+        un ordre de reingestion : c'est un curseur mal forme, et le capteur doit
+        le traiter comme tel — repartir du corpus avec les cles NOMINALES, que
+        l'historique porte deja, donc sans rien relancer.
+
+        Avec `in` a la place de `startswith`, le meme curseur est lu comme un
+        ordre, et l'etiquette devient la decoupe a l'aveugle de dix caracteres —
+        ici « er:2026-09-22-apres-purge ». Le capteur reingere alors **tout le
+        corpus** sur un curseur que personne n'a voulu marquer. `mesure` : la
+        substitution laissait la suite entierement verte.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                egare = build_sensor_context(
+                    instance=instance, cursor=f"# {PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                resultat = built.sensor(egare)
+                cles = {r.run_key for r in resultat.run_requests}
+
+            # Les cles se reconstruisent A LA MAIN, et surtout pas par un second
+            # appel a `_corpus` : celui-ci REECRIT les fichiers, donc deplacerait
+            # les `mtime` que cette assertion compare.
+            attendues = {
+                f"reing_captures/page_{numero:02d}.html_"
+                f"{os.path.getmtime(tmp_path / f'captures/page_{numero:02d}.html')}"
+                for numero in range(3)
+            }
+            assert cles == attendues, (cles, attendues)
+            assert all(self.ETIQUETTE not in str(cle) for cle in cles), cles
+        finally:
+            get_settings.cache_clear()
+
+    def test_le_tick_qui_honore_le_marqueur_le_confirme_au_journal(self, tmp_path, monkeypatch):
+        """LA SEULE CONFIRMATION QUE L'OPERATEUR RECOIT, ET RIEN NE LA GARDAIT.
+
+        Le geste est manuel et il est irreversible a l'echelle du corpus : celui
+        qui l'a pose n'a que cette ligne pour savoir qu'il a ete **lu**, avec
+        quelle etiquette et sur combien de fichiers.
+
+        `mesure` : supprimer cette ligne laissait la suite verte — et faisait
+        apparaitre a sa place « Invalid cursor format, resetting. », qui dit le
+        CONTRAIRE de ce qui se passe. La seconde assertion garde donc aussi
+        l'absence de ce message-la : un marqueur bien forme n'est pas un curseur
+        invalide, et le journaliser ainsi apprendrait a l'operateur que son geste
+        a echoue au moment meme ou il reussit.
+        """
+        try:
+            built = self._capteur(tmp_path, monkeypatch)
+            with DagsterInstance.ephemeral() as instance:
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                with _ecoute(marque) as journal:
+                    built.sensor(marque)
+
+            confirmations = [
+                ligne
+                for ligne in journal.infos
+                if self.ETIQUETTE in ligne and "Reingestion demandee" in ligne
+            ]
+            assert confirmations, journal.infos
+            assert "les 3 fichiers" in confirmations[0], confirmations[0]
+            assert not [ligne for ligne in journal.avertissements if "Invalid cursor" in ligne], (
+                journal.avertissements
+            )
+        finally:
+            get_settings.cache_clear()
+
 
 class TestLeTickQuiPerdSesRunsLeDit:
     """Registre 4.32.a, seconde moitie : **22 runs perdus sans un mot**.
@@ -718,6 +829,16 @@ class TestLeTickQuiPerdSesRunsLeDit:
 
         Deux fois le MEME marqueur : le second tick reconstruit les memes cles,
         Dagster n'en creera aucun run. Le capteur doit le dire, et dire COMBIEN.
+
+        L'assertion est POSITIONNELLE, et ce n'est pas un detail de style. Elle
+        a d'abord ete ecrite `"3" in perdu[0]` — or le message porte « {N}
+        demande(s) de run sur {M} », et M vaut 3 ici : le DENOMINATEUR
+        satisfaisait le test a lui seul, quel que soit le numerateur. `mesure` :
+        remplacer `{len(perdues)}` par le litteral `zero` laissait la suite
+        entierement verte. Un garde qui lit un chiffre sans savoir lequel ne
+        garde rien. Le numerateur est desormais lu a sa place, et
+        `test_le_compte_annonce_est_celui_des_perdues_et_non_du_total` le
+        separe du denominateur en les rendant differents.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -741,7 +862,44 @@ class TestLeTickQuiPerdSesRunsLeDit:
 
             perdu = [ligne for ligne in journal.avertissements if "run_key" in ligne]
             assert perdu, journal.avertissements
-            assert "3" in perdu[0], perdu[0]
+            assert perdu[0].startswith("3 demande(s) de run sur 3 "), perdu[0]
+        finally:
+            get_settings.cache_clear()
+
+    def test_le_compte_annonce_est_celui_des_perdues_et_non_du_total(self, tmp_path, monkeypatch):
+        """LE NUMERATEUR ET LE DENOMINATEUR SONT RENDUS DIFFERENTS, EXPRES.
+
+        Tant que les deux valent 3, aucune assertion ne peut distinguer « le
+        capteur compte ses pertes » de « le capteur recopie le total ». Ici
+        **deux** cles sur trois ont ete consommees : le message doit dire 2 sur
+        3. Le README et le registre 4.32.a promettent tous deux que le capteur
+        le DIT *avec le nombre* ; c'est ce test-ci qui tient cette promesse, et
+        aucun autre.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 3)
+            built = build_source(_html_source(name="reing"))
+            with DagsterInstance.ephemeral() as instance:
+                premier = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                cles = [r.run_key for r in built.sensor(premier).run_requests]
+                assert len(cles) == 3, cles
+                # DEUX seulement : la troisieme demande passera, les deux autres
+                # sont perdues, et c'est 2 que le capteur doit annoncer.
+                self._instance_avec_les_cles(instance, cles[:2], "reing_sensor")
+
+                second = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                with _ecoute(second) as journal:
+                    built.sensor(second)
+
+            perdu = [ligne for ligne in journal.avertissements if "run_key" in ligne]
+            assert perdu, journal.avertissements
+            assert perdu[0].startswith("2 demande(s) de run sur 3 "), perdu[0]
         finally:
             get_settings.cache_clear()
 
@@ -794,6 +952,53 @@ class TestLeTickQuiPerdSesRunsLeDit:
         finally:
             get_settings.cache_clear()
 
+    def test_une_instance_deja_peuplee_par_ce_capteur_ne_fait_pas_crier(
+        self, tmp_path, monkeypatch
+    ):
+        """LE CAS ORDINAIRE DE TOUS LES JOURS, ET AUCUN TEST NE LE MONTAIT.
+
+        Les deux temoins voisins ne discriminent pas : l'un part d'une instance
+        **vierge**, l'autre filtre sur l'autre axe — un AUTRE capteur, pas
+        d'AUTRES cles. Il manquait celui-ci : le capteur a deja des runs derriere
+        lui, sous SES propres cles et SON propre nom, et la demande du jour porte
+        des cles NEUVES.
+
+        `mesure` : sans ce garde, remplacer `RunsFilter(tags={RUN_KEY_TAG: cle})`
+        par `RunsFilter(tags={SENSOR_NAME_TAG: nom_du_capteur})` — la requete
+        cesse alors de porter sur la cle — laissait la suite entierement verte.
+        Le mutant leve une alerte FAUSSE a chaque tick des que le capteur a un
+        seul run derriere lui, c'est-a-dire toujours en production. Et une alerte
+        fausse se desapprend aussi vite qu'une alerte absente.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 3)
+            built = build_source(_html_source(name="reing"))
+            with DagsterInstance.ephemeral() as instance:
+                # L'HISTORIQUE ORDINAIRE : la premiere ingestion a eu lieu, ses
+                # trois runs portent les cles NOMINALES et le nom de CE capteur.
+                nominal = build_sensor_context(instance=instance)
+                deja = [r.run_key for r in built.sensor(nominal).run_requests]
+                self._instance_avec_les_cles(instance, deja, "reing_sensor")
+
+                # LA DEMANDE DU JOUR : une reingestion a etiquette neuve. Ses
+                # cles n'existent nulle part dans l'historique.
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                with _ecoute(marque) as journal:
+                    resultat = built.sensor(marque)
+
+            neuves = {r.run_key for r in resultat.run_requests}
+            assert len(neuves) == 3, neuves
+            assert neuves.isdisjoint(set(deja)), (neuves, deja)
+            assert not [ligne for ligne in journal.avertissements if "run_key" in ligne], (
+                journal.avertissements
+            )
+        finally:
+            get_settings.cache_clear()
+
 
 class TestLaCleNominaleEstInchangee:
     """CE QUI REND PREUVABLE LE PREMIER TICK APRES LA FUSION.
@@ -820,6 +1025,76 @@ class TestLaCleNominaleEstInchangee:
 
             attendues = {f"forme_{cle}_{os.path.getmtime(tmp_path / cle)}" for cle in cles}
             assert {r.run_key for r in resultat.run_requests} == attendues
+        finally:
+            get_settings.cache_clear()
+
+
+class TestLaCleDeReingestionNePorteQueLEtiquette:
+    """LE PENDANT DE `TestLaCleNominaleEstInchangee`, ET IL MANQUAIT.
+
+    La cle nominale etait figee, la cle de reingestion ne l'etait pas : seule
+    sa forme APPROXIMATIVE etait gardee — « elle contient l'etiquette » et
+    « elle differe des nominales ». `mesure` : lui rajouter le `mtime`,
+    `..._reingestion_{etiquette}_{mtime}`, laissait la suite entierement verte.
+
+    Ce que cette laxite coute est precisement ce que le 4.32.a punit. Toute la
+    repetabilite du geste tient a ce que **la meme etiquette redonne les memes
+    cles** : c'est ce qui rend le geste refait a l'identique bruyant au lieu de
+    muet. Une cle qui reprend le `mtime` cesse d'etre fonction de la seule
+    etiquette — un `touch`, une restauration de sauvegarde, une copie du corpus
+    suffisent alors a rendre neuves des cles que l'operateur croit rejouer, et
+    la reingestion repart en silence. Le `mtime` est justement l'entree dont
+    tout le 4.32.a demande de se defaire dans ce chemin-la.
+    """
+
+    ETIQUETTE = "2026-09-22-apres-purge"
+
+    def test_la_cle_marquee_est_source_partition_reingestion_etiquette(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            cles = _corpus(tmp_path, 2)
+            built = build_source(_html_source(name="forme"))
+            with DagsterInstance.ephemeral() as instance:
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                resultat = built.sensor(marque)
+
+            attendues = {f"forme_{cle}_reingestion_{self.ETIQUETTE}" for cle in cles}
+            assert {r.run_key for r in resultat.run_requests} == attendues
+        finally:
+            get_settings.cache_clear()
+
+    def test_deux_gestes_de_meme_etiquette_redonnent_les_memes_cles(self, tmp_path, monkeypatch):
+        """LE TEMOIN DE LA FORME : c'est cette egalite-la qui rend la repetition bruyante.
+
+        Le `mtime` des fichiers est deplace ENTRE les deux ticks — c'est ce
+        qu'un `touch`, une restauration ou une recopie du corpus produisent.
+        Les cles ne doivent pas bouger pour autant : elles sont fonction de
+        l'etiquette, et de rien d'autre.
+        """
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        try:
+            _corpus(tmp_path, 2)
+            built = build_source(_html_source(name="forme"))
+            with DagsterInstance.ephemeral() as instance:
+                marque = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                avant = {r.run_key for r in built.sensor(marque).run_requests}
+
+                for chemin in sorted((tmp_path / "captures").glob("*.html")):
+                    os.utime(chemin, (2_000_000_000, 2_000_000_000))
+
+                rejoue = build_sensor_context(
+                    instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
+                )
+                apres = {r.run_key for r in built.sensor(rejoue).run_requests}
+
+            assert avant, avant
+            assert apres == avant, (apres, avant)
         finally:
             get_settings.cache_clear()
 
