@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import glob as globlib
 import json
 import logging
 import os
@@ -21,10 +22,12 @@ from dagster import (
 from dagster._core.storage.tags import RUN_KEY_TAG, SENSOR_NAME_TAG
 from dagster._core.test_utils import create_run_for_test
 
+from src.docling_service.elements import cleaned_path, cleaned_root
 from src.docling_service.jobs import Job
 from src.pipeline.factory import PREFIXE_REINGESTION, _record_metadata, build_source
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig, load_sources
+from src.wipe_stores import purge_cleaned
 
 
 def _html_source(name: str = "test_html") -> SourceConfig:
@@ -384,6 +387,139 @@ class TestLeNettoyagePublieCeQuIlAJete:
 
         attendu = contexte.metadonnees["text_chars"] / contexte.metadonnees["precleaned_text_chars"]
         assert contexte.metadonnees["text_ratio"] == attendu
+
+
+class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
+    """Registre 4.33.a — le `README` et `wipe_stores` justifiaient un `rmtree` par
+    un mecanisme qui n'existe pas.
+
+    La phrase, mot pour mot : « l'asset `cleaned_html` ne se rematerialise pas si
+    son fichier existe deja ». Elle portait a elle seule la necessite du `rmtree`
+    le plus dangereux du depot — celui dont le registre 4.29.a raconte qu'un
+    reglage mal pose y emportait 24 des 25 fichiers du corpus versionne.
+
+    Les DEUX NATURES sont gardees ici, et une seule serait creuse :
+
+    - ce qui est REECRIT : une destination au contenu different est remplacee.
+      C'est la phrase du `README` mise en defaut, et le garde qui rougit si un
+      court-circuit « le fichier existe » revenait ;
+    - ce qui SURVIT : la copie nettoyee d'un document retire du corpus. C'est la
+      seule chose que la purge retire, donc la vraie raison de la garder.
+
+    Le troisieme test borne la premiere : si le capteur voyait `.cleaned/`, les
+    orphelins reviendraient par le glob et l'analyse ci-dessus tomberait.
+    """
+
+    CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
+    PERIME = "<html><body><p>PERIME : pointe des objets MinIO supprimes</p></body></html>"
+
+    def _asset(self, tmp_path, monkeypatch):
+        """L'asset `cleaned_html` livre, arme sur un faux corpus jetable."""
+        monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
+        get_settings.cache_clear()
+        source = [s for s in load_sources() if s.type == "html"][0]
+        source = source.model_copy(update={"cleaning": source.cleaning.model_copy()})
+        source.cleaning.export_images = False
+        return source, _asset_par_nom(source, "cleaned_html")
+
+    def _deposer(self, tmp_path, cle: str, titre: str) -> None:
+        chemin = tmp_path / cle
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        chemin.write_text(
+            f"<html><head><title>{titre}</title></head><body><nav>menu</nav>"
+            f"<article><h1>{titre}</h1><p>{self.CONTENU}</p></article></body></html>",
+            encoding="utf-8",
+        )
+
+    def test_une_destination_perimee_est_reecrite_par_la_materialisation_suivante(
+        self, tmp_path, monkeypatch
+    ):
+        """LA PHRASE DU `README` MISE EN DEFAUT, et le garde qui la tient fausse.
+
+        Le temoin est le contenu, pas l'horodatage : une destination REMPLIE d'un
+        contenu perime doit avoir disparu. Asserter seulement « le fichier existe
+        encore » serait vert des deux cotes du defaut.
+
+        Mutation qui doit faire rougir ce test : un court-circuit
+        `if dest_path.exists(): return` en tete de `clean_html_file`.
+        """
+        cle = "htms/livre/chapitre.html"
+        try:
+            _, asset = self._asset(tmp_path, monkeypatch)
+            self._deposer(tmp_path, cle, "Un chapitre")
+            asset(ContexteEspion(cle))
+            destination = cleaned_path(tmp_path, cle)
+            premier = destination.read_text(encoding="utf-8")
+
+            destination.write_text(self.PERIME, encoding="utf-8")
+            asset(ContexteEspion(cle))
+            second = destination.read_text(encoding="utf-8")
+        finally:
+            get_settings.cache_clear()
+
+        assert "PERIME" not in second, second[:200]
+        assert second == premier, "le second nettoyage devait rendre le meme octet"
+
+    def test_la_copie_nettoyee_d_un_document_retire_du_corpus_survit(self, tmp_path, monkeypatch):
+        """CE QUE LA PURGE RETIRE, ET ELLE SEULE.
+
+        Deux documents nettoyes, la source de l'un retiree, l'autre
+        rematerialise : l'orphelin est toujours la. Aucun chemin du pipeline ne
+        l'efface — `cleaned_html` ne peut pas s'executer pour lui, son controle
+        d'existence portant sur la SOURCE. Seul `purge_cleaned` le retire, et
+        c'est ce que la seconde moitie de ce test asserte.
+
+        Si ce test rougissait parce que l'orphelin a disparu tout seul, la raison
+        ecrite a `purge_cleaned` aurait cesse d'etre vraie : c'est exactement ce
+        qu'il est la pour dire.
+        """
+        reste = "htms/livre/reste.html"
+        parti = "htms/livre/parti.html"
+        try:
+            _, asset = self._asset(tmp_path, monkeypatch)
+            self._deposer(tmp_path, reste, "Chapitre qui reste")
+            self._deposer(tmp_path, parti, "Chapitre qui part")
+            asset(ContexteEspion(reste))
+            asset(ContexteEspion(parti))
+
+            (tmp_path / parti).unlink()
+            asset(ContexteEspion(reste))
+
+            orphelin = cleaned_path(tmp_path, parti)
+            vivant = cleaned_path(tmp_path, reste)
+            survivant = orphelin.exists()
+            retires = purge_cleaned(cleaned_root(tmp_path), tmp_path)
+        finally:
+            get_settings.cache_clear()
+
+        assert survivant, "l'orphelin devait survivre a la rematerialisation du corpus"
+        assert retires == 2, retires
+        assert not orphelin.exists(), "la purge devait retirer l'orphelin"
+        assert not vivant.exists()
+
+    def test_le_glob_de_la_source_ne_voit_jamais_le_repertoire_nettoye(self, tmp_path, monkeypatch):
+        """LA BORNE de l'analyse ci-dessus : un orphelin n'est atteignable par rien.
+
+        S'il l'etait, le capteur le rendrait a l'ingestion et la purge cesserait
+        d'etre la seule issue. Deux choses l'en empechent, et ce test les tient
+        toutes les deux : le glob est ancre sous le sous-repertoire de la source,
+        et `.cleaned` porte un point de tete que `glob` n'ouvre jamais.
+        """
+        cle = "htms/livre/chapitre.html"
+        try:
+            source, asset = self._asset(tmp_path, monkeypatch)
+            self._deposer(tmp_path, cle, "Un chapitre")
+            asset(ContexteEspion(cle))
+
+            vus = sorted(globlib.glob(str(tmp_path / source.glob), recursive=True))
+            larges = sorted(globlib.glob(str(tmp_path / "**" / "*.html"), recursive=True))
+        finally:
+            get_settings.cache_clear()
+
+        assert cleaned_path(tmp_path, cle).exists(), "le nettoyage n'a rien ecrit"
+        attendu = [str(tmp_path / cle)]
+        assert vus == attendu, vus
+        assert larges == attendu, larges
 
 
 class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:

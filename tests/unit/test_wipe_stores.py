@@ -16,7 +16,9 @@ from pathlib import Path
 
 import pytest
 
+from src.docling_service.elements import CLEANED_SUBDIR
 from src.wipe_stores import (
+    CibleHorsDuNettoyeError,
     CibleHorsRacineError,
     purge_bucket,
     purge_cleaned,
@@ -461,23 +463,22 @@ class TestUnePurgePartielleEchoue:
 
 
 class TestLeHtmlNettoyeEstPurgeAussi:
-    """Registre 4.28.b — LE PIEGE DE CE LOT, et il ne se voit pas.
+    """Registre 4.28.b, dont le MOTIF a ete redresse par le 4.33.a.
 
-    `wipe_stores` purgeait les trois stores et laissait `Datas/.cleaned/`. Or le
-    HTML nettoye porte les URL MinIO des images (`cleaning.py` reecrit les
-    `img src`), et l'asset Dagster `cleaned_html` ne se rematerialise pas si son
-    fichier de sortie existe deja.
+    Cette docstring affirmait, comme `wipe_stores` et le `README`, que « l'asset
+    Dagster `cleaned_html` ne se rematerialise pas si son fichier de sortie
+    existe deja ». C'est faux sur le code livre, et `mesure` le 22 septembre
+    2026 : la destination est reecrite a chaque materialisation. Le garde de
+    cette mesure vit au plus pres de l'asset, dans
+    `tests/unit/test_factory.py::TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`.
 
-    La consequence, `mesure` le 1er septembre 2026 : le bucket porte **13**
-    objets, tous des crops du PDF, et `Datas/.cleaned/` reference **199** URL
-    `http://minio:9000/...` d'objets qui n'existent PAS. Une purge suivie d'une
-    reingestion repart donc du HTML nettoye PERIME, et pointe 199 objets absents.
-    **Reextraire ne suffit pas** — seule une execution de `cleaned_html` les
-    restaure, en re-televersant les images depuis les captures.
+    Ce que cette purge retire, et elle seule, ce sont les ORPHELINS : les copies
+    nettoyees des documents que le corpus n'a plus. Rien ne les reecrit, rien ne
+    les efface, et apres la purge du bucket elles pointent des objets MinIO que
+    seul `cleaned_html` restaurerait — pour un document qui n'existe plus.
 
-    Purger `Datas/.cleaned/` est ce qui rend `wipe_stores` idempotent avec la
-    chaine d'images : la purge devient « repartir de zero » et non « repartir de
-    zero sauf le HTML ».
+    Les tests ci-dessous gardent le GESTE : ce que la purge retire, ce qu'elle
+    compte, et ce qu'elle ne touche pas.
     """
 
     def test_le_repertoire_nettoye_est_supprime(self, tmp_path):
@@ -491,8 +492,13 @@ class TestLeHtmlNettoyeEstPurgeAussi:
         assert not nettoye.exists()
 
     def test_un_repertoire_absent_ne_leve_pas_et_ne_compte_rien(self, tmp_path):
-        """Le cas nominal d'une pile neuve : il n'y a rien a purger."""
-        assert purge_cleaned(tmp_path / "jamais_cree", tmp_path) == 0
+        """Le cas nominal d'une pile neuve : il n'y a rien a purger.
+
+        La cible est celle que `main()` compose — `racine/CLEANED_SUBDIR` — et
+        non un nom quelconque. Elle l'etait deja en production ; ce test la
+        prenait ailleurs, et la seconde borne du lot 9 l'a mis en evidence.
+        """
+        assert purge_cleaned(tmp_path / CLEANED_SUBDIR, tmp_path) == 0
 
     def test_le_compte_est_celui_des_fichiers_reellement_retires(self, tmp_path):
         """Le compteur la ou il y a perte : une purge muette ne dit pas si elle a
@@ -792,21 +798,106 @@ class TestLeContainmentEstDecideParPurgeCleaned:
         datas.mkdir()
         assert purge_cleaned(datas / ".cleaned", datas) == 0
 
-    def test_une_cible_profondement_contenue_est_acceptee(self, tmp_path: Path) -> None:
-        """Le temoin : le controle est un containment, pas une egalite de nom.
+    def test_un_descendant_du_nettoye_est_accepte(self, tmp_path: Path) -> None:
+        """LE TEMOIN de la seconde borne : elle ne refuse pas tout.
 
-        Un garde ecrit `cible.parent == racine` refuserait
-        `Datas/.cleaned/htms`, qui est une cible legitime si le reglage la
-        designe. Le contrat est « strictement contenu », rien de plus etroit.
+        `Datas/.cleaned/htms` est DANS le repertoire nettoye : le purger ne fait
+        sortir de rien. Sans ce temoin, un garde qui refuserait toute cible
+        rendrait `wipe_stores` inutilisable, et les deux tests ci-dessous
+        resteraient verts.
+
+        Ce test s'appelait `test_une_cible_profondement_contenue_est_acceptee`
+        et prenait `Datas/a/b/c` — une cible hors du nettoye. Il justifiait ce
+        choix par « une cible legitime si le reglage la designe » : ce reglage
+        est mort avec le lot 5, et la phrase decrivait donc un contrat que plus
+        rien ne demandait. La borne du lot 9 le retrecit a ce que le code
+        compose vraiment.
         """
         datas = tmp_path / "datas"
-        cible = datas / "a" / "b" / "c"
+        cible = datas / CLEANED_SUBDIR / "htms" / "livre"
         cible.mkdir(parents=True)
         (cible / "f.html").write_text("<html/>", encoding="utf-8")
 
         assert purge_cleaned(cible, datas) == 1
         assert not cible.exists()
-        assert (datas / "a" / "b").exists(), "seule la cible devait partir"
+        assert (datas / CLEANED_SUBDIR / "htms").exists(), "seule la cible devait partir"
+
+    @pytest.mark.parametrize(
+        ("sous_chemin", "ce_qu_elle_emportait"),
+        [
+            ("htms", "24 des 25 fichiers du corpus versionne"),
+            ("database", "les cinq stores de Datas/database/"),
+            ("pdfs", "le PDF du corpus"),
+        ],
+    )
+    def test_une_cible_contenue_mais_hors_du_nettoye_est_refusee(
+        self, tmp_path: Path, sous_chemin: str, ce_qu_elle_emportait: str
+    ) -> None:
+        """LA FAMILLE QUE LE CONTAINMENT SEUL NE VOYAIT PAS (registre 4.29.a).
+
+        Ces trois cibles sont STRICTEMENT contenues dans la racine : le premier
+        controle les accepte toutes les trois. C'est la mesure du 1er septembre
+        2026 — `CLEANED_SUBDIR=htms` passait le garde et `rmtree` detruisait le
+        corpus. Le reglage a disparu, mais `purge_cleaned` est publique : son
+        garde ne tenait plus que par la constante de son appelant.
+
+        Le temoin est ici meme : le contenu vise doit etre INTACT apres le refus.
+        Un refus qui leverait apres le `rmtree` serait vert sur l'exception.
+        """
+        datas = tmp_path / "datas"
+        cible = datas / sous_chemin
+        cible.mkdir(parents=True)
+        temoin = cible / "precieux.bin"
+        temoin.write_text("le corpus", encoding="utf-8")
+
+        with pytest.raises(CibleHorsDuNettoyeError):
+            purge_cleaned(cible, datas)
+
+        assert temoin.exists(), f"{sous_chemin} a ete detruit : {ce_qu_elle_emportait}"
+        assert temoin.read_text(encoding="utf-8") == "le corpus"
+
+    def test_le_refus_hors_du_nettoye_nomme_la_cible_et_le_nettoye(self, tmp_path: Path) -> None:
+        """Un refus sans cause probable envoie l'operateur lire le code.
+
+        Il doit nommer ce qui a ete vise ET ce qui etait attendu. Le premier
+        refus accuse `SOURCE_DIR` ; celui-ci accuse l'ARGUMENT, et les deux ne
+        s'instruisent pas au meme endroit.
+        """
+        datas = tmp_path / "datas"
+        (datas / "htms").mkdir(parents=True)
+
+        with pytest.raises(CibleHorsDuNettoyeError) as refus:
+            purge_cleaned(datas / "htms", datas)
+
+        message = str(refus.value)
+        assert str(datas / "htms") in message, message
+        assert str(datas / CLEANED_SUBDIR) in message, message
+
+    def test_un_lien_du_nettoye_vers_le_corpus_est_refuse(self, tmp_path: Path) -> None:
+        """LE CAS QUE LE CONTAINMENT NE VOIT PAS, ET QUI EMPORTE LE CORPUS.
+
+        `.cleaned` est ici un LIEN vers `Datas/htms`. La cible resolue est
+        strictement contenue dans la racine : le premier controle l'accepte. Et
+        elle porte le nom attendu, donc un garde qui RESOUDRAIT
+        `cleaned_root(racine)` de son cote comparerait `Datas/htms` a
+        `Datas/htms` et l'accepterait aussi — `rmtree` suivrait le lien et le
+        corpus partirait avec la benediction du garde.
+
+        La forme nominale est comparee NON RESOLUE, et c'est ce que ce test
+        tient. Le temoin est le contenu du corpus, pas l'exception.
+        """
+        datas = tmp_path / "datas"
+        corpus = datas / "htms"
+        corpus.mkdir(parents=True)
+        temoin = corpus / "chapitre.html"
+        temoin.write_text("<html>le corpus</html>", encoding="utf-8")
+        (datas / CLEANED_SUBDIR).symlink_to(corpus, target_is_directory=True)
+
+        with pytest.raises(CibleHorsDuNettoyeError):
+            purge_cleaned(datas / CLEANED_SUBDIR, datas)
+
+        assert temoin.exists(), "le lien a ete suivi et le corpus detruit"
+        assert temoin.read_text(encoding="utf-8") == "<html>le corpus</html>"
 
 
 class TestLeSousRepertoireNettoyeNEstPlusUnReglage:
