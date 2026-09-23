@@ -3472,6 +3472,254 @@ partitions dont la source a disparu — avant toute suppression, et il rejoint l
 §4.34.c : personne ne compte les orphelins, sous aucune de leurs deux formes.
 
 
+### 4.35 → CONSIGNÉ par la réparation du lot 9 — le **a** est TRAITÉ, les quatre autres NON
+
+Cinq constats, mesurés le 23 septembre 2026. Le `a` est le seul qui entre au
+diff ; les quatre autres sont **hors du diff**, périmètre strict. Le compte est
+`calculé`, `grep -c '^#### 4.35'` rend cinq.
+
+#### 4.35.a → TRAITÉ — la durée annoncée était celle d'un **autre** plafond, à trois sites
+
+`max_runtime_seconds: 90000` vaut **25 h**, pas 24. Les 24 h sont celles
+d'`extraction_timeout_seconds` (86 400 s), qui est le plafond que le **pipeline**
+s'accorde par document — pas celui du **run monitoring**. Et le passage se
+contredisait dans son propre paragraphe : `dagster.yaml` explique, dix lignes
+plus haut, que `max_runtime_seconds` est posé « JUSTE AU-DESSUS » du plafond du
+pipeline, puis trois sites annonçaient comme prix ce plafond même.
+
+**Six sites nommaient une de ces deux durées en heures**, et la correction n'a
+pas été bornée aux trois que le mandat citait — c'est la leçon du §4.31.
+`mesuré` sur `f124512`, et **ceci est le site canonique du chiffre** :
+
+```bash
+git grep -nIE -e '(24|25)[ _]?h\b' f124512 -- ':!Datas' ':!uv.lock'   # rend 6
+```
+
+Trois étaient **faux** et sont corrigés — `README.md:351` (tableau du capteur de
+réingestion), ce registre au §4.33.c, et `src/pipeline/factory.py:729` (le
+commentaire du garde du run en vol). Trois étaient **justes** et n'ont pas
+bougé : `dagster.yaml:79`, `src/pipeline/settings.py:45` et
+`documentation/orchestration.md:62` parlaient bien du plafond du pipeline. Les
+trois du mandat étaient donc bien tous les faux, et rien de plus.
+
+L'arithmétique est désormais écrite **une fois**, au site qui porte la valeur :
+
+    max_runtime_seconds          90 000 s = 25 h 00
+    extraction_timeout_seconds   86 400 s = 24 h 00
+    écart                         3 600 s =  1 h 00   ← DÉLIBÉRÉ
+
+**ET LA BORNE N'ÉTAIT GARDÉE QUE PAR EN DESSOUS.** `mesuré` par l'audit, et
+rejoué : `max_runtime_seconds` porté à **500 000** rendait `rc=0` et **925
+verts, zéro rouge** ; porté à **3 600**, il rendait **1 rouge**. La borne ne
+pouvait pas descendre sous le plafond du pipeline, mais elle pouvait être
+multipliée par 5,5 sans qu'un test bronche — alors que le fichier de test
+affirmait, en toutes lettres, être « le seul garde du dépôt qui rougirait si
+l'un des deux réglages bougeait sans l'autre ». Vrai vers le bas, **faux vers le
+haut** : c'est la huitième phrase d'exhaustivité que ce registre attrape.
+
+Deux gardes la ferment, et **la raison de chaque forme est écrite au site**.
+
+`test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline` tient la
+**propriété**, pas la valeur. Une égalité à 90 000 rougirait aussi bien pour un
+ajustement légitime que pour un changement de nature, sans distinguer les deux,
+et se recopierait sans qu'on y pense. Ce que `dagster.yaml` revendique est que
+la borne soit posée *juste au-dessus* du plafond du pipeline, **parce qu'elle
+est la dernière ligne et non un second plafond** — et c'est cela qui se perd
+quand elle dérive. Le seuil est un **dixième** du plafond du pipeline : l'écart
+livré vaut 4,2 %, il peut donc **plus que doubler** sans rougir. Le garde
+n'interdit pas l'ajustement, il interdit le changement de nature.
+
+`test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree`
+tient la **prose**, et c'est assumé comme un test de texte dans un fichier qui
+les refuse par ailleurs : ce qui doit être éprouvé **est** une propriété du
+texte — « la documentation dit la vérité sur la valeur » — et il n'y a pas de
+comportement à observer. Il part de la valeur **effective**, jamais d'un
+littéral, et exige que `dagster.yaml` et `documentation/orchestration.md` la
+nomment et en annoncent les heures justes. Deux sites et pas cinq : ce sont ceux
+qui **donnent** le chiffre, les autres le citent, et tous les garder par du
+texte rendrait le garde plus fragile que la chose gardée.
+
+Les deux mutations du critère, rejouées (`PYTHONHASHSEED=1337`, `rc` du
+processus `pytest`, mutation vérifiée **sémantique** — le YAML se charge et la
+valeur lue est bien celle substituée) :
+
+| Mutation | `rc` | Rouges |
+|---|---|---|
+| `max_runtime_seconds: 90000` → `500000` | 1 | `test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline`, `test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree` |
+| `max_runtime_seconds: 90000` → `3600` | 1 | `test_la_borne_de_duree_ne_contredit_pas_le_plafond_du_pipeline`, `test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree` |
+
+**Aucune valeur effective ne change** : `dagster.yaml` ne gagne que des
+commentaires. Le démon en cours d'exécution lit
+`/home/ubuntu/RAG/rag-ingestion-pipeline/dagster.yaml` — le clone principal, pas
+un arbre de travail (`mesuré` par `docker inspect` sur les deux conteneurs
+Dagster) — et Dagster ne relit ce fichier qu'au **démarrage du processus**. Rien
+n'a été redémarré, et il n'y avait rien à redémarrer.
+
+#### 4.35.b Les deux phrases d'exhaustivité qui portent la justification du `rmtree` ne sont tenues par aucun test
+
+La justification de la purge de `Datas/.cleaned/` repose sur une chaîne dont le
+dernier maillon est : *`cleaned_html` est le **seul** chemin qui re-téléverse les
+images d'un document, et il ne s'exécutera jamais pour un document absent.* Ce
+maillon repose lui-même sur deux phrases d'exhaustivité, écrites dans le
+docstring de `purge_cleaned` et dans celui de l'asset :
+
+- `MinioImageExporter` n'est instancié qu'à **un** endroit ;
+- `clean_html_file` n'a qu'**un** appelant de production.
+
+**Les deux sont vraies.** `mesuré` le 23 septembre 2026, revérifié à la main :
+
+```bash
+grep -rn 'MinioImageExporter(' src/   # 1 ligne  : factory.py:341, l'instanciation
+grep -rn 'clean_html_file(' src/      # 2 lignes : cleaning.py:610 la DEFINITION,
+                                      #            factory.py:343 le seul appel
+```
+
+**Et aucun test ne les tient.** Le jour où un second appelant apparaît — un
+service de prévisualisation, un script de rattrapage, une commande de
+maintenance — la justification de la purge devient fausse, et **rien ne le
+dit** : la suite reste verte, le docstring continue d'affirmer ce qui n'est plus
+vrai, et un `rmtree` garde une raison d'être qu'il n'a plus.
+
+**LA FORME DU GARDE COMPTE, ET C'EST TOUT L'OBJET DE CE CONSTAT.** Un garde qui
+**compte les sites** — `assert len(grep('MinioImageExporter(')) == 1` — est
+fragile de deux manières à la fois : il rougit sur un renommage, un import
+déplacé ou un commentaire, donc il crie pour rien ; et il reste vert si le second
+appelant passe par une indirection, donc il se tait quand il faudrait crier. Il
+garde l'orthographe, pas la chose.
+
+Le garde qui tient est celui qui tient la **propriété** : *les images d'un
+orphelin ne sont re-téléversées par aucun chemin*. Sa forme, telle qu'elle est
+proposée et **non écrite** :
+
+1. sur un corpus temporaire, matérialiser un document avec un exporteur
+   d'images **espion**, et vérifier qu'il a reçu des appels — c'est le **témoin**,
+   sans lui le test serait vert sur un pipeline débranché ;
+2. retirer la source du corpus ;
+3. rejouer **tous** les assets du pipeline sur cette partition, par le chemin de
+   production, l'espion remis à zéro ;
+4. asserter que l'espion n'a **rien** reçu.
+
+Ce garde-là ne connaît ni le nom `MinioImageExporter` ni le nombre de ses sites.
+Il rougit exactement quand la propriété tombe — c'est-à-dire quand un second
+chemin se met à téléverser — et il reste vert sur tout renommage. **Non écrit :
+périmètre strict.**
+
+#### 4.35.c L'option plus étroite n'est écartée nulle part, et la décision est prise ici
+
+Ne supprimer que les **orphelins**, plutôt que tout le répertoire. L'option n'a
+jamais été écrite, ni retenue ni écartée, alors qu'elle est la première que
+lirait quiconque relit ce `rmtree`.
+
+Le chiffre qui la rend tentante est réel. `mesuré` le 23 septembre 2026, en
+lecture seule sur `/home/ubuntu/RAG/rag-ingestion-pipeline/Datas/.cleaned` :
+
+| | |
+|---|---|
+| copies nettoyées | **22** |
+| dont la source existe encore | **22** |
+| **orphelins** | **0** |
+
+La purge détruit donc aujourd'hui **22 copies valides pour éliminer zéro cible**.
+
+**LA DÉCISION EST DE GARDER LA PURGE LARGE**, et voici les deux arguments qui la
+portent.
+
+Le premier est une question de **surface**. Un `rmtree` gardé sur **un**
+répertoire — containment strict, cible dérivée d'une constante et non d'un
+réglage, refus dur sur tout ce qui n'est pas exactement `<racine>/.cleaned`, le
+tout mesuré sur 15 scénarios dont 6 détruisaient le corpus avant le lot 9 — est
+une surface **plus petite** qu'une logique de suppression fichier par fichier
+sur un chemin destructeur. Cette seconde forme ferait boucler la suppression sur
+une liste *calculée*, donc dépendante d'une dérivation source ↔ copie qui peut
+diverger ; c'est exactement le mode de panne du §4.29.a, où deux sites lisaient
+le sous-répertoire depuis deux endroits différents. Un `rmtree` unique se garde
+par **un** invariant ; une boucle de `unlink` se garde par autant d'invariants
+qu'elle a de chemins.
+
+Le second est que le coût mesuré ci-dessus est **nul dans le seul contexte où la
+purge s'exécute**. `purge_cleaned` n'a qu'un appelant de production,
+`wipe_stores.main()` — `mesuré` : `grep -rn 'purge_cleaned(' src/` rend deux
+lignes, `wipe_stores.py:153` la **définition** et `wipe_stores.py:395` le seul
+appel — et `main()` vient de vider ChromaDB, le bucket MinIO et NebulaGraph. Le geste entier n'a de sens qu'avant une **réingestion complète**,
+qui réécrira les 22 copies de toute façon — `clean_html_file` écrit sa
+destination sans la regarder, il n'existe aucun court-circuit « le fichier
+nettoyé existe » (§4.33.a, `mesuré`). Les « 22 copies valides détruites » ne sont
+donc pas une perte : ce sont 22 fichiers qui allaient être réécrits dans la
+minute.
+
+**Ce que cette décision ne dit pas**, et qui reste ouvert : personne ne **compte**
+ni ne **nomme** les orphelins avant de les détruire. C'est le §4.34.c, et il est
+toujours vrai. Un rapport avant purge vaudrait mieux qu'une purge silencieuse,
+et il ne change rien à la décision ci-dessus — il l'accompagne.
+
+#### 4.35.d Le garde du maillon « le capteur ne voit pas `.cleaned` » garde la bibliothèque, pas l'usage
+
+`test_le_glob_de_la_source_ne_voit_jamais_le_repertoire_nettoye`
+(`tests/unit/test_factory.py:507`) tient le maillon (c) de la justification du
+`rmtree`. Il appelle `globlib.glob(...)` **dans le test**, avec le motif de la
+source reconstruit à la main. Il garde donc une propriété de la **bibliothèque
+standard** — `glob` n'ouvre pas un répertoire à point de tête, même derrière
+`**` — et non l'usage qu'en fait la production, `factory.py:758`.
+
+`mesuré` le 23 septembre 2026, mutation du code **livré**, protocole complet
+(site compté à 1, `git diff --stat` non vide, module réimporté pour vérifier que
+la mutation est **sémantique** et non un plantage au chargement,
+`git status --porcelain` vide après restauration) :
+
+| Mutation | `rc` | Rouges |
+|---|---|---|
+| `globlib.glob(pattern, recursive=True)` → `globlib.glob(pattern, recursive=True, include_hidden=True)` dans `factory.py` | **0** | **aucun** — 927 verts |
+
+**L'impact réel est nul**, et il faut le dire aussi clairement que le défaut :
+l'ancrage du motif protège seul. Le glob d'une source est `htms/**/*.html`, donc
+ancré sous le sous-répertoire de la source, et `.cleaned` est un **frère** de
+`htms` et non un descendant — `include_hidden` ne peut pas l'atteindre. Les deux
+protections que le docstring du test annonce tenir ne sont pas d'égale force : la
+première suffit, la seconde est du confort, et c'est la seconde que le test
+éprouve.
+
+**Ce qui est en défaut est donc le garde, pas le code.** Un test qui passerait
+par le capteur de production — et non par `globlib` directement — rougirait sur
+cette mutation, et dirait alors quelque chose du système plutôt que de la
+stdlib. **Non écrit : périmètre strict**, et la priorité est basse puisque
+l'impact est nul.
+
+#### 4.35.e Les tables de mutations ne sont pas versionnées, donc la preuve de non-décorativité périt
+
+Un garde n'est pas décoratif s'il **rougit** quand la chose gardée tombe, et la
+seule preuve en est une table de mutations. Sur ce chantier, cette table vit dans
+une **conversation** — qui périt — alors que le garde, lui, est versionné.
+
+`mesuré` le 23 septembre 2026, sur les six commits du lot 9 (`34e740f..f124512`) :
+
+```bash
+# les six commits du lot 9, depuis leur base
+git log 34e740f..f124512 --format='%B' | grep -ciE '[0-9]+ rouges?'          # rend 0
+# les deux sections que le lot 9 a écrites à ce registre
+awk '/^### 4\.33 /,/^### 4\.35 /' documentation/axes_amelioration.md \
+  | grep -ci 'mutation'                                                      # rend 2
+```
+
+**Aucun** message de commit du lot 9 ne chiffre une mutation. Le registre en
+chiffre **six**, en deux endroits : deux au §4.33.a (le court-circuit devant le
+`write_text` → 1 rouge ; `shutil.rmtree` → `pass` → 14 rouges) et quatre au
+§4.33.c. Le lot en a annoncé davantage dans sa conversation de livraison — le
+chiffre de 17 circule dans le mandat de réparation — et **ce chiffre n'est
+vérifiable nulle part dans le dépôt**. C'est exactement le constat : l'auditeur a
+dû reconstruire ses propres tables de sa main, et la réparation aussi.
+
+L'écart est donc plus large que « 17 annoncés contre 6 consignés » : le dépôt ne
+porte **que** les 6 du registre, et **zéro** dans les commits qui livrent les
+gardes.
+
+**La pratique n'est pas changée ici — ce serait une décision du pilote**, et elle
+a un coût qui doit être pesé avant d'être payée : une table par garde alourdit
+chaque message de commit, et une table fausse est pire qu'absente. Le constat est
+consigné pour que la décision se prenne sur une mesure. *(Les deux commits de
+cette réparation portent chacun leur table, chiffrée et rejouable, `rc` compris :
+c'est un échantillon de ce que la pratique coûterait, pas son adoption.)*
+
+
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
 ### 5.1 → traité par le lot 5 — cinq symboles morts retirés, et le sixième était CONTOURNÉ
