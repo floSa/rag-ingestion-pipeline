@@ -11,12 +11,17 @@ d'elements derivent de leur texte, si bien qu'une extraction modifiee produit
 de nouveaux identifiants et laisse les anciens en orphelins.
 
 **Et le HTML nettoye, pas seulement les stores.** `Datas/.cleaned/` n'etait pas
-purge, et c'est le piege le plus discret de cette purge : le HTML nettoye porte
-les URL MinIO des images, et l'asset Dagster `cleaned_html` ne se rematerialise
-pas si son fichier existe deja. Une purge suivie d'une reingestion repartait donc
-du HTML PERIME, pointant des objets que la purge venait de supprimer. `mesure` :
-13 objets dans le bucket, 199 URL referencees dans `Datas/.cleaned/`. Voir
-:func:`purge_cleaned`.
+purge. **LE MOTIF ECRIT ICI ETAIT FAUX**, et il a survecu a quatre lots : il
+disait que « l'asset `cleaned_html` ne se rematerialise pas si son fichier
+existe deja ». `mesure` le 22 septembre 2026, en appelant le corps livre de
+l'asset DEUX fois sur une copie temporaire, la seconde sur une destination
+remplie d'un contenu perime : la destination est reecrite, le contenu perime
+disparait, et le resultat est l'octet du premier nettoyage. `clean_html_file`
+ecrit sa destination sans la regarder ; il n'existe aucun court-circuit
+« le fichier nettoye existe, on ne refait pas » (registre 4.33.a).
+
+Ce que la purge retire reellement, et qui n'est pas ce que cette phrase
+promettait, est a :func:`purge_cleaned`.
 
 **Ce module SUPPRIME des repertoires, et sa cible ne vient plus d'un reglage.**
 Elle venait de `CLEANED_SUBDIR`, annonce dans `.env.example` : quatre de ses
@@ -119,28 +124,81 @@ def purge_space(session: Any, space: str) -> str:
     return f"DROP SPACE : {result.error_msg()}"
 
 
-class CibleHorsRacineError(RuntimeError):
+class CiblePurgeRefuseeError(RuntimeError):
+    """Base commune des deux refus de :func:`purge_cleaned`.
+
+    Elle existe pour qu'un appelant puisse les attraper ENSEMBLE sans enumerer
+    une liste qui perimerait au prochain garde ajoute. Les deux sont levees AVANT
+    tout `rmtree` : ce module ne supprime rien dont il n'ait etabli la cible.
+    """
+
+
+class CibleHorsRacineError(CiblePurgeRefuseeError):
     """La cible de la purge n'est pas strictement contenue dans la racine.
 
-    Levee AVANT tout `rmtree`. Voir :func:`purge_cleaned` pour ce que ce refus
-    protege et pourquoi il est dur.
+    Le cas d'un `SOURCE_DIR` mal regle, et celui d'un `.cleaned` qui serait un
+    LIEN vers l'exterieur. Voir :func:`purge_cleaned`.
+    """
+
+
+class CibleHorsDuNettoyeError(CiblePurgeRefuseeError):
+    """La cible est bien dans la racine, mais ce n'est pas le repertoire nettoye.
+
+    C'EST LA FAMILLE DU 4.29.a, et le containment seul ne la voyait pas :
+    `Datas/htms` est strictement contenu dans `Datas` — il portait 24 des 25
+    fichiers du corpus versionne. Voir :func:`purge_cleaned`.
     """
 
 
 def purge_cleaned(repertoire: Path, racine: Path) -> int:
-    """Supprime le HTML nettoye, et REFUSE toute cible hors de la racine.
+    """Supprime le HTML nettoye, et REFUSE toute cible qui n'est pas lui.
 
-    `Datas/.cleaned/` n'etait PAS purge, et cela ne se voit pas. Le HTML nettoye
-    porte les URL MinIO des images — `cleaning.py` reecrit les `img src` — et
-    l'asset Dagster `cleaned_html` ne se rematerialise pas si son fichier de
-    sortie existe deja.
+    **LA RAISON ECRITE ICI PENDANT QUATRE LOTS ETAIT FAUSSE.** Elle disait que
+    « l'asset `cleaned_html` ne se rematerialise pas si son fichier de sortie
+    existe deja », et en tirait qu'une reingestion sans purge repartirait du HTML
+    PERIME. `mesure` le 22 septembre 2026, corps livre de l'asset appele DEUX
+    fois sur une copie temporaire, la seconde sur une destination remplie d'un
+    contenu perime : la destination est reecrite, le contenu perime disparait, et
+    l'octet rendu est celui du premier nettoyage. Rien de ce qu'une reingestion
+    retouche n'avait besoin de cette purge (registre 4.33.a).
 
-    `mesure` le 1er septembre 2026 : le bucket porte **13** objets, tous des
-    crops du PDF, et `Datas/.cleaned/` reference **199** URL
-    `http://minio:9000/...` d'objets qui n'existent PAS. Une purge suivie d'une
-    reingestion repart donc du HTML nettoye PERIME et pointe 199 objets absents.
-    **Reextraire ne suffit pas** : seule une execution de `cleaned_html` les
-    restaure, en re-televersant les images depuis les captures (registre 4.28.b).
+    **CE QUE LA PURGE RETIRE, ET ELLE SEULE : LES ORPHELINS.** `mesure`, meme
+    jour, meme harnais : deux documents nettoyes, la source de l'un retiree du
+    corpus, l'autre rematerialise — la copie nettoyee du document DISPARU est
+    toujours la. Aucun chemin ne la reecrit, aucun ne l'efface :
+
+    - le capteur ne la voit pas. Le glob d'une source est ancre sous son propre
+      sous-repertoire — `htms/**/*.html` — et `.cleaned` porte de surcroit un
+      point de tete, que `glob` n'ouvre jamais, meme derriere `**` ;
+    - `cleaned_html` ne peut pas s'executer pour elle : son controle d'existence
+      porte sur la SOURCE, et la source n'existe plus.
+
+    **Et un orphelin est perime SANS RECOURS.** Il porte les URL MinIO de ses
+    images — `cleaning.py` reecrit les `img src` — et la purge du bucket, trois
+    blocs plus haut dans le meme `main()`, vient de supprimer les objets qu'elles
+    designent. Or `cleaned_html` est le SEUL chemin qui re-televerse ces images
+    (`mesure` de la campagne du 2 septembre 2026 : 0 objet dans le bucket avant
+    le geste 3, 199 apres), et il ne s'executera jamais pour un document absent.
+    Sans cette purge, `wipe_stores` laisserait donc derriere lui un artefact
+    DERIVE d'un document que le corpus n'a plus, pointant des objets qui
+    n'existent plus. C'est tout ce que cette purge fait, et c'est ce que
+    « repartir propre » veut dire ici.
+
+    **CETTE PHRASE A DIT « LE SEUL ENDROIT DU SYSTEME », ET C'ETAIT FAUX.** La
+    passe de relecture du lot 9 l'a mise en defaut sur son propre depot : la
+    PARTITION DYNAMIQUE Dagster d'un document retire du corpus n'est jamais
+    supprimee non plus, ni son historique de materialisations, et `wipe_stores`
+    n'y touche pas davantage. Le depot ne porte AUCUN appel de suppression de
+    partition dynamique — mesure et commande au registre 4.34.g, site canonique
+    de ce chiffre.
+
+    Ce que cette purge retire est donc le seul artefact derive qui porte des URL
+    MinIO mortes, ce qui est plus etroit que la phrase precedente, et ce qui se
+    garde.
+
+    Le garde de cette propriete est `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`,
+    dans `tests/unit/test_factory.py` : il tient les DEUX natures, celle qui est
+    reecrite et celle qui survit. Une seule des deux serait creuse.
 
     **CE DOCSTRING AFFIRMAIT « La cible est le SOUS-REPERTOIRE nettoye, JAMAIS
     `Datas/` ». C'ETAIT UNE PHRASE D'EXHAUSTIVITE, ET ELLE ETAIT FAUSSE SOUS
@@ -186,10 +244,38 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     serait un lien symbolique vers l'exterieur passerait toute comparaison
     textuelle, et `rmtree` suivrait le lien.
 
+    **LA SECONDE BORNE, POSEE PAR LE LOT 9, ET C'EST ELLE QUI FERME LA FAMILLE
+    DU 4.29.a.** Le containment seul acceptait `Datas/htms` et `Datas/database`,
+    qui sont strictement contenus dans la racine — c'est exactement ce qui a
+    emporte 24 des 25 fichiers du corpus versionne quand `CLEANED_SUBDIR` etait
+    encore un reglage. Le reglage a disparu, mais cette fonction est PUBLIQUE et
+    son garde ne tenait plus que par la constante de son appelant. La cible doit
+    desormais etre `racine/CLEANED_SUBDIR` elle-meme, ou vivre dessous : une
+    valeur mal posee ne peut plus sortir du repertoire nettoye, quel que soit
+    l'appelant. Le refus est distinct du precedent — `CibleHorsDuNettoyeError`
+    contre `CibleHorsRacineError` — parce qu'il envoie l'operateur regarder
+    autre chose : la premiere accuse `SOURCE_DIR`, la seconde accuse l'argument.
+
+    **`cleaned_root(base)` N'EST PAS RESOLU, ET C'EST DELIBERE.** Le resoudre
+    ferait suivre au garde le meme lien que la cible : un `.cleaned` qui serait
+    un lien vers `Datas/htms` resoudrait des DEUX cotes vers `Datas/htms`, la
+    comparaison serait vraie, et `rmtree` emporterait le corpus avec la
+    benediction du garde. Compare a sa forme nominale — `racine` resolue plus la
+    constante — le lien est refuse. Garde par
+    `test_un_lien_du_nettoye_vers_le_corpus_est_refuse`.
+
+    L'ORDRE DES DEUX CONTROLES decide de la CAUSE NOMMEE, pas du verdict : un
+    lien qui sort de la racine est refuse dans les deux ordres. Le containment
+    passe en premier parce qu'il nomme la bonne cause pour ce cas-la — la cible
+    resolue est hors de la racine, et c'est ce que l'operateur doit voir en
+    premier.
+
     Args:
-        repertoire: Repertoire du HTML nettoye, tel que le reglage le designe.
+        repertoire: Repertoire du HTML nettoye. La seule valeur nominale est
+            ``elements.cleaned_root(racine)``.
         racine: Racine des donnees (``source_dir``). La cible doit y etre
-            strictement contenue.
+            strictement contenue, ET etre le repertoire nettoye ou un de ses
+            descendants.
 
     Returns:
         Le nombre de fichiers retires. Une purge muette ne dit pas si elle a
@@ -198,6 +284,8 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     Raises:
         CibleHorsRacineError: Si la cible n'est pas strictement contenue dans
             ``racine``.
+        CibleHorsDuNettoyeError: Si la cible est dans ``racine`` sans etre le
+            repertoire nettoye ni l'un de ses descendants.
     """
     cible = repertoire.resolve()
     base = racine.resolve()
@@ -211,6 +299,15 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
             f"regle — une racine vide, relative ou pointant ailleurs fait viser "
             f"un repertoire qui n'est pas le sien, et sous Datas/ vivent le "
             f"corpus versionne et les stores de Datas/database/"
+        )
+    nettoye = cleaned_root(base)
+    if cible != nettoye and nettoye not in cible.parents:
+        raise CibleHorsDuNettoyeError(
+            f"cible {cible} hors de {nettoye} : refus de purger. Cette fonction ne "
+            f"supprime que le repertoire du HTML nettoye et ce qu'il contient. Une "
+            f"cible bien contenue dans {base} mais autre est precisement ce qui "
+            f"emportait le corpus versionne quand le sous-repertoire etait un "
+            f"reglage (registre 4.29.a)"
         )
     if not cible.exists():
         return 0

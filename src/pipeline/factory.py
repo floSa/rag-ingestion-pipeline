@@ -40,6 +40,7 @@ from dagster import (
     SensorDefinition,
     SensorEvaluationContext,
     SensorResult,
+    SkipReason,
     asset,
     define_asset_job,
     sensor,
@@ -62,6 +63,18 @@ if TYPE_CHECKING:
 from src.docling_service.elements import cleaned_path
 from src.pipeline.cleaning import clean_html_file
 from src.pipeline.media import MinioImageExporter
+
+# IMPORTES, ET NON RECOPIES. `STATUTS_EN_COURS` se definit par SOUSTRACTION des
+# trois etats terminaux : une enumeration en dur des etats actifs serait une
+# phrase d'exhaustivite, et le jour ou Dagster ajoute un statut elle le
+# classerait comme termine — donc le capteur emettrait ses demandes au milieu
+# d'une reingestion. Deux definitions du meme ensemble divergeraient en silence.
+# `_decrire_le_run` a le meme motif : la phrase « le run X est en Y depuis N s »
+# est celle du 4.15, ecrite une fois, et un `SkipReason` qui ne nomme que le job
+# est identique au tick 1 et au tick 10 000. Le sens de l'import est sur : ce
+# module n'est pas importe par `reindex_job`, qui ne connait que les NOMS des
+# jobs d'ingestion, passes par `definitions.py`.
+from src.pipeline.reindex_job import STATUTS_EN_COURS, _decrire_le_run
 from src.pipeline.settings import get_settings
 from src.pipeline.sources import SourceConfig
 
@@ -129,6 +142,25 @@ EXTRACTION_RETRY_POLICY = RetryPolicy(max_retries=2, delay=120, backoff=Backoff.
 #    d'emettre, et le DIT avec son compte (:func:`_cles_deja_consommees`). Avec
 #    une etiquette NEUVE, la reingestion repart. Le geste est donc repetable, et
 #    sa repetition a l'identique est bruyante au lieu d'etre muette.
+#
+# 4. ET SI UNE INGESTION DE CETTE SOURCE TOURNE DEJA ? Le controle porte sur le
+#    JOB, donc sur tout run de la source — une reingestion precedente comme une
+#    ingestion nominale. Le marqueur n'est PAS honore, et il
+#    n'est pas consomme non plus : le tick rend un ``SkipReason`` nomme, le
+#    curseur reste en place, et le tick suivant relira le marqueur. Le geste est
+#    DIFFERE, pas perdu. Sans cette garde, un second marqueur d'etiquette NEUVE
+#    produisait un second jeu complet de demandes — cles neuves, donc aucun refus
+#    de Dagster, donc des runs reellement crees en parallele des premiers. Deux
+#    runs sur la MEME partition reecriraient ``Datas/.cleaned/<fichier>`` en meme
+#    temps, et c'est atteignable : ``max_concurrent_runs: 2`` dans
+#    ``dagster.yaml``, sans aucune cle de concurrence par partition
+#    (registre 4.33.c).
+#
+#    LA PORTEE EST LE MARQUEUR. Le chemin nominal n'est pas garde, et c'est
+#    ecrit ici pour que personne ne s'y fie : un fichier MODIFIE pendant une
+#    reingestion produit bien une cle neuve sur une partition en vol. Le fermer
+#    bloquerait la detection legitime d'un depot de fichier derriere une
+#    reingestion de plusieurs heures ; le cas reste ouvert au registre.
 #
 # L'etiquette est libre et obligatoire — une date, un motif. Un marqueur sans
 # etiquette est refuse, parce qu'il rendrait le geste non repetable.
@@ -434,6 +466,88 @@ def _record_metadata(context: AssetExecutionContext, result: dict[str, Any]) -> 
     context.add_output_metadata(metadonnees)
 
 
+class CurseurIllisibleError(RuntimeError):
+    """Le curseur est du JSON bien forme, mais ce n'est pas un curseur de capteur.
+
+    Le cas declencheur est exactement la maladresse que le geste de reingestion
+    invite : poser le marqueur DANS le JSON au lieu de remplacer le curseur
+    entier — ``{"captures/p.html": "reingerer:2026-09-22"}``. La valeur n'est
+    alors pas un mtime, et ``float`` leve.
+
+    **CETTE ERREUR N'EST PAS RATTRAPEE PAR LE CAPTEUR, ET C'EST LE POINT.** Elle
+    remonte, le tick echoue, et il echoue a NOUVEAU trente secondes plus tard,
+    parce que ``update_cursor`` n'est jamais atteint et que le curseur fautif
+    reste en place. Bruyant et persistant : c'est exactement ce qu'on veut d'un
+    curseur qu'un humain vient d'ecrire de travers.
+
+    L'attraper pour « reinitialiser le curseur » serait PIRE, et c'est la forme
+    que la branche voisine prend deja pour un curseur non-JSON : le curseur vide,
+    le capteur redemande TOUT le corpus, et la sortie bruyante est remplacee par
+    un silence — la famille exacte du 4.32.a. Cette docstring ecrivait « la seule
+    autre forme qui vienne a l'esprit » : une phrase d'exhaustivite sur des
+    idees, que rien ne borne et qu'aucun test ne peut rougir.
+
+    Ce lot ne change donc pas ce que l'echec FAIT ; il change ce qu'il DIT. `float(...)` rendait
+    ``ValueError: could not convert string to float: 'reingerer:2026-09-22'``,
+    qui ne nomme ni la cle fautive, ni le geste a refaire.
+    """
+
+
+def _mtimes_du_curseur(brut: str) -> dict[str, str]:
+    """Lit le curseur nominal : une cle de partition, un mtime, et rien d'autre.
+
+    `mesure` le 22 septembre 2026, sur le capteur livre par le lot 8, trois
+    curseurs BIEN FORMES au sens de JSON faisaient echouer le tick sans qu'aucun
+    `except` ne les couvre :
+
+    ===================================== ==========================================
+    Curseur                               Ce que le tick levait
+    ===================================== ==========================================
+    ``{"captures/p.html": "reingerer:…"}`` ``ValueError`` — sur ``float(last_mtime)``
+    ``[1, 2, 3]``                          ``TypeError`` — sur ``dict(cursor_data)``
+    ``3``                                  ``TypeError`` — sur ``dict(cursor_data)``
+    ===================================== ==========================================
+
+    Les deux `TypeError` tombaient HORS du `try`, qui n'entoure que `json.loads`.
+    Le `TypeError` que cet `except` enumere est d'ailleurs INATTEIGNABLE :
+    `json.loads` d'une `str` ne le leve pas, et le curseur est une `str` non vide
+    a cet endroit. Il est retire, et c'est un retrecissement, pas un
+    elargissement.
+
+    Args:
+        brut: Curseur tel que Dagster le rend, non vide et sans marqueur.
+
+    Returns:
+        Les mtimes, par cle de partition, normalises en chaines.
+
+    Raises:
+        json.JSONDecodeError: Si le curseur n'est pas du JSON — le cas que
+            l'appelant traite en repartant a zero, comme avant ce lot.
+        CurseurIllisibleError: Si c'est du JSON qui n'est pas un curseur.
+    """
+    charge = json.loads(brut)
+    if not isinstance(charge, dict):
+        raise CurseurIllisibleError(
+            f"Le curseur de ce capteur est du JSON bien forme, mais ce n'est pas un "
+            f"objet : {type(charge).__name__}. Un curseur nominal associe une cle de "
+            f"partition a son mtime. Le curseur n'est PAS touche par ce tick : "
+            f"corrigez-le, le capteur repartira seul."
+        )
+    for cle, valeur in charge.items():
+        try:
+            float(valeur)
+        except (TypeError, ValueError) as exc:
+            raise CurseurIllisibleError(
+                f"Le curseur de ce capteur est du JSON bien forme, mais la valeur de "
+                f"la cle « {cle} » n'est pas un mtime : {valeur!r}. LE MARQUEUR DE "
+                f"REINGESTION SE POSE A LA PLACE DU CURSEUR ENTIER, pas dans le JSON : "
+                f"le curseur doit valoir « {PREFIXE_REINGESTION}<etiquette> » et rien "
+                f"d'autre. Le curseur n'est PAS touche par ce tick : corrigez-le, le "
+                f"capteur repartira seul."
+            ) from exc
+    return {str(cle): str(valeur) for cle, valeur in charge.items()}
+
+
 def _etiquette_de_reingestion(curseur: str | None) -> str | None:
     """Lit l'ordre de reingestion pose dans le curseur, s'il y en a un.
 
@@ -555,7 +669,7 @@ def _build_sensor(
         job_name=job_name,
         default_status=DefaultSensorStatus.RUNNING,
     )
-    def file_sensor(context: SensorEvaluationContext) -> SensorResult:
+    def file_sensor(context: SensorEvaluationContext) -> SensorResult | SkipReason:
         etiquette = _etiquette_de_reingestion(context.cursor)
         if etiquette == "":
             # Ordre mal forme : on ne fait RIEN, et on laisse le curseur tel
@@ -572,6 +686,72 @@ def _build_sensor(
                 "2026-09-22-apres-purge »."
             )
             return SensorResult(run_requests=[], dynamic_partitions_requests=[])
+
+        if etiquette:
+            # REGISTRE 4.33.c — LE SEUL DES CINQ QUI PUISSE COUTER DES DONNEES.
+            #
+            # Un second marqueur, etiquette NEUVE, pose pendant qu'une
+            # reingestion tourne encore, produit un second jeu COMPLET de
+            # demandes : les cles sont neuves, donc Dagster ne refuse rien, donc
+            # les runs sont reellement crees. Ce n'est pas theorique — `mesure` :
+            # `pdfs_sensor` ne porte qu'UN fichier, donc une seule partition, et
+            # `dagster.yaml` fixe `max_concurrent_runs: 2` SANS aucune cle de
+            # concurrence par partition. Deux runs simultanes sur la MEME
+            # partition sont atteignables, et ils ecriraient tous les deux
+            # `Datas/.cleaned/<fichier>` en meme temps.
+            #
+            # LE FILTRE PORTE SUR LE JOB, DONC SUR TOUT RUN DE CETTE SOURCE —
+            # une reingestion precedente comme une ingestion nominale. C'est
+            # voulu : ce qui est dangereux n'est pas « deux reingestions », c'est
+            # deux runs sur la meme partition, et le nominal en cree autant que
+            # le marque. Le message dit donc « une INGESTION est deja en vol »,
+            # et non « une reingestion » : nommer le mauvais coupable enverrait
+            # l'operateur chercher un second marqueur qu'il n'a pas pose.
+            #
+            # Le patron est celui de `reindex_job` : « une reindexation en vol
+            # n'est ni faite ni perdue : on attend son issue ». Ici de meme —
+            # le refus DIFFERE le geste, il ne le perd pas, et c'est
+            # `SkipReason` qui le garantit : `update_cursor` n'est pas atteint,
+            # donc le marqueur reste en place et le tick suivant le relira.
+            #
+            # CE GARDE PARTAGE SON MODE DE PANNE AVEC CELUI DU 4.15, ET IL EN
+            # PARTAGE L'ISSUE. Un run coince en `STARTED` — worker tue, daemon
+            # interrompu — n'est jamais terminal, donc ce refus se repeterait a
+            # chaque tick. Ce n'est pas indefini : `dagster.yaml` arme
+            # `run_monitoring` avec un `max_runtime_seconds` pose juste au-dessus
+            # du plafond que le pipeline s'accorde lui-meme, et le daemon marque
+            # alors le run en ECHEC — donc terminal, donc le marqueur repart. Le
+            # delai de garde vit la-bas et pas ici, exprès : un sensor qui
+            # deciderait lui-meme qu'un run est mort empieterait sur le travail du
+            # daemon, et il faudrait la meme regle dans chaque sensor a venir.
+            #
+            # Le prix de ce mode de panne est donc BORNE, et il est haut : le
+            # plafond est de 25 h — c'est `max_runtime_seconds`, 90 000 s, et NON
+            # les 86 400 s (24 h) d'`extraction_timeout_seconds`, qui borne le
+            # pipeline par document et pas le run monitoring. L'arithmetique des
+            # deux est ecrite une fois, dans `dagster.yaml`. Un operateur dont
+            # le marqueur reste refuse doit lire la raison de saut — elle NOMME
+            # le run et son age, et un age de plusieurs heures se lit tout seul.
+            #
+            # LA PORTEE EST LE MARQUEUR, ET PAS LE CHEMIN NOMINAL. Le chemin
+            # nominal n'a pas besoin de cette garde pour ne PAS repartir — sa
+            # cle est `(source, partition, mtime)`, donc un corpus inchange ne
+            # redemande rien. Il en aurait besoin pour autre chose : un fichier
+            # MODIFIE pendant une reingestion produit bien une cle neuve sur une
+            # partition en vol. Ce cas reste ouvert, il est au registre, et le
+            # fermer ici bloquerait la detection legitime d'un depot de fichier
+            # derriere une reingestion de plusieurs heures.
+            en_vol = context.instance.get_run_records(
+                RunsFilter(job_name=job_name, statuses=list(STATUTS_EN_COURS)), limit=1
+            )
+            if en_vol:
+                return SkipReason(
+                    f"Une ingestion de {source.name} est deja en vol : le marqueur "
+                    f"« {PREFIXE_REINGESTION}{etiquette} » n'est PAS consomme, et sera "
+                    f"relu au prochain tick. Deux runs simultanes sur la meme partition "
+                    f"reecriraient le meme HTML nettoye en meme temps (registre 4.33.c). "
+                    f"{_decrire_le_run(en_vol[0])}"
+                )
 
         source_dir = get_settings().source_dir
         pattern = str(Path(source_dir) / source.glob)
@@ -594,8 +774,13 @@ def _build_sensor(
             )
         elif context.cursor:
             try:
-                cursor_data = json.loads(context.cursor)
-            except (json.JSONDecodeError, TypeError):
+                cursor_data = _mtimes_du_curseur(context.cursor)
+            except json.JSONDecodeError:
+                # Un curseur qui n'est pas du JSON du tout : le comportement
+                # d'avant ce lot est conserve tel quel. `CurseurIllisibleError`,
+                # elle, N'EST PAS rattrapee — voir sa docstring : la rattraper
+                # pour repartir a zero remplacerait un echec bruyant par un
+                # silence qui reingere tout.
                 context.log.warning("Invalid cursor format, resetting.")
 
         run_requests: list[RunRequest] = []

@@ -80,7 +80,26 @@ run_coordinator:
 #   le plafond que le pipeline s'accorde LUI-MEME par document.
 #
 # `max_runtime_seconds` est donc pose JUSTE AU-DESSUS de ce plafond, et non en
-# dessous. Deux plafonds qui se contredisent sont pires qu'un seul : un
+# dessous. L'ARITHMETIQUE, ECRITE ICI UNE FOIS POUR QUE PERSONNE N'AIT A LA
+# REFAIRE :
+#
+#     max_runtime_seconds          90 000 s = 25 h 00
+#     extraction_timeout_seconds   86 400 s = 24 h 00
+#     ecart                         3 600 s =  1 h 00   <-- DELIBERE
+#
+# Les deux nombres ne sont donc PAS le meme plafond, et le prix d'attente d'un
+# run gele est de 25 h, pas de 24 : qui annonce 24 h cite le plafond du
+# PIPELINE la ou c'est celui du RUN MONITORING qui borne. Cette confusion a
+# vecu a trois sites de ce depot, qui annoncaient 24 h comme prix d'attente
+# d'un run gele, et AUCUN test ne rougissait. Deux gardes de
+# `tests/unit/test_dagster_yaml.py` le rendent desormais impossible en silence :
+# l'ecart ci-dessus ne peut plus changer de NATURE
+# (`test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline`), et la duree
+# annoncee ici comme dans `documentation/orchestration.md` doit rester celle de
+# la valeur livree
+# (`test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree`).
+#
+# Deux plafonds qui se contredisent sont pires qu'un seul : un
 # `max_runtime_seconds` plus court tuerait des runs que le pipeline considere
 # encore legitimes, et le developpeur chercherait la cause du mauvais cote. Ce
 # delai-ci est la DERNIERE ligne : il ne se declenche que quand le plafond du
@@ -110,7 +129,9 @@ run_monitoring:
   poll_interval_seconds: 60
   # Un run qui ne demarre pas. Voir le commentaire ci-dessus.
   start_timeout_seconds: 900
-  # Un run qui ne finit pas. Pose au-dessus d'extraction_timeout_seconds.
+  # Un run qui ne finit pas. 90 000 s = 25 h, soit 1 h au-dessus du plafond que
+  # le pipeline s'accorde par document (86 400 s = 24 h). Voir l'arithmetique
+  # ci-dessus : l'ecart est delibere, et le prix annonce est 25 h.
   max_runtime_seconds: 90000
   # DefaultRunLauncher ne sait pas reprendre un run : un run mort est marque en
   # echec, et c'est ce qui libere la reindexation.

@@ -62,6 +62,20 @@ format-check:
 typecheck:
 	uv run mypy src/
 
+# N'AJOUTE JAMAIS `-q` A CETTE COMMANDE, ni en ligne de commande. `pyproject.toml`
+# porte deja `addopts = "-q --tb=short"` : un second `-q` donne `-qq`, qui
+# SUPPRIME la ligne `N passed` en laissant `rc=0`. La borne est etroite et c'est
+# elle qui rend le piege vicieux — `mesure` le 22 septembre 2026, pytest 9.1.1 :
+# sur un couple vert + rouge, `-qq` imprime toujours `1 failed, 1 passed` et son
+# `FAILURES`. Le compte ne disparait QUE quand tout passe, c'est-a-dire
+# exactement dans le cas ou il est la seule chose a lire. Un verificateur de ce
+# chantier a produit cinq balayages de graines « verts » sans aucun compte avant
+# de s'en apercevoir (registre 4.27 n° 5).
+#
+# Ce que le compte garde, et que le `rc` ne garde pas : un fichier de tests qui
+# cesse d'etre COLLECTE — renomme hors de `test_*.py`, deplace hors de
+# `testpaths` — retire ses tests sans un seul rouge. `mesure`, meme jour :
+# `test_wipe_stores.py` renomme fait passer la suite de 925 a 875, `rc=0`.
 test:
 	uv run pytest tests/
 

@@ -55,12 +55,17 @@ du daemon, et il faudrait la même règle dans chaque sensor à venir.
 |---|---|---|
 | `enabled` | `true` | rien n'était surveillé |
 | `start_timeout_seconds` | 900 | un run que le launcher n'arrive jamais à démarrer |
-| `max_runtime_seconds` | 90 000 | un run qui ne finit jamais |
+| `max_runtime_seconds` | 90 000 (**25 h**) | un run qui ne finit jamais |
 | `max_resume_run_attempts` | 0 | `DefaultRunLauncher` ne sait pas reprendre un run ; l'armer donnerait un réglage qui ne fait rien |
 
 **Pourquoi 90 000 et non une valeur serrée.** `EXTRACTION_TIMEOUT_SECONDS` vaut
 86 400 s (24 h) : c'est le plafond que le pipeline s'accorde lui-même *par
-document*. Un `max_runtime_seconds` plus court tuerait des runs que le pipeline
+document*. **Les deux nombres ne sont pas le même plafond** : 90 000 s = 25 h,
+86 400 s = 24 h, l'écart délibéré est d'**une heure**, et c'est donc **25 h** qu'un
+opérateur attend au pire devant un run gelé — pas 24. L'arithmétique est écrite une
+fois pour toutes dans `dagster.yaml`, au-dessus du réglage.
+
+Un `max_runtime_seconds` plus court tuerait des runs que le pipeline
 considère encore légitimes, et la cause serait cherchée du mauvais côté — deux
 plafonds qui se contredisent sont pires qu'un seul. Ce délai-ci est la **dernière
 ligne** : il ne se déclenche que quand le plafond du pipeline a lui-même échoué à
@@ -68,9 +73,18 @@ se déclencher, donc quand le run est réellement gelé et non lent. Pour mémoi
 le run le plus long jamais mesuré sur ce corpus vaut **111 s** (`mesuré` le
 1er septembre 2026, 23 runs réussis) : la marge est de 810×.
 
-`tests/unit/test_dagster_yaml.py` garde ces valeurs, et le garde qui compte
-compare les **deux fichiers** — il rougit si l'un des deux plafonds bouge sans
-l'autre.
+`tests/unit/test_dagster_yaml.py` garde ces valeurs, et **trois** gardes s'y
+partagent le travail, parce qu'un seul n'y suffisait pas. Le premier compare les
+**deux fichiers** et tient le *plancher* : la borne ne peut pas descendre sous le
+plafond du pipeline. C'est tout ce qu'il tenait — `mesuré` par l'audit du lot 9,
+porter `max_runtime_seconds` à **500 000** laissait la suite entièrement verte, un
+facteur 5,5 sans un mot. Le deuxième tient donc le *plafond* : l'écart au-dessus du
+plafond du pipeline ne dépasse pas un dixième de celui-ci, faute de quoi la borne
+cesse d'être la dernière ligne et devient un second plafond indépendant. Le
+troisième tient la **prose** : il part de la valeur effective et exige que
+`dagster.yaml` et ce fichier-ci en annoncent les heures justes — sans lui, les
+« 25 h » ci-dessus pouvaient redevenir faux en silence, ce qui est exactement ce
+qui était arrivé (registre §4.35.a).
 
 **Ce que cela ne corrige pas**, écrit pour que personne ne le croie : un run
 `QUEUED` pendant que le daemon est **arrêté**. Ce n'est pas un défaut de Dagster —
