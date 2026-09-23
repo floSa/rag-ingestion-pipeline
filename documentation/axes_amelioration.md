@@ -3720,6 +3720,133 @@ cette réparation portent chacun leur table, chiffrée et rejouable, `rc` compri
 c'est un échantillon de ce que la pratique coûterait, pas son adoption.)*
 
 
+### 4.36 → CONSIGNÉ par le lot 11 — **un TRAITÉ** (le harnais), deux ARRÊTÉS sur décision du pilote
+
+Quatre constats, mesurés le 23 septembre 2026. Le `d` est le seul qui entre au
+diff ; les trois autres sont des **mesures sans correction**, parce que la
+mesure du `a` interdit la correction. Le compte est `calculé`,
+`grep -c '^#### 4.36'` rend quatre.
+
+#### 4.36.a → MESURÉ, NON TRAITÉ — **trois ancrages du jeu de questions sur 44** portent sur un sommet à `text` vide
+
+C'est le chiffre qui décide, et il est **non nul**. `element_id` vaut
+`sha256(f"{filename}|{page_no}|{position_in_page}|{text[:50]}")[:10]`
+(`src/docling_service/elements.py:216`) : réparer `item_text()` change
+`text[:50]` pour ces éléments, donc **change leur `element_id`**, donc **tue
+l'ancrage**. Le jeu de questions est un travail humain, et le contrat
+(exigence 2) dit qu'un identifiant qui change rend la mesure historique
+incomparable.
+
+`mesuré` sur l'index vivant, les 44 ancrages de
+`documentation/campagnes/2026-09-02-jeu-de-questions.yaml` relus dans le graphe :
+**44 retrouvés, 0 absent, 41 à texte non vide, 3 à texte VIDE**. Les trois sont
+des `ListItem`, et **aucun** n'est un `Code` — le jeu ne porte aucun ancrage
+`code` (`Counter` des labels : 36 `text`, 8 `list_item`).
+
+| `element_id` | section | document | `chunk_count` |
+|---|---|---|---|
+| `269b2e32d8` | Optimizing search quality | `htms/MLOps with Databricks/7. Foundation Models and Context Engineering.html` | 1 |
+| `5558e561d7` | Querying and retrieval quality | idem | 2 |
+| `e1ab19bc3b` | Serving Limitations | `htms/MLOps with Databricks/4. Model Serving： Architectures and Implementation.html` | 1 |
+
+**Ce que la réparation leur ferait**, `mesuré` en simulant la correction sans la
+committer — les trois textes sont bien retrouvés, et les identifiants bougent :
+
+| ancien | nouveau | texte récupéré (début) |
+|---|---|---|
+| `269b2e32d8` | `64caa3e5b8` | « Add reranking . Databricks' built-in reranker is a great solution… » |
+| `5558e561d7` | `c1daef2e4b` | « Databricks AI Search uses the HNSW algorithm for its approximate… » |
+| `e1ab19bc3b` | `5134373b49` | « By default, each CPU model endpoint is allocated 4 GB of memory… » |
+
+**La décision est celle du pilote**, pas du lot : réparer et réécrire ces trois
+lignes du jeu, ou ne pas réparer. Les deux colonnes ci-dessus sont ce qu'il faut
+pour trancher, et pour réécrire le jeu si le choix est de réparer.
+
+#### 4.36.b → MESURÉ — le mécanisme du vide n'est **pas celui qui était annoncé**, et il vise **deux populations opposées**
+
+Le mandat du lot posait que Docling émet des `CodeItem` **et** des `ListItem`
+dont `.text` vaut `''` et qui sont **sans enfant**, `item_text()`
+(`src/docling_service/elements.py:242-268`) rendant `''` par ses deux branches.
+**La moitié de cette phrase est fausse, et c'est elle qui portait la
+correction.**
+
+`mesuré` le 23 septembre 2026, conversion réelle des 5 documents du jeu par le
+chemin de production, en inspectant les descendants de chaque item vide :
+
+```
+code|VRAIMENT_VIDE             404     (aucun descendant porteur de texte)
+list_item|RECUPERABLE           42     (le texte vit dans les ENFANTS)
+```
+
+- **les `ListItem` vides ONT des enfants**, `1` ou `2`, et ce sont eux qui
+  portent le texte. `#/texts/55` rend
+  `<inline><text>If</text><text>your code</text><text>determines what actions
+  are taken, the system is not an agent.</text></inline>` par
+  `export_to_doctags(doc)`. Docling coupe le texte d'un `<li>` en fragments
+  *inline* dès qu'il porte du balisage (`<code>`, `<strong>`, un lien). **42 sur
+  42 sont récupérables.** Le graphe perd bien du texte ;
+- **les `Code` vides n'ont rien à récupérer.** Ce sont les **lignes blanches**
+  entre deux lignes de code, chacune devenue son propre `CodeItem`. Le découpeur
+  ne les « retrouve » pas : il les rend comme des clôtures vides — le chunk réel
+  est `` ```\nfrom databricks.sdk import WorkspaceClient\n```\n```\n\n``` ``,
+  et les clôtures vides sont exactement les items signalés. **404 sur 404 sont
+  vraiment vides.**
+
+**Conséquence : réparer les `Code` INVENTERAIT du texte**, en agrégeant ce qui
+appartient aux voisins. C'est le « non prouvé » que le mandat demandait de
+préférer à un « oui approximatif », et il ne vaut que pour cette moitié-là.
+
+#### 4.36.c → MESURÉ — les **29** pertes sèches annoncées sont **37**, et **toutes** sont des `ListItem`
+
+`mesuré` sur l'index vivant, les 1 564 sommets à `text` vide confrontés à
+ChromaDB, `block_size` pris au **minimum** sur les chunks de l'élément :
+
+| tag | vides / total | absents de ChromaDB | `block_size>1` avec texte (ambigu) | `block_size=1` avec texte (**perte sèche prouvée**) |
+|---|---|---|---|---|
+| `Code` | 1 362 / 4 963 | 1 310 | 52 | **0** |
+| `ListItem` | 202 / 1 748 | 118 | 47 | **37** |
+
+Le total « avec texte » est **136**, et il reproduit exactement le 29 + 107 du
+lot précédent. Seule la frontière prouvé/ambigu diffère — le critère de
+`block_size` n'est pas le même. **Ce que le tableau ajoute, et qui manquait :
+pas une seule perte prouvée n'est un `Code`.** Les deux mesures `b` et `c` se
+recoupent donc sur la même conclusion, par deux chemins indépendants.
+
+#### 4.36.d → **le coût de la réparation, écrit avant la campagne** — 42 mesurés, **202 au plus** sur le corpus, et **zéro clé d'objet**
+
+`mesuré` en simulant la correction sur les 5 documents, deux parcours du **même**
+document converti :
+
+```
+element_id déplacés par label : {'list_item': 42}
+labels déplacés hors list_item : AUCUN, sur les cinq documents
+PDF du corpus                  : 0 déplacé
+```
+
+- **le déplacement ne cascade pas.** `position_in_page` s'incrémente que
+  l'élément porte du texte ou non (`elements.py:394-395`), et `page_no` ne
+  dépend pas du texte : seuls bougent les éléments **dont le texte change**.
+  C'est ce que confirme « AUCUN hors `list_item` » ;
+- **la borne du corpus est 202**, le nombre de sommets `ListItem` à texte vide
+  du `c`. Elle est `calculé` : 42 sur 42 récupérables sur l'échantillon, donc
+  les 202 sont attendus déplacés. Les 1 362 `Code` ne bougent pas — il n'y a
+  rien à leur rendre ;
+- **aucune clé d'objet ne bouge**, et c'est prouvé deux fois. Les clés du PDF
+  portent l'`element_id` (`images/<radical>/<element_id>_<label>.png`,
+  `images.py:222`) mais ne sont produites que pour
+  `VISUAL_LABELS = {picture, table, figure, graphic}` (`elements.py:40`,
+  `extraction.py:938`) — `list_item` n'en est pas ; et `mesuré`, le PDF du
+  corpus ne déplace **aucun** identifiant. Les clés du HTML ne portent pas
+  d'`element_id`.
+
+**Le garde qui manque** — « les deux stores disent la même chose du même
+élément » — n'est **pas** écrit, parce que le `a` arrête le chantier avant lui.
+Sa forme est acquise : il se pose **chez le producteur**, et il ne peut pas
+exiger l'égalité **octet à octet**, ChromaDB portant la décoration markdown, la
+puce de liste et l'agrégation du découpeur là où le graphe porte le texte nu. La
+propriété testable est la plus faible des deux, et c'est celle du mandat : *un
+élément dont ChromaDB porte du texte n'a pas un `text` vide dans le graphe.*
+
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
 ### 5.1 → traité par le lot 5 — cinq symboles morts retirés, et le sixième était CONTOURNÉ
