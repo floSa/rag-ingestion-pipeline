@@ -726,9 +726,12 @@ def _build_sensor(
             # daemon, et il faudrait la meme regle dans chaque sensor a venir.
             #
             # Le prix de ce mode de panne est donc BORNE, et il est haut : le
-            # plafond est de 24 h. Un operateur dont le marqueur reste refuse doit
-            # lire la raison de saut — elle NOMME le run et son age, et un age de
-            # plusieurs heures se lit tout seul.
+            # plafond est de 25 h — c'est `max_runtime_seconds`, 90 000 s, et NON
+            # les 86 400 s (24 h) d'`extraction_timeout_seconds`, qui borne le
+            # pipeline par document et pas le run monitoring. L'arithmetique des
+            # deux est ecrite une fois, dans `dagster.yaml`. Un operateur dont
+            # le marqueur reste refuse doit lire la raison de saut — elle NOMME
+            # le run et son age, et un age de plusieurs heures se lit tout seul.
             #
             # LA PORTEE EST LE MARQUEUR, ET PAS LE CHEMIN NOMINAL. Le chemin
             # nominal n'a pas besoin de cette garde pour ne PAS repartir — sa

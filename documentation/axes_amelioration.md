@@ -3237,7 +3237,7 @@ run coincé en `STARTED` n'est jamais terminal, donc le refus se répéterait. C
 n'est pas indéfini : `dagster.yaml` arme `run_monitoring` avec un
 `max_runtime_seconds` posé juste au-dessus du plafond que le pipeline s'accorde
 lui-même, et le daemon marque alors le run en échec. Le prix est donc **borné, et
-haut** — 24 h au pire —, ce qui est écrit au site plutôt que laissé à découvrir. Le
+haut** — **25 h** au pire, soit le `max_runtime_seconds` de 90 000 s, et **non** les 24 h de `extraction_timeout_seconds`, qui borne le *pipeline* par document et non le *run monitoring* —, ce qui est écrit au site plutôt que laissé à découvrir. Le
 refus est un `SkipReason` et non un `SensorResult` vide, parce qu'un résultat
 vide porterait `skip_reason=None` — le silence exact du §4.32.a. Et parce que
 c'est un `SkipReason`, `update_cursor` n'est pas atteint : **le marqueur reste en

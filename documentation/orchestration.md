@@ -55,12 +55,17 @@ du daemon, et il faudrait la même règle dans chaque sensor à venir.
 |---|---|---|
 | `enabled` | `true` | rien n'était surveillé |
 | `start_timeout_seconds` | 900 | un run que le launcher n'arrive jamais à démarrer |
-| `max_runtime_seconds` | 90 000 | un run qui ne finit jamais |
+| `max_runtime_seconds` | 90 000 (**25 h**) | un run qui ne finit jamais |
 | `max_resume_run_attempts` | 0 | `DefaultRunLauncher` ne sait pas reprendre un run ; l'armer donnerait un réglage qui ne fait rien |
 
 **Pourquoi 90 000 et non une valeur serrée.** `EXTRACTION_TIMEOUT_SECONDS` vaut
 86 400 s (24 h) : c'est le plafond que le pipeline s'accorde lui-même *par
-document*. Un `max_runtime_seconds` plus court tuerait des runs que le pipeline
+document*. **Les deux nombres ne sont pas le même plafond** : 90 000 s = 25 h,
+86 400 s = 24 h, l'écart délibéré est d'**une heure**, et c'est donc **25 h** qu'un
+opérateur attend au pire devant un run gelé — pas 24. L'arithmétique est écrite une
+fois pour toutes dans `dagster.yaml`, au-dessus du réglage.
+
+Un `max_runtime_seconds` plus court tuerait des runs que le pipeline
 considère encore légitimes, et la cause serait cherchée du mauvais côté — deux
 plafonds qui se contredisent sont pires qu'un seul. Ce délai-ci est la **dernière
 ligne** : il ne se déclenche que quand le plafond du pipeline a lui-même échoué à
