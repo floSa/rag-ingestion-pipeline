@@ -17,6 +17,7 @@ demarrage du daemon — ce test le dit avant.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,16 @@ from src.pipeline.settings import PipelineSettings
 
 RACINE = Path(__file__).resolve().parents[2]
 CHEMIN = RACINE / "dagster.yaml"
+
+
+def _sans_separateur_de_milliers(texte: str) -> str:
+    """`90 000` et `90\u00a0000` deviennent `90000`.
+
+    La prose ecrit les milliers separes, la configuration non : sans cette
+    normalisation, un garde qui part de la valeur effective ne retrouverait
+    jamais son propre chiffre dans la documentation.
+    """
+    return re.sub(r"(?<=\d)[ \u00a0](?=\d)", "", texte)
 
 
 def _reference_de_l_instance(chemin: Path) -> Any:
@@ -117,8 +128,14 @@ class TestLeDelaiDeGardeEstArme:
         plafond du pipeline a lui-meme echoue a se declencher, c'est-a-dire quand
         le run est reellement gele et non lent.
 
-        C'est aussi le seul garde du depot qui rougirait si l'un des deux
-        reglages bougeait sans l'autre.
+        CE GARDE-CI NE TIENT QUE LE PLANCHER, ET C'EST TOUT CE QU'IL DIT.
+        `mesure` de l'audit du lot 9 : porter `max_runtime_seconds` a 500 000
+        laissait la suite ENTIEREMENT VERTE. La borne ne pouvait pas descendre
+        sous le plafond du pipeline, mais elle pouvait etre multipliee par 5,5
+        sans qu'un test bronche. Le plafond est tenu par
+        `test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline`, et le
+        chiffre annonce a la documentation par
+        `test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree`.
         """
         borne = configuration["run_monitoring"]["max_runtime_seconds"]
         plafond_du_pipeline = PipelineSettings().extraction_timeout_seconds
@@ -128,6 +145,93 @@ class TestLeDelaiDeGardeEstArme:
             f"s'accorde par document ({plafond_du_pipeline} s) : des runs "
             "legitimes seraient tues, et la cause serait cherchee ailleurs"
         )
+
+    def test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline(
+        self, configuration: dict[str, Any]
+    ) -> None:
+        """LE PLAFOND DE LA BORNE, et il manquait.
+
+        Le garde precedent tient le PLANCHER : la borne ne peut pas descendre
+        sous le plafond du pipeline. Il ne tenait rien au-dessus. `mesure` de
+        l'audit du lot 9, sur ce fichier : `max_runtime_seconds: 500000` rendait
+        `rc=0` et 925 verts, ZERO rouge. Un facteur 5,5 passait sans un mot.
+
+        POURQUOI CETTE FORME ET PAS UNE EGALITE A 90 000. Une assertion
+        `borne == 90000` tiendrait la valeur, mais elle rougirait aussi bien
+        pour un ajustement legitime que pour un changement de nature, sans rien
+        apprendre de la difference : elle transformerait le fichier en copie du
+        `dagster.yaml`, et un developpeur la recopierait sans y penser. Ce qui
+        merite un garde n'est pas le nombre, c'est la PROPRIETE que
+        `dagster.yaml` revendique en toutes lettres : la borne est posee *juste
+        au-dessus* du plafond du pipeline, parce qu'elle est la DERNIERE ligne
+        et non un second plafond. Cette propriete-la est mesurable, et c'est
+        elle qui se perd quand la borne derive.
+
+        POURQUOI UN DIXIEME. L'ecart livre vaut 3 600 s sur 86 400, soit 4,2 %.
+        Un dixieme du plafond du pipeline (8 640 s) laisse donc l'ecart PLUS QUE
+        DOUBLER sans rougir : le garde n'interdit pas l'ajustement, il interdit
+        le changement de nature. Au-dela, la borne cesse d'etre la derniere
+        ligne et devient le second plafond independant que le commentaire de
+        `dagster.yaml` dit explicitement vouloir eviter — et c'est alors une
+        DECISION, qui doit s'ecrire ici et pas se glisser dans un nombre.
+        """
+        borne = configuration["run_monitoring"]["max_runtime_seconds"]
+        plafond_du_pipeline = PipelineSettings().extraction_timeout_seconds
+        marge_maximale = plafond_du_pipeline // 10
+
+        assert borne <= plafond_du_pipeline + marge_maximale, (
+            f"max_runtime_seconds={borne} depasse le plafond du pipeline "
+            f"({plafond_du_pipeline} s) de {borne - plafond_du_pipeline} s, soit "
+            f"plus d'un dixieme : ce n'est plus la DERNIERE ligne posee juste "
+            f"au-dessus, c'est un second plafond independant. Si c'est voulu, "
+            f"c'est une decision : l'ecrire dans `dagster.yaml` et relacher ce "
+            f"garde en disant pourquoi"
+        )
+
+    def test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree(
+        self, configuration: dict[str, Any]
+    ) -> None:
+        """LA DUREE ANNONCEE EST CELLE DE LA VALEUR LIVREE, aux deux sites.
+
+        Ce garde existe parce que la maladie a eu lieu : trois sites de ce depot
+        ont annonce **24 h** comme prix d'attente d'un run gele, alors que
+        `max_runtime_seconds: 90000` vaut **25 h** — les 24 h etant celles
+        d'`extraction_timeout_seconds`, qui borne le pipeline par document et
+        non le run monitoring. Rien ne rougissait. Registre 4.35.a.
+
+        Il est assume que c'est un test de TEXTE, ce que le docstring de ce
+        fichier refuse par ailleurs — et la raison de l'exception est que ce qui
+        doit etre eprouve EST une propriete du texte : *la documentation dit la
+        verite sur la valeur*. Il n'existe pas de comportement a observer ici.
+        Ce qui rendrait le test creux serait de l'ecrire sur un litteral ; il
+        part donc de la valeur EFFECTIVE, lue dans la configuration, et exige
+        que chaque site la nomme et en annonce les heures justes.
+
+        DEUX SITES, ET PAS CINQ. `dagster.yaml` porte l'arithmetique canonique et
+        `documentation/orchestration.md` est la doc operateur du reglage : ce
+        sont les deux sites qui DONNENT le chiffre. Les autres (README,
+        axes_amelioration, factory) le CITENT, et les faire tous garder par du
+        texte rendrait le garde plus fragile que la chose gardee.
+        """
+        borne = configuration["run_monitoring"]["max_runtime_seconds"]
+        heures_attendues = borne // 3600
+
+        for relatif in ("dagster.yaml", "documentation/orchestration.md"):
+            texte = _sans_separateur_de_milliers((RACINE / relatif).read_text(encoding="utf-8"))
+            annonces = [int(h) for h in re.findall(rf"{borne}\D{{0,20}}?(\d+)\s*h\b", texte)]
+
+            assert annonces, (
+                f"{relatif} n'annonce nulle part la duree de la valeur livree "
+                f"(max_runtime_seconds={borne}) : soit la valeur a change sans "
+                f"que la documentation suive, soit la phrase d'arithmetique a "
+                f"disparu. Les deux laissent un operateur devant un chiffre faux"
+            )
+            assert all(h == heures_attendues for h in annonces), (
+                f"{relatif} annonce {annonces} h la ou "
+                f"max_runtime_seconds={borne} vaut {heures_attendues} h : c'est "
+                f"exactement la confusion du registre 4.35.a, ou le plafond du "
+                f"PIPELINE etait cite comme celui du RUN MONITORING"
+            )
 
     def test_la_reprise_n_est_pas_armee_pour_un_launcher_qui_ne_sait_pas_reprendre(
         self, configuration: dict[str, Any]

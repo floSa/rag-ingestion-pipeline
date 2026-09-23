@@ -73,9 +73,18 @@ se déclencher, donc quand le run est réellement gelé et non lent. Pour mémoi
 le run le plus long jamais mesuré sur ce corpus vaut **111 s** (`mesuré` le
 1er septembre 2026, 23 runs réussis) : la marge est de 810×.
 
-`tests/unit/test_dagster_yaml.py` garde ces valeurs, et le garde qui compte
-compare les **deux fichiers** — il rougit si l'un des deux plafonds bouge sans
-l'autre.
+`tests/unit/test_dagster_yaml.py` garde ces valeurs, et **trois** gardes s'y
+partagent le travail, parce qu'un seul n'y suffisait pas. Le premier compare les
+**deux fichiers** et tient le *plancher* : la borne ne peut pas descendre sous le
+plafond du pipeline. C'est tout ce qu'il tenait — `mesuré` par l'audit du lot 9,
+porter `max_runtime_seconds` à **500 000** laissait la suite entièrement verte, un
+facteur 5,5 sans un mot. Le deuxième tient donc le *plafond* : l'écart au-dessus du
+plafond du pipeline ne dépasse pas un dixième de celui-ci, faute de quoi la borne
+cesse d'être la dernière ligne et devient un second plafond indépendant. Le
+troisième tient la **prose** : il part de la valeur effective et exige que
+`dagster.yaml` et ce fichier-ci en annoncent les heures justes — sans lui, les
+« 25 h » ci-dessus pouvaient redevenir faux en silence, ce qui est exactement ce
+qui était arrivé (registre §4.35.a).
 
 **Ce que cela ne corrige pas**, écrit pour que personne ne le croie : un run
 `QUEUED` pendant que le daemon est **arrêté**. Ce n'est pas un défaut de Dagster —

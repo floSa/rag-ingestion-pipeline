@@ -91,7 +91,13 @@ run_coordinator:
 # run gele est de 25 h, pas de 24 : qui annonce 24 h cite le plafond du
 # PIPELINE la ou c'est celui du RUN MONITORING qui borne. Cette confusion a
 # vecu a trois sites de ce depot, qui annoncaient 24 h comme prix d'attente
-# d'un run gele.
+# d'un run gele, et AUCUN test ne rougissait. Deux gardes de
+# `tests/unit/test_dagster_yaml.py` le rendent desormais impossible en silence :
+# l'ecart ci-dessus ne peut plus changer de NATURE
+# (`test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline`), et la duree
+# annoncee ici comme dans `documentation/orchestration.md` doit rester celle de
+# la valeur livree
+# (`test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree`).
 #
 # Deux plafonds qui se contredisent sont pires qu'un seul : un
 # `max_runtime_seconds` plus court tuerait des runs que le pipeline considere
