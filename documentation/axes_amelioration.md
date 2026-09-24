@@ -4372,6 +4372,10 @@ est écrit ; sous la mutation, il est le **seul** à rougir.
 contre ce nouvel instantané rend rc=0 aussi — le harnais comparait de nouveau le
 code du jour à lui-même, le défaut même qui lui a donné sa forme (§4.37).
 
+> **Le site choisi ci-dessous a été REPRIS par le §4.39.a** : il se déduisait du
+> dossier passé en argument, et trois gestes suffisaient à le contourner. Le
+> fichier `empreintes-des-instantanes.tsv` n'existe plus.
+
 **Le site choisi, et pourquoi.**
 `documentation/campagnes/empreintes-des-instantanes.tsv`, le **parent** du
 dossier de l'instantané. Hors du dossier, et ce n'est pas un rangement : un
@@ -4388,6 +4392,13 @@ où `FileExistsError` remontait nue — une trace d'appel n'est pas un verdict,
 dans un script dont le code de sortie **est** le comportement.
 
 #### 4.38.d → TRAITÉ, puis **RETIRÉ par le §4.39.b** — la dérivation AST a laissé passer quatre portes neuves sur cinq
+
+> **CE PARAGRAPHE DÉCRIT UN DISPOSITIF QUI N'EXISTE PLUS.** Tout ce qu'il
+> affirme au présent — les 22 porteurs, les trois classes « sans quatrième
+> cas », les deux gardes contre les pièges de la mesure — a été **retiré** par
+> le §4.39.b, après que le troisième audit lui a fait passer **quatre portes
+> neuves sur cinq**. Il est conservé parce qu'un constat corrigé ne s'efface
+> pas ; il ne décrit plus le code.
 
 Le balayage des origines était borné à `MODULES = (nebula, vectors, storage,
 images)`, une seconde liste en dur, non défendue. `mesuré` par l'audit : une
@@ -4449,6 +4460,9 @@ sinon ; et « C2 = 78, le texte de tous leurs **fragments** » est « de tous le
 Le défaut nommé au §4.35.e : les 33 mutations du premier passage n'étaient pas
 versionnées, et l'audit n'a **pas pu** les rejouer. Une mutation qu'on ne peut
 pas rejouer n'est pas une mesure, c'est une affirmation.
+
+> **Le rejeu décrit ici écrivait dans l'arbre de travail**, et son verdict
+> prenait un fichier cassé pour un rouge : voir le §4.39.c, qui l'a repris.
 
 `tests/mutations/table-des-mutations.json` porte les **14** mutations de ce lot,
 chacune avec **son site** (fichier + motif exact), **son remplacement** et **le

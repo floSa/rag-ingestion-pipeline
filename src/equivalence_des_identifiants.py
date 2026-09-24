@@ -40,12 +40,24 @@ rend le meme arbre — meme version, meme entree. Si Docling change, le COMPTE
 reste exact (c'est une comparaison d'ensembles) et l'attribution peut designer
 des termes qui n'ont pas bouge.
 
-**CE MODULE N'ECRIT DANS AUCUN STORE, et ce n'est pas une intention.**
-:func:`armer_les_barrieres` remplace chaque porte d'ecriture A TOUS LES SITES OU
-ELLE EST LIEE, imports par nom compris : la version precedente ne barrait
-`nebula.get_writer` que dans `nebula`, alors que `storage` et `extraction`
-l'importent par nom. Toute porte touchee est en outre JOURNALISEE, parce qu'une
-levee peut etre avalee par un `except Exception` de la production.
+**CE MODULE N'ECRIT DANS AUCUN STORE, ET C'EST UNE BARRIERE A L'EXECUTION.**
+:func:`armer_les_barrieres` pose DEUX couches, dans cet ordre :
+
+1. :func:`barrer_les_sdk_de_store` fait LEVER les constructeurs des trois SDK —
+   `minio`, `nebula3`, `chromadb` — enumeres depuis le SDK INSTALLE. Apres elle,
+   aucune construction de client ne passe dans ce processus, quel que soit le
+   chemin : alias d'import, `getattr`, niveau de module, paquet quelconque. Elle
+   remplace une derivation AST des porteurs, a laquelle quatre portes neuves sur
+   cinq echappaient (registre 4.39.b) ;
+2. les barrieres par SITE remplacent chaque porte d'ecriture A TOUS LES SITES OU
+   ELLE EST LIEE, imports par nom compris : `storage` et `extraction` importent
+   `nebula.get_writer` par nom. Toute porte touchee est JOURNALISEE, parce
+   qu'une levee peut etre avalee par un `except Exception` de la production.
+
+Les SEULS clients permis sont ceux de LECTURE, construits AVANT l'armement et
+enveloppes : :class:`SessionEnLecture` pour le graphe, :class:`LectureSeule`
+pour MinIO. LA BORNE : un client construit dans un SOUS-PROCESSUS, ou par une
+bibliotheque tierce hors de ces trois SDK, n'est pas atteint.
 
 Ce module s'importe cote hote : aucune dependance lourde au niveau du module,
 les modules de production sont importes dans la fonction qui en a besoin.
