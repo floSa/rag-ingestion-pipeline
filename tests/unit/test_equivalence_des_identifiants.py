@@ -28,6 +28,7 @@ Ce qui arme les barrieres tourne en SOUS-PROCESSUS : l'armement survit dans
 from __future__ import annotations
 
 import ast
+import contextlib
 import hashlib
 import json
 import os
@@ -1339,11 +1340,31 @@ class TestLesClientsDeLectureDuHarnais:
             def remove_object(self, *_a, **_k):  # pragma: no cover - doit lever avant
                 raise AssertionError("appele")
 
-        enveloppe = LectureSeule(Faux(), {"list_objects"}, "minio du harnais")
+        journal: list[str] = []
+        enveloppe = LectureSeule(Faux(), {"list_objects"}, "minio du harnais", journal)
 
         assert enveloppe.list_objects("seau") == ["vu"]
         with pytest.raises(BarriereDEcritureError, match="LECTURE SEULE"):
             enveloppe.remove_object("seau", "cle")
+
+    def test_l_enveloppe_ecrit_dans_le_journal_partage(self):
+        """Le journal de l'enveloppe est celui de l'ARMEMENT, reparation N2.
+
+        Elle tenait son propre `self._journal`, que personne ne lisait : une
+        ecriture MinIO refusee ici, puis AVALEE par la production, ne devenait
+        aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement,
+        et c'est celui-la qu'on lui passe desormais — comme a
+        :class:`SessionEnLecture`, qui le faisait deja.
+        """
+        from src.equivalence_des_identifiants import BarriereDEcritureError, LectureSeule
+
+        journal: list[str] = ["une entree qui precede"]
+        enveloppe = LectureSeule(object(), {"list_objects"}, "minio du harnais", journal)
+
+        with contextlib.suppress(BarriereDEcritureError):
+            enveloppe.remove_object("seau", "cle")
+
+        assert journal == ["une entree qui precede", "minio du harnais.remove_object"]
 
     @pytest.mark.parametrize(
         "requete",

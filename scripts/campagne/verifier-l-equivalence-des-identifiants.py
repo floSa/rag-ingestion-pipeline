@@ -177,12 +177,14 @@ class Graphe:
         self._pool.close()
 
 
-def client_minio_en_lecture() -> LectureSeule:
+def client_minio_en_lecture(journal: list[str]) -> LectureSeule:
     """Le client MinIO du harnais, construit AVANT l'armement et enveloppe.
 
     Apres l'armement, `minio.Minio` leve. Ce client-ci survit donc a la
     barriere, et c'est pour cela qu'il est enveloppe : SEULE `list_objects`
-    passe, tout le reste leve et se journalise.
+    passe, tout le reste leve et entre au JOURNAL PARTAGE — celui-la meme sur
+    lequel `figer` et `comparer` rougissent. L'enveloppe tenait auparavant son
+    propre journal, que personne ne lisait (reparation N2).
     """
     from minio import Minio
 
@@ -195,6 +197,7 @@ def client_minio_en_lecture() -> LectureSeule:
         ),
         {"list_objects"},
         "minio du harnais",
+        journal,
     )
 
 
@@ -250,7 +253,7 @@ def main() -> int:
     # pour la session Nebula, `list_objects` seule pour MinIO.
     journal: list[str] = []
     graphe = Graphe(journal)
-    minio_en_lecture = client_minio_en_lecture()
+    minio_en_lecture = client_minio_en_lecture(journal)
 
     armement = armer_les_barrieres(journal)
     sites = sum(len(s) for s in armement.sites.values())

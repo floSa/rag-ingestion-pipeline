@@ -272,6 +272,14 @@
       "motif": "SEPARATEURS: tuple[str, ...] = (\";\", \"|\", \"\\n\")",
       "remplacement": "SEPARATEURS: tuple[str, ...] = (\";\",)",
       "test": "test_une_ecriture_composee_par_un_tube_ou_un_saut_de_ligne_est_refusee"
+    },
+    {
+      "id": "N2",
+      "constat": "mutant de l'audit : le retrait de l'`append` de l'enveloppe MinIO — une ecriture refusee puis AVALEE par la production ne devenait aucun rouge, parce que le journal ecrit n'etait lu par personne",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "            self._journal.append(f\"{self._nom}.{nom}\")",
+      "remplacement": "            pass",
+      "test": "test_l_enveloppe_ecrit_dans_le_journal_partage"
     }
   ]
 }

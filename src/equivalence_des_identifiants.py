@@ -1110,6 +1110,13 @@ class SessionEnLecture:
     Une enveloppe par methodes nommees ne suffirait pas ici : `execute` est une
     methode de lecture qui accepte n'importe quelle requete d'ecriture. Le
     controle porte donc sur la REQUETE, verbe par verbe.
+
+    **LA BORNE DE L'ENVELOPPE S'ECRIT ICI.** Elle protege contre une ecriture
+    ACCIDENTELLE, pas contre une ecriture DELIBEREE : `._session` reste
+    atteignable et rend la session NUE, sur laquelle tout `execute` passe. Un
+    nom prefixe d'un souligne est une convention, pas une serrure ; la barriere
+    des constructeurs et celle des portes sont ce qui tient devant un appelant
+    decide, et l'enveloppe est ce qui attrape la main qui derape.
     """
 
     def __init__(self, session: Any, journal: list[str]) -> None:
@@ -1145,13 +1152,31 @@ class LectureSeule:
     Tout le reste leve et se journalise. C'est la preuve demandee pour les
     clients que le harnais construit AVANT l'armement : ils survivent a la
     barriere des SDK, donc ils doivent porter la leur.
+
+    **ELLE ECRIT DANS LE JOURNAL PARTAGE, et c'est la reparation N2 du quatrieme
+    audit.** Elle tenait son PROPRE `self._journal`, que personne ne lisait :
+    une ecriture MinIO refusee ici, puis AVALEE par la production, ne devenait
+    aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement, et
+    c'est celui-la que les deux enveloppes doivent remplir —
+    :class:`SessionEnLecture` le faisait deja.
+
+    **LA BORNE DE L'ENVELOPPE S'ECRIT ICI.** Elle protege contre une ecriture
+    ACCIDENTELLE, pas contre une ecriture DELIBEREE : `._client` reste
+    atteignable et rend l'objet NU, sur lequel toute methode passe. Un nom
+    prefixe d'un souligne est une convention, pas une serrure ; la barriere des
+    constructeurs et celle des portes sont ce qui tient devant un appelant
+    decide, et l'enveloppe est ce qui attrape la main qui derape.
+
+    Args:
+        journal: le journal PARTAGE de l'armement. **Un journal non vide est un
+            rouge**, et c'est ce qui donne sa portee a cette enveloppe.
     """
 
-    def __init__(self, client: Any, methodes: Iterable[str], nom: str) -> None:
+    def __init__(self, client: Any, methodes: Iterable[str], nom: str, journal: list[str]) -> None:
         self._client = client
         self._methodes = frozenset(methodes)
         self._nom = nom
-        self._journal: list[str] = []
+        self._journal = journal
 
     def __getattr__(self, nom: str) -> Any:
         if nom not in self._methodes:
