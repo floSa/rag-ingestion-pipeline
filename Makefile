@@ -55,7 +55,21 @@ lint:
 # indexe, BLOQUAIT tout commit qui le touchait, sans issue automatique. Les deux
 # portees divergeaient, et c'est la divergence qui etait le defaut.
 format:
-	uv run ruff format src/ tests/
+	uv run ruff format src/ tests/ scripts/
+
+# `scripts/` EST DANS LA PORTEE DE CES DEUX CIBLES depuis la quatrieme reprise du
+# lot 11, et c'est le MEME DEFAUT D7 qu'on referme une troisieme fois. `lint` et
+# `typecheck` l'avaient pris au point 4a ; `format` et `format-check` etaient
+# restes en arriere, donc les trois gardes de la porte ne voyaient plus la meme
+# chose. `mesure` le 24 septembre 2026, rc du PROCESSUS et non derriere un tube,
+# sur un `scripts/mal-forme-temoin.py` portant `x   =   1` :
+# `ruff format --check src/ tests/` rend **0**, `ruff format --check src/ tests/
+# scripts/` rend **1**. `make format-check` etait donc vert sur un arbre dont le
+# hook `ruff-format --check` — qui voit tout ce qui est INDEXE, donc `scripts/` —
+# refusait le commit, et sans issue automatique puisque `make format` ne
+# reparait pas ce qu'il ne regarde pas. C'est mot pour mot D7, sur un troisieme
+# couple de cibles. `mesure`, meme jour : ajouter `scripts/` ne rougit rien —
+# 84 fichiers deja formates.
 
 # `format-check` ne fait que CONSTATER, et c'est lui qui entre dans `all`. Une
 # porte qualite qui reecrit l'arbre qu'elle controle ne controle rien : elle
@@ -65,7 +79,7 @@ format:
 # l'a fait six fois parce qu'il le savait. Un garde-fou qui repose sur la
 # memoire du suivant n'est pas un garde-fou.
 format-check:
-	uv run ruff format --check src/ tests/
+	uv run ruff format --check src/ tests/ scripts/
 
 # `scripts/campagne/` EST DANS LA PORTEE depuis le lot 11. Le harnais
 # d'equivalence y portait quatre `type: ignore[assignment]` injustifies, que
