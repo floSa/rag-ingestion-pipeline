@@ -91,6 +91,11 @@ SITE_D_APPEL = "site d'appel"
 FORMAT = "instantane-des-identifiants/1"
 MANIFESTE = "MANIFESTE.tsv"
 CLES_D_OBJET = "cles-d-objet.tsv"
+# La table des empreintes ATTENDUES, rangee dans le PARENT du dossier de
+# l'instantane. Hors du dossier, et ce n'est pas un rangement : une empreinte
+# rangee a l'interieur se re-signerait elle-meme, puisqu'un second instantane
+# porte son propre manifeste. Voir :func:`empreinte_attendue`.
+EMPREINTES = "empreintes-des-instantanes.tsv"
 # `label` EN DERNIER, et ce n'est pas cosmetique : il n'est jamais vide, donc
 # aucune ligne ne finit par une espace que le hook `trailing-whitespace`
 # retirerait au commit en alterant l'instantane.
@@ -317,6 +322,43 @@ class Instantane:
     empreinte: str
     entete: dict[str, str]
     documents: dict[str, Emission]
+
+
+class EmpreinteInattendueError(ValueError):
+    """L'instantane n'est pas celui que la table versionnee attend."""
+
+
+def empreinte_attendue(dossier: Path) -> str:
+    """L'empreinte que la table VERSIONNEE attend pour ce dossier d'instantane.
+
+    Prise dans le PARENT du dossier, et c'est la mesure qui remplace la consigne
+    « ne refige pas ». `mesure` du second audit du lot 11 : rien n'interdisait de
+    refiger dans un dossier NEUF apres la campagne, puis de comparer contre lui
+    — rc=0 des deux cotes, et le harnais redevenait tautologique.
+
+    Un dossier ABSENT de la table est refuse : c'est exactement le cas du second
+    instantane qu'on vient d'ecrire.
+
+    Raises:
+        EmpreinteInattendueError: Si la table manque, ou si ce dossier n'y est pas.
+    """
+    table = dossier.parent / EMPREINTES
+    if not table.exists():
+        raise EmpreinteInattendueError(
+            f"{table} manque : sans table versionnee, aucun instantane n'est authentifie"
+        )
+    attendues: dict[str, str] = {}
+    for rang in table.read_text(encoding="utf-8").split("\n"):
+        if not rang or rang.startswith("#") or rang.startswith("dossier\t"):
+            continue
+        nom, _, empreinte = rang.partition("\t")
+        attendues[nom.strip()] = empreinte.strip()
+    if dossier.name not in attendues:
+        raise EmpreinteInattendueError(
+            f"{dossier.name} n'est pas dans {table} : un instantane non inscrit "
+            "n'est pas comparable — un second instantane porte sa propre empreinte."
+        )
+    return attendues[dossier.name]
 
 
 def lire_l_instantane(dossier: Path) -> Instantane:
@@ -1020,15 +1062,24 @@ class Monde:
 
 
 def _ecarts_de_couverture(**ensembles: set[str]) -> list[str]:
-    """Les documents qu'une source porte et qu'une autre n'a pas.
+    """Les documents qu'une source porte et qu'une autre n'a pas, DANS LES DEUX SENS.
 
     Aucune liste en dur : le corpus, le graphe et l'instantane se controlent
     l'un l'autre, et un document manquant d'un cote est un rouge.
+
+    **LA VERSION PRECEDENTE NE COMPARAIT QUE `a - b` POUR `a < b`** en ordre
+    alphabetique : `instantane - corpus`, `instantane - graphe` et
+    `graphe - corpus` n'etaient jamais calcules. `mesure` du second audit du
+    lot 11 : avec un `/corpus` VIDE, `comparer` rendait rc=0 et `OK` sans qu'un
+    seul identifiant ait ete compare. Le corpus arrive par un MONTAGE, et ce
+    depot a deja connu une purge qui emportait 24 fichiers sur 25.
     """
     raisons: list[str] = []
     noms = sorted(ensembles)
-    for i, a in enumerate(noms):
-        for b in noms[i + 1 :]:
+    for a in noms:
+        for b in noms:
+            if a == b:
+                continue
             manquants = sorted(ensembles[a] - ensembles[b])
             if manquants:
                 raisons.append(
@@ -1130,7 +1181,13 @@ def figer(
         for raison in raisons:
             dire(f"  - {raison}")
         return 1
-    empreinte = ecrire_l_instantane(dossier, emissions, entete)
+    try:
+        empreinte = ecrire_l_instantane(dossier, emissions, entete)
+    except FileExistsError as exc:
+        # Une trace d'appel n'est pas un verdict : le code de sortie EST le
+        # comportement de ce script. `mesure` du second audit du lot 11.
+        dire(f"ECHEC, aucun instantane ecrit — {exc}")
+        return 1
     dire(f"OK : instantane ecrit dans {dossier}, empreinte {empreinte}")
     return 0
 
@@ -1138,15 +1195,23 @@ def figer(
 def comparer(
     monde: Monde,
     instantane: Instantane,
+    attendue: str,
     declares: set[str],
     journal: list[str],
     dire: Callable[[str], None] = print,
 ) -> int:
     """APRES la campagne : confronte l'emission du jour a l'INSTANTANE.
 
+    Args:
+        attendue: L'empreinte que la table versionnee attend, rendue par
+            :func:`empreinte_attendue`. **C'est une MESURE, plus une consigne :**
+            un instantane refige apres la campagne porte une autre empreinte,
+            donc rougit ici au lieu de re-tautologiser le harnais.
+
     Returns:
-        0 si et seulement si l'ensemble deplace egale l'ensemble declare, et que
-        tous les controles communs sont verts ; 1 sinon.
+        0 si et seulement si l'ensemble deplace egale l'ensemble declare, que
+        l'instantane est bien celui qu'on attend, et que tous les controles
+        communs sont verts ; 1 sinon.
     """
     corpus = set(monde.documents_du_corpus())
     graphe = set(monde.documents_du_graphe())
@@ -1154,9 +1219,18 @@ def comparer(
     raisons = _ecarts_de_couverture(corpus=corpus, graphe=graphe, instantane=fige)
     bilans: list[Bilan] = []
     attribution: dict[str, int] = {}
+    non_compares: list[str] = []
     for partition_key in sorted(corpus | graphe | fige):
         dire(f"=== {partition_key}")
         if partition_key not in fige or partition_key not in corpus:
+            # JAMAIS UN `continue` NU : sauter en silence un document de
+            # l'instantane etait le faux vert bloquant du second audit du lot 11
+            # — un corpus vide rendait rc=0 et `OK`. Un document que l'instantane
+            # porte et qu'on ne compare pas est une RAISON.
+            manque = "de l'instantane" if partition_key not in fige else "du corpus"
+            dire(f"    NON COMPARE : absent {manque}")
+            if partition_key in fige:
+                non_compares.append(partition_key)
             continue
         avant = instantane.documents[partition_key]
         emission = monde.reextraire(partition_key)
@@ -1184,9 +1258,21 @@ def comparer(
             )
     if journal:
         raisons.append(f"barrieres touchees : {journal}")
+    if non_compares:
+        raisons.append(
+            f"{len(non_compares)} document(s) de l'instantane n'ont PAS ete compares, "
+            f"faute d'etre dans le corpus : {sorted(non_compares)[:4]}"
+        )
+    if instantane.empreinte != attendue:
+        raisons.append(
+            f"EMPREINTE INATTENDUE : l'instantane porte {instantane.empreinte}, la table "
+            f"versionnee attend {attendue}. Un instantane refige apres la campagne "
+            "comparerait le code du jour a lui-meme."
+        )
 
     verdict = trancher(bilans, declares, raisons)
     dire(f"\nINSTANTANE {instantane.empreinte}")
+    dire(f"DOCUMENTS COMPARES {len(bilans)} / {len(fige)} de l'instantane")
     dire(f"DEPLACES {len(verdict.deplaces)}, DECLARES {len(verdict.declares)}")
     dire(f"ATTRIBUTION (exacte, par appariement) : {dict(sorted(attribution.items()))}")
     if not verdict.ok:

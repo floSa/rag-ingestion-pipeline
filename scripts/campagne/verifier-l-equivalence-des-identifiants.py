@@ -31,6 +31,13 @@ pas aux dependances du depot. Le `src` monte est celui de la branche MESUREE
       python scripts/campagne/verifier-l-equivalence-des-identifiants.py \\
         comparer /campagnes/<date>-instantane-des-identifiants
 
+**L'INSTANTANE EST AUTHENTIFIE PAR UNE TABLE VERSIONNEE**,
+`documentation/campagnes/empreintes-des-instantanes.tsv`, montee avec lui sous
+`/campagnes`. `comparer` rougit si l'empreinte du dossier n'est pas celle que la
+table attend, et refuse un dossier qui n'y est pas inscrit : sans cette mesure,
+refiger dans un dossier neuf apres la campagne redonnait rc=0 des deux cotes, et
+le harnais redevenait tautologique (registre 4.38.c).
+
 **LES HTML VEULENT LEUR COPIE NETTOYEE**, attendue sous
 `<scratchpad>/cleaned/<chemin de partition>`, et produite avec un exportateur
 d'images TEMOIN — jamais avec `image_exporter=None`, qui SUPPRIME l'attribut
@@ -62,6 +69,7 @@ from src.equivalence_des_identifiants import (
     Monde,
     armer_les_barrieres,
     comparer,
+    empreinte_attendue,
     figer,
     installer_la_capture,
     lire_l_instantane,
@@ -218,8 +226,9 @@ def main() -> int:
             }
             return figer(monde, arguments.dossier, entete, armement.journal)
         instantane = lire_l_instantane(arguments.dossier)
+        attendue = empreinte_attendue(arguments.dossier)
         declares = lire_les_deplacements_annonces(arguments.deplacements_annonces)
-        return comparer(monde, instantane, declares, armement.journal)
+        return comparer(monde, instantane, attendue, declares, armement.journal)
     finally:
         graphe.fermer()
 

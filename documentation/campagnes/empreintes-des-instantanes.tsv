@@ -1,0 +1,17 @@
+# L'EMPREINTE ATTENDUE DE CHAQUE INSTANTANE, ET POURQUOI ELLE EST ICI.
+#
+# `comparer` refuse tout instantane dont l'empreinte n'est pas celle inscrite
+# ici. Sans ce site, RIEN N'INTERDISAIT DE RE-TAUTOLOGISER LE HARNAIS : `mesure`
+# du second audit du lot 11 — `figer` dans un dossier NEUF apres la campagne rend
+# rc=0, puis `comparer` contre ce nouvel instantane rend rc=0 aussi, puisqu'il
+# compare le code du jour a un instantane ecrit par le code du jour.
+#
+# POURQUOI HORS DU DOSSIER DE L'INSTANTANE : un second instantane porterait son
+# propre manifeste, donc sa propre empreinte, et une empreinte rangee a
+# l'interieur se re-signerait elle-meme. Ce fichier est le PARENT du dossier :
+# versionne, revu au commit, et monte avec lui (`documentation/campagnes` ->
+# `/campagnes`). Un dossier absent de cette table est REFUSE, pas tolere.
+#
+# Une ligne s'ajoute quand le proprietaire decide de refiger, jamais par un lot.
+dossier	empreinte
+2026-09-24-instantane-des-identifiants	e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d

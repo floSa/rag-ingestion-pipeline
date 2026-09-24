@@ -27,6 +27,7 @@ Ce qui arme les barrieres tourne en SOUS-PROCESSUS : l'armement survit dans
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import subprocess
@@ -36,21 +37,27 @@ from pathlib import Path
 import pytest
 
 from src.equivalence_des_identifiants import (
+    EMPREINTES,
     MUTATIONS,
+    PORTES,
     SITE_D_APPEL,
+    TEMOIN_MINIO,
     Bilan,
     Controle,
     Emission,
+    EmpreinteInattendueError,
     InstantaneCorrompuError,
     Monde,
     Mutation,
     MutationNulleError,
+    _ecarts_de_couverture,
     appliquer_la_mutation,
     comparer,
     comparer_les_releves,
     confronter_au_graphe,
     controle_negatif,
     ecrire_l_instantane,
+    empreinte_attendue,
     figer,
     identifiant_par_la_formule,
     lire_l_instantane,
@@ -577,20 +584,158 @@ class TestComparerAlInstantane:
     def test_rien_ne_bouge_est_vert(self, tmp_path):
         instantane = self._fige(tmp_path, [_une_emission()])
 
-        assert comparer(_monde([_une_emission()]), instantane, set(), [], lambda _: None) == 0
+        monde = _monde([_une_emission()])
+
+        assert comparer(monde, instantane, instantane.empreinte, set(), [], lambda _: None) == 0
 
     def test_un_document_absent_de_l_instantane_est_rouge(self, tmp_path):
         instantane = self._fige(tmp_path, [_une_emission()])
         apres = [_une_emission(), _une_emission("htms/L/2. Ch.html")]
 
-        assert comparer(_monde(apres), instantane, set(), [], lambda _: None) == 1
+        monde = _monde(apres)
+
+        assert comparer(monde, instantane, instantane.empreinte, set(), [], lambda _: None) == 1
 
     def test_un_graphe_qui_n_est_pas_l_emission_est_rouge(self, tmp_path):
         """Apres la campagne, le graphe doit etre ce que le code emet."""
         instantane = self._fige(tmp_path, [_une_emission()])
         monde = _monde([_une_emission()], graphe={CLE: set()})
 
-        assert comparer(monde, instantane, set(), [], lambda _: None) == 1
+        assert comparer(monde, instantane, instantane.empreinte, set(), [], lambda _: None) == 1
+
+    def test_un_corpus_vide_est_rouge_et_ne_compare_rien(self, tmp_path):
+        """LE FAUX VERT BLOQUANT DU SECOND AUDIT : rc=0 et OK sur un corpus VIDE.
+
+        `_ecarts_de_couverture` ne comparait chaque paire que dans UN sens
+        (`a - b` pour `a < b` en ordre alphabetique) : `instantane - corpus`
+        n'etait jamais calcule. Puis `comparer` sautait par `continue` tout
+        document absent du corpus. Le corpus arrive par un MONTAGE, et ce depot
+        a deja connu une purge qui emportait 24 fichiers sur 25.
+        """
+        sortie = []
+        instantane = self._fige(tmp_path, [_une_emission()])
+
+        monde = _monde([_une_emission()], corpus=[])
+
+        rc = comparer(monde, instantane, instantane.empreinte, set(), [], sortie.append)
+
+        assert rc == 1
+        assert any("DOCUMENTS COMPARES 0 / 1" in ligne for ligne in sortie), sortie
+
+    def test_un_seul_document_sorti_du_corpus_est_rouge(self, tmp_path):
+        """Le meme trou, en plus discret : l'instantane en porte 2, le corpus 1."""
+        emissions = [_une_emission(), _une_emission("htms/L/2. Ch.html")]
+        instantane = self._fige(tmp_path, emissions)
+        sortie = []
+
+        monde = _monde(emissions, corpus=["htms/L/1. Ch.html"])
+
+        rc = comparer(monde, instantane, instantane.empreinte, set(), [], sortie.append)
+
+        assert rc == 1
+        assert any("DOCUMENTS COMPARES 1 / 2" in ligne for ligne in sortie), sortie
+
+    def test_un_graphe_vide_avec_un_corpus_intact_est_rouge(self, tmp_path):
+        """Deja rouge sur `3625816` par le sens `corpus - graphe` ; tenu ici contre son retrait."""
+        instantane = self._fige(tmp_path, [_une_emission()])
+
+        monde = _monde([_une_emission()], documents_du_graphe=[])
+
+        assert comparer(monde, instantane, instantane.empreinte, set(), [], lambda _: None) == 1
+
+    def test_chaque_paire_est_comparee_dans_les_deux_sens(self):
+        """La docstring promet « un document manquant d'un cote est un rouge »."""
+        raisons = _ecarts_de_couverture(corpus=set(), graphe={"d"}, instantane={"d"})
+
+        assert any("dans graphe et pas dans corpus" in r for r in raisons), raisons
+        assert any("dans instantane et pas dans corpus" in r for r in raisons), raisons
+
+    def test_un_journal_de_barrieres_non_vide_rougit_comparer(self, tmp_path):
+        """A2 : le garde existait dans `comparer`, aucun test ne le tenait.
+
+        Mutation de l'audit — retrait du garde dans `comparer` SEUL : 55 tests
+        verts. Le pendant de `test_une_barriere_touchee_est_rouge_meme_avalee`,
+        cote `comparer`.
+        """
+        instantane = self._fige(tmp_path, [_une_emission()])
+        journal = ["vectors.get_collection"]
+
+        monde = _monde([_une_emission()])
+
+        rc = comparer(monde, instantane, instantane.empreinte, set(), journal, lambda _: None)
+
+        assert rc == 1
+
+
+class TestLeHarnaisNeSeRetautologisePas:
+    """A3 : refiger apres la campagne rendait rc=0 des deux cotes (`mesure` de l'audit).
+
+    La confrontation de l'empreinte est desormais une MESURE et non une
+    consigne : elle est prise a un site VERSIONNE, le parent du dossier, parce
+    qu'un second instantane porterait son propre manifeste — donc sa propre
+    empreinte — et se signerait lui-meme.
+    """
+
+    def _table(self, dossier, lignes):
+        (dossier.parent / EMPREINTES).write_text(
+            "# essai\ndossier\tempreinte\n" + "".join(lignes), encoding="utf-8"
+        )
+
+    def test_l_empreinte_attendue_se_lit_dans_le_parent(self, tmp_path):
+        dossier = tmp_path / "2026-09-24-instantane"
+        self._table(dossier, [f"{dossier.name}\tabc123\n"])
+
+        assert empreinte_attendue(dossier) == "abc123"
+
+    def test_un_instantane_refige_porte_une_autre_empreinte_et_rougit(self, tmp_path):
+        """LE SCENARIO DE L'AUDIT : on refige apres la campagne, on compare contre lui."""
+        dossier = tmp_path / "instantane"
+        figer(_monde([_une_emission()]), dossier, {"date": "t"}, [], lambda _: None)
+        refige = tmp_path / "refige"
+        figer(_monde([_une_emission()]), refige, {"date": "AUTRE DATE"}, [], lambda _: None)
+        sortie = []
+        monde = _monde([_une_emission()])
+
+        rc = comparer(
+            monde,
+            lire_l_instantane(refige),
+            lire_l_instantane(dossier).empreinte,
+            set(),
+            [],
+            sortie.append,
+        )
+
+        assert rc == 1
+        assert any("EMPREINTE INATTENDUE" in ligne for ligne in sortie), sortie
+
+    def test_un_dossier_absent_de_la_table_est_refuse(self, tmp_path):
+        """Le cas exact du second instantane : ecrit, mais inscrit nulle part."""
+        dossier = tmp_path / "refige-en-douce"
+        self._table(dossier, ["2026-09-24-instantane-des-identifiants\tabc123\n"])
+
+        with pytest.raises(EmpreinteInattendueError, match="n'est pas dans"):
+            empreinte_attendue(dossier)
+
+    def test_une_table_absente_n_authentifie_rien(self, tmp_path):
+        with pytest.raises(EmpreinteInattendueError, match="manque"):
+            empreinte_attendue(tmp_path / "instantane")
+
+    def test_refiger_dans_le_meme_dossier_rend_un_rc_1_et_non_une_trace(self, tmp_path):
+        """`FileExistsError` remontait nue : une trace d'appel n'est pas un verdict."""
+        monde = _monde([_une_emission()])
+        sortie = []
+        assert figer(monde, tmp_path, {"date": "t"}, [], lambda _: None) == 0
+
+        rc = figer(monde, tmp_path, {"date": "t"}, [], sortie.append)
+
+        assert rc == 1
+        assert any("ne s'ecrase pas" in ligne for ligne in sortie), sortie
+
+    def test_la_table_versionnee_du_depot_attend_l_instantane_de_la_campagne(self):
+        """LE SITE REEL : la table du depot, contre l'instantane du depot."""
+        dossier = RACINE_DEPOT / "documentation/campagnes/2026-09-24-instantane-des-identifiants"
+
+        assert empreinte_attendue(dossier) == lire_l_instantane(dossier).empreinte
 
 
 # ─── En sous-processus : les barrieres, et les deux faux verts de l'audit ───
@@ -609,41 +754,114 @@ def _executer(code, *arguments):
     return json.loads(acheve.stdout.strip().splitlines()[-1])
 
 
-# Les fonctions des modules de stores qui N'ECRIVENT PAS, chacune avec sa raison.
-# CE N'EST PAS LA LISTE DES PORTES DU PRODUCTEUR, et c'est tout l'interet : toute
-# fonction absente d'ici est TENUE pour une porte, donc doit etre barree a tous ses
-# sites. Une fonction ajoutee a un module de store rougit ce test tant que
-# quelqu'un ne l'a pas classee.
+# Les PORTEURS de client de store qui N'ECRIVENT PAS EUX-MEMES, chacun avec sa
+# raison. CE N'EST PAS LA LISTE DES PORTES DU PRODUCTEUR, et c'est tout
+# l'interet : tout porteur absent d'ici est TENU pour une porte, donc doit etre
+# barre a tous ses sites. Le test DERIVE les porteurs du code (voir
+# `PARCOURS_DES_SITES`) : une porte neuve deposee dans n'importe quel
+# `src/docling_service/*.py` rougit ce test tant que quelqu'un ne l'a pas classee.
 NON_ECRIVAINS = {
-    "src.docling_service.nebula.NebulaError": "une exception",
-    "src.docling_service.nebula.execute": "exige une session, que seul NebulaWriter ouvre",
-    "src.docling_service.vectors._inscrire_le_modele": (
-        "exige une collection, que seul get_collection ouvre"
-    ),
-    "src.docling_service.vectors.get_chunker": "le decoupeur, aucun client de store",
-    "src.docling_service.vectors.build_chunks": "pur",
-    "src.docling_service.storage.PurgeIncompleteError": "une exception",
-    "src.docling_service.storage.validate_elements": "pur (pydantic)",
     "src.docling_service.images.ensure_bucket": "ne parle a MinIO que par get_client, le temoin",
-    "src.docling_service.images.object_url": "pur",
-    "src.docling_service.images.sanitize_key": "pur",
     "src.docling_service.images.crop_and_upload": (
         "la production tourne ; son envoi passe par get_client"
     ),
+    "src.docling_service.extraction.extract": (
+        "l'orchestrateur : n'atteint les stores que par persist et get_writer, barres"
+    ),
+    "src.docling_service.extraction._extract_flat": (
+        "le chemin HTML que le harnais APPELLE ; ses ecritures passent par persist, barre"
+    ),
+    "src.docling_service.extraction._extract_pdf": (
+        "le chemin PDF que le harnais APPELLE ; idem, plus crop_and_upload sur le temoin"
+    ),
+    "src.docling_service.extraction._convert_batch": "convertit ; aucun client de store en propre",
+    "src.docling_service.extraction._prepared_source": (
+        "prepare l'entree sur disque ; n'atteint MinIO que par _upload_markdown_images"
+    ),
+    "src.docling_service.extraction._upload_markdown_images": (
+        "envoie par upload_file, qui est une porte barree"
+    ),
+    "src.docling_service.extraction._already_ingested": (
+        "LIT le graphe par get_writer().find_duplicate ; get_writer est barre, donc leve"
+    ),
 }
 
-PARCOURS_DES_SITES = """
-import json, sys
-from src.docling_service import extraction, images, nebula, storage, vectors
-MODULES = (nebula, vectors, storage, images)
-originaux = {
-    f"{m.__name__}.{n}": o
-    for m in MODULES
-    for n, o in vars(m).items()
-    if callable(o) and getattr(o, "__module__", None) == m.__name__
+# Les porteurs dont le module ne s'importe PAS sur l'hote, chacun avec sa raison.
+# Ils ne sont pas sautes en silence : le test exige qu'ils soient classes ici, et
+# qu'aucun d'eux ne soit charge dans le processus du harnais apres armement.
+HORS_PROCESSUS = {
+    "main._init_graph": "le service FastAPI, jamais importe par le harnais",
+    "main._init_objects": "le service FastAPI, jamais importe par le harnais",
+    "main._run_extraction": "le service FastAPI, jamais importe par le harnais",
+    "main.lifespan": "le service FastAPI, jamais importe par le harnais",
 }
+
+# Les constructeurs de clients de store, et eux seuls : le reste est DERIVE.
+# Cette liste-ci ne peut pas se tromper en silence comme une liste de modules,
+# parce qu'un client de store ne se construit pas autrement — et parce que
+# `test_les_semences_construisent_bien_un_client_de_store` la confronte au code.
+SEMENCES = ("Minio", "ConnectionPool", "HttpClient")
+# Les SDK de store que `src/docling_service` importe. Une semence protege contre une
+# porte neuve ; CECI protege contre un client neuf : un SDK de plus, ou une autre
+# classe de client du meme SDK, rougit tant que les semences ne le couvrent pas.
+SDK_DE_STORE = ("minio", "nebula3", "chromadb")
+
+PARCOURS_DES_SITES = """
+import ast, json, pathlib, sys
+
+# ─── LA DERIVATION, et c'est le point : AUCUNE LISTE DE MODULES EN DUR. ──────
+# La version precedente bornait le balayage a `MODULES = (nebula, vectors,
+# storage, images)`, une seconde liste en dur, non defendue : `mesure` du second
+# audit du lot 11 — une porte ecrivante neuve deposee dans `extraction.py`
+# passait, rc=0, 5 tests verts. On derive ici, par le texte du code, TOUTE
+# fonction qui construit ou RECOIT un client de store, dans tout
+# `src/docling_service/*.py`, par point fixe : une fonction qui en appelle une
+# autre deja porteuse l'est a son tour.
+SEMENCES = set(json.loads(sys.argv[1]))
+
+def _noms_cites(noeud):
+    vus = set()
+    for n in ast.walk(noeud):
+        if isinstance(n, ast.Name):
+            vus.add(n.id)
+        elif isinstance(n, ast.Attribute):
+            vus.add(n.attr)
+    return vus
+
+corps = {}
+for fichier in sorted(pathlib.Path("src/docling_service").glob("*.py")):
+    for noeud in ast.parse(fichier.read_text(encoding="utf-8")).body:
+        if isinstance(noeud, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            corps[f"{fichier.stem}.{noeud.name}"] = _noms_cites(noeud)
+
+porteurs = set()
+change = True
+while change:
+    change = False
+    simples = {p.split(".")[1] for p in porteurs}
+    for qualifie, cites in corps.items():
+        if qualifie not in porteurs and cites & (SEMENCES | simples):
+            porteurs.add(qualifie)
+            change = True
+
+import importlib
+originaux = {}
+hors_processus = []
+for qualifie in sorted(porteurs):
+    module_court, attribut = qualifie.split(".")
+    try:
+        module = importlib.import_module(f"src.docling_service.{module_court}")
+    except Exception as exc:
+        # PAS UN SAUT SILENCIEUX : le module est rendu, et le test exige qu'il
+        # soit classe. `main` tire `fastapi`, qui n'est pas une dependance de
+        # l'hote — c'est aussi la preuve qu'il n'est pas dans le processus du
+        # harnais, donc qu'il n'y a aucun site a barrer.
+        hors_processus.append([qualifie, f"{type(exc).__name__}: {exc}"])
+        continue
+    originaux[f"src.docling_service.{qualifie}"] = getattr(module, attribut)
 from src.equivalence_des_identifiants import armer_les_barrieres
 armement = armer_les_barrieres()
+charges_apres_armement = sorted(m for m in sys.modules if m.startswith("src.docling_service."))
 encore_lies = []
 for nom_mod, mod in sorted(sys.modules.items()):
     if mod is None or not nom_mod.startswith("src"):
@@ -653,7 +871,9 @@ for nom_mod, mod in sorted(sys.modules.items()):
             if valeur is original:
                 encore_lies.append([f"{nom_mod}.{attribut}", qualifie])
 print(json.dumps({"originaux": sorted(originaux), "encore_lies": encore_lies,
-                  "sites": armement.sites}))
+                  "sites": armement.sites, "porteurs": sorted(porteurs),
+                  "hors_processus": sorted(hors_processus),
+                  "charges": charges_apres_armement}))
 """
 
 
@@ -671,7 +891,7 @@ class TestLesBarrieres:
         retrait de `nebula.get_writer` comme de `vectors.get_collection` de la
         liste du producteur (registre 4.37.d).
         """
-        releve = _executer(PARCOURS_DES_SITES)
+        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
 
         inconnus = sorted(set(NON_ECRIVAINS) - set(releve["originaux"]))
         assert not inconnus, f"NON_ECRIVAINS nomme des fonctions qui n'existent plus : {inconnus}"
@@ -685,9 +905,80 @@ class TestLesBarrieres:
             f"{portes_vivantes}"
         )
 
+    def test_les_porteurs_derives_sont_tous_barres_ou_classes(self):
+        """A4 : plus de liste de MODULES en dur, et rien n'est saute en silence.
+
+        `mesure` du second audit du lot 11 : le balayage etait borne a
+        `MODULES = (nebula, vectors, storage, images)`, et une porte ecrivante
+        neuve deposee dans `extraction.py` passait, rc=0, 5 tests verts. Les
+        porteurs sont desormais DERIVES par point fixe sur tout
+        `src/docling_service/*.py` ; chacun est une porte barree, un
+        `NON_ECRIVAINS` motive, ou un `HORS_PROCESSUS` motive. Aucun quatrieme cas.
+        """
+        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+
+        barres = {f"src.docling_service.{nom}" for nom in list(PORTES) + [TEMOIN_MINIO]}
+        classes = (
+            barres | set(NON_ECRIVAINS) | {f"src.docling_service.{nom}" for nom in HORS_PROCESSUS}
+        )
+        inclasses = sorted(f"src.docling_service.{p}" for p in releve["porteurs"])
+        assert not [p for p in inclasses if p not in classes], (
+            "des porteurs de client de store ne sont ni barres ni classes : "
+            f"{[p for p in inclasses if p not in classes]}"
+        )
+
+    def test_les_hors_processus_ne_sont_pas_dans_le_processus_du_harnais(self):
+        """Leur raison d'etre classes EST qu'ils n'y sont pas : on le mesure."""
+        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+
+        assert sorted(nom for nom, _ in releve["hors_processus"]) == sorted(HORS_PROCESSUS)
+        modules = {nom.split(".")[0] for nom in HORS_PROCESSUS}
+        assert not [m for m in modules if f"src.docling_service.{m}" in releve["charges"]], releve[
+            "charges"
+        ]
+
+    def test_les_semences_construisent_bien_un_client_de_store(self):
+        """Une semence qui ne seme rien laisserait la derivation vide et MUETTE.
+
+        Le piege « une mutation qui ne mute rien » : on exige que chaque semence
+        soit citee par le code des stores, et que la derivation rende au moins
+        les portes deja declarees.
+        """
+        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+        source = "".join(
+            chemin.read_text(encoding="utf-8")
+            for chemin in sorted((RACINE_DEPOT / "src/docling_service").glob("*.py"))
+        )
+
+        muettes = [semence for semence in SEMENCES if f"{semence}(" not in source]
+        assert not muettes, f"des semences ne construisent aucun client : {muettes}"
+        assert set(releve["porteurs"]) >= set(PORTES) | {TEMOIN_MINIO}
+
+    def test_aucun_sdk_de_store_n_entre_sans_sa_semence(self):
+        """UNE SEMENCE PROTEGE D'UNE PORTE NEUVE ; ceci protege d'un CLIENT neuf.
+
+        Sans ce garde, passer `chromadb.HttpClient` a `chromadb.PersistentClient`
+        rendrait la derivation aveugle EN SILENCE — le piege « une liste en dur se
+        trompe en silence », a un cran de profondeur.
+        """
+        importe = set()
+        for chemin in sorted((RACINE_DEPOT / "src/docling_service").glob("*.py")):
+            arbre = ast.parse(chemin.read_text(encoding="utf-8"))
+            for noeud in ast.walk(arbre):
+                if isinstance(noeud, ast.Import):
+                    importe |= {alias.name.split(".")[0] for alias in noeud.names}
+                elif isinstance(noeud, ast.ImportFrom) and noeud.module:
+                    importe.add(noeud.module.split(".")[0])
+
+        inconnus = sorted(importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE))
+        assert not inconnus, (
+            f"SDK_DE_STORE ne decrit plus les imports reels : {inconnus}. "
+            "Un SDK de store nouveau ou disparu exige de revoir SEMENCES."
+        )
+
     def test_get_writer_est_barre_a_ses_trois_sites(self):
         """Le site par nom de `storage` et d'`extraction`, en plus de `nebula`."""
-        releve = _executer(PARCOURS_DES_SITES)
+        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
 
         assert set(releve["sites"]["nebula.get_writer"]) >= {
             "src.docling_service.nebula.get_writer",
@@ -859,10 +1150,12 @@ avant = {l["position_in_page"]: l["element_id"] for l in fige}
 ETAT["repare"] = True                       # la campagne : le code repare reecrit le graphe
 GRAPHE["ids"] = {l["element_id"] for l in reextraire(CLE).lignes}
 instantane = eq.lire_l_instantane(RACINE / "instantane")
-rc_nu = eq.comparer(monde(), instantane, set(), armement.journal, dire)
+EMPREINTE = instantane.empreinte
+rc_nu = eq.comparer(monde(), instantane, EMPREINTE, set(), armement.journal, dire)
 declares = {avant[i] for i in VIDES}
-rc_declare = eq.comparer(monde(), instantane, declares, armement.journal, dire)
-rc_trop = eq.comparer(monde(), instantane, declares | {avant[0]}, armement.journal, dire)
+rc_declare = eq.comparer(monde(), instantane, EMPREINTE, declares, armement.journal, dire)
+rc_trop = eq.comparer(
+    monde(), instantane, EMPREINTE, declares | {avant[0]}, armement.journal, dire)
 resultat = {"rc_figer": rc_figer, "rc_nu": rc_nu, "rc_declare": rc_declare, "rc_trop": rc_trop,
             "sortie": sortie, "journal": armement.journal}
 """,
