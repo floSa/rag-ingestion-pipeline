@@ -59,8 +59,13 @@ format:
 format-check:
 	uv run ruff format --check src/ tests/
 
+# `scripts/campagne/` EST DANS LA PORTEE depuis le lot 11. Le harnais
+# d'equivalence y portait quatre `type: ignore[assignment]` injustifies, que
+# `mypy --strict --warn-unused-ignores` disait tous inutilises : hors de portee,
+# personne ne le voyait. `mesure` le 24 septembre 2026 : inclure le dossier ne
+# rougit AUCUN des trois scripts, et une erreur deposee dans chacun est vue.
 typecheck:
-	uv run mypy src/
+	uv run mypy src/ scripts/campagne/
 
 # N'AJOUTE JAMAIS `-q` A CETTE COMMANDE, ni en ligne de commande. `pyproject.toml`
 # porte deja `addopts = "-q --tb=short"` : un second `-q` donne `-qq`, qui
