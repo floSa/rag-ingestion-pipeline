@@ -4593,6 +4593,24 @@ du jour** : `find Datas \( -name '*.pdf' -o -name '*.html' \) -newermt
 tests passés** (1 013 sur `f717565`), plus **27 mutations rejouées, 27 rouges**
 (14 sur `f717565`).
 
+**Les huit comptes des stores, relevés au DÉBUT et à la FIN de la reprise**, en
+lecture seule — `MATCH`/`GO` dans le graphe, `count()` par collection ChromaDB,
+`list_objects` dans MinIO, jamais `SHOW STATS` (§4.27 n° 1) :
+
+| compte | début | fin |
+|---|---|---|
+| sommets, tous tags | 15 196 | **15 196** |
+| `Document` | 23 | **23** |
+| `Paragraph` | 7 251 | **7 251** |
+| `ListItem` | 1 748 | **1 748** |
+| `Code` | 4 963 | **4 963** |
+| arêtes `PARENT_OF` | 15 173 | **15 173** |
+| chunks (ChromaDB) | 4 367 | **4 367** |
+| objets (MinIO) | 212 | **212** |
+
+Rien n'a bougé. Ce lot n'écrit dans aucun store, et c'est désormais une barrière
+à l'exécution qui le tient (§4.39.b) et non une intention.
+
 #### 4.39.a → TRAITÉ, bloquant — **l'empreinte attendue ne dépend plus de l'argument**, et le répertoire de campagne est FIXE
 
 **Le faux vert, tel que l'audit l'a mesuré contre les vrais stores.**
