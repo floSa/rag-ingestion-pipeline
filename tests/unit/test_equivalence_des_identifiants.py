@@ -28,6 +28,7 @@ Ce qui arme les barrieres tourne en SOUS-PROCESSUS : l'armement survit dans
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import subprocess
@@ -127,12 +128,36 @@ class TestLeReleveEstCeluiDeLEmission:
         assert ligne["element_id"] == "0123456789"
         assert ligne["element_id"] != identifiant_par_la_formule(ligne)
 
-    def test_un_champ_disparu_du_contrat_leve(self):
-        """Un champ manquant doit lever, pas devenir un zero qui se compare."""
+    @pytest.mark.parametrize("champ", ["id", "page_no", "page_position", "text", "label"])
+    def test_chaque_champ_du_contrat_leve_quand_il_disparait(self, champ):
+        """M31 : les CINQ champs lus par indexation, pas seulement `page_position`.
+
+        Le mutant de l'audit remplacait l'indexation par `.get` : un champ
+        disparu du contrat devenait alors un zero, une chaine vide ou un `None`
+        qui se compare — et le seul test qui tenait cette garantie portait sur
+        `page_position`. `self_ref` n'y est pas : il est lu par `.get` A DESSEIN,
+        un element sans `self_ref` etant licite (l'appariement le rend "").
+        """
+        emis = {
+            "id": "0123456789",
+            "page_no": 1,
+            "page_position": 0,
+            "text": "Un passage",
+            "label": "text",
+            "self_ref": "#/texts/0",
+        }
+        del emis[champ]
+
         with pytest.raises(KeyError):
-            releve_de_l_emission(
-                [{"id": "0123456789", "page_no": 1, "text": "", "label": "x"}], CLE
-            )
+            releve_de_l_emission([emis], CLE)
+
+    def test_un_self_ref_absent_est_licite_et_devient_vide(self):
+        """La contrepartie du test ci-dessus : `self_ref` seul tolere l'absence."""
+        emis = {"id": "x", "page_no": 1, "page_position": 0, "text": "a", "label": "text"}
+
+        (ligne,) = releve_de_l_emission([emis], CLE)
+
+        assert ligne["self_ref"] == ""
 
     def test_text50_est_la_troncature_de_la_formule(self):
         emis = {"id": "x", "page_no": 1, "page_position": 0, "text": "a" * 80, "label": "text"}
@@ -215,6 +240,43 @@ class TestLInstantane:
 
         with pytest.raises(FileExistsError):
             ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-25"})
+
+    def test_le_nombre_de_lignes_annonce_par_le_manifeste_est_verifie(self, tmp_path):
+        """M14 : le manifeste annonce `elements`, et la relecture DOIT recompter.
+
+        Sans ce garde, un releve tronque passait pour complet — et un releve
+        tronque, c'est « ces elements n'existent plus », donc des deplacements
+        invisibles. Le SHA-256 du releve est recalcule ici pour que ce soit le
+        COMPTE qui rougisse, et non l'empreinte : un garde qu'un autre garde
+        couvre n'est pas tenu.
+        """
+        ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-24"})
+        (releve,) = [f for f in tmp_path.iterdir() if f.name.startswith("htms__")]
+        rangs = releve.read_text(encoding="utf-8").split("\n")
+        releve.write_text("\n".join(rangs[:-2]) + "\n", encoding="utf-8")
+        manifeste = tmp_path / "MANIFESTE.tsv"
+        ancienne = hashlib.sha256("\n".join(rangs).encode("utf-8")).hexdigest()
+        nouvelle = hashlib.sha256(releve.read_bytes()).hexdigest()
+        manifeste.write_text(
+            manifeste.read_text(encoding="utf-8").replace(ancienne, nouvelle), encoding="utf-8"
+        )
+
+        with pytest.raises(InstantaneCorrompuError, match="lignes"):
+            lire_l_instantane(tmp_path)
+
+    def test_le_format_de_l_instantane_est_verifie(self, tmp_path):
+        """M28 : un instantane d'un AUTRE format ne se relit pas en silence."""
+        ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-24"})
+        manifeste = tmp_path / "MANIFESTE.tsv"
+        manifeste.write_text(
+            manifeste.read_text(encoding="utf-8").replace(
+                "instantane-des-identifiants/1", "instantane-des-identifiants/0"
+            ),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(InstantaneCorrompuError, match="format"):
+            lire_l_instantane(tmp_path)
 
     def test_l_empreinte_est_deterministe(self, tmp_path):
         a = ecrire_l_instantane(tmp_path / "a", [_emission()], {"date": "2026-09-24"})
@@ -324,6 +386,33 @@ class TestLaComparaison:
         assert not verdict.ok
         assert "REASSIGNE" in verdict.raisons[0]
 
+    def test_identiques_retranche_les_reassignes(self):
+        """M34 : `identiques` ANNONCE les elements qui n'ont pas bouge.
+
+        Un identifiant REASSIGNE est present des deux cotes, donc compte par la
+        difference d'ensembles — mais il designe un autre element. Le compter
+        parmi les identiques, c'est annoncer une stabilite qu'on vient de nier
+        deux lignes plus bas. Le mutant de l'audit retirait la soustraction ;
+        aucun test ne le voyait.
+        """
+        textes = ["Titre", "", "", "Suite"]
+        avant = _lignes(nombre=4, textes=textes)
+        avant[1]["label"] = "list_item"
+        avant[2]["label"] = "code"
+        apres = [
+            dict(avant[0]),
+            dict(avant[2], position_in_page=1),
+            dict(avant[3], position_in_page=2),
+        ]
+        for ligne in apres:
+            ligne["element_id"] = identifiant_par_la_formule(ligne)
+
+        bilan = comparer_les_releves("p", avant, apres)
+
+        ids_communs = {l["element_id"] for l in avant} & {l["element_id"] for l in apres}
+        assert len(bilan.reassignes) == 1
+        assert bilan.identiques == len(ids_communs) - 1
+
     def test_la_confrontation_ne_rend_pas_zero_sur_un_graphe_vide(self):
         """Une sonde qui ne lit rien rendrait aussi « graphe seul = 0 »."""
         confrontation = confronter_au_graphe(_lignes(), set())
@@ -407,6 +496,38 @@ class TestLesClesDObjet:
         assert (
             raisons_des_cles_d_objet("p", avant, nouvelles, bilan, {lignes[1]["element_id"]}) == []
         )
+
+    def test_une_cle_apparue_sans_deplacement_declare_est_rouge(self):
+        """M22 : seule la branche « disparue » etait tenue.
+
+        Une cle d'objet APPARUE que la declaration n'explique pas, c'est un crop
+        de plus dans MinIO sous un identifiant que personne n'a annonce.
+        """
+        raisons = raisons_des_cles_d_objet(
+            "p",
+            avant=["images/L/0123456789_picture.png"],
+            apres=["images/L/0123456789_picture.png", "images/L/abcdef0123_picture.png"],
+            bilan=Bilan("p", identiques=1, deplaces=[], apparus_sans_contrepartie=[]),
+            declares=set(),
+        )
+
+        assert raisons and "apparue" in raisons[0], raisons
+
+    def test_une_cle_apparue_sous_un_deplacement_declare_est_verte(self):
+        """La contrepartie : sans elle, le test ci-dessus passerait sur un `True` nu."""
+        avant = _lignes(nombre=1)
+        apres = _reparer(avant, [0])
+        bilan = comparer_les_releves("p", avant, apres)
+
+        raisons = raisons_des_cles_d_objet(
+            "p",
+            avant=[f"images/L/{avant[0]['element_id']}_picture.png"],
+            apres=[f"images/L/{apres[0]['element_id']}_picture.png"],
+            bilan=bilan,
+            declares={avant[0]["element_id"]},
+        )
+
+        assert raisons == []
 
     def test_une_cle_disparue_sans_declaration_est_rouge(self):
         lignes = _lignes(nombre=3)
@@ -526,12 +647,13 @@ def _monde(emissions, graphe=None, corpus=None, documents_du_graphe=None, objets
     )
 
 
-def _une_emission(partition_key="htms/L/1. Ch.html", lignes=None):
+def _une_emission(partition_key="htms/L/1. Ch.html", lignes=None, empreinte="e" * 64):
     return Emission(
         partition_key=partition_key,
         cle=CLE,
         lignes=_lignes(nombre=12) if lignes is None else lignes,
         cles_d_objet=["images/L/0123456789_picture.png"],
+        empreinte_de_l_entree=empreinte,
     )
 
 
@@ -634,6 +756,11 @@ class TestComparerAlInstantane:
 
         assert rc == 1
         assert any("DOCUMENTS COMPARES 1 / 2" in ligne for ligne in sortie), sortie
+        # LA RAISON EXPLICITE, et non le seul rc : sans cette assertion, le
+        # garde `non_compares` survivait a son propre retrait (mutation A1-b),
+        # l'ecart de couverture rougissant deja. Une garantie qu'un autre garde
+        # couvre n'est pas tenue — c'est tout le motif de la table des mutations.
+        assert any("n'ont PAS ete compares" in ligne for ligne in sortie), sortie
 
     def test_un_graphe_vide_avec_un_corpus_intact_est_rouge(self, tmp_path):
         """Deja rouge sur `3625816` par le sens `corpus - graphe` ; tenu ici contre son retrait."""
@@ -665,6 +792,35 @@ class TestComparerAlInstantane:
         rc = comparer(monde, instantane, instantane.empreinte, set(), journal, lambda _: None)
 
         assert rc == 1
+
+
+class TestCeQuiSeDitDevantUnRouge:
+    """M35 : une garantie ECRITE — « elle dit, devant un rouge, si c'est l'entree
+    ou le code qui a change » — que le mutant de l'audit retirait sans qu'un
+    test bouge."""
+
+    def _fige(self, tmp_path, emissions):
+        figer(_monde(emissions), tmp_path, {"date": "t"}, [], lambda _: None)
+        return lire_l_instantane(tmp_path)
+
+    def test_une_entree_convertie_qui_change_est_signalee(self, tmp_path):
+        instantane = self._fige(tmp_path, [_une_emission(empreinte="a" * 64)])
+        sortie = []
+        monde = _monde([_une_emission(empreinte="b" * 64)])
+
+        comparer(monde, instantane, instantane.empreinte, set(), [], sortie.append)
+
+        assert any("L'ENTREE CONVERTIE A CHANGE" in ligne for ligne in sortie), sortie
+
+    def test_une_entree_inchangee_ne_se_signale_pas(self, tmp_path):
+        """Sans ce pendant, un `dire` inconditionnel passerait le test ci-dessus."""
+        instantane = self._fige(tmp_path, [_une_emission(empreinte="a" * 64)])
+        sortie = []
+        monde = _monde([_une_emission(empreinte="a" * 64)])
+
+        comparer(monde, instantane, instantane.empreinte, set(), [], sortie.append)
+
+        assert not any("L'ENTREE CONVERTIE A CHANGE" in ligne for ligne in sortie), sortie
 
 
 class TestLeHarnaisNeSeRetautologisePas:
@@ -1039,6 +1195,49 @@ print(json.dumps(leve))
         )
 
         assert all(v is True for v in releve.values()), releve
+
+    def test_la_capture_valide_les_elements_comme_persist(self):
+        """M32 : « la capture valide les elements comme `persist` », ecrit et non tenu.
+
+        Sans la validation, un element hors contrat entrerait dans l'instantane
+        sans que rien ne le dise — et l'instantane est ce a quoi on compare
+        TOUT le reste. Le mutant de l'audit retirait l'appel a
+        `validate_elements` ; 55 tests restaient verts.
+        """
+        releve = _executer(
+            """
+import json
+from src.equivalence_des_identifiants import armer_les_barrieres, installer_la_capture
+armer_les_barrieres()
+lots = installer_la_capture()
+from src.docling_service import storage
+bon = {"id": "0123456789", "page_no": 1, "page_position": 0, "text": "x",
+       "label": "text", "self_ref": "#/texts/0"}
+resultat = {}
+try:
+    storage.persist([bon], None, None)
+except Exception as exc:
+    resultat["bon"] = f"{type(exc).__name__}: {exc}"
+else:
+    resultat["bon"] = None
+resultat["capture"] = len(lots)
+try:
+    storage.persist([{"pas": "un element"}], None, None)
+except Exception as exc:
+    resultat["mauvais"] = type(exc).__name__
+else:
+    resultat["mauvais"] = None
+resultat["capture_apres"] = len(lots)
+print(json.dumps(resultat))
+"""
+        )
+
+        assert releve["bon"] is None, releve
+        assert releve["capture"] == 1, "un element valide doit etre capture"
+        assert releve["mauvais"] is not None, (
+            "un element hors contrat est entre dans la capture sans un mot"
+        )
+        assert releve["capture_apres"] == 1, "l'element invalide ne doit pas etre capture"
 
     def test_le_temoin_minio_enregistre_l_envoi_et_refuse_le_reste(self):
         """`crop_and_upload` reste celui de la production ; seul l'envoi est remplace."""

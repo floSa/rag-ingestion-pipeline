@@ -84,6 +84,16 @@ typecheck:
 test:
 	uv run pytest tests/
 
+# LE REJEU DES MUTATIONS, et il entre dans la porte a l'issue d'une MESURE.
+# `make all` seul : 30,4 s. Avec le rejeu : 35,4 s, soit +5,0 s pour 14
+# mutations (mesure du 24 septembre 2026, registre 4.38.f). Le defaut nomme au
+# 4.35.e etait que les mutations annoncees n'etaient pas rejouables ; 16 % de
+# plus sur la porte est le prix de ce qu'on peut desormais rejouer. Il ECRIT
+# dans des fichiers de production et les restaure ; il verifie lui-meme, par
+# `git diff`, qu'il n'en laisse aucun mute.
+mutations:
+	uv run python scripts/rejouer-les-mutations.py
+
 test-cov:
 	uv run pytest tests/ --cov=src --cov-report=term-missing
 
@@ -98,4 +108,4 @@ audit:
 # le rouge attendu » n'existe plus : un rc non nul est un defaut, sans exception
 # a connaitre. L'ordre est conserve — il ne coute rien et il redeviendrait le bon
 # le jour ou un fichier repart de travers.
-all: lint typecheck test format-check
+all: lint typecheck test mutations format-check
