@@ -7,7 +7,7 @@
     "qu'on ne peut pas rejouer n'est pas une mesure, c'est une affirmation.",
     "",
     "Chaque entree porte LE SITE (fichier + motif exact), LE REMPLACEMENT, et LE",
-    "TEST CENSE ROUGIR \u2014 dans le fichier de test par defaut, ou dans celui que",
+    "TEST CENSE ROUGIR — dans le fichier de test par defaut, ou dans celui que",
     "l'entree nomme par `fichier_de_test`.",
     "`scripts/rejouer-les-mutations.py` les applique une a une SUR UNE COPIE",
     "JETABLE, lance le test vise, et exige un ECHEC DE TEST : `rc == 1`, `failed`",
@@ -16,7 +16,7 @@
     "",
     "Regle tenue ici : on mute LE PRODUCTEUR, jamais le consommateur. Un motif",
     "doit apparaitre EXACTEMENT UNE FOIS dans son fichier, sinon le rejeu refuse",
-    "\u2014 une mutation qui ne mute rien ressemble a un garde qui ne voit rien, et",
+    "— une mutation qui ne mute rien ressemble a un garde qui ne voit rien, et",
     "une mutation qui casse la syntaxe ressemble a un garde qui voit."
   ],
   "mutations": [
@@ -38,7 +38,7 @@
     },
     {
       "id": "A2",
-      "constat": "le garde \u00ab un journal de barrieres non vide est un rouge \u00bb n'etait tenu par aucun test cote comparer",
+      "constat": "le garde « un journal de barrieres non vide est un rouge » n'etait tenu par aucun test cote comparer",
       "fichier": "src/equivalence_des_identifiants.py",
       "motif": "    if journal:\n        raisons.append(f\"barrieres touchees : {journal}\")\n    if non_compares:",
       "remplacement": "    if False:\n        raisons.append(f\"barrieres touchees : {journal}\")\n    if non_compares:",
@@ -78,7 +78,7 @@
     },
     {
       "id": "M22",
-      "constat": "une cle d'objet APPARUE inattendue ne rougissait plus ; seule la branche \u00ab disparue \u00bb etait tenue",
+      "constat": "une cle d'objet APPARUE inattendue ne rougissait plus ; seule la branche « disparue » etait tenue",
       "fichier": "src/equivalence_des_identifiants.py",
       "motif": "    inattendues = [c for c in apparues if identifiant(c) not in attendues]",
       "remplacement": "    inattendues = []",
@@ -241,6 +241,29 @@
       "remplacement": "partition_key.split(\".\", 1)[-1].upper()",
       "test": "test_le_format_se_lit_a_la_derniere_extension",
       "fichier_de_test": "tests/unit/test_compter_l_emiettement.py"
+    },
+    {
+      "id": "S1",
+      "constat": "mutant survivant de l'audit : un `import boto3` ajoute a la production n'etait vu par personne — la liste d'interdictions ne voyait que ce qu'elle nommait deja",
+      "fichier": "src/docling_service/storage.py",
+      "ajouter": "\n\nimport boto3  # mutation S1\n",
+      "test": "test_toute_dependance_tierce_de_src_est_classee"
+    },
+    {
+      "id": "S2",
+      "constat": "mutant survivant de l'audit : la classification videe laissait le test vert, parce qu'il en portait une copie en dur et que `&` lie plus fort que `^`",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "SDK_DE_STORE: tuple[str, ...] = (\"minio\", \"nebula3\", \"chromadb\")",
+      "remplacement": "SDK_DE_STORE: tuple[str, ...] = ()",
+      "test": "test_toute_dependance_tierce_de_src_est_classee"
+    },
+    {
+      "id": "S3",
+      "constat": "l'autre sens : un SDK DECLARE que `src/` n'importe pas — une classification qui survit a sa dependance ne decrit plus rien",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "SDK_DE_STORE: tuple[str, ...] = (\"minio\", \"nebula3\", \"chromadb\")",
+      "remplacement": "SDK_DE_STORE: tuple[str, ...] = (\"minio\", \"nebula3\", \"chromadb\", \"boto3\")",
+      "test": "test_toute_dependance_tierce_de_src_est_classee"
     }
   ]
 }

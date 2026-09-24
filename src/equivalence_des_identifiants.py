@@ -858,9 +858,64 @@ def controle_negatif(partition_key: str, lignes: Sequence[Ligne]) -> list[Contro
 # (un client S3 `boto3`, un driver HTTP ecrit a la main), n'est pas atteint.
 # La barriere tient sur ce qui est IMPORTE dans le processus du harnais.
 
-# Les SDK de store, et le module ou leurs constructeurs sont publies. Un SDK
-# absent du processus n'y construit rien : son absence est RENDUE, jamais tue.
+# ─── La CLASSIFICATION des dependances tierces, et c'est une AUTORISATION ───
+#
+# **LA POLARITE EST LE GARDE, et c'est la reparation B2 du quatrieme audit.** Ce
+# site portait `SDK_DE_STORE`, une liste d'INTERDICTIONS, qu'aucun site ne lisait
+# et dont le test portait sa propre copie en dur. Son expression,
+# `importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE)`, valait
+# `SDK_DE_STORE - importe` : `&` lie plus fort que `^`. Elle ne pouvait donc voir
+# qu'un SDK DISPARU, jamais un SDK NEUF — un `import boto3` ajoute a
+# `storage.py` la laissait verte, et la vider aussi.
+#
+# Une liste d'interdictions se trompe en SILENCE : elle ne dit rien de ce qu'elle
+# ne connait pas, et c'est exactement ce qu'on lui demande de voir. La voici
+# retournee. Chaque module tiers de premier niveau importe par `src/` — hors
+# bibliotheque standard, hors `src` — doit figurer ICI, dans l'une des deux
+# classes. Une dependance tierce NOUVELLE OU DISPARUE rougit tant que personne
+# ne l'a classee, qu'on ait pense a elle ou non.
+#
+# Le test ne lit aucune liste en dur : il ENUMERE les imports reels de `src/` par
+# l'AST et les confronte a ces deux ensembles, dans les deux sens.
+
+# Les SDK de store, et ils sont couverts par la barriere des constructeurs
+# ci-dessous — voir `CONSTRUCTEURS_DES_SDK`, qui nomme le module ou chacun
+# publie les siens. Un SDK absent du processus n'y construit rien : son absence
+# est RENDUE, jamais tue.
 SDK_DE_STORE: tuple[str, ...] = ("minio", "nebula3", "chromadb")
+
+# Les dependances tierces qui NE PARLENT A AUCUN STORE, donc que la barriere n'a
+# pas a couvrir : extraction et conversion de documents (`docling`,
+# `docling_core`, `fitz`), nettoyage HTML (`bs4`, `readability`, `trafilatura`),
+# calcul de plongements (`sentence_transformers`), orchestration (`dagster`),
+# service HTTP (`fastapi`, `uvicorn`), modeles et configuration (`pydantic`,
+# `pydantic_settings`, `yaml`), et le client HTTP generique (`requests`).
+#
+# **`requests` PORTE LA BORNE DE CETTE CLASSE, et elle s'ecrit ici** : un client
+# HTTP generique PEUT ecrire dans un store par son API REST, sans passer par
+# aucun SDK. Il est classe « pas un store » sur l'usage qu'en fait `src/`
+# aujourd'hui, pas sur une impossibilite. La barriere des constructeurs ne
+# l'atteint pas ; les portes d'ecriture de `src.docling_service` (`PORTES`), qui
+# sont barrees a tous leurs sites, sont la seconde couche qui le couvre.
+PAS_UN_STORE: tuple[str, ...] = (
+    "bs4",
+    "dagster",
+    "docling",
+    "docling_core",
+    "fastapi",
+    "fitz",
+    "pydantic",
+    "pydantic_settings",
+    "readability",
+    "requests",
+    "sentence_transformers",
+    "trafilatura",
+    "uvicorn",
+    "yaml",
+)
+
+# Toute dependance tierce de `src/` est dans l'une des deux, et dans une seule.
+DEPENDANCES_TIERCES_CLASSEES: frozenset[str] = frozenset(SDK_DE_STORE) | frozenset(PAS_UN_STORE)
 
 
 def _classes_hors_exception(module: Any) -> list[str]:

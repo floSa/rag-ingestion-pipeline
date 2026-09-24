@@ -1040,10 +1040,10 @@ def _executer(code, *arguments):
 # CE QUI RESTE DE L'ANCIEN DISPOSITIF, et ce qu'il prouve exactement : les
 # barrieres par SITE, seconde couche, verifiees ci-dessous sur la liste
 # DECLAREE des portes — plus aucune derivation, donc plus aucune phrase
-# d'exhaustivite. Et `SDK_DE_STORE`, qui n'est plus un garde de la derivation
-# mais la liste meme des SDK que la barriere d'execution couvre : un SDK de
-# store de plus dans `src/docling_service` rougit tant qu'il n'y entre pas.
-SDK_DE_STORE = ("minio", "nebula3", "chromadb")
+# d'exhaustivite. Et la CLASSIFICATION des dependances tierces, qui se lit
+# depuis `src/` et jamais d'une copie locale : ce fichier en portait une en dur,
+# donc vider la constante de production ne rougissait rien (mutant `S2` du
+# quatrieme audit). Voir `test_toute_dependance_tierce_de_src_est_classee`.
 
 PARCOURS_DES_SITES = """
 import importlib, json, sys
@@ -1264,22 +1264,66 @@ class TestLEnumerationDesConstructeurs:
             "chromadb",
         }, releve
 
-    def test_sdk_de_store_decrit_les_sdk_reellement_importes(self):
-        """Un SDK de store nouveau ou disparu dans la production doit etre vu."""
-        importe = set()
-        for chemin in sorted((RACINE_DEPOT / "src/docling_service").glob("*.py")):
+    def test_toute_dependance_tierce_de_src_est_classee(self):
+        """CHAQUE module tiers importe par `src/` est classe, et c'est une AUTORISATION.
+
+        **LA POLARITE EST LE GARDE, et c'est la reparation B2 du quatrieme
+        audit.** Ce test portait sa propre copie en dur de `SDK_DE_STORE` et
+        ecrivait `importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE)`, qui vaut
+        `SDK_DE_STORE - importe` parce que `&` lie plus fort que `^`. Il ne
+        pouvait voir qu'un SDK DISPARU. Deux mutants y survivaient : `S1`, un
+        `import boto3` ajoute a `storage.py`, et `S2`, la constante videe.
+
+        Il enumere desormais TOUS les modules tiers de premier niveau importes
+        par `src/` — hors bibliotheque standard, hors `src` — et exige que
+        chacun figure dans une classification IMPORTEE DEPUIS `src/`. Une
+        dependance tierce nouvelle rougit sans que personne ait eu a penser a
+        elle ; une dependance classee qui disparait rougit aussi, pour que la
+        classification ne conserve pas de nom mort.
+        """
+        from src.equivalence_des_identifiants import PAS_UN_STORE, SDK_DE_STORE
+
+        importe: set[str] = set()
+        for chemin in sorted((RACINE_DEPOT / "src").rglob("*.py")):
             arbre = ast.parse(chemin.read_text(encoding="utf-8"))
             for noeud in ast.walk(arbre):
                 if isinstance(noeud, ast.Import):
                     importe |= {alias.name.split(".")[0] for alias in noeud.names}
-                elif isinstance(noeud, ast.ImportFrom) and noeud.module:
+                # `level == 0` : un `from .ngql import` est un import RELATIF,
+                # dont le module n'est pas une dependance tierce.
+                elif isinstance(noeud, ast.ImportFrom) and noeud.level == 0 and noeud.module:
                     importe.add(noeud.module.split(".")[0])
+        tiers = {m for m in importe if m != "src" and m not in sys.stdlib_module_names}
 
-        inconnus = sorted(importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE))
-        assert not inconnus, (
-            f"SDK_DE_STORE ne decrit plus les imports reels : {inconnus}. "
-            "Un SDK de store nouveau ou disparu exige de revoir CONSTRUCTEURS_DES_SDK."
+        classes = set(SDK_DE_STORE) | set(PAS_UN_STORE)
+        non_classees = sorted(tiers - classes)
+        assert not non_classees, (
+            f"dependance(s) tierce(s) de `src/` que la classification ne connait pas : "
+            f"{non_classees}. Chacune doit entrer dans SDK_DE_STORE — et alors dans "
+            "CONSTRUCTEURS_DES_SDK, qui la barre — ou dans PAS_UN_STORE, avec la raison "
+            "ecrite au site. Un nom qu'on ne classe pas est un store qu'on ne barre pas."
         )
+        disparues = sorted(classes - tiers)
+        assert not disparues, (
+            f"la classification garde des noms que `src/` n'importe plus : {disparues}. "
+            "Une classification qui survit a sa dependance ne decrit plus rien."
+        )
+        # Les deux classes sont DISJOINTES : un nom des deux cotes rendrait le
+        # verdict de chaque assertion insensible a l'autre.
+        assert not set(SDK_DE_STORE) & set(PAS_UN_STORE)
+
+    def test_les_sdk_classes_stores_sont_ceux_que_la_barriere_couvre(self):
+        """Classer un SDK « de store » sans le barrer ne garderait rien.
+
+        Le lien entre les deux constantes est fait ICI, et pas laisse a la
+        relecture : chaque nom de `SDK_DE_STORE` doit etre le premier segment
+        d'au moins un chemin de `CONSTRUCTEURS_DES_SDK`, et reciproquement.
+        """
+        from src.equivalence_des_identifiants import CONSTRUCTEURS_DES_SDK, SDK_DE_STORE
+
+        barres = {chemin.split(".")[0] for chemin, _ in CONSTRUCTEURS_DES_SDK}
+
+        assert barres == set(SDK_DE_STORE), (barres, SDK_DE_STORE)
 
 
 class TestLesClientsDeLectureDuHarnais:
