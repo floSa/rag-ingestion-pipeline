@@ -994,6 +994,37 @@ class TestLesTroisGestesDeLAudit:
         assert acheve.returncode == 1, acheve.stdout + acheve.stderr
         assert "hors du repertoire de campagne" in acheve.stdout, acheve.stdout
 
+    def test_comparer_un_instantane_non_inscrit_rend_un_verdict_avant_toute_connexion(self):
+        """Reparation N4 : `EmpreinteInattendueError` rejoint le garde du dossier.
+
+        Elle se levait APRES la connexion au graphe et APRES l'armement des
+        barrieres, et remontait en TRACE D'APPEL. Une trace d'appel n'est pas un
+        verdict — c'est la phrase du second audit, sur un troisieme site.
+
+        Le dossier vise est un enfant DIRECT du repertoire de campagne, donc il
+        franchit le premier garde, et il n'est pas dans `EMPREINTES_ATTENDUES`.
+        Il n'existe pas non plus : c'est voulu, rien n'est ecrit dans le depot
+        par ce test.
+
+        **CE QUI REND LA MESURE NETTE SUR L'HOTE** : `nebula3` n'y est pas
+        installe. Avant la reparation, ce meme geste rendait 1 sur un
+        `ModuleNotFoundError: No module named 'nebula3'` leve par `Graphe` —
+        `mesure` du 24 septembre 2026. Le rc ne distinguait donc pas le refus
+        du harnais d'un plantage a la connexion. L'assertion porte sur le
+        MESSAGE et sur l'absence de trace, pas sur le seul rc.
+        """
+        cible = RACINE_DEPOT / "documentation/campagnes/2099-01-01-instantane-non-inscrit"
+        assert not cible.exists(), "ce test n'ecrit rien dans le depot"
+
+        acheve = self._lancer("comparer", str(cible), cwd=RACINE_DEPOT)
+
+        assert acheve.returncode == 1, acheve.stdout + acheve.stderr
+        assert "n'est pas dans EMPREINTES_ATTENDUES" in acheve.stdout, acheve.stdout
+        assert "Traceback" not in acheve.stderr, acheve.stderr
+        # AVANT TOUTE CONNEXION ET TOUT ARMEMENT : ni l'un ni l'autre n'a imprime.
+        assert "barrieres d'ecriture armees" not in acheve.stdout, acheve.stdout
+        assert "nebula3" not in acheve.stderr, acheve.stderr
+
 
 # ─── En sous-processus : les barrieres, et les deux faux verts de l'audit ───
 

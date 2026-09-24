@@ -77,6 +77,7 @@ from typing import Any
 
 from src.equivalence_des_identifiants import (
     DossierHorsCampagneError,
+    EmpreinteInattendueError,
     LectureSeule,
     Monde,
     SessionEnLecture,
@@ -238,12 +239,24 @@ def main() -> int:
     a_comparer.add_argument("--deplacements-annonces", type=Path, default=None)
     arguments = analyseur.parse_args()
 
-    # LE GARDE EN PREMIER, avant tout armement et toute connexion : un dossier
-    # hors du repertoire de campagne fixe n'est ni fige ni compare. C'est le
-    # geste que le troisieme audit a retourne contre le harnais.
+    # LES DEUX GARDES EN PREMIER, avant tout armement et toute connexion : un
+    # dossier hors du repertoire de campagne fixe n'est ni fige ni compare, et un
+    # instantane qui n'est pas inscrit dans EMPREINTES_ATTENDUES n'est pas
+    # comparable. Le premier est le geste que le troisieme audit a retourne
+    # contre le harnais.
+    #
+    # `EmpreinteInattendueError` REJOINT LE PREMIER, et c'est la reparation N4 du
+    # quatrieme audit : elle se levait plus loin, APRES la connexion au graphe et
+    # APRES l'armement des barrieres, et remontait en trace d'appel. Une trace
+    # d'appel n'est pas un verdict — c'est la phrase du second audit, appliquee
+    # ici a un troisieme site — et refuser apres s'etre connecte, c'est refuser
+    # trop tard. Le code de sortie EST le comportement de ce script.
     try:
         dossier = dossier_de_campagne(arguments.dossier)
-    except DossierHorsCampagneError as exc:
+        # `figer` ECRIT l'instantane : son empreinte ne peut pas etre attendue
+        # avant qu'il existe. Le garde ne porte donc que sur `comparer`.
+        attendue = empreinte_attendue(dossier) if arguments.action == "comparer" else ""
+    except (DossierHorsCampagneError, EmpreinteInattendueError) as exc:
         print(f"ECHEC — {exc}")
         return 1
 
@@ -286,7 +299,6 @@ def main() -> int:
             }
             return figer(monde, dossier, entete, armement.journal)
         instantane = lire_l_instantane(dossier)
-        attendue = empreinte_attendue(dossier)
         declares = lire_les_deplacements_annonces(arguments.deplacements_annonces)
         return comparer(monde, instantane, attendue, declares, armement.journal)
     finally:

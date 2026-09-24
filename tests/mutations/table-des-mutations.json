@@ -280,6 +280,14 @@
       "motif": "            self._journal.append(f\"{self._nom}.{nom}\")",
       "remplacement": "            pass",
       "test": "test_l_enveloppe_ecrit_dans_le_journal_partage"
+    },
+    {
+      "id": "N4",
+      "constat": "le garde de l'empreinte remis APRES la connexion et l'armement : le refus redevient une trace d'appel, et le rc ne distingue plus le refus du harnais d'un plantage a la connexion",
+      "fichier": "scripts/campagne/verifier-l-equivalence-des-identifiants.py",
+      "motif": "        attendue = empreinte_attendue(dossier) if arguments.action == \"comparer\" else \"\"",
+      "remplacement": "        attendue = \"\"",
+      "test": "test_comparer_un_instantane_non_inscrit_rend_un_verdict_avant_toute_connexion"
     }
   ]
 }
