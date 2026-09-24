@@ -44,6 +44,7 @@ from src.equivalence_des_identifiants import (
     PORTES,
     SITE_D_APPEL,
     TEMOIN_MINIO,
+    BarriereDEcritureError,
     Bilan,
     Controle,
     DossierHorsCampagneError,
@@ -1274,13 +1275,30 @@ print(json.dumps(verdict))
 )
 
 
+@contextlib.contextmanager
+def _modules_temporaires(**modules):
+    """Pose des modules factices dans `sys.modules`, et les retire a coup sur.
+
+    Le balayage de `_barrer_le_constructeur` parcourt `sys.modules` : un module
+    factice qu'on y laisserait serait vu par tous les tests suivants.
+    """
+    for nom, module in modules.items():
+        assert nom not in sys.modules, nom
+        sys.modules[nom] = module
+    try:
+        yield
+    finally:
+        for nom in modules:
+            del sys.modules[nom]
+
+
 class TestLaBarriereDescendALaClasse:
     """N3 : les huit chemins qui ne passent par AUCUN nom levent desormais.
 
     Ils portent sur `minio`, et c'est un choix de MESURE : c'est le seul des
     trois SDK installe sur l'hote, donc le seul dont la porte qualite puisse
     rougir sans conteneur. Les trois SDK sont mesures ensemble DANS L'IMAGE, et
-    le releve est au registre (§4.39.b).
+    le releve est au registre (§4.40.f).
     """
 
     def _lancer(self, code):
@@ -1317,6 +1335,47 @@ print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.s
 
         assert releve["classes"] == ["minio.Minio", "minio.MinioAdmin"], releve
         assert releve["sans_classe"] == {}, releve
+
+    def test_le_rebondage_des_noms_relie_les_modules_deja_charges(self):
+        """LA SECONDE COUCHE, mesuree sur ce qu'elle SEULE tient : une FABRIQUE.
+
+        Depuis que la barriere descend a la classe (N3), le rebondage des noms
+        ne tient plus, a lui seul, aucun chemin de `minio` : ses deux
+        constructeurs sont des CLASSES, donc pris par la premiere couche. Ce
+        qu'il tient seul, ce sont les constructeurs qui NE SONT PAS des
+        classes — les 7 fabriques de `chromadb`, absentes de l'hote.
+
+        Ce test les remplace par une fabrique FACTICE, et mesure le geste qui
+        compte : un `from module import fabrique` DEJA execute ailleurs doit
+        etre re-lie. C'est lui que la mutation `A6-b` retire ; sans ce test,
+        elle survivait, et une couche qu'aucune mutation ne tient est une
+        couche dont on ne sait plus si elle garde.
+        """
+        import types
+
+        from src.equivalence_des_identifiants import _barrer_le_constructeur
+
+        def fabrique_de_client(*_a, **_k):  # pragma: no cover - doit etre remplacee
+            raise AssertionError("appelee")
+
+        sdk = types.ModuleType("faux_sdk_de_store")
+        sdk.HttpClient = fabrique_de_client
+        # UN CONSOMMATEUR qui a DEJA fait son `from faux_sdk import HttpClient`,
+        # sous un alias : c'est exactement le cas que le balayage doit prendre.
+        consommateur = types.ModuleType("faux_consommateur")
+        consommateur.client_http = fabrique_de_client
+        journal: list[str] = []
+
+        with _modules_temporaires(faux_sdk_de_store=sdk, faux_consommateur=consommateur):
+            sites = _barrer_le_constructeur(sdk, "HttpClient", "faux_sdk.HttpClient", journal)
+
+            assert "faux_consommateur.client_http" in sites, sites
+            assert sdk.HttpClient is not fabrique_de_client
+            assert consommateur.client_http is not fabrique_de_client
+            for porteur, attribut in ((sdk, "HttpClient"), (consommateur, "client_http")):
+                with pytest.raises(BarriereDEcritureError):
+                    getattr(porteur, attribut)("h")
+        assert journal == ["faux_sdk.HttpClient", "faux_sdk.HttpClient"]
 
     def test_une_fabrique_n_est_pas_prise_par_la_classe_et_la_raison_est_rendue(self):
         """LA BORNE DE LA PREMIERE COUCHE, et c'est le cas de `chromadb`.

@@ -4605,7 +4605,8 @@ du jour** : `find Datas \( -name '*.pdf' -o -name '*.html' \) -newermt
 
 **Porte qualité**, `mesuré` le 24 septembre 2026 : `make all`, rc=0, **1 053
 tests passés** (1 013 sur `f717565`), plus **27 mutations rejouées, 27 rouges**
-(14 sur `f717565`).
+(14 sur `f717565`). **À l'issue de la quatrième reprise (§4.40) : 1 084 tests et
+35 mutations, toutes rouges, rc=0.**
 
 **Les huit comptes des stores, relevés au DÉBUT et à la FIN de la reprise**, en
 lecture seule — `MATCH`/`GO` dans le graphe, `count()` par collection ChromaDB,
@@ -4674,7 +4675,7 @@ processus :
 
 **Et le geste légitime tient dans l'image**, même jour :
 `comparer documentation/campagnes/2026-09-24-instantane-des-identifiants`
-franchit le garde, lit la constante, arme **9 portes sur 11 sites** et **12
+franchit le garde, lit la constante, arme **9 portes sur 11 sites** et **15
 constructeurs de SDK**, interroge le graphe et le corpus par ses clients de
 lecture, puis s'arrête sur `copie nettoyee manquante : /sp/cleaned/…` — la
 campagne les produit, ce lot ne les fabrique pas. **NON VÉRIFIÉ** : la
@@ -4683,6 +4684,16 @@ nettoyées ; ce lot ne touche pas à la logique de comparaison, seulement à la
 résolution du dossier.
 
 #### 4.39.b → TRAITÉ, bloquant — **la barrière descend aux CONSTRUCTEURS des SDK**, et la dérivation AST est RETIRÉE
+
+> **NOTE HISTORIQUE, relevée par le quatrième audit.** Le travail décrit
+> ci-dessous est dans **`3113ead`**, et **non** dans `55b7214`. Les deux commits
+> portent des titres qui ne décrivent pas leur contenu : `3113ead` porte tout le
+> travail de la troisième reprise sous un titre qui n'en annonce qu'un tiers
+> (« l'empreinte attendue cesse de dépendre du dossier qu'on désigne »), et
+> `55b7214` annonce ce qu'il ne contient pas (« la barrière descend aux
+> constructeurs des SDK »). Chercher cette barrière dans `55b7214` ne la trouve
+> pas. Les commits ne se réécrivent pas — c'est la règle du chantier — donc la
+> correction est **ici**, au registre.
 
 **Ce que la dérivation laissait passer**, `mesuré` par l'audit : quatre des cinq
 portes neuves — un alias d'import (`from minio import Minio as _M`), un
@@ -4715,8 +4726,10 @@ une liste en dur se trompe en silence. Une règle par SDK, écrite à son site :
 | `nebula3.gclient.net` | classes publiques en `…Pool`, plus `Connection` | `Connection`, `ConnectionPool` |
 | `nebula3.gclient.net.SessionPool` | idem — `SessionPool` est une classe d'un **sous-module**, que le paquet n'expose pas | `SessionPool` |
 | `chromadb` | **fonctions** publiques en `…Client` (les noms en `Client` qui sont des **classes** sont les interfaces abstraites) | `AdminClient`, `AsyncHttpClient`, `Client`, `CloudClient`, `EphemeralClient`, `HttpClient`, `PersistentClient` |
+| `chromadb.api.client` | **classes** publiques en `…Client` — ajouté par le §4.40.f, parce que les noms de `chromadb` sont des fabriques, sans `__init__` à barrer | `AdminClient`, `Client`, `SharedSystemClient` |
 
-**12 constructeurs barrés** au total. Un SDK absent du processus est **nommé
+**12 constructeurs barrés** au total à la troisième reprise, **15** depuis le
+§4.40.f, `mesuré` dans l'image le 24 septembre 2026. Un SDK absent du processus est **nommé
 absent**, jamais sauté en silence : sur l'hôte, `nebula3` et `chromadb` ne
 s'importent pas, et le relevé le dit.
 
@@ -4752,7 +4765,7 @@ et ils portent leur propre borne, parce qu'ils survivent à la barrière :
   `MATCH`, `GO`, `LOOKUP`, `FETCH`, `SHOW`, `DESCRIBE`, `DESC`, `RETURN`,
   `YIELD`). **Les séparateurs sont les trois de `SEPARATEURS` — `;`, le tube
   `|` et le saut de ligne — et il en manquait DEUX** : c'est le défaut B3 du
-  quatrième audit, traité au §4.39.f. **La borne est écrite au site, et elle
+  quatrième audit, traité au §4.40.c. **La borne est écrite au site, et elle
   est désormais VRAIE** : un séparateur à l'intérieur d'une chaîne citée compte
   pour un séparateur, donc le garde refuse **plus** que nécessaire, jamais
   moins — `mesuré` par un test, et non plus affirmé ;
@@ -4777,10 +4790,13 @@ retirés là-bas. `SEMENCES` disparaît avec eux. `SDK_DE_STORE` **reste**, avec
 rôle changé : il ne garde plus une dérivation, il nomme les SDK que la barrière
 d'exécution couvre, et rougit si la production en importe un autre.
 
-**La borne restante s'écrit ici** : un client construit dans un **sous-processus**,
-ou par une bibliothèque tierce qui parle à un store **hors de ces trois SDK** —
-un client S3 `boto3`, un driver HTTP écrit à la main — n'est pas atteint. La
-barrière tient sur ce qui est importé dans le processus du harnais.
+**La borne restante s'écrit ici**, et elle est RÉDUITE par le §4.40.f : un
+client construit dans un **sous-processus**, ou par une bibliothèque tierce qui
+parle à un store **hors de ces trois SDK** — un client S3 `boto3`, un driver
+HTTP écrit à la main — n'est pas atteint. La barrière tient sur ce qui est
+importé dans le processus du harnais. **Ce qui n'est plus une borne** : les
+chemins de construction qui ne passent par aucun nom, que le seul rebondage
+laissait passer ; voir le §4.40.f.
 
 #### 4.39.c → TRAITÉ — **le rejeu ne touche plus JAMAIS l'arbre de travail**, et son verdict distingue un rouge d'un fichier cassé
 
@@ -4895,6 +4911,217 @@ surtout des mutations dont le test **lance des sous-processus** — `A6-a` et
 `A6-b` rejouent chacune les sept portes neuves dans sept processus neufs, soit
 2,0 s pièce. C'est le coût d'une preuve à l'exécution ; la mesurer par lecture du
 code coûtait moins et ne prouvait pas.
+
+**À la quatrième reprise (§4.40), la table passe de 27 à 35 mutations.** Le
+chiffre ci-dessus est donc périmé, et **le remesurer au niveau de `make` n'aurait
+rien valu** : l'hôte portait ce jour-là une charge qui faisait varier `make all`
+de **68,4 s** à **105,5 s** d'une exécution à la suivante. **La mesure est donc
+prise là où elle est isolée** — le rejeu se chronomètre lui-même et imprime sa
+durée. `mesuré` le 24 septembre 2026, trois exécutions consécutives de
+`make mutations` : **19,3 s**, **17,3 s**, **19,3 s** pour **35** mutations,
+toutes rouges. C'est **ce que le rejeu ajoute à la porte**, et c'est le seul
+chiffre de ce paragraphe qui se compare d'une reprise à l'autre.
+
+
+### 4.40 → la QUATRIÈME reprise du lot 11 — trois bloquants fermés, cinq non bloquants traités
+
+Le quatrième audit confirme l'essentiel du §4.39 et nomme **trois** corrections
+bloquantes et **cinq** non bloquantes. Toutes sont traitées ci-dessous. Les huit
+comptes des stores, l'empreinte de l'instantané et les `mtime` du corpus sont
+relevés au §4.39 (début) et ici (fin) : **rien n'a bougé**.
+
+#### 4.40.a → BLOQUANT, TRAITÉ — la sonde des `mtime` surveillait les `.pyc`
+
+Traité, et le détail est écrit au §4.39.c, qui porte la sonde : `rglob("*")` sans
+exclusion surveillait **162** fichiers dont **78** `.pyc`, que l'interpréteur
+réécrit de lui-même. `mesuré` par l'audit : un `python -c "import
+src.index_report"` lancé depuis l'arbre **pendant** `make mutations` faisait
+rendre **2** à `make`. `__pycache__` est exclu ; le compte tombe à **84**.
+
+#### 4.40.b → BLOQUANT, TRAITÉ — le garde des SDK passe de l'INTERDICTION à l'AUTORISATION
+
+**Le défaut, et il est de PRIORITÉ D'OPÉRATEURS.**
+`importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE)` vaut `SDK_DE_STORE - importe`,
+parce que `&` lie plus fort que `^`. Le garde ne pouvait donc voir qu'un SDK
+**disparu**, jamais un SDK **neuf**. La constante de `src/` n'était lue par aucun
+site et le test en portait sa propre copie en dur. Deux mutants y survivaient,
+`mesurés` par l'audit : **S1**, un `import boto3` ajouté à `storage.py`, et
+**S2**, la constante vidée.
+
+**La réparation est la POLARITÉ.** Une liste d'interdictions ne dit rien de ce
+qu'elle ne connaît pas — et c'est exactement ce qu'on lui demande de voir.
+`src/equivalence_des_identifiants.py` publie désormais **deux classes** :
+`SDK_DE_STORE` (couverts par la barrière des constructeurs) et `PAS_UN_STORE`
+(**14** dépendances, chacune avec sa raison au site). Le test énumère par l'AST
+**tous** les modules tiers de premier niveau importés par `src/` — hors
+bibliothèque standard, hors `src` — et exige que chacun soit classé, **dans les
+deux sens**. `mesuré` le 24 septembre 2026 : **17** dépendances tierces, 3 + 14.
+
+**`requests` porte la borne de la classe `PAS_UN_STORE`, écrite au site** : un
+client HTTP générique **peut** écrire dans un store par son API REST, sans
+passer par aucun SDK. Il est classé sur l'usage qu'en fait `src/` aujourd'hui,
+pas sur une impossibilité. Ce sont les portes de `src.docling_service` qui le
+couvrent, en seconde couche.
+
+**Les trois mutants, rc du processus, `mesuré` le 24 septembre 2026 :**
+
+| mutant | sur `55b7214` | ici |
+|---|---|---|
+| `S1` — `import boto3` ajouté à `storage.py` | **SURVIT** (`1 passed`) | **ROUGE** |
+| `S2` — la classification vidée | **SURVIT** (`1 passed`) | **ROUGE** |
+| `S3` — un SDK **déclaré** que `src/` n'importe pas | (le cas n'existait pas) | **ROUGE** |
+
+#### 4.40.c → BLOQUANT, TRAITÉ — la session de lecture laissait passer les écritures composées
+
+**Le défaut.** `SessionEnLecture.execute` ne découpait la requête que sur `;`.
+nGQL compose aussi par le **tube** `|`, qui passe le résultat d'une lecture à une
+**écriture**, et par le simple **saut de ligne**. `mesuré` sur une session
+factice, 24 septembre 2026 : **12 formes** passaient, dont
+`GO … | DELETE VERTEX $-.d`, `SHOW SPACES | DROP SPACE $-.Name` et
+`YIELD "x" AS d | DELETE VERTEX $-.d`. L'audit en avait nommé 8 ; les deux formes
+par **saut de ligne** ont été mesurées ici, et ce sont elles qui mettent le saut
+de ligne parmi les séparateurs. **Le commentaire du site affirmait que le garde
+« refuserait plus, JAMAIS moins » : il refusait moins.**
+
+**La réparation.** Les trois séparateurs sont une constante, `SEPARATEURS`, et le
+test paramétré reçoit les **12** formes. **Jamais aucune n'a été envoyée à un
+vrai Nebula** : elles tournent toutes contre une session factice.
+
+**La borne est désormais MESURÉE, et non affirmée** : un séparateur à l'intérieur
+d'une chaîne citée compte pour un séparateur, donc
+`MATCH (d:Document) WHERE d.Document.source_path == "a|b" RETURN d;` — qui ne
+fait que **lire** — est refusée. C'est le sens acceptable. L'autre sens tient par
+un argument, écrit au site : découper ne fait qu'**ajouter** des fragments, donc
+des exigences, et le premier fragment commence toujours à la position 0.
+
+**Les requêtes réelles du harnais passent toujours**, et le test ne les recopie
+plus à la main : il les **forme** avec les mêmes constantes et les mêmes
+f-strings que `Graphe.__init__`, `Graphe.documents` et `Graphe.ids`, sur les
+**23** `element_id` de l'instantané versionné. `mesuré` le 24 septembre 2026 :
+aucun des 23 identifiants ne porte de séparateur.
+
+#### 4.40.d → NON BLOQUANT, TRAITÉ — `format` et `format-check` voient `scripts/`
+
+**C'est le défaut D7, une troisième fois.** `lint` et `typecheck` avaient pris
+`scripts/` au point 4a ; ces deux cibles étaient restées à `src/ tests/`.
+`mesuré` le 24 septembre 2026, **rc du processus** et non derrière un tube, sur
+un `scripts/` portant un fichier mal formé : `ruff format --check src/ tests/`
+rend **0**, la même commande avec `scripts/` rend **1**, et `make format-check`
+rend **2** là où il rendait **0**. Sur l'arbre propre : **84** fichiers déjà
+formatés, rc=0.
+
+#### 4.40.e → NON BLOQUANT, TRAITÉ — `LectureSeule` écrit dans le journal que quelqu'un lit
+
+`LectureSeule` tenait son **propre** `self._journal`, que personne ne lisait,
+quand `SessionEnLecture` écrivait déjà dans le journal **partagé**. Une écriture
+MinIO refusée par l'enveloppe, puis **avalée** par la production, ne devenait
+donc aucun rouge — alors que `figer` et `comparer` rougissent sur le journal
+d'armement. L'enveloppe le reçoit à la construction. Le mutant `N1` de l'audit —
+le retrait de l'`append` — rougit désormais son test (entrée `N2` de la table).
+
+#### 4.40.f → NON BLOQUANT, TRAITÉ — la barrière descend à la CLASSE
+
+**Ce que le rebondage des NOMS laissait passer.** `mesuré` le 24 septembre 2026
+sur `minio`, hors conteneur, **10 chemins de construction** :
+
+| # | chemin | sur `55b7214` | ici |
+|---|---|---|---|
+| 1 | nom direct `Minio(…)` | LÈVE | **LÈVE** |
+| 2 | sous-classe de `Minio` | **ÉCHAPPE** | **LÈVE** |
+| 3 | dictionnaire rempli avant l'armement | **ÉCHAPPE** | **LÈVE** |
+| 4 | attribut de classe | **ÉCHAPPE** | **LÈVE** |
+| 5 | argument par défaut | **ÉCHAPPE** | **LÈVE** |
+| 6 | fermeture capturée avant l'armement | **ÉCHAPPE** | **LÈVE** |
+| 7 | `partial` capturé avant l'armement | **ÉCHAPPE** | **LÈVE** |
+| 8 | `type(client)(…)` | **ÉCHAPPE** | **LÈVE** |
+| 9 | `client.__class__(…)` | **ÉCHAPPE** | **LÈVE** |
+| 10 | import à neuf après l'armement | LÈVE | **LÈVE** |
+
+**8 sur 10 échappaient** — l'audit en nommait 7, en comptant la fermeture et le
+`partial` ensemble. **Tous les huit passent par la CLASSE, aucun par le nom** :
+c'est pourquoi la barrière y descend, en posant la levée sur son `__init__`.
+Le rebondage des noms **reste**, en seconde couche.
+
+**Les clients de LECTURE survivent, et c'est le contrôle négatif** : ils sont
+construits **avant** l'armement, donc leur `__init__` a déjà tourné ; une levée
+posée sur `__init__` n'empêche que les constructions **à venir**.
+
+**`mesuré` DANS L'IMAGE**, 24 septembre 2026, les trois SDK ensemble :
+
+- **15** constructeurs barrés (12 avant), dont **8 classes** dont l'`__init__`
+  lève : `minio` 2, `nebula3` 3, `chromadb.api.client` 3 ;
+- les **10** chemins lèvent, et `chromadb.HttpClient` comme
+  `chromadb.api.client.Client` lèvent tous deux ;
+- les clients de lecture **lisent encore** : **212** objets MinIO listés et
+  **23** `Document` lus, après l'armement ;
+- **aucun pool `nebula3` n'a eu à reconstruire de connexion** en cours de route,
+  ni pendant cette mesure ni pendant la comparaison complète.
+
+**`chromadb` a demandé un choix, et il est mesuré.** Ses noms publics sont des
+**fabriques** — des fonctions, sans `__init__` à barrer. Les classes concrètes
+qu'elles construisent vivent dans `chromadb.api.client`, et la barrière y
+descend par une règle **étroite** : le suffixe `Client`, soit **3 classes sur 20
+noms publics** (chromadb 0.6.3). `_classes_hors_exception` y prendrait
+`Collection`, `Settings` et `System` — ce dont la **lecture** a besoin — et
+casserait le harnais au lieu de le garder. **La borne s'écrit ici** : les **7**
+fabriques de `chromadb` restent tenues par le seul rebondage des noms, et la
+raison est **RENDUE** dans `ArmementDesSdk.sans_classe`, imprimée par le script,
+plutôt que tue.
+
+#### 4.40.g → NON BLOQUANT, TRAITÉ — un instantané non inscrit est refusé AVANT la connexion
+
+`EmpreinteInattendueError` se levait **après** la connexion au graphe et
+**après** l'armement des barrières, et remontait en **trace d'appel**. Elle
+rejoint le garde du répertoire de campagne, en tête de `main()`, comme
+`FileExistsError` rend déjà un verdict propre à `figer`. `figer` n'y est pas
+soumis : son instantané n'existe pas encore, donc son empreinte ne peut pas être
+attendue.
+
+`mesuré` le 24 septembre 2026 sur l'hôte, `comparer` d'un dossier non inscrit :
+avant, **rc=1** sur un `ModuleNotFoundError: No module named 'nebula3'` levé par
+`Graphe` — **le rc ne distinguait pas le refus du harnais d'un plantage à la
+connexion** ; après, **rc=1**, le message du refus, aucune trace, et ni la
+connexion ni l'armement n'ont eu lieu.
+
+#### 4.40.h → NON BLOQUANT, TRAITÉ — les quatre bornes que le registre devait écrire
+
+**1. Les deux enveloppes protègent de l'accident, pas de l'intention.**
+`LectureSeule` laisse `._client` atteignable et `SessionEnLecture` laisse
+`._session` atteignable ; l'un et l'autre rendent l'objet **nu**, sur lequel
+toute méthode et toute requête passent. Un nom préfixé d'un souligné est une
+**convention, pas une serrure**. C'est acceptable contre une écriture
+**accidentelle**, et ça ne vaut rien contre une écriture **délibérée** : ce sont
+la barrière des constructeurs et celle des portes qui tiennent devant un
+appelant décidé. **La borne est écrite aux deux docstrings**, et ici.
+
+**2. La liste des bornes, après le §4.40.f.** Ce qui reste hors de portée de la
+barrière : un client construit dans un **sous-processus** ; une bibliothèque
+tierce qui parle à un store **hors des trois SDK** (un `boto3`, un driver HTTP
+écrit à la main — et c'est la raison pour laquelle `requests` est classé au
+§4.40.b avec sa borne) ; et les **7 fabriques `chromadb`**, tenues par le seul
+rebondage des noms. **Ce qui n'en est plus une** : les huit chemins de
+construction qui ne passent par aucun nom.
+
+**3. `figer` écrit sous n'importe quel nom à l'intérieur du répertoire de
+campagne.** `dossier_de_campagne` ne contrôle qu'une chose : que le dossier soit
+un **enfant direct** de `documentation/campagnes`. Le **nom** est libre, et
+`figer` y écrira. Ce n'est **pas** `figer` qui rattrape, c'est `comparer` : il
+exige que le nom figure dans `EMPREINTES_ATTENDUES`, une **constante de `src/`**,
+donc un **commit revu comme du code**. Un instantané frauduleusement figé sous un
+nom neuf n'est comparable par personne — `mesuré` au §4.40.g, rc=1. La borne
+utile s'écrit donc ainsi : **le répertoire de campagne n'est pas en écriture
+seule ; c'est la constante qui authentifie, pas l'emplacement.**
+
+**4. Une copie jetable abandonnée par un `SIGKILL` reste dans `/tmp`.** Le rejeu
+des mutations travaille sur une copie jetable dans le répertoire temporaire du
+système, retirée à la sortie normale. Après un `SIGKILL`, **elle survit** — et
+elle porte alors une **source mutée**, celle de la mutation en cours. Elle est
+**hors de tout montage** : aucun conteneur ne la voit, et elle ne partage aucun
+fichier avec l'arbre de travail, donc elle ne peut ni être ingérée ni être prise
+pour l'origine au lancement suivant — c'était le défaut de la version d'avant le
+§4.39.c, qui mutait en place. **Ce qu'elle coûte** : de l'espace disque jusqu'au
+prochain nettoyage de `/tmp`, et un fichier de code muté lisible par qui lit
+`/tmp`. Ce n'est pas rattrapé, et c'est **accepté** ici plutôt que tu.
 
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir

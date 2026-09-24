@@ -145,16 +145,16 @@
       "constat": "la barriere des SDK n'etait pas armee du tout",
       "fichier": "src/equivalence_des_identifiants.py",
       "motif": "    sdk = barrer_les_sdk_de_store(journal)",
-      "remplacement": "    sdk = ArmementDesSdk(barres={}, sites={}, absents={})",
+      "remplacement": "    sdk = ArmementDesSdk(barres={}, sites={}, absents={}, classes=[], sans_classe={})",
       "test": "test_une_porte_neuve_leve_quel_que_soit_son_chemin"
     },
     {
       "id": "A6-b",
-      "constat": "la barriere ne re-liait pas les modules DEJA charges : un alias survivait",
+      "constat": "la seconde couche ne re-liait plus les modules DEJA charges : un `from module import fabrique` deja execute survivait. Depuis que la barriere descend a la classe, c'est ce que cette couche tient SEULE — les constructeurs qui ne sont pas des classes, comme les 7 fabriques de chromadb",
       "fichier": "src/equivalence_des_identifiants.py",
       "motif": "            if valeur is original:",
       "remplacement": "            if False:",
-      "test": "test_une_porte_neuve_leve_quel_que_soit_son_chemin"
+      "test": "test_le_rebondage_des_noms_relie_les_modules_deja_charges"
     },
     {
       "id": "A6-d",
