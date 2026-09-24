@@ -3720,7 +3720,7 @@ cette réparation portent chacun leur table, chiffrée et rejouable, `rc` compri
 c'est un échantillon de ce que la pratique coûterait, pas son adoption.)*
 
 
-### 4.36 → CONSIGNÉ par le lot 11, **CORRIGÉ par sa reprise** — quatre mesures, **aucune correction** ; la réparation des `ListItem` vides est **SUSPENDUE**
+### 4.36 → CONSIGNÉ par le lot 11, **CORRIGÉ par sa reprise** — quatre mesures, **aucune correction** ; la réparation des `ListItem` vides est **ÉCARTÉE** (option (a), 24 septembre 2026, §4.37.h)
 
 Quatre constats, mesurés le 23 septembre 2026. **Aucun n'entre au diff** : ce
 sont des mesures sans correction. Le compte est `calculé`, `grep -c '^#### 4.36'`
@@ -3735,7 +3735,8 @@ pouvait pas dire non après la campagne. Sa réécriture est consignée au **§4
 le pilote puis remesuré sur tout le corpus au §4.37.g) : les `ListItem` vides ne
 **perdent** pas de texte, ils le **fragmentent**. Chaque fragment est déjà un
 élément du graphe. Les `b`, `c` et `d` ci-dessous sont corrigés en ce sens, et la
-décision de réparer revient au propriétaire sur les chiffres du §4.37.h.
+décision de réparer revenait au propriétaire sur les chiffres du §4.37.h : il a
+tranché le 24 septembre 2026 pour l'**option (a)**, et la réparation sort du plan.
 
 #### 4.36.a → MESURÉ, NON TRAITÉ — **trois ancrages du jeu de questions sur 44** portent sur un sommet à `text` vide
 
@@ -3884,7 +3885,7 @@ propriété testable est la plus faible des deux, et c'est celle du mandat : *un
 que le graphe porte déjà. Elle n'est pas écrite non plus ici ; sa forme dépend de
 l'option retenue au §4.37.h.
 
-### 4.37 → la REPRISE du lot 11 — le harnais sait dire non (**a** à **f** TRAITÉS), et la décision des puces vides a ses chiffres (**g**, **h** : mesures, AUCUNE correction)
+### 4.37 → la REPRISE du lot 11 — le harnais sait dire non (**a** à **f** TRAITÉS), et la décision des puces vides est **PRISE** sur ses chiffres (**g**, **h** ; deux libellés rectifiés par le §4.38.e)
 
 L'audit du lot 11 a déclaré la branche **non fusionnable** sur deux bloquants,
 tous deux confirmés par le pilote en lisant le code. Cette reprise les traite
@@ -4153,7 +4154,7 @@ ceux de ChromaDB, **4 367 sur 4 367, identifiant ET texte**.
 | … dont **TOUS** les descendants porteurs de texte sont déjà émis | **202 sur 202** | descendant = tout item atteint par `children`, puces imbriquées comprises (la définition de l'audit) ; porteur = `.text` non vide après `strip()` ; émis = son `self_ref` est celui d'un élément passé à `persist` |
 | … dont au moins un descendant porteur **non** émis | **0** | |
 | … sans aucun descendant porteur | **0** | aucune puce n'est vraiment vide |
-| … avec une puce imbriquée parmi leurs descendants | **14** | |
+| … avec une puce imbriquée **qui porte du texte** parmi leurs descendants | **14** | le libellé disait « avec une puce imbriquée » ; ce qui est compté exige que la puce imbriquée porte du texte. **21** puces ont une puce imbriquée parmi leurs descendants, porteuse ou non — `mesuré` le 24 septembre 2026, relecture du second audit (§4.38.e) |
 | fragments | **727** : 546 `text`, 181 `code`, tous émis | descendants porteurs **sans entrer dans une puce imbriquée** — ce qu'une réparation agrégerait |
 | caractères des fragments | **31 064** | somme de `len(item_text(fragment))` ; l'agrégat joint par des espaces en fait 31 589 |
 
@@ -4167,7 +4168,7 @@ sur les fragments d'au moins 4 caractères.
 | compte | valeur | définition |
 |---|---|---|
 | C1 — puces vides portant au moins un chunk ancré sur elles | **84 sur 202**, 102 chunks | `block_size` de ces chunks : 1 → 46, 2 → 24, 3 → 13, 4 → 7, 5 → 5, 6 → 2, 7 → 4, 8 → 1 |
-| C2 — parmi C1, puces dont les chunks contiennent le texte de **tous** leurs fragments | **78 sur 84** | les 6 autres : une puce longue que le découpeur coupe, sa première phrase partant dans un chunk ancré sur un élément **précédent** |
+| C2 — parmi C1, puces dont les chunks contiennent le texte de tous leurs **descendants porteurs** | **78 sur 84** | le libellé disait « de tous leurs fragments » ; le compte porte sur les **descendants porteurs**, puces imbriquées comprises, et non sur les « fragments » au sens du §4.37.g, qui s'arrêtent à la puce imbriquée. Compté sur les fragments, il vaut **79 sur 84** — `mesuré` le 24 septembre 2026, relecture du second audit (§4.38.e). Les 6 autres (5 dans la lecture par fragments) : une puce longue que le découpeur coupe, sa première phrase partant dans un chunk ancré sur un élément **précédent** |
 | C3 — fragments portant un chunk ancré sur **eux** | **3 sur 727** | `(optional)`, `)`, `Chapter 9` : un chunk qui commence au milieu d'une puce |
 | C4 — fragments dont le texte est **à la fois** dans leur propre chunk et dans un chunk de leur puce | **0** | **la duplication, dans ChromaDB : nulle** |
 | puces vides **sans** chunk à elles | **118** | leur texte est dans un chunk ancré sur un **autre** élément (`block_size > 1`) — **118 sur 118** ; absent de ChromaDB : **0** |
@@ -4187,11 +4188,27 @@ rapport du lot 11 est fausse. `mesuré` le même jour, `SHOW TAG INDEXES` rend
 `IndexNotFound`, là où le même filtre passe sur `Document`. D'où le filtrage en
 Python de ces sondes, comme au §4.27.
 
-#### 4.37.h → MESURÉ, lecture seule — **six options pour les puces vides**, leur coût sur les 23 documents, **sans recommandation**
+#### 4.37.h → **TRANCHÉ le 24 septembre 2026 : option (a), on ne touche pas aux puces vides.** Les six options et leur coût sur les 23 documents
 
-**La décision de réparer est SUSPENDUE** : sa prémisse, du contenu perdu, était
-fausse (§4.36.b corrigé, §4.37.g). Le pilote la refait trancher par le
-propriétaire. Ce paragraphe donne les coûts, et ne choisit pas.
+**LA DÉCISION.** Le 24 septembre 2026, le propriétaire a retenu **l'option (a) :
+on ne touche pas aux puces vides.** La réparation **sort du plan**. Sa prémisse,
+du contenu perdu, était fausse (§4.36.b corrigé, §4.37.g) ; le tableau ci-dessous
+reste, comme **coût chiffré de ce qui a été écarté**.
+
+**Les raisons, chacune citée pour ce qu'elle est.**
+
+- le texte des puces **arrive déjà au prompt** par les fragments frères —
+  `mesuré` côté `rag-agent-chat` (leur registre §4.67.b, commits `b59b2ad` et
+  `26c8bf4`) : **20 mots sur 22** pour `1adfce548d`, **55 sur 63** pour
+  `842a8884da`. Leurs deux questions dites « perdues » ne l'étaient donc pas :
+  leur banc cherchait l'**identifiant** et non le **texte** ;
+- **(f) les casse**, parce que `_get_children` ne lit **qu'un niveau** —
+  `lu` dans `rag-agent-chat`, `graph_context.py:633` (leur §4.71) ;
+- **(e)** met le texte **deux fois** au prompt ;
+- **(b)**, **(c)** et **(d)** coûtent des ancrages ou dupliquent — colonnes du
+  tableau.
+
+Ce paragraphe donne les coûts ; il ne choisit plus, le choix est fait.
 
 **Comment chaque option est simulée**, `mesuré` le 24 septembre 2026 : dans le
 processus de la sonde du §4.37.g, par remplacement **en mémoire** —
@@ -4242,10 +4259,31 @@ puce porte l'agrégat. *Ancrage touché* : ancrage déplacé **ou** réassigné 
 en tient (`rag-agent-chat/tests/fixtures/jeu_de_questions_pipeline.yaml`) porte
 **exactement les mêmes 44** ; le jeu de l'agent est
 `rag-agent-chat/tests/fixtures/golden_qa_generated.yaml`, 130 `gold_element_ids`
-distincts, tous présents dans l'instantané, lu depuis ce poste. *Chunk
+distincts, lu depuis ce poste. **CE QUE « 130 SUR 130 PRÉSENTS DANS L'INSTANTANÉ »
+NE CORROBORE PAS**, et il faut l'écrire : ces 130 ancrages sont **dérivés de
+ChromaDB** par `scripts/generate_golden.py` — c'est le jeu **SILVER**, `reviewed:
+false`. Ils viennent donc de la même émission que l'instantané ; les y
+retrouver tous est une **tautologie**, pas une vérification. Leur recouvrement
+avec nos 44 est de **2**. Pour mémoire, le pilote de l'agent compte **172**
+ancrages distincts sur ses **deux** jeux — chaque compte est cité ici avec sa
+définition, et les trois ne se comparent pas terme à terme. *Chunk
 ré-ancré* : chunk de l'option a dont l'identifiant (`<ancre>#<rang>`) n'existe
 plus. *Textes inchangés* : les textes des chunks, triés, sont égaux à ceux de
 l'option a.
+
+**CE QUE L'AUDIT A MESURÉ EN PLUS — HISTORIQUE**, consigné parce que le coût
+écarté doit rester lisible, et non parce qu'il reste à décider. `mesuré` par le
+second audit du lot 11, 24 septembre 2026 :
+
+| option | déplacements **à identifiant constant** (champs hors `compute_id`) |
+|---|---|
+| **(c)** | 227 `reference_id`, 227 `ref_position`, 12 `label`, 2 `text` |
+| **(d)** | 485 `reference_id`, 485 `ref_position`, 4 `depth`, 7 `label`, 3 `text` |
+| **(e)** | **202 identifiants non redérivables de leur `text`**, sur **18**
+documents. Le compteur qui le verrait, `id emis != formule` de
+`_verifier_l_emission`, est **imprimé sans jamais rougir** : c'est une trace, pas
+un garde. NON TRAITÉ — l'option (e) étant écartée, le compteur reste tel quel, et
+le dire ici vaut mieux que le corriger sans besoin |
 
 **Trois lectures que le tableau porte, et qui ne sont pas des recommandations.**
 
@@ -4260,9 +4298,275 @@ l'option a.
   différents. **NON VÉRIFIÉ** : la cause — sans doute des chunks dont la seule
   référence connue était la puce, écartés par `resolve_anchors`.
 
+**CE QUE L'AGENT MESURE CHEZ LUI**, cité comme tel et `mesuré` **par eux** : leurs
+fenêtres comptent **46 places sur 1 751** occupées par des éléments **vides** —
+**20 `code` vides**, qui rendent un bloc vide et un marqueur `[src:…]` qui ne cite
+rien, et **26 puces vides**. Ils le **répareront chez eux**, en filtrant avant le
+fenêtrage. Rien à faire de ce côté-ci : c'est la conséquence directe de l'option
+(a), et elle se traite là où elle coûte.
+
 **NON VÉRIFIÉ, pour toutes les options** : l'effet sur les réponses de l'agent.
 Aucune campagne d'évaluation n'a tourné sur une option simulée ; les colonnes
 disent ce que les stores porteraient, pas ce que l'agent en ferait.
+
+### 4.38 → la SECONDE reprise du lot 11 — le faux vert **bloquant** est fermé (**a** à **f** TRAITÉS), et l'émiettement est **COMPTÉ** (**g** : mesure, AUCUNE correction)
+
+Le second audit a déclaré le lot **non fusionnable** pour **un seul** motif
+bloquant, le **a** ci-dessous. Les deux faux verts du premier audit rougissent
+toujours, l'ensemble déclaré tient dans ses quatre cas, l'instantané a été
+vérifié indépendamment contre le graphe document par document, et aucun client
+MinIO réel n'est construit : rien de cela n'a bougé.
+
+**L'instantané n'a pas bougé non plus.**
+`documentation/campagnes/2026-09-24-instantane-des-identifiants/` garde son
+empreinte `e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d`,
+octet pour octet — `mesuré` au début et à la fin de ce lot par
+`sha256sum .../MANIFESTE.tsv`.
+
+**Porte qualité**, `mesuré` le 24 septembre 2026 : `make all`, rc=0, **1 013
+tests passés** (982 sur `3625816`), plus **14 mutations rejouées, 14 rouges**.
+
+#### 4.38.a → TRAITÉ, et c'est ce qui bloquait la fusion — **la couverture ne se compare plus que dans un sens**
+
+`_ecarts_de_couverture` ne comparait chaque paire que dans **un** sens (`a − b`
+pour `a < b` en ordre alphabétique) : `instantane − corpus`, `instantane −
+graphe` et `graphe − corpus` n'étaient **jamais** calculés. Puis `comparer`
+faisait `if partition_key not in fige or partition_key not in corpus: continue`.
+
+**Le faux vert, `mesuré` sur `3625816`** le 24 septembre 2026
+(`uv run python` sur le monde factice des tests, rc du processus) :
+
+| monde | rc sur `3625816` | rc après réparation |
+|---|---|---|
+| `/corpus` **VIDE**, instantané à 1 document | **0**, et `OK` — **aucun identifiant comparé** | **1** |
+| instantané à 2 documents, corpus à **1** | **0**, et `OK` | **1** |
+| graphe **vide**, corpus intact | 1 — déjà rouge par le sens `corpus − graphe` | 1 |
+
+Le corpus arrive par un **montage**, et ce dépôt a déjà connu une purge qui
+emportait 24 fichiers sur 25 (§4.34) : un montage vide ou amputé rendait donc
+`OK`.
+
+**Ce qui a été fait.** Les paires sont comparées **dans les deux sens**, comme la
+docstring le promettait. Tout document de l'instantané qui n'a **pas** été
+comparé est une **raison**, jamais un `continue` muet. La sortie porte
+`DOCUMENTS COMPARES n / n de l'instantane`, et rougit s'ils diffèrent. Cinq
+tests, dont **trois rouges d'abord** sur `3625816` — le troisième monde ci-dessus
+était déjà rouge, son test est gardé contre un retour en arrière.
+
+**Un garde qu'un autre garde couvre n'est pas tenu** : la raison
+« n'ont PAS été comparés » **survivait** à son propre retrait, l'écart de
+couverture rougissant déjà. Le test l'exige désormais **nommément** (mutation
+`A1-b` de la table du §4.38.f).
+
+#### 4.38.b → TRAITÉ — le garde « un journal de barrières non vide est un rouge » est tenu **des deux côtés**
+
+Le garde existait dans `comparer`, mais **aucun test ne le tenait** : `mesuré`
+par l'audit, son retrait dans `comparer` **seul** laissait 55 tests verts. Le
+pendant de `test_une_barriere_touchee_est_rouge_meme_avalee`, côté `comparer`,
+est écrit ; sous la mutation, il est le **seul** à rougir.
+
+#### 4.38.c → TRAITÉ — **l'empreinte de l'instantané devient une MESURE**, et `FileExistsError` devient un rc=1
+
+**Rien n'interdisait de re-tautologiser le harnais.** `mesuré` par l'audit :
+`figer` dans un dossier **neuf** après la campagne rend rc=0, puis `comparer`
+contre ce nouvel instantané rend rc=0 aussi — le harnais comparait de nouveau le
+code du jour à lui-même, le défaut même qui lui a donné sa forme (§4.37).
+
+**Le site choisi, et pourquoi.**
+`documentation/campagnes/empreintes-des-instantanes.tsv`, le **parent** du
+dossier de l'instantané. Hors du dossier, et ce n'est pas un rangement : un
+second instantané porte son **propre** manifeste, donc sa propre empreinte, et
+une empreinte rangée à l'intérieur **se re-signerait elle-même**. Le parent est
+versionné, revu au commit, et **monté avec** l'instantané
+(`documentation/campagnes` → `/campagnes`), donc lisible dans le conteneur sans
+montage de plus. Un dossier **absent** de la table est **refusé**, pas toléré :
+c'est exactement le cas du second instantané qu'on viendrait d'écrire.
+
+`comparer` rougit si l'empreinte diffère de celle qu'attend la table. Et
+`figer` dans le **même** dossier rend désormais un **rc=1 avec un message**, là
+où `FileExistsError` remontait nue — une trace d'appel n'est pas un verdict,
+dans un script dont le code de sortie **est** le comportement.
+
+#### 4.38.d → TRAITÉ — les origines des barrières sont **DÉRIVÉES du code**, à la place d'une seconde liste en dur
+
+Le balayage des origines était borné à `MODULES = (nebula, vectors, storage,
+images)`, une seconde liste en dur, non défendue. `mesuré` par l'audit : une
+porte écrivante neuve déposée dans `extraction.py` **passait**, rc=0, 5 tests
+verts.
+
+**La dérivation.** Le test part de trois **semences** — les constructeurs de
+client de store, `Minio`, `ConnectionPool`, `HttpClient` — et calcule par
+**point fixe**, sur le texte de **tout** `src/docling_service/*.py`, l'ensemble
+des fonctions qui **construisent ou reçoivent** un client : une fonction qui en
+appelle une autre déjà porteuse l'est à son tour. Elle rend **22 porteurs**, là
+où l'ancienne liste en balayait quatre modules.
+
+Chacun des 22 est ensuite **barré**, ou **classé** avec sa raison, sans
+quatrième cas : 8 portes plus le témoin MinIO ; 9 `NON_ECRIVAINS` — les chemins
+de production que le harnais **appelle** et qui n'atteignent les stores que par
+une porte barrée ; 4 `HORS_PROCESSUS`, les points d'entrée FastAPI de `main`,
+dont le module ne s'importe pas sur l'hôte et dont un test **mesure** qu'ils ne
+sont pas chargés dans le processus du harnais. Ils ne sont **pas sautés en
+silence** : les omettre rougit.
+
+**Deux gardes de plus, contre les pièges de la mesure.** Une semence qui ne sème
+rien laisserait la dérivation vide et muette : le test exige que chaque semence
+construise réellement un client — il a d'ailleurs rougi sur `PersistentClient`,
+retiré depuis. Et une semence protège d'une porte neuve, non d'un **client**
+neuf : un second test fige les SDK de store importés (`minio`, `nebula3`,
+`chromadb`), de sorte que passer à une autre classe de client rougisse au lieu
+d'aveugler la dérivation.
+
+**Le rouge montré** : la porte neuve déposée dans `extraction.py` (mutation `A4`)
+rend `des porteurs de client de store ne sont ni barrés ni classés :
+['src.docling_service.extraction.archiver_le_document']`. `src/docling_service/`
+n'est **pas** modifié par ce lot : la mutation est appliquée puis restaurée, et
+le rejeu le vérifie par `git diff`.
+
+#### 4.38.e → TRAITÉ — **sept garanties écrites** reçoivent leur test, et **deux libellés** du §4.37.g sont rectifiés
+
+Sept mutants de l'audit **survivaient** à la porte : autant de phrases écrites
+que rien ne tenait. Chacune a désormais son test, rouge sur le mutant et vert
+sur le code (mutations `M31`, `M22`, `M14`, `M28`, `M32`, `M34`, `M35` du
+§4.38.f) : les cinq champs du relevé lus par indexation et non `.get` — le seul
+test portait sur `page_position` —, la clé d'objet **apparue** inattendue, le
+nombre de lignes annoncé par le manifeste, le `format` de l'instantané, la
+validation des éléments par la capture, `identiques` qui retranche les
+réassignés, et l'empreinte de l'entrée convertie signalée devant un rouge.
+
+Trois d'entre eux reçoivent en outre leur **contrepartie verte**, sans laquelle
+le test passerait sur un garde inconditionnel : `self_ref` **tolère** l'absence,
+à dessein ; une clé apparue **sous un déplacement déclaré** est verte ; une
+entrée **inchangée** ne se signale pas.
+
+**Les deux libellés du §4.37.g**, rectifiés sur place : « 14 puces avec une puce
+imbriquée » est « avec une puce imbriquée **qui porte du texte** » — **21**
+sinon ; et « C2 = 78, le texte de tous leurs **fragments** » est « de tous leurs
+**descendants porteurs** » — **79** si l'on compte sur les fragments.
+
+#### 4.38.f → TRAITÉ — **la table des mutations est versionnée**, et elle se rejoue
+
+Le défaut nommé au §4.35.e : les 33 mutations du premier passage n'étaient pas
+versionnées, et l'audit n'a **pas pu** les rejouer. Une mutation qu'on ne peut
+pas rejouer n'est pas une mesure, c'est une affirmation.
+
+`tests/mutations/table-des-mutations.json` porte les **14** mutations de ce lot,
+chacune avec **son site** (fichier + motif exact), **son remplacement** et **le
+test censé rougir**. Les mutants de l'audit y sont entrés.
+`scripts/rejouer-les-mutations.py` les applique une à une, lance le test visé,
+**exige un rouge**, restaure, puis vérifie **par `git diff`** qu'il ne laisse
+aucun fichier muté — un `finally` ne survit pas à un `SIGKILL`, et laisser un
+fichier muté derrière soi, c'est livrer la mutation. Un motif qui n'apparaît pas
+**exactement une fois** fait échouer le rejeu : une mutation qui ne mute rien
+ressemble à un garde qui ne voit rien.
+
+**Il entre dans la porte, et c'est une MESURE qui le décide**, `mesuré` le
+24 septembre 2026 : `make all` seul, **30,4 s** ; avec le rejeu, **34,2 s**,
+soit **+5,0 s** pour 14 mutations, ou **+16 %**. Le prix est tenu pour
+acceptable au regard de ce que le §4.35.e reprochait ; la cible `mutations` du
+`Makefile` est séparée, donc retirable d'une ligne si l'avis change.
+
+#### 4.38.g → MESURÉ, lecture seule — **l'ÉMIETTEMENT compté sur l'instantané** : 742 éléments d'un seul caractère, dont 208 « . » et 121 « ) »
+
+Docling découpe un `<li>` ou un paragraphe mis en forme (gras, lien, code en
+ligne) en **plusieurs** éléments, parfois d'**un seul caractère**. Chacun coûte
+une place de fenêtre et un marqueur `[src:…]` au prompt de l'agent. **On le
+consigne et on le compte ; on ne le corrige pas**, parce que le corriger
+déplacerait des milliers d'identifiants — c'est la même cascade que les options
+(c) et (d) du §4.37.h, et la décision du 24 septembre 2026 est l'option (a).
+
+**La commande**, `mesuré` le 24 septembre 2026, **depuis l'instantané versionné
+et lui seul** — aucune conversion, aucun store, aucun client :
+
+```
+PYTHONPATH=. uv run python scripts/campagne/compter-l-emiettement.py \
+    documentation/campagnes/2026-09-24-instantane-des-identifiants
+```
+
+**La borne de ces comptes, et elle est exacte.** L'instantané porte `text50`,
+**tronqué à 50 caractères** : toute longueur **strictement inférieure à 50** y
+est donc exacte, et une longueur de 50 signifie « 50 ou plus », qu'on ne sait
+pas départager. **5 762** des 15 173 éléments sont dans ce cas. Tous les comptes
+ci-dessous portent sur des longueurs **exactes** ; c'est pourquoi la tranche
+haute s'arrête à 49. Les totaux se referment : 1 564 vides + 7 847 de 1 à 49
+caractères + 5 762 tronqués = **15 173**, ce qu'un test vérifie.
+
+**Les définitions, à côté des comptes.** *Vide* : `text50 == ""`, compté **à
+part** — un élément sans texte n'est pas un texte court. *Tranche* : bornes
+**inclusives** aux deux bouts, sur `len(text50)`. *Format* : l'extension de la
+partition, `.html` ou `.pdf`, lue du manifeste. *Texte court fréquent* : le
+`text50` **exact**, de 1 à 20 caractères, et ses occurrences sur les 23
+documents.
+
+**Par format** (23 documents, 15 173 éléments) :
+
+| tranche | HTML | PDF | total |
+|---|---|---|---|
+| vide | 1 564 | 0 | **1 564** |
+| 1 caractère | 742 | 0 | **742** |
+| 2 à 5 | 838 | 17 | **855** |
+| 6 à 20 | 3 414 | 142 | **3 556** |
+| 21 à 49 | 2 632 | 62 | **2 694** |
+| **moins de 50 (1 à 49)** | 7 626 | 221 | **7 847** |
+| tous | 14 808 | 365 | **15 173** |
+
+**Par label**, tous formats confondus :
+
+| label | vide | 1 car. | 2-5 | 6-20 | 21-49 | < 50 | tous |
+|---|---|---|---|---|---|---|---|
+| `caption` | 0 | 0 | 0 | 0 | 1 | 1 | 201 |
+| `code` | 1 362 | 186 | 233 | 1 411 | 837 | **2 667** | 4 963 |
+| `list_item` | 202 | 0 | 24 | 355 | 386 | 765 | 1 748 |
+| `picture` | 0 | 0 | 0 | 0 | 0 | 0 | 209 |
+| `section_header` | 0 | 0 | 50 | 186 | 335 | 571 | 600 |
+| `table` | 0 | 0 | 0 | 0 | 0 | 0 | 55 |
+| `text` | 0 | **556** | 548 | 1 552 | 1 055 | **3 711** | 7 251 |
+| `title` | 0 | 0 | 0 | 52 | 80 | 132 | 146 |
+
+Le détail par label **et** par format est rendu par la même commande ; en deux
+lignes : le PDF n'a **aucun** élément vide ni d'un seul caractère, et l'émiettement
+est un phénomène **HTML**. Les **202** puces vides du §4.37.g s'y retrouvent
+exactement, ligne `list_item` colonne « vide ».
+
+**Les 20 textes courts les plus fréquents** (1 à 20 caractères) :
+
+| rang | occurrences | long. | texte |
+|---|---|---|---|
+| 1 | **208** | 1 | `.` |
+| 2 | **121** | 1 | `)` |
+| 3 | 93 | 3 | `and` |
+| 4 | 86 | 1 | `,` |
+| 5 | 70 | 2 | `).` |
+| 6 | 61 | 3 | `The` |
+| 7 | 42 | 5 | `, and` |
+| 8 | 42 | 4 | `Note` |
+| 9 | 32 | 1 | `:` |
+| 10 | 31 | 6 | `double` |
+| 11 | 28 | 13 | `import mlflow` |
+| 12 | 27 | 1 | `1` |
+| 13 | 27 | 1 | `2` |
+| 14 | 26 | 9 | `Chapter 5` |
+| 15 | 26 | 14 | `databricks.yml` |
+| 16 | 24 | 2 | `In` |
+| 17 | 22 | 9 | `Chapter 9` |
+| 18 | 21 | 1 | `6` |
+| 19 | 21 | 9 | `Chapter 6` |
+| 20 | 19 | 1 | `3` |
+
+**Ce que cela dit, et ce que cela ne dit pas.** **742** éléments portent un seul
+caractère, et les quatre premiers du classement — `.`, `)`, `,`, `).` — en font
+**485** à eux seuls : ce sont des fins de phrase et des parenthèses fermantes
+détachées du texte qu'elles terminent, exactement le phénomène décrit. **1 597**
+éléments font 5 caractères ou moins sans être vides. **NON VÉRIFIÉ** : combien
+de ces éléments entrent réellement dans une fenêtre de l'agent, et ce qu'ils y
+coûtent — cela se mesure côté `rag-agent-chat`, sur leurs fenêtres, et le §4.37.h
+en porte déjà un compte à eux (46 places sur 1 751).
+
+**Ce qui n'a PAS été compté, et pourquoi.** Le nombre d'éléments par `<li>`
+d'origine, et la reconstitution du paragraphe source : l'instantané ne porte ni
+la hiérarchie (`parent`, `children`) ni le texte complet au-delà de 50
+caractères. Les compter exigerait de **reconvertir** le corpus, donc de sortir de
+la lecture seule ; ce n'est pas fait, et ce n'est pas estimé.
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
