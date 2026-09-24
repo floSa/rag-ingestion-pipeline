@@ -1,0 +1,226 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+353dfa9fb0	1	0	#/texts/0	Chapter 1. Introduction to MLflow for GenAI on Dat	title
+7ea03c8e25	1	1	#/texts/1	Artificial intelligence (AI) and machine learning 	text
+c89116050d	1	2	#/texts/2	MLflow was built to close those gaps. Since its fi	text
+15974daf77	1	3	#/texts/3	As enterprises build more generative AI (GenAI) ap	text
+04ab0a317d	1	4	#/texts/4	This chapter introduces the fundamentals of using 	text
+3c6ce48450	1	5	#/texts/5	What Is MLflow?	title
+d53c88744f	1	6	#/texts/6	MLflow is a popular, open source platform built to	text
+a4a4738deb	1	7	#/texts/7	Figure 1-1	text
+1780808c92	1	8	#/texts/8	.	text
+3f8f81196f	1	9	#/pictures/0	MLflow logo, representing the platform's role in m	picture
+a214f58414	1	10	#/texts/10	MLflow has become a go-to tool for AI/ML developer	text
+ff12841c38	1	11	#/texts/11	Experiment and Model Tracking for Reproducibility	section_header
+d05839a32f	1	12	#/texts/12	MLflow's tracking capabilities matter most for pra	text
+525a4902a8	1	13	#/texts/13	Figure 1-2	text
+23543c58ab	1	14	#/texts/14	). This makes it easy to identify which combinatio	text
+defcee805a	1	15	#/texts/15	Tracking model changes and their downstream impact	text
+9112c67fa0	1	16	#/texts/16	MLflow also supports reproducibility by logging cr	text
+3c16b85b6a	1	17	#/texts/17	When you train a model with MLflow, it records env	text
+36b1b63b81	1	18	#/texts/18	Figure 1-2	text
+361b7ea27a	1	19	#/texts/19	shows, after multiple model versions have been log	text
+9e5bd2678c	1	20	#/pictures/1	Diagram showing MLflow's process of logging model 	picture
+ea6c2db2a2	1	21	#/texts/21	For instance, if a run was initiated from a notebo	text
+3dc484f55c	1	22	#/texts/22	MLflow on Databricks also integrates with Delta La	text
+c617e20b88	1	23	#/texts/23	MLflow Evaluation	section_header
+c5e662be3f	1	24	#/texts/24	MLflow also provides an evaluation framework for A	text
+6e32818048	1	25	#/texts/25	One-liner evaluation function	section_header
+5f32a8d03c	1	26	#/texts/26	MLflow enables comprehensive model assessment thro	text
+0e2cc54841	1	27	#/texts/27	mlflow.evaluate()	code
+4a8fb0d0cb	1	28	#/texts/28	function. This single command runs pretemplated ev	text
+4259a590b9	1	29	#/texts/29	Beyond measuring only the performance of a model's	text
+dd3bb63c21	1	30	#/texts/30	Figure 1-3	text
+d09689d237	1	31	#/texts/31	illustrates how the	text
+30d3d6774e	1	32	#/texts/32	mlflow.evaluate()	code
+e65517cd2d	1	33	#/texts/33	function passes the model's predictions to a defau	text
+6717d52516	1	34	#/pictures/2	Diagram illustrating the process of the `mlflow.ev	picture
+75a434ad31	1	35	#/texts/35	Built-in model and artifacts support	section_header
+15efdbe016	1	36	#/texts/36	The default evaluator in	text
+bbdcf3ffad	1	37	#/texts/37	mlflow.evaluate()	code
+1fafbeb8f3	1	38	#/texts/38	supports various model types, including classifier	text
+c290a665f2	1	39	#/texts/39	The evaluators can be extended to support a wide r	text
+025ab80631	1	40	#/texts/40	Dataset evaluation	list_item
+15feb4b132	1	41	#/texts/41	Static datasets and precomputed predictions can be	list_item
+d09b14afbe	1	42	#/texts/42	Python and custom function	list_item
+6231cf9806	1	43	#/texts/43	Functions can be evaluated directly, without the n	list_item
+848bae35d0	1	44	#/texts/44	Custom evaluation metrics	list_item
+3d47e18da5	1	45	#/texts/45	Business requirements can be met by defining custo	list_item
+f77d4b8a1b	1	46	#/texts/46	SHAP integration	list_item
+a3f9db214a	1	47	#/texts/47	SHAP (SHapley Additive exPlanations) values provid	list_item
+8dbf382cdc	1	48	#/texts/48	Specialized plug-ins	list_item
+2e9d5e19d2	1	49	#/texts/49	Evaluation capabilities can be extended with speci	list_item
+37bff1cb9d	1	50	#/texts/50	These capabilities can be used for more specific o	text
+7b0c7d457d	1	51	#/texts/51	Evaluation analysis	section_header
+7c7554c326	1	52	#/texts/52	MLflow provides strong capabilities for visualizin	text
+753ef27d57	1	53	#/texts/53	Figure 1-4	text
+35720d539f	1	54	#/texts/54	) for exploring and analyzing performance across e	text
+6174d1dd0a	1	55	#/pictures/3	Screenshot of MLflow's evaluation interface displa	picture
+9e022501c8	1	56	#/texts/56	Its evaluation framework stores results in a struc	text
+cc994dbb5e	1	57	#/texts/57	Collaboration	section_header
+f87bfe21c9	1	58	#/texts/58	ML model development often starts locally, which g	text
+5b1d3b8544	1	59	#/texts/59	MLflow addresses that collaboration gap by creatin	text
+c34ac2f1f5	1	60	#/texts/60	Figure 1-5	text
+b1cab85360	1	61	#/texts/61	illustrates multiple options.	text
+21fc78da87	1	62	#/pictures/4	Diagram showing MLflow's integration with various 	picture
+42a2b7ff25	1	63	#/texts/63	Model Registry and Versioning	section_header
+979362cfa9	1	64	#/texts/64	As ML projects scale, teams often struggle to mana	text
+a1392180f6	1	65	#/texts/65	Using the MLflow Model Registry offers the followi	text
+269a644a36	1	66	#/texts/66	Version control	list_item
+4a1aa990ad	1	67	#/texts/67	The registry automatically tracks versions of each	list_item
+bf97691793	1	68	#/texts/68	Model lineage and traceability	list_item
+2b9c02be7a	1	69	#/texts/69	Each registered model version is linked to the MLf	list_item
+35904b53b1	1	70	#/texts/70	Production-ready workflows	list_item
+5842a978ba	1	71	#/texts/71	Features like model aliases (e.g., @champion) and 	list_item
+7947aac0eb	1	72	#/texts/72	Governance and compliance	list_item
+ae82e11b77	1	73	#/texts/73	With structured metadata, tagging, and role-based 	list_item
+625562c82b	1	74	#/texts/74	What we have now is a dedicated model registry for	text
+66767f80e0	1	75	#/texts/75	Core MLflow Components: Experiments, Runs, and Mod	section_header
+220d0b7a9b	1	76	#/texts/76	Now that we have an idea of what MLflow does, let'	text
+e1ae0e0390	1	77	#/texts/77	MLflow experiment	section_header
+a022a1a985	1	78	#/texts/78	Using MLflow starts with creating an	text
+a4ceb35d3a	1	79	#/texts/79	experiment	text
+2e4bfab51c	1	80	#/texts/80	. An experiment is the primary unit for organizing	text
+1467ae418b	1	81	#/texts/81	Figure 1-6	text
+fa75c276e3	1	82	#/texts/82	).	text
+e1194dd254	1	83	#/pictures/5	MLflow interface showing a list of experiments and	picture
+d9035ae836	1	84	#/texts/84	MLflow run	section_header
+d3b8d7b346	1	85	#/texts/85	In MLflow, there's also the concept of	text
+6c2ca9b531	1	86	#/texts/86	runs	text
+7c6b752d34	1	87	#/texts/87	. Each run is encapsulated in an experiment and is	text
+71cdca7a07	1	88	#/texts/88	Model metadata (e.g., parameters, hyperparameters)	list_item
+0353ed8c50	1	89	#/texts/89	Model artifacts (e.g., pickle files)	list_item
+6d0a9b099b	1	90	#/texts/90	Model metrics (e.g., f1 score for training, valida	list_item
+e5f27ee3c8	1	91	#/texts/91	Library requirements and package dependencies	list_item
+d548a9c3a8	1	92	#/texts/92	These resources are stored in the	text
+c574d7a535	1	93	#/texts/93	artifacts	text
+e175acaa49	1	94	#/texts/94	section of the run and can be retrieved for assess	text
+c146cbe4d8	1	95	#/texts/95	Figure 1-7	text
+0c178a9f4b	1	96	#/texts/96	).	text
+b18d230638	1	97	#/pictures/6	Diagram illustrating the hierarchy of MLflow exper	picture
+7f5d56cc31	1	98	#/texts/98	MLflow Model Registry	section_header
+edd1625ced	1	99	#/texts/99	Once a model run has produced a satisfactory model	text
+8f05a11057	1	100	#/texts/100	The MLflow Model Registry provides the critical li	text
+446481027c	1	101	#/texts/101	Figure 1-8	text
+3b0ad4cb7e	1	102	#/texts/102	illustrates how successful model runs are register	text
+7c1c4593bc	1	103	#/pictures/7	Diagram illustrating the process of registering ML	picture
+2762e9bc3c	1	104	#/texts/104	We'll talk more about the specific differences in 	text
+434493134f	1	105	#/texts/105	\"Open Source Versus Databricks Implementations\"	text
+75bdf8d991	1	106	#/texts/106	. Before we delve into those specifics, let's expl	text
+5a746fb57c	1	107	#/texts/107	From MLflow 2.x to MLflow 3.x	section_header
+f8d3d9eb5c	1	108	#/texts/108	While MLflow was mainly known as a platform for ma	text
+0c2090bea6	1	109	#/texts/109	Advanced GenAI evaluation	section_header
+15b21286ce	1	110	#/texts/110	MLflow 3.x introduces the	text
+def1fa2315	1	111	#/texts/111	mlflow.genai.evaluate()	code
+12766e1892	1	112	#/texts/112	function to assess GenAI applications. It supports	text
+8900d345df	1	113	#/texts/113	Comprehensive tracing	section_header
+2bee51bc08	1	114	#/texts/114	MLflow 3.x provides enhanced end-to-end tracing fo	text
+d66871e7b2	1	115	#/texts/115	These features help solve the similar challenges t	text
+495ef02e35	1	116	#/texts/116	Open Source Versus Databricks Implementations	section_header
+b5d44dc12c	1	117	#/texts/117	Open source MLflow and the Databricks-managed vers	text
+ae1d14240c	1	118	#/texts/118	Overview on Databricks workspace and Unity Catalog	section_header
+eb292ab83c	1	119	#/texts/119	There are a few Databricks terms that need explain	text
+dc18a4d25f	1	120	#/texts/120	Databricks workspace	list_item
+92752d3587	1	121	#/texts/121	The Databricks workspace is a Databricks deploymen	list_item
+d910e043c2	1	122	#/texts/122	Databricks Unity Catalog	list_item
+d6f1e62b75	1	123	#/texts/123	Databricks Unity Catalog (UC) is a centralized dat	list_item
+0b0e9fe561	1	124	#/texts/124	Key features of UC include:	text
+e03661cbe2	1	125	#/texts/125	Define it once and secure it everywhere	list_item
+78703e0e49	1	126	#/texts/126	This offers a single place to administer data acce	list_item
+a7b0b0b866	1	127	#/texts/127	Standards-compliant security model	list_item
+c107890e82	1	128	#/texts/128	This model is based on standard ANSI SQL and allow	list_item
+d0e178256b	1	129	#/texts/129	Built-in auditing and lineage	list_item
+c1c443f7e0	1	130	#/texts/130	This includes user-level audit logs that automatic	list_item
+b5c2c69fb6	1	131	#/texts/131	Data discovery	list_item
+233920d79f	1	132	#/texts/132	Tagging and documentation of data assets is provid	list_item
+553a90e426	1	133	#/texts/133	System tables	list_item
+4e3be05774	1	134	#/texts/134	These help easily access and query all operational	list_item
+c53009f562	1	135	#/texts/135	Workspaces can be bound to multiple catalogs to ha	text
+90ade86771	1	136	#/texts/136	Figure 1-9	text
+5599983014	1	137	#/texts/137	), we have three workspaces:	text
+562241d9c9	1	138	#/texts/138	A production workspace for data engineering	list_item
+0d9b7637b1	1	139	#/texts/139	A production workspace for analytics	list_item
+bf72eb7dbc	1	140	#/texts/140	A workspace for development purposes	list_item
+386a744d11	1	141	#/texts/141	We can bind both the production workspaces to the 	text
+00f4e9cc44	1	142	#/texts/142	Figure 1-9	text
+7e14e4420b	1	143	#/texts/143	).	text
+384bff0d01	1	144	#/pictures/8	Diagram showing the binding of production ETL and 	picture
+9f1b462f2d	1	145	#/texts/145	Models in Unity Catalog extend the benefits of Uni	text
+1db0241c3c	1	146	#/texts/146	In	text
+599fda32e4	1	147	#/texts/147	Figure 1-9	text
+723925e7f5	1	148	#/texts/148	, if the Data Science team creates a model in prod	text
+2893bd37a9	1	149	#/texts/149	Key differences	section_header
+cad41e27a3	1	150	#/texts/150	With an understanding of Databricks workspaces and	text
+7ae62fc596	1	151	#/texts/151	Enterprise-grade governance with Unity Catalog	section_header
+f114828c3f	1	152	#/texts/152	While open source MLflow needs to be self-hosted a	text
+b917ab7aec	1	153	#/texts/153	Model registry from MLflow server to Databricks Un	section_header
+f9f1846fb2	1	154	#/texts/154	Another major difference in using MLflow on Databr	text
+8be910bc26	1	155	#/texts/155	When using the open source tracking server, an MLf	text
+ba25398111	1	156	#/texts/156	Figure 1-10	text
+90d22c1676	1	157	#/texts/157	).	text
+9527cee965	1	158	#/pictures/9	Diagram comparing open source MLflow, which requir	picture
+1d99cefed7	1	159	#/texts/159	Unified UI and model lifecycle	section_header
+8e2328db11	1	160	#/texts/160	The managed version of MLflow is integrated into t	text
+44cee58f13	1	161	#/texts/161	From experiment tracking to deployment, Databricks	text
+084438815b	1	162	#/texts/162	Figure 1-11	text
+67d3dcc41b	1	163	#/texts/163	shows an example.	text
+f0b4b13f8a	1	164	#/texts/164	Note	section_header
+656a8c062d	1	165	#/texts/165	Since this book's goal is to focus on the use of M	text
+9f8112dd6e	1	166	#/pictures/10	The Registered Models UI on Databricks displays a 	picture
+910bb35609	1	167	#/texts/167	Tracing and observability	section_header
+cbcb684d45	1	168	#/texts/168	Open source MLflow gives you the tracing data mode	text
+e7329fcb5e	1	169	#/texts/9	MLflow logo, representing the platform's role in m	caption
+61687f37ff	1	170	#/texts/20	Diagram showing MLflow's process of logging model 	caption
+2c69355d59	1	171	#/texts/34	Diagram illustrating the process of the `mlflow.ev	caption
+e82ce2ad52	1	172	#/texts/55	Screenshot of MLflow's evaluation interface displa	caption
+5a59059d5d	1	173	#/texts/62	Diagram showing MLflow's integration with various 	caption
+fd396edb72	1	174	#/texts/83	MLflow interface showing a list of experiments and	caption
+2ca5c1bd29	1	175	#/texts/97	Diagram illustrating the hierarchy of MLflow exper	caption
+6d990e4977	1	176	#/texts/103	Diagram illustrating the process of registering ML	caption
+6663c64eaf	1	177	#/texts/144	Diagram showing the binding of production ETL and 	caption
+22da12a920	1	178	#/texts/158	Diagram comparing open source MLflow, which requir	caption
+e088d788ba	1	179	#/texts/166	The Registered Models UI on Databricks displays a 	caption
+6946224bae	1	180	#/texts/169	Why MLflow for GenAI?	title
+91d1bce6e8	1	181	#/texts/170	The latest MLflow developments combine tracing and	text
+d77eff3673	1	182	#/texts/171	Management of Iterative Prompts and Models	section_header
+803d324732	1	183	#/texts/172	GenAI development is a highly iterative process of	text
+137e512e5f	1	184	#/texts/173	In the 3.x versions, MLflow can handle unique arti	text
+0a17e77872	1	185	#/texts/174	GenAI Application End-to-End Observability	section_header
+2154d5bce2	1	186	#/texts/175	Multistep GenAI applications like retrieval-augmen	text
+d240d5b0f0	1	187	#/texts/176	Figure 1-12	text
+042b3cb3b8	1	188	#/texts/177	). With traces, you are able to see all the interm	text
+2ead9c73b5	1	189	#/pictures/11	Screenshot of the MLflow Trace UI showing a detail	picture
+531775f8b0	1	190	#/texts/179	MLflow Tracing automatically records every step, i	text
+962e697340	1	191	#/texts/180	Automated Quality Evaluation with LLM-As-a-Judge	section_header
+50fc2af4bf	1	192	#/texts/181	Evaluating the quality of GenAI applications is no	text
+e974f9716d	1	193	#/texts/182	The LLM-as-a-judge method uses one language model 	text
+2fb033d92a	1	194	#/texts/183	MLflow introduced evaluation support for LLM-as-a-	text
+799d423a79	1	195	#/texts/184	Warning	section_header
+5fdcd150d3	1	196	#/texts/185	When using an LLM-as-a-judge to evaluate responses	text
+cd74b89098	1	197	#/texts/186	Continuous Improvement from Production Feedback	section_header
+3b6dfc3a07	1	198	#/texts/187	In a real-world setting, GenAI applications often 	text
+2d3f962949	1	199	#/texts/188	MLflow helps with this by collecting traces from t	text
+79fbc7cfa0	1	200	#/texts/189	These real-world examples are then used to curate 	text
+bf4308635f	1	201	#/texts/178	Screenshot of the MLflow Trace UI showing a detail	caption
+d017c244fb	1	202	#/texts/190	Introducing the Book's Core Use Case	title
+72d617d0cf	1	203	#/texts/191	Since this book is meant to guide and provide the 	text
+10bbafb5fc	1	204	#/texts/192	Our use case will focus on developing a chatbot cu	text
+513194cf72	1	205	#/texts/193	To replicate most GenAI projects found in the prof	text
+cf45cf37aa	1	206	#/texts/194		list_item
+5394f08502	1	207	#/texts/195	The booking records dataset (	text
+96cc837d44	1	208	#/texts/196	Table 1-1	text
+b31cfde020	1	209	#/texts/197	) stores all reservation details, journey segments	text
+b8b6cd63b0	1	210	#/texts/198	The FAQ dataset provides categorized questions and	list_item
+39f9d0573a	1	211	#/tables/0	| booking_id       | pnr    | status   | travel\\_ 	table
+d190d42a68	1	212	#/texts/199	travel_\nstart_date	text
+67b1b92931	1	213	#/texts/200	travel_\nend_date	text
+a09ffc6b9f	1	214	#/texts/201	origin_\niata	text
+8c3db94881	1	215	#/texts/202	destination_\niata	text
+715a64735e	1	216	#/texts/203	total_\namount	text
+d785318279	1	217	#/texts/204	Some key requirements for our use case that we'll 	text
+62182788a1	1	218	#/texts/205	To be able to integrate our GenAI agent with diver	list_item
+0807aa7207	1	219	#/texts/206	To be able to measure performance across all steps	list_item
+7f6e5c4278	1	220	#/texts/207	To properly track and govern our development lifec	list_item
+df07c6c73a	1	221	#/texts/208	The goal of this use case, more than the business 	text
+fb928d9c63	1	222	#/texts/209	Conclusion and Key Takeaways	title
+e672f6f56e	1	223	#/texts/210	In this chapter, we explored the fundamental chall	text
+0eb90b0a30	1	224	#/texts/211	You should now have a solid understanding of MLflo	text

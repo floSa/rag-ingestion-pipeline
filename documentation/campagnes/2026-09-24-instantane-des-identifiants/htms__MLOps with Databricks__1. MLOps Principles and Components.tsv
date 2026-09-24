@@ -1,0 +1,490 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+a9f9511433	1	0	#/texts/0	Chapter 1. MLOps Principles and Components	title
+b1e57fbceb	1	1	#/texts/1	Machine learning operations	text
+71147f8b4d	1	2	#/texts/2	(MLOps) is a set of practices that help to bring M	text
+02b3751a58	1	3	#/texts/3	MLOps addresses the same core challenge as DevOps 	text
+a6f3e0d631	1	4	#/texts/4	Unlike traditional software systems, ML applicatio	text
+a8caa27e46	1	5	#/texts/5	These characteristics make the development lifecyc	text
+01f9fa11fc	1	6	#/texts/6	More broadly, these challenges extend to AI system	text
+76e2e6aa95	1	7	#/texts/7	In this chapter, I will walk you through the evolu	text
+347b27cfd7	1	8	#/texts/8	The Rise of MLOps	title
+d38cabb8aa	1	9	#/texts/9	The term	text
+6b7dd333a4	1	10	#/texts/10	MLOps	text
+ccdb5d7a7e	1	11	#/texts/11	began gaining widespread popularity around 2020. T	text
+a031736889	1	12	#/texts/12	In practice, bringing ML models into production re	text
+28f89bbf3e	1	13	#/texts/13	Figure 1-1	text
+60a2e45a92	1	14	#/texts/14	, which is an adapted diagram from the well-known 	text
+28df9e8b34	1	15	#/texts/15	1	text
+1cbbf65606	1	16	#/texts/16	It shows that the majority of the system consists 	text
+12ade3e6fb	1	17	#/texts/17	To make the outputs of ML models valuable to a bus	text
+437aa246e6	1	18	#/texts/18	Historically, data analytics and later data scienc	text
+59792049de	1	19	#/pictures/0	Diagram illustrating that ML code is a small part 	picture
+235148ebb0	1	20	#/texts/20	A shift was therefore needed. In recent years, man	text
+f7eaa04061	1	21	#/texts/21	machine learning engineer	text
+7ee224a656	1	22	#/texts/22	, which is embedded within these teams to enable e	text
+5599e4b28c	1	23	#/texts/23	At the same time, platform teams have started adop	text
+831cd88d2d	1	24	#/texts/24	2	text
+a0c4e98d6f	1	25	#/texts/25	LinkedIn's ProML,	text
+a0a9ce6842	1	26	#/texts/26	3	text
+f31c331990	1	27	#/texts/27	and Netflix's ML Platform.	text
+debeed5bed	1	28	#/texts/28	4	text
+cf09f45075	1	29	#/texts/29	Today, organizations are in a similar phase, this 	text
+7c882f2e59	1	30	#/texts/30	Because many organizations have already undergone 	text
+3edbf05099	1	31	#/texts/19	Diagram illustrating that ML code is a small part 	caption
+edd709d3d5	1	32	#/texts/31	MLOps Principles	title
+8291a9447e	1	33	#/texts/32	We've established how MLOps became a discipline in	text
+d40ce7b444	1	34	#/texts/33	There are many examples out there of how things ca	text
+4eeb447afd	1	35	#/texts/34	5	text
+0243ffa733	1	36	#/texts/35	The goal of MLOps is to minimize the risks of thin	text
+91f7d4a251	1	37	#/texts/36	four main MLOps principles	text
+5d67ad668e	1	38	#/texts/37	: reliability, traceability, reproducibility, and 	text
+47ec098fc2	1	39	#/texts/38	Table 1-1	text
+df18968cd1	1	40	#/texts/39	).	text
+7c4356ccde	1	41	#/tables/0	| Principle       | Core question                 	table
+fc5938c111	1	42	#/texts/40	These are developer-centric principles and focused	text
+fa3b1e11e0	1	43	#/texts/41	6	text
+5370555cf6	1	44	#/texts/42	The following sections will cover the four main ML	text
+e3dec3c2f3	1	45	#/texts/43	Traceability	section_header
+be81748084	1	46	#/texts/44	Traceability	text
+cfc65ee950	1	47	#/texts/45	means that for any given ML model run or deploymen	text
+b4aa924d0f	1	48	#/texts/46	Corresponding code and commits on Git	list_item
+766b5747db	1	49	#/texts/47	The infrastructure used for training and serving	list_item
+ea75e0955e	1	50	#/texts/48	ML model artifacts	list_item
+8dae20a85c	1	51	#/texts/49	What data was used to train the ML model	list_item
+edd35877f1	1	52	#/texts/50	In practice, this often breaks down. For example, 	text
+2039ab9275	1	53	#/texts/51	Effective traceability requires every run to autom	text
+649ac78a3b	1	54	#/texts/52	Table 1-2	text
+ea11a959ca	1	55	#/texts/53	lists the traditional ML traceability components a	text
+c199ae878d	1	56	#/tables/1	| Traditional ML traceability components   | Examp	table
+52a0bf2afd	1	57	#/texts/54	Modern LLM and agentic systems add more layers of 	text
+a803b68823	1	58	#/texts/55	Table 1-3	text
+11d729c54b	1	59	#/texts/56	Lists LLM-based system traceability components and	text
+a5ea00d89b	1	60	#/tables/2	| LLM-based system traceability components   | Exa	table
+ce84c8db69	1	61	#/texts/57	Effective traceability requires that every run aut	text
+ebf51b4ecc	1	62	#/texts/58	Teams that invest in this capability spend far les	text
+9b2e0e33b6	1	63	#/texts/59	Reproducibility	section_header
+9ef90bb848	1	64	#/texts/60	Reproducibility	text
+29608b2a20	1	65	#/texts/61	extends traceability one step further. Traceabilit	text
+5b3e593196	1	66	#/texts/62	For traditional ML systems, reproducibility means 	text
+f9e4ce2884	1	67	#/texts/63	In practice, reproducibility takes effort. Without	text
+ced47697e0	1	68	#/texts/64	For LLM and agentic systems, reproducibility becom	text
+2944d2183b	1	69	#/texts/65	functional reproducibility	text
+d1912b08a0	1	70	#/texts/66	: the ability to re-create a system configuration 	text
+bbe03e5982	1	71	#/texts/67	It is worth noting that the boundary between tradi	text
+a3127429fb	1	72	#/texts/68	7	text
+1c8a6c2bd6	1	73	#/texts/69	These were known problems, but they affected a sma	text
+b276045db5	1	74	#/texts/70	Reliability	section_header
+79b08e85fd	1	75	#/texts/71	Reliability	text
+af27d8e088	1	76	#/texts/72	is the principle that an ML system should function	text
+38ac01f844	1	77	#/texts/73	While reliability engineering traditionally focuse	text
+f02c87e3a3	1	78	#/texts/74	Clean code ensures that models can be updated, deb	text
+930c9034d0	1	79	#/texts/75	8	text
+506ca2f2bc	1	80	#/texts/76	The systems with the highest stakes consistently h	text
+45e43422be	1	81	#/texts/77	Google's site reliability engineering (SRE) handbo	text
+74219c237f	1	82	#/texts/78	9	text
+0cab2a8347	1	83	#/texts/79	The tools and frameworks that ML systems depend on	text
+8a8a1fac9c	1	84	#/texts/80	Clear structure and modular design	list_item
+8627d79a44	1	85	#/texts/81	Testing at multiple levels, from unit tests to int	list_item
+9e07e79688	1	86	#/texts/82	Consistent standards that are enforced across the 	list_item
+27f127027b	1	87	#/texts/83	The complexity you cannot remove is exactly the co	text
+6569d56b8f	1	88	#/texts/84	A common counterargument is that AI-assisted code 	text
+c1b8096ef0	1	89	#/texts/85		list_item
+08b90f54f9	1	90	#/texts/86	CodeRabbit's analysis of 470 open-source pull requ	text
+0247af22d6	1	91	#/texts/87	10	text
+98fab62a64	1	92	#/texts/88		list_item
+ad21ccf4ba	1	93	#/texts/89	The 2024 DevOps Research and Assessment (DORA) rep	text
+79848c9f3d	1	94	#/texts/90	11	text
+c7d4d05b7f	1	95	#/texts/91	Generating code faster does not eliminate the cost	text
+825d849978	1	96	#/texts/92	But code quality alone is not enough. It has to be	text
+b55138ab00	1	97	#/texts/93	Continuous integration and continuous deployment (	list_item
+746a6cf054	1	98	#/texts/94	Safe deployment strategies, like canary releases a	list_item
+4ba4ee2ad9	1	99	#/texts/95	Dependency management and environment pinning that	list_item
+61145ff90c	1	100	#/texts/96	Weakness in any one layer undermines the rest. The	text
+23029bda05	1	101	#/texts/97	Reliability also extends into infrastructure and o	text
+cfac2564c1	1	102	#/texts/98	Reliable Machine Learning	text
+385929c839	1	103	#/texts/99	by Cathy Chen et al. (O'Reilly) applies SRE princi	text
+f5e5a0cad3	1	104	#/texts/100	Observability	section_header
+1ba7809819	1	105	#/texts/101	Contrary to popular belief, the lifecycle of an AI	text
+950c8e05f1	1	106	#/texts/102	An	text
+01516a5825	1	107	#/texts/103	observable	text
+a91dfef037	1	108	#/texts/104	system is one whose internal state you can underst	text
+d734f2e21d	1	109	#/texts/105	A core component of observability is	text
+8109aba04f	1	110	#/texts/106	monitoring	text
+5dc48c4212	1	111	#/texts/107	: tracking known metrics and alerting when they cr	text
+0ff10f254a	1	112	#/texts/108	Application-level data	list_item
+a8c62ff4e7	1	113	#/texts/109	Response times, error rates, throughput, and laten	list_item
+5b772f5899	1	114	#/texts/110	Infrastructure health	list_item
+6e1e83b4b3	1	115	#/texts/111	CPU health, memory utilization, and health metrics	list_item
+298f7629fb	1	116	#/texts/112	System-relevant business metrics	list_item
+9dda1e3885	1	117	#/texts/113	For example, KPIs such as the click-through rate a	list_item
+0e14c46296	1	118	#/texts/114	ML systems differ from traditional software system	text
+a7f243571b	1	119	#/texts/115	A software system will perform as expected as long	text
+54a7201a9c	1	120	#/texts/116	Figure 1-2	text
+17ebdbe2b2	1	121	#/texts/117	illustrates this difference and this challenge.	text
+d9cfae0dc9	1	122	#/pictures/1	Diagram comparing the deterministic nature of trad	picture
+c7994bace0	1	123	#/texts/119	In addition, data quality issues are some of the m	text
+6b94db4f02	1	124	#/texts/120	In traditional ML, production monitoring of model 	text
+dff521b6f0	1	125	#/texts/121	For LLM-based systems, the challenge is not just t	text
+55954d1856	1	126	#/texts/118	Diagram comparing the deterministic nature of trad	caption
+b4b2ceb828	1	127	#/texts/122	Team Practices	title
+96c381b74a	1	128	#/texts/123	Principles don't survive without the right culture	text
+578df60099	1	129	#/texts/124	Documentation and Knowledge Preservation	section_header
+301a266d8d	1	130	#/texts/125	People affected by a system should be able to unde	text
+c7499fc0af	1	131	#/texts/126	Proper documentation should include the following:	text
+757a7d9ca7	1	132	#/texts/127	The assumptions behind the system	list_item
+d135f3e4b6	1	133	#/texts/128	The reasoning behind architectural choices	list_item
+f8110c69db	1	134	#/texts/129	The intended scope of use	list_item
+f981ab138d	1	135	#/texts/130	The known limitations or risks	list_item
+8620e242ec	1	136	#/texts/131	Several artifacts support this in practice:	text
+145a10a266	1	137	#/texts/132	Model cards	list_item
+1a04d38e1e	1	138	#/texts/133	These explain model behavior and failure modes.	list_item
+b851f0e21b	1	139	#/texts/134	Data dictionaries	list_item
+3e7ecb4507	1	140	#/texts/135	These clarify what data represents and where it or	list_item
+0ec9e1150e	1	141	#/texts/136	Architecture decision records	list_item
+48fb9f5fe5	1	142	#/texts/137	These capture why specific trade-offs were made.	list_item
+a27dfb5eaf	1	143	#/texts/138	Documentation should live alongside the code, evol	text
+c62ea9d490	1	144	#/texts/139	MkDocs	text
+855d4464c0	1	145	#/texts/140	can generate documentation sites from Markdown, an	text
+674b1391dd	1	146	#/texts/141	Swagger	text
+6d0fec5384	1	147	#/texts/142	are also useful for generating live API documentat	text
+e69c583eac	1	148	#/texts/143	The rise of AI-powered coding assistants like	text
+3b68389e42	1	149	#/texts/144	Claude Code	text
+65d0979132	1	150	#/texts/145	further increases the value of transparent systems	text
+0e2a38b8f0	1	151	#/texts/146	Ultimately, documentation is part of the culture. 	text
+c5d7d63d19	1	152	#/texts/147	Code Hygiene	section_header
+02ad0b3fa4	1	153	#/texts/148	Code quality is the foundation that all four MLOps	text
+08f6436c8d	1	154	#/texts/149	Today, AI is real leverage when writing code, but 	text
+fc59a00245	1	155	#/texts/150	Pre-commit checks	list_item
+e5b222f8f3	1	156	#/texts/151	You should run these as part of a CI pipeline. Thi	list_item
+a2f5979ea6	1	157	#/texts/152	Testing	list_item
+842a8884da	1	158	#/texts/153		list_item
+b188c7b3df	1	159	#/texts/154	This is another essential component of automated q	text
+eb1fbcbb35	1	160	#/texts/155	Chapter 5	text
+664a92c1a3	1	161	#/texts/156	.	text
+ab60d96d3e	1	162	#/texts/157	Code reviews	list_item
+6a07b0d9b1	1	163	#/texts/158	Human-run code reviews are an important safeguard,	list_item
+5a86cea572	1	164	#/texts/159	Documentation and code quality come down to people	text
+735e885a49	1	165	#/texts/160	MLOps Components	title
+ccdf51e6f3	1	166	#/texts/161	You may be familiar with the Machine Learning, Ana	text
+b513f52f0c	1	167	#/texts/162	In 2025, however, the industry saw a significant c	text
+e1d7cd5636	1	168	#/texts/163	Figure 1-3	text
+225a793060	1	169	#/texts/164	highlights a subset of tools that focus on ML and 	text
+73f8068149	1	170	#/pictures/2	A dense chart showcasing a subset of machine learn	picture
+1b2c37dd81	1	171	#/texts/166	When you see this many tools, it's hard to know wh	text
+e874561c41	1	172	#/texts/167	Each component exists to support one or more of th	text
+a8adda93c9	1	173	#/texts/168	Figure 1-4	text
+8ca89ea363	1	174	#/texts/169	) and then cover what changes when your applicatio	text
+46cc9aec8d	1	175	#/pictures/3	Diagram illustrating core MLOps and LLMOps compone	picture
+a8d9a92c25	1	176	#/texts/171	Core Components	section_header
+3cf2e72b4b	1	177	#/texts/172	The core components shown in	text
+325008807e	1	178	#/texts/173	Figure 1-4	text
+96e544b95c	1	179	#/texts/174	are universal. Whether you're deploying a classica	text
+cc6f981c34	1	180	#/texts/175	Code version control	section_header
+440f2bedd9	1	181	#/texts/176	Code version control	text
+758ee74a41	1	182	#/texts/177	is the practice of managing and tracking changes t	text
+880d71f688	1	183	#/texts/178	Platforms such as GitHub, Azure DevOps, and GitLab	text
+fd76613a46	1	184	#/texts/179	Continuous integration and continuous deployment (	section_header
+198df1762a	1	185	#/texts/180	CI/CD pipelines	text
+8cf8946dc9	1	186	#/texts/181	are automated workflows that build, test, and depl	text
+2a45f06943	1	187	#/texts/182	CI pipelines	text
+b40111cf9a	1	188	#/texts/183	automatically build and test code changes whenever	text
+5e6d877373	1	189	#/texts/184	CD pipelines	text
+8f3d81427e	1	190	#/texts/185	then handle deployment, to ensure that production 	text
+1431b2b3a8	1	191	#/texts/186	Most version control platforms provide built-in CI	text
+fbf93c6146	1	192	#/texts/187	Chapter 5	text
+ee5f7baf3a	1	193	#/texts/188	.	text
+a836dccb5c	1	194	#/texts/189	Workflow orchestration	section_header
+b56963cbc6	1	195	#/texts/190	Typical ML projects require	text
+8cc5359feb	1	196	#/texts/191	workflow orchestration	text
+880bc734cf	1	197	#/texts/192	to manage the complex dependencies among different	text
+e299940bce	1	198	#/texts/193	batch inference	text
+b55979d946	1	199	#/texts/194	, in which predictions get generated and written t	text
+a9823fa0dd	1	200	#/texts/195	real-time inference	text
+2141c343b9	1	201	#/texts/196	, which means we need a workflow for endpoint depl	text
+e2815c144c	1	202	#/texts/197	Workflow orchestrators support various triggers, s	text
+0e9b9b38a6	1	203	#/texts/198	You can use tools like Airflow, Lakeflow Jobs, Azu	text
+81d0a05364	1	204	#/texts/199	Model and container registry	section_header
+2f48632195	1	205	#/texts/200	Another important aspect of MLOps is the	text
+6adb821546	1	206	#/texts/201	model registry	text
+bcdacb56e6	1	207	#/texts/202	. This includes storing and versioning trained ML 	text
+7d768c53f1	1	208	#/texts/203	In addition to storing ML models, you may need to 	text
+ed819c8e84	1	209	#/texts/204	Model training	section_header
+9a2b0eaca0	1	210	#/texts/205	Model training	text
+2c3e060490	1	211	#/texts/206	requires dedicated compute. The options depend on 	text
+92db6a5870	1	212	#/texts/207	Services like Lakeflow Jobs on Databricks combine 	text
+a201cc522a	1	213	#/texts/208	Model Serving	section_header
+57a9102077	1	214	#/texts/209	Serving and training do not always need the same i	text
+d944318121	1	215	#/texts/210	Training	text
+80b2742aed	1	216	#/texts/211	is a batch workload that runs periodically, while	text
+3bacc6a92d	1	217	#/texts/212	serving	text
+beb831c892	1	218	#/texts/213	handles real-time requests and needs to be always 	text
+5061f50768	1	219	#/texts/214	For serving, Azure ML, SageMaker, and Databricks a	text
+edb92fb09d	1	220	#/texts/215	KServe	text
+288e26299b	1	221	#/texts/216	. This can be practical when other services such a	text
+a229861673	1	222	#/texts/217	Monitoring	section_header
+cbdc804a41	1	223	#/texts/218	Monitoring is an essential (but sadly often ignore	text
+35b7606999	1	224	#/texts/219	Model performance should be checked regularly to p	text
+403399e987	1	225	#/texts/220	ELK stack	text
+1434b052b5	1	226	#/texts/221	and a	text
+7e1705bec9	1	227	#/texts/222	Prometheus	text
+dba750c8bd	1	228	#/texts/223	+	text
+aa4aae4ed9	1	229	#/texts/224	Grafana	text
+844d66e718	1	230	#/texts/225	setup are options that you may already have.	text
+2efca4e5ee	1	231	#/texts/226	Data version control	section_header
+73ee4519d6	1	232	#/texts/227	Your company's compliance policies may require tra	text
+8181bb50ae	1	233	#/texts/228	On the other hand, data versioning tools allow you	text
+88c1347e78	1	234	#/texts/229	Feature store	section_header
+765bf17f7d	1	235	#/texts/230	In general, a	text
+a20f2d8c01	1	236	#/texts/231	feature store	text
+8c41ffbe97	1	237	#/texts/232	is a data layer that connects data preprocessing (	text
+1653704416	1	238	#/texts/233	Databricks Feature Store	text
+4f5dfef3bc	1	239	#/texts/234	is a specific product that serves as a centralized	text
+ada92b311b	1	240	#/texts/235	However, not every application needs a feature sto	text
+c3a56ae902	1	241	#/texts/236	LLM Application Components	section_header
+84aac199a3	1	242	#/texts/237	The core components we covered in the previous sec	text
+c13c56d2da	1	243	#/texts/238	Vector databases	section_header
+a465a7c63d	1	244	#/texts/239	Vector databases	text
+ea5db9dca2	1	245	#/texts/240	store and retrieve embeddings, numerical represent	text
+6cd139a979	1	246	#/texts/241	Tools like Pinecone, Weaviate, Qdrant, and Databri	text
+418e62cd9a	1	247	#/texts/242	12	text
+513107af90	1	248	#/texts/243	Some traditional databases like PostgreSQL (with	text
+6cd2834070	1	249	#/texts/244	pgvector	text
+3f23a545d2	1	250	#/texts/245	) also support vector search, which can be practic	text
+f117905bb9	1	251	#/texts/246	Guardrails	section_header
+71d9bdeb93	1	252	#/texts/247	Guardrails	text
+9a8fc60bc5	1	253	#/texts/248	validate model inputs and outputs at inference tim	text
+2ba2785617	1	254	#/texts/249	Conceptually, guardrails are closely related to ev	text
+69c217b813	1	255	#/texts/250	The tooling splits into two categories:	text
+1dc8d22d3c	1	256	#/texts/251	Managed platforms like Amazon Bedrock Guardrails, 	list_item
+7d9aa0f649	1	257	#/texts/252		list_item
+b4c3f562f2	1	258	#/texts/253	Tools like	text
+d63312c0cd	1	259	#/texts/254	Guardrails AI	text
+79fe42fd12	1	260	#/texts/255	, OpenAI's Moderation API, and models like Llama G	text
+84bbcc5413	1	261	#/texts/256	13	text
+2380a1a279	1	262	#/texts/257	for details. In this category, enforcement becomes	text
+115f3d80bf	1	263	#/texts/258	AI gateways	section_header
+7a2011f058	1	264	#/texts/259	An	text
+5e5e66588c	1	265	#/texts/260	AI gateway	text
+5a848bb768	1	266	#/texts/261	sits between your application and one or more LLM 	text
+8f41150d7b	1	267	#/texts/262	Databricks Unity AI Gateway integrates natively wi	text
+3226112043	1	268	#/texts/263	Pydantic AI Gateway	text
+227d5786d4	1	269	#/texts/264	provides cost control and routing with an open-sou	text
+70308aa18c	1	270	#/texts/265	Memory stores	section_header
+6677457777	1	271	#/texts/266	LLMs are stateless by default. Every API call is a	text
+dbbf3639dd	1	272	#/texts/267	memory store	text
+1d42c67d32	1	273	#/texts/268	solves this problem by persisting conversation his	text
+7c752b0643	1	274	#/texts/269	Databricks Lakebase provides a managed PostgreSQL 	text
+3f6e1c129d	1	275	#/texts/270	Observability tools	section_header
+e2e157b1bf	1	276	#/texts/271	LLM	text
+21e517b4c2	1	277	#/texts/272	observability	text
+0c04ac19cf	1	278	#/texts/273	goes beyond traditional application monitoring. Yo	text
+5f74122b6f	1	279	#/texts/274	Major tools like Pydantic Logfire, MLflow Tracing,	text
+f0f84e7087	1	280	#/texts/275	Evaluation tools	section_header
+d93f7e257a	1	281	#/texts/276	Evaluating LLM outputs is fundamentally harder tha	text
+9e537e2b98	1	282	#/texts/277	Tools like Pydantic Evals, MLflow Evaluate, and Op	text
+a10a258814	1	283	#/texts/278	Human review and feedback	section_header
+a37a61d325	1	284	#/texts/279	Automated evaluation provides scale, but human jud	text
+d5bab1514f	1	285	#/texts/280	Most tools we've mentioned in the observability an	text
+96616f4ec0	1	286	#/texts/281	Choosing Your Tools	section_header
+326484a4d3	1	287	#/texts/282	We've covered a lot of ground in this chapter: pri	text
+62ae253283	1	288	#/texts/283	Start with what your organization already has. The	text
+9447b31f3b	1	289	#/texts/284	This is also where platforms start to make a stron	text
+c55afc7f2f	1	290	#/texts/165	A dense chart showcasing a subset of machine learn	caption
+9d3f9860e5	1	291	#/texts/170	Diagram illustrating core MLOps and LLMOps compone	caption
+73610320d4	1	292	#/texts/285	Databricks MLOps Components	title
+fca570f6d9	1	293	#/texts/286	Databricks provides all the features you need for 	text
+bdfdeb3f79	1	294	#/texts/287	Table 1-4	text
+b2756c637d	1	295	#/texts/288	maps the MLOps and LLMOps landscape component cate	text
+8860a63c20	1	296	#/texts/289	Figure 1-4	text
+2d39800a0f	1	297	#/texts/290	(earlier in the chapter) to their Databricks equiv	text
+204625c646	1	298	#/tables/3	| MLOps and LLMOps component categories   | Databr	table
+697c27d0d9	1	299	#/texts/291	In the next chapters, we will go through all of th	text
+c158ea2b8a	1	300	#/texts/292	Table 1-4	text
+3cac359971	1	301	#/texts/293	in more detail and then discuss cross-cutting comp	text
+45f3b45374	1	302	#/texts/294	Lakeflow Jobs	section_header
+104760bd30	1	303	#/texts/295	Lakeflow Jobs	text
+4661a29651	1	304	#/texts/296	is an orchestration system that's integrated into 	text
+2b6bc66324	1	305	#/texts/297	Jobs	list_item
+96ef5a0957	1	306	#/texts/298		list_item
+cbb29dcad0	1	307	#/texts/299	A job is a primary unit of orchestration that supp	text
+dcc24d196f	1	308	#/texts/300	.	text
+8ca9590a90	1	309	#/texts/301	Triggers	list_item
+44cfc670ae	1	310	#/texts/302	These include the CRON trigger, the file arrival t	list_item
+f08d1e7ba9	1	311	#/texts/303	Tasks	list_item
+15e555f0fd	1	312	#/texts/304	Databricks jobs consist of tasks that support vari	list_item
+1d932343fd	1	313	#/texts/305	A Databricks notebook with Python code and/or SQL 	list_item
+1cd1b04ed6	1	314	#/texts/306	A Python script or a wheel	list_item
+9a75300225	1	315	#/texts/307	Lakeflow Spark Declarative Pipelines (formerly Del	list_item
+62c82f6125	1	316	#/texts/308	If/else conditions that can be handy if, for examp	list_item
+210aac6cee	1	317	#/texts/309	For-each loops that can be useful when you need to	list_item
+25df39937b	1	318	#/texts/310	Databricks is constantly improving the Lakeflow Jo	text
+d3d3617220	1	319	#/texts/311	Databricks Compute	section_header
+fe21ecb98d	1	320	#/texts/312	You can specify the compute that will be used to r	text
+b441ed9188	1	321	#/texts/313	Classic compute versus serverless compute	section_header
+e9b93574b3	1	322	#/texts/314	Classic compute	text
+fa53f53ee0	1	323	#/texts/315	is configured by the users, and it runs within the	text
+c918e67429	1	324	#/texts/316	For a classic compute, users have all the freedom 	text
+7fd67c0ce2	1	325	#/texts/317		list_item
+bebf16503f	1	326	#/texts/318	The	text
+fe19d4ccfd	1	327	#/texts/319	runtime	text
+3bf483bebb	1	328	#/texts/320	(the environment used to execute the code) that de	text
+3986674082	1	329	#/texts/321	Pre-installed libraries	list_item
+62fad2676b	1	330	#/texts/322	The worker and driver type	list_item
+b447448697	1	331	#/texts/323	The autoscaling policy	list_item
+371032b379	1	332	#/texts/324	Advanced settings (for example, init scripts or Do	list_item
+3769ce78d5	1	333	#/texts/325	Serverless compute	text
+30701496c1	1	334	#/texts/326	means that the compute infrastructure is fully man	text
+2ab430b61e	1	335	#/texts/327	Serverless compute works well for development, dat	text
+4b165d7f10	1	336	#/texts/328	One of the main current limitations on serverless 	text
+e6db016960	1	337	#/texts/329	Traditional ML training workflows often still requ	text
+6493938858	1	338	#/texts/330	All-purpose versus job compute	section_header
+b9d6849e88	1	339	#/texts/331	For a task in a Lakeflow job that utilizes standar	text
+31725656b4	1	340	#/texts/332	MLflow	section_header
+ced31cdbac	1	341	#/texts/333	MLflow	text
+e5c2016135	1	342	#/texts/334	is one of the oldest and most popular tools for ex	text
+a2357ed171	1	343	#/texts/335	Experiment tracking is managed at the Databricks w	text
+42ecafa2d8	1	344	#/texts/336	While the model registry was previously also at th	text
+ac72708fff	1	345	#/texts/337	Given that organizations increasingly build AI app	text
+329831fd18	1	346	#/texts/338	MLflow Tracing	text
+bcd3cbfc73	1	347	#/texts/339	product has been introduced as a key component for	text
+ee5f7c02b3	1	348	#/texts/340	Chapter 8	text
+a21efa42f2	1	349	#/texts/341	.	text
+107f7c3e98	1	350	#/texts/342	Feature Engineering	section_header
+72e888aff6	1	351	#/texts/343	Databricks Feature Store	text
+9a35e4293d	1	352	#/texts/344	is a centralized repository for storing and sharin	text
+0a8a0c8b93	1	353	#/texts/345	Databricks provides a Python API to interact with 	text
+88049b9623	1	354	#/texts/346	Create, update, and delete feature tables and feat	list_item
+f6789dc48b	1	355	#/texts/347	Create a training dataset	list_item
+c64119d69e	1	356	#/texts/348	Log an MLflow model packaged with information on h	list_item
+e2faa85691	1	357	#/texts/349	Feature engineering functionality is especially us	text
+4dbef7f855	1	358	#/texts/350	Databricks Model Serving	section_header
+4acf166a95	1	359	#/texts/351	Databricks provides Model and Feature Serving func	text
+f4a67cc307	1	360	#/texts/352	Databricks Model Serving is designed for real-time	text
+018196faa8	1	361	#/texts/353	You can also use Databricks Model Serving to acces	text
+b30f4c8894	1	362	#/texts/354	Chapter 7	text
+d87483098a	1	363	#/texts/355	.	text
+c6bd8263ab	1	364	#/texts/356	Databricks Model Serving for ML applications integ	text
+2d58d2546e	1	365	#/texts/357	Databricks Online Feature Stores	text
+5b935a5444	1	366	#/texts/358	. These stores are built on	text
+501c9b93cf	1	367	#/texts/359	Lakebase	text
+562732bfb3	1	368	#/texts/360	-a fully managed PostgreSQL-based online transacti	text
+47acf71805	1	369	#/texts/361	\"Cross-Cutting Components\"	text
+d9876014d3	1	370	#/texts/362	.	text
+27ffefcbf5	1	371	#/texts/363	If you need more flexibility, you can implement fe	text
+8289927e00	1	372	#/texts/364	Chapter 9	text
+b81c363f36	1	373	#/texts/365	, where we will use Lakebase as memory for an AI a	text
+f5da975758	1	374	#/texts/366	Databricks Feature Serving is a great fit when you	text
+da364545f2	1	375	#/texts/367	Data Quality Monitoring	section_header
+bcfd28099f	1	376	#/texts/368	Data Quality Monitoring helps you monitor data dri	text
+7a16e77155	1	377	#/texts/369	Data Quality Monitoring can be applied and increme	text
+19827a3e16	1	378	#/texts/370	It is possible to set alerting on the profile or d	text
+6f0f46b365	1	379	#/texts/371	Databricks AI Search	section_header
+42152b4037	1	380	#/texts/372	The Databricks AI Search functionality in Databric	text
+0bb4f609a8	1	381	#/texts/373	Like other vector databases, AI Search on Databric	text
+1f72a9ebcd	1	382	#/texts/374	Like an online table, the AI Search index can be u	text
+3b18d25686	1	383	#/texts/375	14	text
+73e46e5bb2	1	384	#/texts/376	Alternatively, it can be updated based on a trigge	text
+20b2f38fb0	1	385	#/texts/377	Unity AI Gateway	section_header
+9f506dc236	1	386	#/texts/378	Unity AI Gateway is the central AI governance laye	text
+77258e9e50	1	387	#/texts/379	Unity AI Gateway allows organizations to analyze u	text
+ae7dfe56c0	1	388	#/texts/380	Databricks AI Guardrails	section_header
+cf9116d4bc	1	389	#/texts/381	The AI Guardrails in Unity AI Gateway allow organi	text
+6dc1d2a766	1	390	#/texts/382	Databricks provides built-in guardrails for PII re	text
+640d42a2df	1	391	#/texts/383	Chapter 9	text
+8bfa88906d	1	392	#/texts/384	.	text
+e150d99207	1	393	#/texts/385	Cross-Cutting Components	section_header
+cdb1b02bcc	1	394	#/texts/386	Each of the components we've described so far maps	text
+3a19495280	1	395	#/texts/387	Table 1-4	text
+cdf017ab37	1	396	#/texts/388	). However, several Databricks components play a d	text
+7b06c63528	1	397	#/texts/389	Unity Catalog	section_header
+cdf9b43dee	1	398	#/texts/390	Unity Catalog is a governance layer for data and A	text
+104968cdca	1	399	#/texts/391	When enabled, Unity Catalog operates transparently	text
+42f964fec0	1	400	#/texts/392	Rather than fitting into a single component of the	text
+79617eb222	1	401	#/texts/393	Declarative Automation Bundles	section_header
+8892176733	1	402	#/texts/394	Declarative Automation Bundles (DABs) are the \"glu	text
+175ce6903d	1	403	#/texts/395	In general, there are several ways of deploying La	text
+5f82d6191b	1	404	#/texts/396	project_config.yml	text
+b90aad4fec	1	405	#/texts/397	file, you would have to ensure that all files were	text
+50062f603a	1	406	#/texts/398	Declarative Automation Bundles help you manage the	text
+33ccb8daa5	1	407	#/texts/399	We discuss Declarative Automation Bundles in detai	text
+7d133871cb	1	408	#/texts/400	Chapter 5	text
+a061dfde3c	1	409	#/texts/401	.	text
+8ff6796dd9	1	410	#/texts/402	Lakebase	section_header
+574cfa7c9e	1	411	#/texts/403	Lakebase	text
+81a5caeab3	1	412	#/texts/404	is a fully managed Postgres database that's built 	text
+8560c36ab9	1	413	#/texts/405	15	text
+1a3149ed38	1	414	#/texts/406	a serverless Postgres company, and it thereby brou	text
+55dd37720d	1	415	#/texts/407	Chapter 7	text
+49eb8b876e	1	416	#/texts/408	.	text
+e4cc0444d5	1	417	#/texts/409	Lakebase also supports several capabilities that m	text
+32e41d5345	1	418	#/texts/410	Before the introduction of Lakebase, the Databrick	text
+af000853e9	1	419	#/texts/411	Databricks Apps	section_header
+010d0a12a8	1	420	#/texts/412	Databricks Apps provide a hosting environment for 	text
+f7cac874fa	1	421	#/texts/413	Databricks Apps are also the recommended way to ho	text
+e64ca7792a	1	422	#/texts/414	Even though the code examples in this book do not 	text
+4a789139c5	1	423	#/texts/415	Conclusion	title
+da24437382	1	424	#/texts/416	In this chapter, we walked through the MLOps princ	text
+3db2bf96ef	1	425	#/texts/417	Next, before we proceed with practical implementat	text
+a68bb397e1	1	426	#/texts/418	1	text
+0a648c2f46	1	427	#/texts/419	D. Sculley et al. \"Hidden Technical Debt in Machin	text
+cbf3f37361	1	428	#/texts/420	Advances in Neural Information Processing Systems	text
+38bf7fe88f	1	429	#/texts/421	, 2015.	text
+b3fb63a8b8	1	430	#/texts/422	2	text
+dde75bc869	1	431	#/texts/423	Read more about Uber's Michelangelo in	text
+f767af1ea8	1	432	#/texts/424	the company's engineering blog	text
+c4649004d4	1	433	#/texts/425	.	text
+737dbe33a7	1	434	#/texts/426	3	text
+40f25dfe79	1	435	#/texts/427	Read more about scaling ML productivity at LinkedI	text
+437bc1db17	1	436	#/texts/428	the company's engineering blog	text
+aacc7c6cc3	1	437	#/texts/429	.	text
+334919be77	1	438	#/texts/430	4	text
+4ffa71f104	1	439	#/texts/431	Read more about Netflix's ML platform in	text
+15bb4189ba	1	440	#/texts/432	the company's blog	text
+2bae90676e	1	441	#/texts/433	.	text
+b55353c005	1	442	#/texts/434	5	text
+e4dc94660f	1	443	#/texts/435	SphereOI,	text
+26b9d24cd9	1	444	#/texts/436	How Zillow Could Have Avoided Its $500M AI Mistake	text
+5e91de249d	1	445	#/texts/437	, September 1, 2022,	text
+95e418c26e	1	446	#/texts/438	https://oreil.ly/ES7-w	text
+823f65606c	1	447	#/texts/439	.	text
+ef225dfb90	1	448	#/texts/440	6	text
+ae17f85fe8	1	449	#/texts/441	For more information about the framework, consult 	text
+c2ce6e8e3c	1	450	#/texts/442	blog announcement of their principles for trusted 	text
+40264b0cd4	1	451	#/texts/443	.	text
+8f4b39950d	1	452	#/texts/444	7	text
+e1ec3c510a	1	453	#/texts/445	One source of nondeterminism in deep learning infe	text
+39036fca15	1	454	#/texts/446	\"Defeating Nondeterminism in LLM Inference\"	text
+815dd87504	1	455	#/texts/447	for more information. For a practical walkthrough,	text
+7b6d1d9777	1	456	#/texts/448	\"On the Topic of LLMs and Non-Determinism\"	text
+c0fe208499	1	457	#/texts/449	.	text
+0b2b93978e	1	458	#/texts/450	8	text
+aa3ae0bbe3	1	459	#/texts/451	S. McConnell,	text
+18298b3efd	1	460	#/texts/452	Code Complete	text
+d2682c1871	1	461	#/texts/453	, 2nd ed. (Cisco Press, 2004), ch. 22, \"Developer 	text
+80b59f93bb	1	462	#/texts/454	9	text
+f2d11046d9	1	463	#/texts/455	The handbook is available on	text
+c722b67232	1	464	#/texts/456	Google's dedicated SRE site	text
+a2a83f9bf1	1	465	#/texts/457	.	text
+df65355d7e	1	466	#/texts/458	10	text
+6a6a4b7de2	1	467	#/texts/459	For more details, consult the	text
+dbbc447fee	1	468	#/texts/460	CodeRabbit State of AI vs. Human Code Generation R	text
+d190c2efc6	1	469	#/texts/461	.	text
+b7b9cbd31f	1	470	#/texts/462	11	text
+f22d142a8d	1	471	#/texts/463	For more details, read	text
+c1550dae37	1	472	#/texts/464	the full DORA report	text
+fcf7e5aba1	1	473	#/texts/465	.	text
+989fe37167	1	474	#/texts/466	12	text
+8b0e294334	1	475	#/texts/467	Superlinked provides an	text
+0943c1d48f	1	476	#/texts/468	extensive comparison of different vector databases	text
+a21b13f284	1	477	#/texts/469	.	text
+51a6067c4a	1	478	#/texts/470	13	text
+a1edc15de8	1	479	#/texts/471	Check out the	text
+d6b254f02d	1	480	#/texts/472	Llama Guard 4 model card	text
+c94c7083ae	1	481	#/texts/473	14	text
+0e5fe3fc28	1	482	#/texts/474	Continuous sync mode is not supported for	text
+9d7eb33085	1	483	#/texts/475	storage optimized endpoints	text
+21d9a3e2e3	1	484	#/texts/476	.	text
+131403b1ba	1	485	#/texts/477	15	text
+f1691b25b2	1	486	#/texts/478	For more details, check out	text
+2d3714f9b4	1	487	#/texts/479	Databricks' announcement	text
+fb524d7a0b	1	488	#/texts/480	.	text

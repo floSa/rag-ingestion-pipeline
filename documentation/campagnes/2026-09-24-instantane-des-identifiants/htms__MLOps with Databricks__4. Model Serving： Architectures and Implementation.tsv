@@ -1,0 +1,1060 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+dda1f33b76	1	0	#/texts/0	Chapter 4. Model Serving: Architectures and Implem	title
+421e23ec1a	1	1	#/texts/1	After we register the model, it will be ready for 	text
+5e29418c20	1	2	#/texts/2	Many ML models are deployed as batch processes, wh	text
+06fb09336a	1	3	#/texts/3	While implementing a full batch inference pipeline	text
+62bead1625	1	4	#/texts/4	predict	code
+89e9b58d1e	1	5	#/texts/5	function in	text
+98961931f0	1	6	#/texts/6	Chapter 3	text
+31f16e34cc	1	7	#/texts/7	. However, instead of running inference on observa	text
+0774f23b2e	1	8	#/texts/8	In this chapter, I'll cover situations in which ML	text
+108be3093c	1	9	#/texts/9	There are three main scenarios we'll cover:	text
+e74bcf1706	1	10	#/texts/10	Model Serving	list_item
+39af01008c	1	11	#/texts/11	All the features are available to the model via th	list_item
+7a98637ab8	1	12	#/texts/12	Serving precomputed batch predictions	list_item
+37fd223781	1	13	#/texts/13	Predictions are precomputed in advance and stored 	list_item
+57045167bc	1	14	#/texts/14	Model Serving with feature lookup	list_item
+968bb55842	1	15	#/texts/15	Predictions are computed at the moment of request.	list_item
+a97a2fdd92	1	16	#/texts/16	While I'll be covering all core deployment scenari	text
+ce6f69ac22	1	17	#/texts/17	From an endpoint deployment perspective on Databri	text
+838d1444af	1	18	#/texts/18	The primary difference lies upstream: synchronizat	text
+ded63cddea	1	19	#/texts/19	There's another important question in model deploy	text
+88e2c65ad9	1	20	#/texts/20	In some organizations, the same team that develops	text
+7d40742018	1	21	#/texts/21	In other organizations, particularly larger enterp	text
+dcdf61586e	1	22	#/texts/22	I recommend that you keep model development and pr	text
+233ba6e4df	1	23	#/texts/23	Model Serving is often challenging for data scienc	text
+d4bd8851a9	1	24	#/texts/24	With	text
+9e67af59c0	1	25	#/texts/25	Serverless Model and Feature Serving	text
+bbcd71fe01	1	26	#/texts/26	, Databricks simplifies deployment infrastructure.	text
+32c1b04ed5	1	27	#/texts/27	Direct deployment by data science teams (when the 	list_item
+02c2bd7709	1	28	#/texts/28	Standardization and governance of deployments by M	list_item
+a9beaced83	1	29	#/texts/29	Clear ownership with less operational burden	list_item
+9f691b8604	1	30	#/texts/30	Rather than prescribing a single \"ideal\" structure	text
+0aeae0ea76	1	31	#/texts/31	Let's begin by covering how to deploy an endpoint 	text
+ccd7005353	1	32	#/texts/32	Model Serving	title
+4249631ba1	1	33	#/texts/33	In the first scenario, we'll explore	text
+8a62720068	1	34	#/texts/34	M odel S erving	text
+024b07b830	1	35	#/texts/35	, assuming that all required features are included	text
+c4156cf235	1	36	#/texts/36	Figure 4-1	text
+fee6c4e5f1	1	37	#/texts/37	shows a typical automated pipeline for retraining 	text
+de88c13576	1	38	#/texts/38	Lakeflow jobs	text
+9094f4421c	1	39	#/texts/39	, which handle orchestration, and	text
+708f15a838	1	40	#/texts/40	Unity Catalog	text
+b5e9f01778	1	41	#/texts/41	(UC), which manages governance and access. We firs	text
+b13e901c7b	1	42	#/texts/42	Chapter 1	text
+8456d95d3c	1	43	#/texts/43	, and we will examine them in detail in	text
+206890863f	1	44	#/texts/44	Chapter 5	text
+991fe73eaa	1	45	#/texts/45	.	text
+1ffddc969a	1	46	#/texts/46	For Model Serving, we can perform both	text
+7992087533	1	47	#/texts/47	model retraining	text
+40dcbcc083	1	48	#/texts/48	and	text
+76df350036	1	49	#/texts/49	endpoint updates	text
+c644275c1b	1	50	#/texts/50	within the same pipeline. A scheduled Lakeflow job	text
+1c3cc31958	1	51	#/pictures/0	Diagram illustrating a Model Serving pipeline, sho	picture
+62f875eea6	1	52	#/texts/52	We will discuss this pipeline in depth in	text
+a4f795f0b4	1	53	#/texts/53	Chapter 5	text
+32eda37e11	1	54	#/texts/54	, but for now, let's focus on the endpoint deploym	text
+e4e3407ab6	1	55	#/texts/55	To deploy an endpoint for this use case, we first 	text
+5211d12da6	1	56	#/texts/56	import mlflow	code
+c8445de98c	1	57	#/texts/57		code
+341ac971b5	1	58	#/texts/58	from mlflow import MlflowClient	code
+85bf440f8e	1	59	#/texts/59		code
+b63b91fd43	1	60	#/texts/60	from hotel_booking.config import ProjectConfig	code
+5f59dd491a	1	61	#/texts/61		code
+c2b8062d9f	1	62	#/texts/62	from hotel_booking.utils.common import set_mlflow_	code
+b6b2913a7c	1	63	#/texts/63		code
+7ebf81ac8c	1	64	#/texts/64	set_mlflow_tracking_uri ()	code
+6bcf597f7a	1	65	#/texts/65		code
+69e3612617	1	66	#/texts/66	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+a4adcf7b2f	1	67	#/texts/67		code
+bc61045d26	1	68	#/texts/68	catalog = cfg . catalog	code
+77b512c0f2	1	69	#/texts/69		code
+d22e572403	1	70	#/texts/70	schema = cfg . schema	code
+e92dd428c8	1	71	#/texts/71		code
+9f8aed90c6	1	72	#/texts/72	model_name = \"hotel_booking_pyfunc\"	code
+f56c70f807	1	73	#/texts/73		code
+d7dec92e79	1	74	#/texts/74	client = MlflowClient ()	code
+7d61352c77	1	75	#/texts/75		code
+351605d469	1	76	#/texts/76	model_version = client . get_model_version_by_alia	code
+92fdf9737f	1	77	#/texts/77	Then, we'll need to define a list that consists of	text
+cbb356c599	1	78	#/texts/78	ServedEntityInput	code
+c84616f681	1	79	#/texts/79	. If we want to serve a model, we'll need to provi	text
+00d7d50fcc	1	80	#/texts/80	entity_name	list_item
+03b830cdeb	1	81	#/texts/81		list_item
+507bd5b4a4	1	82	#/texts/82	This is the full name of the model in the followin	text
+53d39ada18	1	83	#/texts/83	{	code
+5201a64d47	1	84	#/texts/84	catalog_name	code
+90405253b8	1	85	#/texts/85	}.{	code
+4197517df7	1	86	#/texts/86	schema_name	code
+718f7b9cd6	1	87	#/texts/87	}.{	code
+638010a1e9	1	88	#/texts/88	model_name	code
+c06733ab82	1	89	#/texts/89	}	code
+36fdb66838	1	90	#/texts/90	.	text
+918bc12ebc	1	91	#/texts/91	entity_version	list_item
+1a87e06415	1	92	#/texts/92	This is the specific version of the model to serve	list_item
+92a523f0aa	1	93	#/texts/93	environment_vars	list_item
+0333606894	1	94	#/texts/94		list_item
+5154956c68	1	95	#/texts/95	This is optional, but it's useful, for example, if	text
+8957773d48	1	96	#/texts/96	Chapter 9	text
+0c4ac62db1	1	97	#/texts/97	.	text
+53c258975a	1	98	#/texts/98	workload_type	list_item
+5b65b271a6	1	99	#/texts/99	The default is a CPU, but various graphics process	list_item
+81120be120	1	100	#/texts/100	scale_to_zero_enabled	list_item
+5cbaec24c0	1	101	#/texts/101		list_item
+c3ce40aa8b	1	102	#/texts/102	This controls whether the compute resources should	text
+07c7188e5f	1	103	#/texts/103	True	code
+d882c02163	1	104	#/texts/104	for development and	text
+db52726e1e	1	105	#/texts/105	False	code
+670f2aebc9	1	106	#/texts/106	for production, due to a cold-start problem.	text
+05c6eacd77	1	107	#/texts/107	Concurrency settings	list_item
+c8b7d7a486	1	108	#/texts/108		list_item
+d0af010ccc	1	109	#/texts/109	You must define autoscaling ranges by specifying e	text
+901a2d26c8	1	110	#/texts/110	workload_size	code
+0b6dbc403b	1	111	#/texts/111	(e.g., Small, Medium, Large) or by setting	text
+64ef46cc4a	1	112	#/texts/112	min_provisioned_concurrency	code
+69e2e6a948	1	113	#/texts/113	and	text
+dd981a91d2	1	114	#/texts/114	max_provisioned_concurrency	code
+c9f0d124f4	1	115	#/texts/115	.	text
+2ac250c3fd	1	116	#/texts/116	In the following example, we'll use some of these 	text
+ebc1b21f8e	1	117	#/texts/117	from databricks.sdk.service.serving import ServedE	code
+0e43058b8d	1	118	#/texts/118		code
+6a73e42446	1	119	#/texts/119	served_entities = [ ServedEntityInput ( entity_nam	code
+ba5e6f977b	1	120	#/texts/120		code
+bcf40fefc0	1	121	#/texts/121	]	code
+49b3dd867e	1	122	#/texts/122	Now, let's talk about autoscaling:	text
+128fe09111	1	123	#/texts/123	A single unit of provisioned concurrency can proce	list_item
+a82098add5	1	124	#/texts/124	The workload size corresponds to a range of provis	list_item
+a8e6f1d491	1	125	#/texts/125		list_item
+9a97bab406	1	126	#/texts/126	Autoscaling is based on the number of required uni	text
+7e76dc9c3a	1	127	#/texts/127	queries per second	text
+095c7b9253	1	128	#/texts/128	\u00d7	text
+72760aeb6b	1	129	#/texts/129	model processing time	text
+0f99422c64	1	130	#/texts/130	.	text
+1e645e110b	1	131	#/texts/131	Let's look at an example. Imagine your service nee	text
+f24ecd50e0	1	132	#/texts/132	Endpoint Deployment	section_header
+7c6c1f7c59	1	133	#/texts/133	Let's deploy an endpoint using Databricks SDK. Whe	text
+0ca6bc4bde	1	134	#/texts/134	Cost monitoring	list_item
+4747fa4089	1	135	#/texts/135	We can add tags or a usage policy ID to monitor th	list_item
+023da6b5f6	1	136	#/texts/136	Route optimization	list_item
+d5948cc70d	1	137	#/texts/137	When this is enabled, a unique, optimized URL is c	list_item
+f5242d2403	1	138	#/texts/138	Databricks Unity AI Gateway configuration	list_item
+5c663594e8	1	139	#/texts/139	AI Gateway allows you to enable the following:	list_item
+99bf325e51	1	140	#/texts/140	Fallback to another served entity if a served enti	list_item
+4bd5195c56	1	141	#/texts/141		list_item
+b28fcad20f	1	142	#/texts/142	AI guardrails for foundation model APIs, to preven	text
+447f69da4e	1	143	#/texts/143	Chapter 9	text
+5d3576d2c5	1	144	#/texts/144	)	text
+f9fcc2f0f1	1	145	#/texts/145	An inference table for logging all requests and re	list_item
+f07207428c	1	146	#/texts/146	Rate limits that you can set to limit endpoint tra	list_item
+e55201c5df	1	147	#/texts/147	Usage tracking in system tables, to monitor operat	list_item
+17753e3ebf	1	148	#/texts/148	Here, we'll enable usage tracking and the inferenc	text
+c0030ff314	1	149	#/texts/149	from databricks.sdk.service.serving import ( AiGat	code
+9bc5a3f6e6	1	150	#/texts/150		code
+f97aea4f8c	1	151	#/texts/151	)	code
+2d7e94e9a5	1	152	#/texts/152		code
+e4bb9ee1d1	1	153	#/texts/153	ai_gateway_cfg = AiGatewayConfig ( inference_table	code
+55a4c6ba57	1	154	#/texts/154	Next, we either create a new endpoint or update an	text
+ce1701cd4c	1	155	#/texts/155	TrafficConfig	code
+dcc4e32dd1	1	156	#/texts/156	. In this example, we route 100% of the traffic to	text
+6284e86baf	1	157	#/texts/157	Finally, we specify the usage policy ID defined in	text
+a3dffe1cbc	1	158	#/texts/158	project_config.yml	text
+55e3444174	1	159	#/texts/159	file, which allows us to track and attribute proje	text
+fa3e10485f	1	160	#/texts/160	from databricks.sdk import WorkspaceClient	code
+97ccf714b7	1	161	#/texts/161		code
+2fca34963d	1	162	#/texts/162	from databricks.sdk.service.serving import ( Endpo	code
+2aa8756c30	1	163	#/texts/163		code
+0e7f893208	1	164	#/texts/164	)	code
+189d6f65b8	1	165	#/texts/165		code
+23976270d2	1	166	#/texts/166	w = WorkspaceClient ()	code
+94d57bffd8	1	167	#/texts/167		code
+22f2733cf8	1	168	#/texts/168	endpoint_name = \"hotel-booking-pyfunc\"	code
+e836426195	1	169	#/texts/169		code
+4707ba12a6	1	170	#/texts/170	endpoint_exists = any ( item . name == endpoint_na	code
+7857b765c9	1	171	#/texts/171		code
+b4cdfd334b	1	172	#/texts/172	)	code
+6b0404ad64	1	173	#/texts/173		code
+370a63ed3f	1	174	#/texts/174	traffic_config = TrafficConfig ( routes = [ Route 	code
+54c4583e18	1	175	#/texts/175		code
+76fa6f9a73	1	176	#/texts/176	if not endpoint_exists : w . serving_endpoints . c	code
+069e8ebc03	1	177	#/texts/177		code
+09a941a550	1	178	#/texts/178	else : w . serving_endpoints . update_config ( nam	code
+82d2d2d35d	1	179	#/texts/179	Make sure the endpoint is ready before sending req	text
+dbca5d00af	1	180	#/texts/180	workspace.serving_endpoints.get(name=endpoint_name	code
+b68a96af05	1	181	#/texts/181	. Alternatively, instead of the	text
+8b9e1e97ce	1	182	#/texts/182	create()	code
+fa651ffe62	1	183	#/texts/183	and	text
+d97c93a0eb	1	184	#/texts/184	update_config()	code
+875968f00f	1	185	#/texts/185	methods, you can use	text
+e4d95a7ac4	1	186	#/texts/186	create_and_wait()	code
+ba0f3999b5	1	187	#/texts/187	and	text
+b5c9806ae0	1	188	#/texts/188	update_config_and_wait()	code
+2c4ca7c6d7	1	189	#/texts/189	, which block until the operation completes and th	text
+ba337acb40	1	190	#/texts/190	Once the endpoint is deployed and ready, you can s	text
+0c90c5bf40	1	191	#/texts/191	dataframe_split	code
+fe454c2ded	1	192	#/texts/192	or the	text
+20ee83563f	1	193	#/texts/193	dataframe_records	code
+abd71f1d61	1	194	#/texts/194	format, with	text
+870b3223ff	1	195	#/texts/195	dataframe_split	code
+d8e9a94ab8	1	196	#/texts/196	generally being the recommended option because it 	text
+b57cf731f9	1	197	#/texts/197	Table 4-1	text
+2ec76c6a79	1	198	#/texts/198	).	text
+bf5128169a	1	199	#/tables/0	| Field               | Description               	table
+fc3e0bdf5f	1	200	#/texts/199	dataframe_split	code
+5a9a365d6c	1	201	#/texts/200	{\"dataframe_split\": pandas_df.to_dict(orient=\"spli	code
+64901efc70	1	202	#/texts/201	dataframe_records	code
+77984a3af4	1	203	#/texts/202	{\"dataframe_records\": pandas_df.to_dict(orient=\"re	code
+16ae4910cd	1	204	#/texts/203	instances	code
+37489a19cc	1	205	#/texts/204	{\"instances\": [1.0, 2.0, 5.0]}	code
+591d4a24df	1	206	#/texts/205	inputs	code
+4fb8fa8d27	1	207	#/texts/206	{\"inputs\": [[\"Cheese\"], [\"and\", \"Crackers\"]]}	code
+a8f39251a3	1	208	#/texts/207	Before we can send any requests, we need to authen	text
+e05ca4663d	1	209	#/texts/208	notebooks/chapter4_1.model_serving.py	text
+7e9e8fd4ac	1	210	#/texts/209	file, we can retrieve a personal access token and 	text
+a56f1d2c74	1	211	#/texts/210	host = w . config . host	code
+13c6c35d87	1	212	#/texts/211		code
+7e1e4d7f1e	1	213	#/texts/212	token = w . tokens . create ( lifetime_seconds = 1	code
+dd38d378ad	1	214	#/texts/213	You should not use personal access tokens for a pr	text
+eec0bfd35e	1	215	#/texts/214	When calling the endpoint, we can provide the payl	text
+08f431e55f	1	216	#/texts/215	dataframe_records	code
+9e09e17c05	1	217	#/texts/216	and	text
+b265a41b3d	1	218	#/texts/217	dataframe_split	code
+4ad6c17e3e	1	219	#/texts/218	:	text
+9bcd533105	1	220	#/texts/219	payload = { \"dataframe_records\" : [{ 'number_of_ad	code
+b6893f9ab6	1	221	#/texts/220		code
+94f8201bb7	1	222	#/texts/221	}	code
+2781034f9b	1	223	#/texts/222		code
+072f1ba744	1	224	#/texts/223	payload = { \"dataframe_split\" : { 'columns' : [ 'n	code
+c92f9dee55	1	225	#/texts/224		code
+353a424c7b	1	226	#/texts/225	}	code
+ed1fc539b6	1	227	#/texts/226	Then, we can use the	text
+12ab77ea97	1	228	#/texts/227	requests	code
+a8b953fb80	1	229	#/texts/228	library to call the endpoint:	text
+5ed516f50a	1	230	#/texts/229	import requests	code
+a27fa50c36	1	231	#/texts/230		code
+d51e2c1c96	1	232	#/texts/231	serving_endpoint = f \" { host } /serving-endpoints	code
+555984ad9e	1	233	#/texts/232		code
+48ad57ef8d	1	234	#/texts/233	response = requests . post ( serving_endpoint , he	code
+21ae2b205d	1	235	#/texts/234		code
+05a7a8df4d	1	236	#/texts/235	)	code
+a8fabc3136	1	237	#/texts/236	The output contains the	text
+70d7c6d302	1	238	#/texts/237	\"predictions\"	code
+d7d032c5f5	1	239	#/texts/238	key, and the content is defined by the PyFunc wrap	text
+8623453625	1	240	#/texts/239	{ \"predictions\" : { \"Total price per night\" : [ 10	code
+5b0db655d7	1	241	#/texts/240	Deploying a model without proper validation can le	text
+cbfb857b7a	1	242	#/texts/241	Databricks also supports	text
+173fcace74	1	243	#/texts/242	express deployments	text
+ae04278197	1	244	#/texts/243	, which significantly speed up the deployment proc	text
+223106ca0b	1	245	#/texts/244	serverless environment	text
+f5fe954d81	1	246	#/texts/245	. You must log and register the model from a serve	text
+618e3ae62a	1	247	#/texts/246	A/B Testing	section_header
+ddb15afdaf	1	248	#/texts/247	In the section	text
+2498cf885a	1	249	#/texts/248	\"Endpoint Deployment\"	text
+833076734e	1	250	#/texts/249	, we configured an endpoint with a	text
+616f8bc75d	1	251	#/texts/250	TrafficConfig	code
+df44559d01	1	252	#/texts/251	and routed all of its traffic to a single model. W	text
+3dd0709c4a	1	253	#/texts/252	The defining property of a traffic split is that m	text
+3af5240269	1	254	#/texts/253	The alternative is to derive the assignment from a	text
+7ecd3691f1	1	255	#/texts/254	Choosing a routing strategy	section_header
+6b52bccda7	1	256	#/texts/255	The rule for this is simple: randomize at the same	text
+5fa9e2d320	1	257	#/texts/256	The experimentation literature distinguishes betwe	text
+8638bcb365	1	258	#/texts/257	1	text
+68510f8b93	1	259	#/texts/258	The	text
+de76bc5a40	1	260	#/texts/259	randomization unit	text
+6b5c60c119	1	261	#/texts/260	is the entity assigned to a model. The	text
+4d12720c75	1	262	#/texts/261	analysis unit	text
+115b50ef1d	1	263	#/texts/262	is the entity on which the outcome is measured. In	text
+e2017b0de7	1	264	#/texts/263	Let's discuss what randomization unit to choose in	text
+683a79e8bd	1	265	#/texts/264	Randomization by customer	section_header
+cb77da6c17	1	266	#/texts/265	Most experiments do this because most business out	text
+872cc12a71	1	267	#/texts/266	Session-level assignment	section_header
+3d9635987f	1	268	#/texts/267	This is the middle-of-the-road approach. Use it wh	text
+b8b0852215	1	269	#/texts/268	Request-level assignment	section_header
+d44caef114	1	270	#/texts/269	This is appropriate only when requests are genuine	text
+a230d38748	1	271	#/texts/270	A useful test involves asking what entity appears 	text
+1e95479475	1	272	#/texts/271	Moving assignment into the model logic	section_header
+3af1392862	1	273	#/texts/272	So far, we have shown you how you could configure 	text
+825128dbae	1	274	#/texts/273	Now, consider an experiment in which the booking i	text
+994725f7ab	1	275	#/texts/274	We will use the model we trained in the previous c	text
+1e23a5f071	1	276	#/texts/275	from hotel_booking.config import ProjectConfig	code
+6f1597fcf7	1	277	#/texts/276		code
+4b10cc2f75	1	278	#/texts/277	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+58b21f96d6	1	279	#/texts/278		code
+4b731b9f22	1	280	#/texts/279	model_name_a = f \" { cfg . catalog } . { cfg . sch	code
+87f8f40a88	1	281	#/texts/280		code
+ecc0743555	1	282	#/texts/281	model_a_uri = f \"models:/ { model_name_a } @latest	code
+49670a544d	1	283	#/texts/282	Next, we train a second variant with a different s	text
+17c9550cc9	1	284	#/texts/283	from pyspark.sql import SparkSession	code
+82bfa7904d	1	285	#/texts/284		code
+6c870d209f	1	286	#/texts/285	from hotel_booking.data.data_loader import DataLoa	code
+724359d647	1	287	#/texts/286		code
+cdb75e4b28	1	288	#/texts/287	from hotel_booking.models.lightgbm_model import Li	code
+97c3400a57	1	289	#/texts/288		code
+d481ee7419	1	290	#/texts/289	spark = SparkSession . builder . getOrCreate ()	code
+17a5eac427	1	291	#/texts/290		code
+acbf7ec11c	1	292	#/texts/291	data_loader = DataLoader ( spark = spark , config 	code
+23c0a3facc	1	293	#/texts/292		code
+411f0bd74b	1	294	#/texts/293	X_train , y_train , X_test , y_test = data_loader 	code
+9b5cbbf6b1	1	295	#/texts/294		code
+6ac1cf8416	1	296	#/texts/295	model_b = LightGBMModel ( config = cfg )	code
+14a96dc474	1	297	#/texts/296		code
+0d7d0a79f9	1	298	#/texts/297	model_b . train ( X_train = X_train , y_train = y_	code
+cf6299c4a3	1	299	#/texts/298		code
+fc90e54b7a	1	300	#/texts/299	)	code
+a8fef7dda3	1	301	#/texts/300	Then, we log and register variant B:	text
+101cd7f31a	1	302	#/texts/301	from hotel_booking.config import Tags	code
+4d0cbf2a39	1	303	#/texts/302		code
+4d65b7424f	1	304	#/texts/303	from hotel_booking.utils.common import set_mlflow_	code
+a4621d9d20	1	305	#/texts/304		code
+14990938d8	1	306	#/texts/305	set_mlflow_tracking_uri ()	code
+7d516ad62e	1	307	#/texts/306		code
+693bc6c6d1	1	308	#/texts/307	tags = Tags ( ** { \"git_sha\" : \"1234567890abcd\" , 	code
+198ef037bb	1	309	#/texts/308		code
+e213b72ffe	1	310	#/texts/309	model_b . log_model ( experiment_name = \"/Shared/h	code
+d989c299a9	1	311	#/texts/310		code
+4958ead506	1	312	#/texts/311	)	code
+02f2d8b9d3	1	313	#/texts/312		code
+c2d064b7d6	1	314	#/texts/313	model_name_b = f \" { cfg . catalog } . { cfg . sch	code
+b3fd694f7a	1	315	#/texts/314		code
+3926e82972	1	316	#/texts/315	model_b . register_model ( model_name = model_name	code
+334d33dc2c	1	317	#/texts/316		code
+50a8afc0fe	1	318	#/texts/317	model_b_uri = f \"models:/ { model_name_b } @latest	code
+5ac83ed8fa	1	319	#/texts/318	Now, we create a wrapper model that contains the a	text
+a29c9430b2	1	320	#/texts/319	hashlib	code
+09d3833322	1	321	#/texts/320	, converts the hex digest to an integer, and assig	text
+78ee7e6011	1	322	#/texts/321	int(hashed_id, 16)	code
+fa9edf7112	1	323	#/texts/322	reads that string back into a single large integer	text
+93e2204241	1	324	#/texts/323	Hashing is what makes the split well behaved. Raw 	text
+086c8c828a	1	325	#/texts/324	import hashlib	code
+ca4e0ee36f	1	326	#/texts/325		code
+8014aae954	1	327	#/texts/326	import mlflow	code
+dc4085db7e	1	328	#/texts/327		code
+102cfbdbbb	1	329	#/texts/328	import numpy as np	code
+7c1841c633	1	330	#/texts/329		code
+3c6b75c942	1	331	#/texts/330	import pandas as pd	code
+e24bfe3675	1	332	#/texts/331		code
+92d81bbda4	1	333	#/texts/332	from mlflow.pyfunc import PythonModelContext	code
+06fb0d26d3	1	334	#/texts/333		code
+ba0dcd29f6	1	335	#/texts/334	class HotelBookingABTestWrapper ( mlflow . pyfunc 	code
+db7232c63f	1	336	#/texts/335	Table 4-2	text
+266671eecc	1	337	#/texts/336	lists some examples of the assignment.	text
+1ca9f55c55	1	338	#/tables/1	| Booking ID   | MD5 hex digest                   	table
+a8783a848d	1	339	#/texts/337	INN12345	code
+279f066641	1	340	#/texts/338	5c8f093e729b3cccbed92a48848c3fbd	code
+4dc7da911f	1	341	#/texts/339	1	code
+9c547deaa6	1	342	#/texts/340	INN12346	code
+e34e0046bd	1	343	#/texts/341	47ee65b0ba45f45b68a093dcbfd5f6b3	code
+d6afc37718	1	344	#/texts/342	1	code
+9c573c8d77	1	345	#/texts/343	INN12347	code
+63db85978b	1	346	#/texts/344	b52126aac65831a322a21c43d1e8d58a	code
+d35c337e60	1	347	#/texts/345	0	code
+481b792d0d	1	348	#/texts/346	INN12348	code
+cc963c544d	1	349	#/texts/347	1047b9493a5f98b4cd8a1e7d27059aea	code
+c0935f8b98	1	350	#/texts/348	0	code
+a97d433f8a	1	351	#/texts/349	We log, register, and deploy the wrapper model in 	text
+7c80f3a52b	1	352	#/texts/350	chapter4_1a.ab_testing_demo.py	text
+b72862a65d	1	353	#/texts/351	notebook.	text
+83bd94a61b	1	354	#/texts/352	In practice, organizations rarely implement model 	text
+a100db0ecd	1	355	#/texts/353	Now that we've covered deployment and A/B testing,	text
+7934be11cc	1	356	#/texts/354	Debugging	section_header
+1a0905f25b	1	357	#/texts/355	A common check involves loading the model using	text
+7ab4cc1b70	1	358	#/texts/356	mlflow.pyfunc.load_model()	code
+a66e2f66ae	1	359	#/texts/357	and running test data through it. While this works	text
+d144719c00	1	360	#/texts/358	A more reliable approach is to use	text
+3dc4ecc604	1	361	#/texts/359	mlflow.models.predict()	code
+323381383d	1	362	#/texts/360	:	text
+40d052193c	1	363	#/texts/361	import pandas as pd	code
+04482a84b3	1	364	#/texts/362		code
+a08495487b	1	365	#/texts/363	input_example = pd . DataFrame ( data = payload [ 	code
+48ea70dd6d	1	366	#/texts/364		code
+de76472c06	1	367	#/texts/365	)	code
+f7ff4063aa	1	368	#/texts/366		code
+18e31a7415	1	369	#/texts/367	model_uri = f \"models:/ { catalog } . { schema } .	code
+5347ccf11f	1	370	#/texts/368		code
+7df1ee4ab1	1	371	#/texts/369	mlflow . models . predict ( model_uri , input_exam	code
+a2eab17e6a	1	372	#/texts/370	Unlike	text
+81fedb63e2	1	373	#/texts/371	load_model()	code
+95f787112c	1	374	#/texts/372	, it builds a lightweight virtual environment base	text
+92808fb64e	1	375	#/texts/373	conda_env	code
+71e3c97aeb	1	376	#/texts/374	defined in your model's configuration. This makes 	text
+c72372a2a1	1	377	#/texts/375	predict()	code
+f831d66390	1	378	#/texts/376	runs 5 to 10 times slower than	text
+4c43c9517d	1	379	#/texts/377	load_model()	code
+d5815626e5	1	380	#/texts/378	, it's worth it. Catching environment issues early	text
+819deb575a	1	381	#/texts/379	MLflow also includes handy functions to convert an	text
+2b8e37846b	1	382	#/texts/380	from mlflow.models import validate_serving_input	code
+7480e82dfa	1	383	#/texts/381		code
+72f93005ae	1	384	#/texts/382	from mlflow.models import convert_input_example_to	code
+aa15e69797	1	385	#/texts/383		code
+8d87994f85	1	386	#/texts/384	serving_payload = convert_input_example_to_serving	code
+46a1a2dfa4	1	387	#/texts/385		code
+a10a00796c	1	388	#/texts/386	validate_serving_input ( model_uri , serving_paylo	code
+49c77c1298	1	389	#/texts/387	Now that we have walked through the Model Serving 	text
+181e328578	1	390	#/texts/51	Diagram illustrating a Model Serving pipeline, sho	caption
+6fa6f83f90	1	391	#/texts/388	Feature Serving	title
+61e84a5266	1	392	#/texts/389	Serving batch predictions is probably one of the m	text
+d187f51ca3	1	393	#/texts/390	This architecture is very popular in the case of p	text
+4a16fd9002	1	394	#/texts/391	Databricks Feature Serving is a great feature for 	text
+4f16a1178b	1	395	#/texts/392	Figure 4-2	text
+86bfbf183b	1	396	#/texts/393	). A scheduled Lakeflow job preprocesses data, ret	text
+93c50b313e	1	397	#/texts/394	FeatureSpec	code
+4e90fd644c	1	398	#/texts/395	. The application can query this endpoint in real 	text
+f27a0f2933	1	399	#/pictures/1	Diagram illustrating the architecture of Databrick	picture
+b08f85e74b	1	400	#/texts/397	When you're using Feature Serving, the payload doe	text
+a556eceaea	1	401	#/texts/398	Booking_ID	code
+095355d356	1	402	#/texts/399	.	text
+999436dd76	1	403	#/texts/400	Now, let's go through the	text
+c78d3736e9	1	404	#/texts/401	notebooks/chapter4_2.feature_serving.py	text
+38f7bef87b	1	405	#/texts/402	notebook, where we cover all the steps required fo	text
+b69d07f85e	1	406	#/texts/403	hotel_booking_basic	code
+7ce65b499d	1	407	#/texts/404	model, which we trained and registered earlier. We	text
+22f412be46	1	408	#/texts/405	@latest-model	code
+6f3076d999	1	409	#/texts/406	alias.	text
+b44e348e33	1	410	#/texts/407	Note	section_header
+52fbcb3b5e	1	411	#/texts/408	This notebook must be executed in a Databricks env	text
+1c3ceb4af5	1	412	#/texts/409	Creating a Feature Table	section_header
+f9eca909d0	1	413	#/texts/410	Let's go through the steps required to create a fe	text
+f2efb04fae	1	414	#/texts/411	pyspark	code
+591046a1c9	1	415	#/texts/412	DataFrame and only select the features required to	text
+d8a20f2485	1	416	#/texts/413	mlflow.pyfunc.spark_udf	code
+c448ba9acf	1	417	#/texts/414	to generate predictions at scale. The final output	text
+abdf20d422	1	418	#/texts/415	Booking_ID	code
+1e8160aa7d	1	419	#/texts/416	and the predicted booking price, which is labeled	text
+199e82f683	1	420	#/texts/417	Predicted_BookingPrice	code
+5b1bb76c5d	1	421	#/texts/418	:	text
+2651254d5d	1	422	#/texts/419	import mlflow	code
+8b17fe8160	1	423	#/texts/420		code
+905d2989ee	1	424	#/texts/421	from pyspark.sql import SparkSession	code
+43baf27a38	1	425	#/texts/422		code
+27fd707b1e	1	426	#/texts/423	from pyspark.sql.functions import col , struct	code
+876ba15992	1	427	#/texts/424		code
+d5c54f2e4c	1	428	#/texts/425	from hotel_booking.config import ProjectConfig	code
+93a16be7f2	1	429	#/texts/426		code
+23c1235f44	1	430	#/texts/427	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+db8058db8e	1	431	#/texts/428		code
+20b5e7aeef	1	432	#/texts/429	spark = SparkSession . builder . getOrCreate ()	code
+e3c0025b25	1	433	#/texts/430		code
+892d2eccb1	1	434	#/texts/431	model_name = f \" { cfg . catalog } . { cfg . schem	code
+1abee33b6a	1	435	#/texts/432		code
+5352c51ac7	1	436	#/texts/433	model_uri = f \"models:/ { model_name } @latest-mod	code
+5a54d4fcbf	1	437	#/texts/434		code
+9ade1bb566	1	438	#/texts/435	columns = cfg . cat_features + cfg . num_features	code
+f0f4b923a6	1	439	#/texts/436		code
+76ddedb4aa	1	440	#/texts/437	input_df = spark . table ( f \" { cfg . catalog } .	code
+0ddd208308	1	441	#/texts/438		code
+186cb485b3	1	442	#/texts/439	model_udf = mlflow . pyfunc . spark_udf ( spark , 	code
+c31382a131	1	443	#/texts/440		code
+2c07d79c09	1	444	#/texts/441	preds_df = input_df . select ( col ( \"Booking_ID\" 	code
+f7de9a0935	1	445	#/texts/442		code
+1459ff29fc	1	446	#/texts/443	)	code
+d18ae43716	1	447	#/texts/444	After we define a pyspark DataFrame, we can create	text
+5a129034ed	1	448	#/texts/445	databricks-feature-engineering	code
+43a5a5c862	1	449	#/texts/446	functionality, but we could also create a feature 	text
+e9d3ab26bd	1	450	#/texts/447	hotel_ booking_ price_preds	code
+7c08700e31	1	451	#/texts/448	feature table to update the online store, and we m	text
+20fd94a1e2	1	452	#/texts/449	ChangeDataFeed	code
+2a0c6f22b6	1	453	#/texts/450	for that purpose.	text
+b7e97b6ced	1	454	#/texts/451	from databricks.feature_engineering import Feature	code
+1b01833fb4	1	455	#/texts/452		code
+fb50c8e5e5	1	456	#/texts/453	fe = FeatureEngineeringClient ()	code
+8ea9d0ef3c	1	457	#/texts/454		code
+774e3b70bd	1	458	#/texts/455	feature_table_name = f \" { cfg . catalog } . { cfg	code
+fe1f4a454f	1	459	#/texts/456		code
+961b0466cb	1	460	#/texts/457	fe . create_table ( name = feature_table_name , pr	code
+1fc7de1da1	1	461	#/texts/458		code
+77244a78f9	1	462	#/texts/459	)	code
+82b0e31102	1	463	#/texts/460		code
+e215c6e4bc	1	464	#/texts/461	spark . sql ( f \"\"\"	code
+5e107c23c7	1	465	#/texts/462		code
+8d80518235	1	466	#/texts/463	ALTER TABLE { feature_table_name }	code
+f74b396bc6	1	467	#/texts/464		code
+62d9321359	1	468	#/texts/465	SET TBLPROPERTIES (delta.enableChangeDataFeed = tr	code
+4593132e7f	1	469	#/texts/466		code
+464664524a	1	470	#/texts/467	\"\"\" )	code
+8df5147d68	1	471	#/texts/468	Now that the feature table is available in Unity C	text
+ccd483d9f7	1	472	#/texts/469	FeatureSpec	code
+14d5332159	1	473	#/texts/470	, which is a user-defined set of features and func	text
+a5b314d780	1	474	#/texts/471	Creating a FeatureSpec	section_header
+750eee7437	1	475	#/texts/472	To create a	text
+5dfe114205	1	476	#/texts/473	FeatureSpec	code
+e33b6fdc63	1	477	#/texts/474	, we need a list that consists of instances of	text
+fed42c47ee	1	478	#/texts/475	FeatureLookup	code
+f8bdbe397f	1	479	#/texts/476	and	text
+f34f632369	1	480	#/texts/477	FeatureFunction	code
+a394fdeff6	1	481	#/texts/478	, where the order of elements defines the order of	text
+190e7127d6	1	482	#/texts/479	FeatureSpecs	code
+cd0d0106b1	1	483	#/texts/480	are stored in and managed by Unity Catalog, and we	text
+114ad12ca2	1	484	#/texts/481	In our example, we only use	text
+7e3e576bc3	1	485	#/texts/482	FeatureLookup	code
+45aa147cf2	1	486	#/texts/483	to retrieve values based on the key:	text
+04bdcc2840	1	487	#/texts/484	from databricks.feature_engineering import Feature	code
+c3fdb59b43	1	488	#/texts/485		code
+6a8fec9950	1	489	#/texts/486	feature_spec_name = f \" { cfg . catalog } . { cfg 	code
+b0dce47a86	1	490	#/texts/487		code
+c2ef5328f9	1	491	#/texts/488	features = [ FeatureLookup ( table_name = feature_	code
+3a57dc884f	1	492	#/texts/489		code
+d84445e7bc	1	493	#/texts/490	fe . create_feature_spec ( name = feature_spec_nam	code
+6dd6fc4208	1	494	#/texts/491	Note that I will be covering	text
+0b51992b43	1	495	#/texts/492	FeatureFunction	code
+514894711c	1	496	#/texts/493	in the next section of this chapter, when we discu	text
+85b46890a0	1	497	#/texts/494	Feature Serving would not work efficiently without	text
+b2aeb11f4c	1	498	#/texts/495	FeatureSpec	code
+1d6b6575fc	1	499	#/texts/496	in Unity Catalog.	text
+2394d7455d	1	500	#/texts/497	Publishing a Table to a Databricks Online Feature 	section_header
+479129f25b	1	501	#/texts/498	We can create a Databricks Online Feature Store by	text
+a057da80dd	1	502	#/texts/499	create_online_store	code
+550ac9f22e	1	503	#/texts/500	method from the	text
+8e924b3d98	1	504	#/texts/501	FeatureEngineering	code
+19d68504fe	1	505	#/texts/502	client. We can also define the size of the Feature	text
+3dc2fee43f	1	506	#/texts/503	\"CU_1\"	code
+7c3abf27c9	1	507	#/texts/504	,	text
+f44245db17	1	508	#/texts/505	\"CU_2\"	code
+3ec737d304	1	509	#/texts/506	,	text
+c0d9d598df	1	510	#/texts/507	\"CU_4\"	code
+17be1f301e	1	511	#/texts/508	, or	text
+0ae94ac552	1	512	#/texts/509	\"CU_8\"	code
+4e6cb49375	1	513	#/texts/510	.	text
+4aea26e4d0	1	514	#/texts/511	2	text
+ac8bdcd5cb	1	515	#/texts/512	Notice that we pass the usage policy ID here to en	text
+b673902f96	1	516	#/texts/513	instance_name = \"hotel-booking-price-preds\"	code
+a8dd988512	1	517	#/texts/514		code
+88becf56e5	1	518	#/texts/515	fe . create_online_store ( name = instance_name , 	code
+3e7338f5d3	1	519	#/texts/516	Since the Databricks Online Feature Store is built	text
+fc6e99c6e6	1	520	#/texts/517	Chapter 7	text
+2e0da7821d	1	521	#/texts/518	, where we use Lakebase to store agent session inf	text
+7037f5beee	1	522	#/texts/519	Note	section_header
+5721482a16	1	523	#/texts/520	At the time of writing this book, Lakebase is not 	text
+3b4decb09e	1	524	#/texts/521	After we create the online store and verify that i	text
+7527b3fb6d	1	525	#/texts/522	AVAILABLE	code
+c0a6646b0d	1	526	#/texts/523	, we can synchronize the data from the feature tab	text
+91ff571f6d	1	527	#/texts/524	publish_table()	code
+ff99044ce7	1	528	#/texts/525	method:	text
+deab0e33be	1	529	#/texts/526	online_store = fe . get_online_store ( name = \"hot	code
+4122d2090a	1	530	#/texts/527		code
+40b1b1818b	1	531	#/texts/528	fe . publish_table ( online_store = online_store ,	code
+56bc7c0728	1	532	#/texts/529		code
+cfee83856f	1	533	#/texts/530	)	code
+0da236b0fe	1	534	#/texts/531	Although the	text
+1ab8608458	1	535	#/texts/532	FeatureSpec	code
+a01f6df806	1	536	#/texts/533	definition doesn't explicitly reference an online 	text
+b2c0c879b6	1	537	#/texts/534	Figure 4-3	text
+19a6dde53c	1	538	#/texts/535	shows the catalog view of the online table, where 	text
+f475f23e0a	1	539	#/texts/536	ChangeDataFeed	code
+c384a03fef	1	540	#/texts/537	is enabled in the feature table, only incremental 	text
+be8cd07cce	1	541	#/pictures/2	Catalog view of an online table showing details su	picture
+94529444e8	1	542	#/texts/539	Note that the synchronization schedule is set to T	text
+3fb69eb477	1	543	#/texts/540	publish_table	code
+daba833e99	1	544	#/texts/541	. If	text
+a992dddd98	1	545	#/texts/542	publish_table	code
+e209e21062	1	546	#/texts/543	is called with	text
+82d197d185	1	547	#/texts/544	publish_mode='CONTINUOUS'	code
+de01ef5bc4	1	548	#/texts/545	, the sync schedule will be Continuous, which mean	text
+60ac35a728	1	549	#/texts/546	Triggered pipelines are more cost efficient in mos	text
+eb545a93f3	1	550	#/texts/547	It's generally recommended to use triggered synchr	text
+24dff06a56	1	551	#/texts/548	3	text
+acf5c67594	1	552	#/texts/549	Endpoint Deployment	section_header
+168d71224d	1	553	#/texts/550	We can create a Feature Serving endpoint in much t	text
+87d97693b9	1	554	#/texts/551	ServedEntityInput	code
+8ad5438300	1	555	#/texts/552	.	text
+afc9e6575a	1	556	#/texts/553	For a model, we specify a particular version of a 	text
+7e1a13a884	1	557	#/texts/554	FeatureSpec	code
+67aa09046f	1	558	#/texts/555	. A key difference here is that a	text
+0f9c681faa	1	559	#/texts/556	FeatureSpec	code
+6145b37923	1	560	#/texts/557	doesn't have a version number, unlike a registered	text
+a26a913175	1	561	#/texts/558	from databricks.sdk.service.serving import ( Endpo	code
+25822818e0	1	562	#/texts/559		code
+b96709ea9e	1	563	#/texts/560	)	code
+ee7c4111ed	1	564	#/texts/561		code
+c79a2378a6	1	565	#/texts/562	served_entities = [ ServedEntityInput ( entity_nam	code
+8284226c5c	1	566	#/texts/563		code
+df720c1075	1	567	#/texts/564	]	code
+34ecbcafab	1	568	#/texts/565		code
+0c8fcda7bd	1	569	#/texts/566	w = WorkspaceClient ()	code
+065e2dea5f	1	570	#/texts/567		code
+b2951775d2	1	571	#/texts/568	endpoint_name = \"hotel-booking-feature-serving\"	code
+910bd42d00	1	572	#/texts/569		code
+78c718231f	1	573	#/texts/570	w . serving_endpoints . create ( name = endpoint_n	code
+c87240d32b	1	574	#/texts/571	Finally, we can call the endpoint. You'll notice t	text
+2f40ecf5c3	1	575	#/texts/572	import requests	code
+7a24f69069	1	576	#/texts/573		code
+b837f5e4ea	1	577	#/texts/574	host = w . config . host	code
+431241183e	1	578	#/texts/575		code
+f93517952b	1	579	#/texts/576	token = w . tokens . create ( lifetime_seconds = 1	code
+c045af3d80	1	580	#/texts/577		code
+e68a11124a	1	581	#/texts/578	serving_endpoint = f \" { host } /serving-endpoints	code
+861ac354e1	1	582	#/texts/579		code
+1e740669fe	1	583	#/texts/580	response = requests . post ( serving_endpoint , he	code
+e34179e8fb	1	584	#/texts/581		code
+c13f5454f4	1	585	#/texts/582	)	code
+6ea967fce0	1	586	#/texts/583	Now that we have discussed Model Serving and Featu	text
+1012db0ede	1	587	#/texts/396	Diagram illustrating the architecture of Databrick	caption
+8b4e6019c0	1	588	#/texts/538	Catalog view of an online table showing details su	caption
+1199569154	1	589	#/texts/584	Model Serving with Feature Lookup	title
+b4b0461854	1	590	#/texts/585	Now, let's explore our most complex scenario, whic	text
+73a1357a43	1	591	#/texts/586	feature lookup	text
+aa40fba514	1	592	#/texts/587	from an online store. The great thing about this i	text
+c6688926a4	1	593	#/texts/588	Figure 4-4	text
+f2b104bc4d	1	594	#/texts/589	shows a simplified architecture for Model Serving 	text
+7d4fde2b41	1	595	#/texts/590	Booking_ID	code
+be33c041ea	1	596	#/texts/591	), combines them with any features provided in the	text
+6e4e11d2a1	1	597	#/pictures/3	Diagram of a Model Serving architecture showing da	picture
+15c9a5381d	1	598	#/texts/593	To implement this architecture, we must log the mo	text
+296dbe65e8	1	599	#/texts/594	databricks-feature-engineering	code
+6d4fb4065c	1	600	#/texts/595	package. This requires us to define a training set	text
+6b6f2e2892	1	601	#/texts/596	I won't cover the model endpoint deployment here, 	text
+d62278ab83	1	602	#/texts/597	Booking_ID	code
+3a0e810926	1	603	#/texts/598	as an additional input. This is because some featu	text
+c1ceddae5e	1	604	#/texts/599	Booking_ID	code
+76616f0a37	1	605	#/texts/600	is required to perform those lookups.	text
+41bda6aacf	1	606	#/texts/601	Let's walk through the	text
+5b431e853f	1	607	#/texts/602	chapter4_3.model_serving_feature_lookup.py	text
+723bef1732	1	608	#/texts/603	notebook, where we'll implement all these steps.	text
+17b38c670d	1	609	#/texts/604	We'll start by loading the data. Notice that we dr	text
+8ae995837a	1	610	#/texts/605	lead_time	code
+b7e1e557af	1	611	#/texts/606	,	text
+8d755515ef	1	612	#/texts/607	arrival_month	code
+799cdd7449	1	613	#/texts/608	, and	text
+4b8c1759e8	1	614	#/texts/609	repeated	code
+ac857da04e	1	615	#/texts/610	. Later in the notebook, we define feature functio	text
+59f70b4d6a	1	616	#/texts/611	lead_time	code
+194d70d2a6	1	617	#/texts/612	and	text
+8e52fb7ac2	1	618	#/texts/613	arrival_month	code
+ed6ce3bbba	1	619	#/texts/614	based on the reservation and arrival dates, and we	text
+fc1ef43e46	1	620	#/texts/615	repeated	code
+48ad4cce38	1	621	#/texts/616	value from the feature table.	text
+a9bbfd469a	1	622	#/texts/617	from datetime import datetime	code
+73ab0cab17	1	623	#/texts/618		code
+3312f90f75	1	624	#/texts/619	from pyspark.sql import SparkSession	code
+84f41a8983	1	625	#/texts/620		code
+2437b781d5	1	626	#/texts/621	from hotel_booking.config import ProjectConfig	code
+59bf157281	1	627	#/texts/622		code
+b7a0d9fdb6	1	628	#/texts/623	from hotel_booking.data.data_loader import DataLoa	code
+78e277b4c3	1	629	#/texts/624		code
+f3bb0e03d8	1	630	#/texts/625	from hotel_booking.utils.common import set_mlflow_	code
+05a1499d01	1	631	#/texts/626		code
+a4e80181fc	1	632	#/texts/627	set_mlflow_tracking_uri ()	code
+f1589501dc	1	633	#/texts/628		code
+e6a35b9e12	1	634	#/texts/629	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+4b59a8eba3	1	635	#/texts/630		code
+c6d9148cf0	1	636	#/texts/631	spark = SparkSession . builder . getOrCreate ()	code
+a6f4cabe57	1	637	#/texts/632		code
+c96b579299	1	638	#/texts/633	data_loader = DataLoader ( spark = spark , config 	code
+4db4b600e4	1	639	#/texts/634		code
+92b4460ce6	1	640	#/texts/635	train_query , test_query = data_loader . generate_	code
+76f998f152	1	641	#/texts/636		code
+b0fd4c0ae0	1	642	#/texts/637	train_set = spark . sql ( train_query ) . drop ( \"	code
+58cd68b127	1	643	#/texts/638		code
+0acdbe0aa0	1	644	#/texts/639	test_set = spark . sql ( test_query ) . toPandas (	code
+16bcc48827	1	645	#/texts/640	Notice that we also drop features that are present	text
+2907adafd2	1	646	#/texts/641	train_query	code
+baafff0066	1	647	#/texts/642	execution. While this may seem counterintuitive, i	text
+92f6f099f7	1	648	#/texts/643	Let's start with defining feature functions.	text
+517499d224	1	649	#/texts/644	Creating Feature Functions and a Feature Table	section_header
+c5db0ee7f0	1	650	#/texts/645	A	text
+e2a80a2861	1	651	#/texts/646	feature function	text
+0dd6c4f3ee	1	652	#/texts/647	is a construct we use to create a training set wit	text
+a0bd1383ed	1	653	#/texts/648	A feature function relies on a user-defined functi	text
+e85210efeb	1	654	#/texts/649	Let's start by defining UDFs for calculating the	text
+91e0a1d8b3	1	655	#/texts/650	lead_time	code
+806d687812	1	656	#/texts/651	and	text
+fc1570262f	1	657	#/texts/652	arrival_month	code
+9b58cde589	1	658	#/texts/653	features :	text
+393610933a	1	659	#/texts/654	lead_time_function = f \" { cfg . catalog } . { cfg	code
+4fe1ce37c8	1	660	#/texts/655		code
+c405f55a21	1	661	#/texts/656	spark . sql ( f \"\"\"	code
+646f832f3b	1	662	#/texts/657		code
+8db2535613	1	663	#/texts/658	CREATE OR REPLACE FUNCTION { lead_time_function }	code
+63ccdf1afe	1	664	#/texts/659		code
+97777c122e	1	665	#/texts/660	(arrival_date TIMESTAMP, reservation_date TIMESTAM	code
+7b1240bcbd	1	666	#/texts/661		code
+7ca4e17f6d	1	667	#/texts/662	RETURNS BIGINT	code
+f563918917	1	668	#/texts/663		code
+7103b807c8	1	669	#/texts/664	LANGUAGE PYTHON AS	code
+1b85731138	1	670	#/texts/665		code
+421f97c41f	1	671	#/texts/666	$$	code
+bc6aa405c2	1	672	#/texts/667		code
+81c2d6c6ff	1	673	#/texts/668	return (arrival_date-reservation_date).days	code
+ecf6fd2e84	1	674	#/texts/669		code
+7e673b0a17	1	675	#/texts/670	$$\"\"\" )	code
+f4c5790797	1	676	#/texts/671		code
+e96f48403a	1	677	#/texts/672	arrival_month_function = f \" { cfg . catalog } . {	code
+e32a0fd302	1	678	#/texts/673		code
+36b1d43654	1	679	#/texts/674	spark . sql ( f \"\"\"	code
+2847f5225d	1	680	#/texts/675		code
+533d509f02	1	681	#/texts/676	CREATE OR REPLACE FUNCTION { arrival_month_functio	code
+2a6e353bb9	1	682	#/texts/677		code
+7404006c01	1	683	#/texts/678	(arrival_date TIMESTAMP)	code
+a9827b0322	1	684	#/texts/679		code
+eb2ac386df	1	685	#/texts/680	RETURNS BIGINT	code
+a6d526c4bb	1	686	#/texts/681		code
+5a8cde6c0a	1	687	#/texts/682	LANGUAGE PYTHON AS	code
+488b37ddc2	1	688	#/texts/683		code
+a4be686a17	1	689	#/texts/684	$$	code
+a725c53a4d	1	690	#/texts/685		code
+6baedf705f	1	691	#/texts/686	return arrival_date.month	code
+93512af075	1	692	#/texts/687		code
+884a8d81fc	1	693	#/texts/688	$$\"\"\" )	code
+3a0b522b9f	1	694	#/texts/689	We can define feature functions by using either SQ	text
+2d4d338a69	1	695	#/texts/690	Next, let's create a feature table that contains h	text
+0d7aa14cad	1	696	#/texts/691	Booking_ID	code
+af253da829	1	697	#/texts/692	defined as the primary key.	text
+e3995e6c9c	1	698	#/texts/693	But before assigning	text
+c963630647	1	699	#/texts/694	Booking_ID	code
+3381478e37	1	700	#/texts/695	as the primary key, we must first apply a	text
+4c845d73a8	1	701	#/texts/696	NOT NULL	code
+637326a4bf	1	702	#/texts/697	constraint. In Databricks, the	text
+591c74ea50	1	703	#/texts/698	NOT NULL	code
+4c5b7cd19f	1	704	#/texts/699	constraint is	text
+5c9a4e1405	1	705	#/texts/700	enforced	text
+1858dfb677	1	706	#/texts/701	, meaning that any attempt to insert or update a r	text
+b6c4a204ba	1	707	#/texts/702	informational	text
+7f9a8c7edf	1	708	#/texts/703	,	text
+c76ff6a631	1	709	#/texts/704	which means that Databricks records the metadata a	text
+30b72e0d3b	1	710	#/texts/705	4	text
+4a9f6e3da0	1	711	#/texts/706	feature_table_name = f \" { cfg . catalog } . { cfg	code
+ed64e309ea	1	712	#/texts/707		code
+1cd0a25bd9	1	713	#/texts/708	spark . sql ( f \"\"\"	code
+f5f63d7089	1	714	#/texts/709		code
+11bc7f8935	1	715	#/texts/710	CREATE OR REPLACE TABLE { feature_table_name }	code
+67781ccf7e	1	716	#/texts/711		code
+0f58160ce3	1	717	#/texts/712	AS SELECT Booking_ID, repeated FROM	code
+ddd931f399	1	718	#/texts/713		code
+be0fa45696	1	719	#/texts/714	{ cfg . catalog } . { cfg . schema } .hotel_bookin	code
+1e04918449	1	720	#/texts/715		code
+81e29ebfa9	1	721	#/texts/716	\"\"\" )	code
+7b55491f8f	1	722	#/texts/717		code
+a78fafcae4	1	723	#/texts/718	spark . sql ( f \"\"\"	code
+58c50ebbb8	1	724	#/texts/719		code
+8ccf381c87	1	725	#/texts/720	ALTER TABLE { feature_table_name }	code
+c2ff9d617e	1	726	#/texts/721		code
+6f29166be6	1	727	#/texts/722	ALTER COLUMN Booking_ID SET NOT NULL	code
+d80065f597	1	728	#/texts/723		code
+44819e43f7	1	729	#/texts/724	\"\"\" )	code
+2595a3fac4	1	730	#/texts/725		code
+c99b0d1f06	1	731	#/texts/726	spark . sql ( f \"\"\"	code
+479f984d6e	1	732	#/texts/727		code
+21faaa806c	1	733	#/texts/728	ALTER TABLE { feature_table_name }	code
+af03e10d7a	1	734	#/texts/729		code
+234aa0e371	1	735	#/texts/730	ADD CONSTRAINT pk_Booking_ID PRIMARY KEY (Booking_	code
+79c398c53b	1	736	#/texts/731		code
+4c7e56b8ab	1	737	#/texts/732	\"\"\" )	code
+1c1b24d823	1	738	#/texts/733	We must also enable the	text
+e9174abe2e	1	739	#/texts/734	ChangeDataFeed	code
+31a4fd20c2	1	740	#/texts/735	to synchronize the table with the online store, wh	text
+5b2ce6998a	1	741	#/texts/736	spark . sql ( f \"\"\"	code
+ccf2ae22e7	1	742	#/texts/737		code
+d1283da202	1	743	#/texts/738	ALTER TABLE { feature_table_name }	code
+39bb00fa45	1	744	#/texts/739		code
+889af31350	1	745	#/texts/740	SET TBLPROPERTIES (delta.enableChangeDataFeed = tr	code
+a3e333e6e6	1	746	#/texts/741		code
+41ec7966a2	1	747	#/texts/742	\"\"\" )	code
+8ecf55dcb6	1	748	#/texts/743	With our features and UDFs in place, the next step	text
+b6141bfc26	1	749	#/texts/744	Defining the Training Set	section_header
+ff0a935ae5	1	750	#/texts/745	We use the	text
+f588225716	1	751	#/texts/746	create_training_set()	code
+96d68b6da4	1	752	#/texts/747	function to define a training set. We pass a list 	text
+b736982aa8	1	753	#/texts/748	FeatureLookup	code
+b986168f7e	1	754	#/texts/749	and	text
+c0c918dfed	1	755	#/texts/750	FeatureFunction	code
+4a98995263	1	756	#/texts/751	, in which the order of the list determines the or	text
+0b5a1973af	1	757	#/texts/752	FeatureFunction	code
+18e5830268	1	758	#/texts/753	takes the	text
+19502f9554	1	759	#/texts/754	udf_name	code
+47657d3b72	1	760	#/texts/755	as an argument, and it also requires the	text
+ddd1d31447	1	761	#/texts/756	output name	text
+37ddd781bd	1	762	#/texts/757	(what the feature is called in the training set) a	text
+427a001a8b	1	763	#/texts/758	The keys in the	text
+904b72f78e	1	764	#/texts/759	input_bindings	code
+4499e108ad	1	765	#/texts/760	dictionary refer to the names of inputs specified 	text
+1ffee9bcc8	1	766	#/texts/761	from databricks.feature_engineering import ( Featu	code
+987ba351e1	1	767	#/texts/762		code
+6be753104e	1	768	#/texts/763	)	code
+7fbb9d36bc	1	769	#/texts/764		code
+bd012e6970	1	770	#/texts/765	fe = FeatureEngineeringClient ()	code
+03d0e5e7e4	1	771	#/texts/766		code
+451bc4a1a0	1	772	#/texts/767	training_set = fe . create_training_set ( df = tra	code
+a07ba23092	1	773	#/texts/768	Since we are training a LightGBM model, we use the	text
+ea8e2adf80	1	774	#/texts/769	load_df()	code
+f1ce2cc087	1	775	#/texts/770	method of the training set to obtain a PySpark Dat	text
+fbe6afae32	1	776	#/texts/771	toPandas()	code
+2bf33a0414	1	777	#/texts/772	to convert it into a Pandas DataFrame. Notice that	text
+510825cefe	1	778	#/texts/773	repeated	code
+cf838740ed	1	779	#/texts/774	, when defining	text
+3625b03f9e	1	780	#/texts/775	X_train	code
+a9a3963e21	1	781	#/texts/776	and	text
+c983e32265	1	782	#/texts/777	X_test	code
+8a772f14b8	1	783	#/texts/778	. We have not used this feature previously, so we 	text
+75806a0e71	1	784	#/texts/779	training_df = training_set . load_df () . toPandas	code
+3029f46aeb	1	785	#/texts/780		code
+67f9aeb2f8	1	786	#/texts/781	X_train = training_df [ cfg . num_features + cfg .	code
+8e1544b098	1	787	#/texts/782		code
+77a7d84b0a	1	788	#/texts/783	y_train = training_df [ cfg . target ]	code
+53601e5fbd	1	789	#/texts/784		code
+a666c00d7b	1	790	#/texts/785	X_test = test_set [ cfg . num_features + cfg . cat	code
+e131417ce1	1	791	#/texts/786		code
+9f4e66cafb	1	792	#/texts/787	y_test = test_set [ cfg . target ]	code
+b86512975c	1	793	#/texts/788	Once we have loaded the data, we can train the mod	text
+12c95e14bc	1	794	#/texts/789	from hotel_booking.models.lightgbm_model import Li	code
+143492b97f	1	795	#/texts/790		code
+969a3d2021	1	796	#/texts/791	model = LightGBMModel ( config = cfg )	code
+58cacd53a4	1	797	#/texts/792		code
+a732ff9c35	1	798	#/texts/793	model . train ( X_train = X_train , y_train = y_tr	code
+1a22b66bb9	1	799	#/texts/794	The only difference is in the model logging step. 	text
+f074ceb94f	1	800	#/texts/795	FeatureEngineeringClient	code
+e5bd2675d7	1	801	#/texts/796	and pass the training set as an additional input.	text
+9e6ecd246f	1	802	#/texts/797	In this example, we provide dummy values for	text
+724ba67fd8	1	803	#/texts/798	branch	code
+55e2c84dae	1	804	#/texts/799	and	text
+453d5ff006	1	805	#/texts/800	git_sha	code
+023a80cd30	1	806	#/texts/801	:	text
+4865e89747	1	807	#/texts/802	import mlflow	code
+ff040f514e	1	808	#/texts/803		code
+15cb9ccdf8	1	809	#/texts/804	import numpy as np	code
+29ffffe7b0	1	810	#/texts/805		code
+0f5656ad6c	1	811	#/texts/806	from mlflow.models import infer_signature	code
+a82263c5f1	1	812	#/texts/807		code
+189e1945e8	1	813	#/texts/808	from sklearn.metrics import mean_absolute_error , 	code
+62bc9574dd	1	814	#/texts/809		code
+b5995fff14	1	815	#/texts/810	from hotel_booking.config import Tags	code
+3322c9aac8	1	816	#/texts/811		code
+9663461171	1	817	#/texts/812	mlflow . set_experiment ( \"/Shared/hotel-booking-t	code
+81a6e16f55	1	818	#/texts/813		code
+9347f548fd	1	819	#/texts/814	tags = Tags ( ** { \"git_sha\" : \"1234567890abcd\" , 	code
+81be68f2cc	1	820	#/texts/815		code
+92254b39df	1	821	#/texts/816	run = mlflow . start_run ( run_name = f \"lightgbm-	code
+873554d1a5	1	822	#/texts/817		code
+a59983cacf	1	823	#/texts/818	)	code
+7be4d59e0b	1	824	#/texts/819		code
+8dcf6d3ce7	1	825	#/texts/820	run_id = run . info . run_id	code
+ed164cadfb	1	826	#/texts/821		code
+a95afee98a	1	827	#/texts/822	mlflow . log_params ( model . parameters )	code
+3b1ec53dc2	1	828	#/texts/823		code
+6aa72c8109	1	829	#/texts/824	signature = infer_signature ( model_input = X_trai	code
+7cce3f5edd	1	830	#/texts/825		code
+5bf745c1e3	1	831	#/texts/826	)	code
+ab8c9fb84e	1	832	#/texts/827		code
+0078ebee48	1	833	#/texts/828	y_pred = model . pipeline . predict ( X_test )	code
+7ae9c019db	1	834	#/texts/829		code
+50568405f8	1	835	#/texts/830	mse = mean_squared_error ( y_test , y_pred )	code
+6258bda8a0	1	836	#/texts/831		code
+58609ed74e	1	837	#/texts/832	rmse = np . sqrt ( mse )	code
+f0d20699e2	1	838	#/texts/833		code
+13df92f843	1	839	#/texts/834	metrics = { \"mse\" : mse , \"rmse\" : rmse , \"mae\" : 	code
+210fa3a520	1	840	#/texts/835		code
+4173ca08c3	1	841	#/texts/836	}	code
+c48b2bfc7a	1	842	#/texts/837		code
+c16cb65ffe	1	843	#/texts/838	mlflow . log_metrics ( metrics )	code
+4e387738b8	1	844	#/texts/839		code
+8e4a2c7fb0	1	845	#/texts/840	fe . log_model ( model = model . pipeline , flavor	code
+b89d559ab2	1	846	#/texts/841		code
+8210ca78fd	1	847	#/texts/842	)	code
+7e52a77d59	1	848	#/texts/843	In a production deployment, however, these should 	text
+3cdfb682da	1	849	#/texts/844	It's interesting to examine how the model is logge	text
+84697887e0	1	850	#/texts/845	Figure 4-5	text
+8f73270397	1	851	#/texts/846	). The model is stored with the	text
+c2dda3678d	1	852	#/texts/847	python_function	code
+cf540b41cf	1	853	#/texts/848	flavor, and it uses the	text
+d1577cb4c5	1	854	#/texts/849	databricks.feature_store.mlflow_model	code
+d2eb754ad6	1	855	#/texts/850	loader.	text
+5959533267	1	856	#/texts/851	In addition to the standard	text
+c2c0d66b9b	1	857	#/texts/852	MLmodel	text
+7df0c951a7	1	858	#/texts/853	file and environment definition, the logged artifa	text
+22e84aebd9	1	859	#/texts/854	metadata/	text
+28b3f5e13e	1	860	#/texts/855	folder (which duplicates some of the top-level inf	text
+b3dbd90ec5	1	861	#/texts/856	data/	text
+e47c14828b	1	862	#/texts/857	folder. The	text
+8454c603c3	1	863	#/texts/858	data/	text
+92d1dfc970	1	864	#/texts/859	folder contains the serialized raw model as well a	text
+c9a5aeb629	1	865	#/texts/860	feature_spec.yaml	text
+4fb3cec518	1	866	#/texts/861	file that defines the feature lookups and feature 	text
+37bf6e98b6	1	867	#/pictures/4	UI view displaying the logged artifacts of the lig	picture
+89e1a695c0	1	868	#/texts/863	The	text
+267b43b2b0	1	869	#/texts/864	feature_spec.yaml	text
+75b5290acc	1	870	#/texts/865	file captures each input feature's data type, topo	text
+d749187457	1	871	#/texts/866	number_of_adults	code
+78d664b392	1	872	#/texts/867	feature exists in the training data, so its source	text
+52ee7b7ca0	1	873	#/texts/868	training_data	code
+406805cd8a	1	874	#/texts/869	:	text
+e58cb161bf	1	875	#/texts/870	- number_of_adults : data_type : bigint topologica	code
+1c31121647	1	876	#/texts/871	The	text
+54a1d86569	1	877	#/texts/872	repeated	code
+030f932d48	1	878	#/texts/873	feature is looked up from a feature table, so the 	text
+b8645c1455	1	879	#/texts/874	feature_store	code
+2ff7ef3d7a	1	880	#/texts/875	, with the table and lookup key specified:	text
+f32ddf9528	1	881	#/texts/876	- repeated : table_name : mlops_dev . hotel_bookin	code
+ecc6a642e5	1	882	#/texts/877	The	text
+7decd72fbc	1	883	#/texts/878	lead_time	code
+90d7a3274c	1	884	#/texts/879	feature is produced by an on-demand feature functi	text
+6085e863b7	1	885	#/texts/880	on_demand_feature	code
+3175ceec06	1	886	#/texts/881	, with the UDF and its input bindings defined:	text
+30b1cd3246	1	887	#/texts/882	- lead_time : udf_name : mlops_dev . hotel_booking	code
+8854b2940f	1	888	#/texts/883	Registering the Model and Publishing an Online Tab	section_header
+0d4e24ccac	1	889	#/texts/884	After we log the model, we register it so that we 	text
+f937302a3e	1	890	#/texts/885	from mlflow import MlflowClient	code
+853bfb1728	1	891	#/texts/886		code
+5e40f3c1d5	1	892	#/texts/887	model_name = f \" { cfg . catalog } . { cfg . schem	code
+841c6f830d	1	893	#/texts/888		code
+0e27f5a394	1	894	#/texts/889	registered_model = mlflow . register_model ( model	code
+42ab135e40	1	895	#/texts/890		code
+607d5bf457	1	896	#/texts/891	)	code
+3c99b4a8cb	1	897	#/texts/892		code
+135ab431bf	1	898	#/texts/893	client = MlflowClient ()	code
+1188a11854	1	899	#/texts/894		code
+1d66a1b343	1	900	#/texts/895	client . set_registered_model_alias ( name = model	code
+ebbd76ef6c	1	901	#/texts/896		code
+a39161db12	1	902	#/texts/897	)	code
+8e5b63950b	1	903	#/texts/898	Lastly, we must publish an online table to make it	text
+835250bb60	1	904	#/texts/899	5	text
+618bf2417a	1	905	#/texts/900	online_store = fe . get_online_store ( name = \"hot	code
+eb4961e748	1	906	#/texts/901		code
+8beab0ec9c	1	907	#/texts/902	fe . publish_table ( online_store = online_store ,	code
+9ceb338f7a	1	908	#/texts/903	When it comes to Model Serving, the deployment pro	text
+e150a234a0	1	909	#/texts/904	Payload Structure	section_header
+226bf58b6c	1	910	#/texts/905	For Model Serving with feature lookup, we do not n	text
+9f4c4aae2c	1	911	#/texts/906	lead_time, arrival_month	code
+40d6da70d1	1	912	#/texts/907	, or	text
+a53bd960ee	1	913	#/texts/908	repeated	code
+448b24bf13	1	914	#/texts/909	, as these features are computed or retrieved auto	text
+eef8ef3faf	1	915	#/texts/910	arrival_date	code
+07cfd9f1c0	1	916	#/texts/911	and	text
+5f0f655f49	1	917	#/texts/912	date_of_reservation	code
+602b31f93d	1	918	#/texts/913	for the feature functions and	text
+0435455272	1	919	#/texts/914	Booking_ID	code
+0b5e083f9a	1	920	#/texts/915	for the feature lookup.	text
+f158d24e11	1	921	#/texts/916	Table 4-3	text
+4e568905d3	1	922	#/texts/917	highlights the differences between the input and o	text
+e29c354d09	1	923	#/tables/2	| Scenario                          | Input payloa	table
+3f126c66c6	1	924	#/texts/918	{ \"dataframe_split\": { 'columns': [ 'number_of_adu	code
+6030ab6012	1	925	#/texts/919	{ \"predictions\": { \"Total price per night\": [104.9	code
+e89b7f6de7	1	926	#/texts/920	{ \"dataframe_split\": { 'columns': [ 'Booking_ID' ]	code
+d56afbb70a	1	927	#/texts/921	{ \"outputs\": [ {\"Booking_ID\": \"INN36285\", \"Predict	code
+36b9285142	1	928	#/texts/922	{ \"dataframe_split\": { 'columns': [ 'Booking_ID', 	code
+d1a5eaf157	1	929	#/texts/923	{ \"predictions\": { [104.98] } }	code
+eac200275a	1	930	#/texts/924	It's important to note that both the Feature Servi	text
+5b37153ed7	1	931	#/texts/925	Booking_ID	code
+d7a8b2c6b9	1	932	#/texts/926	is missing from the feature table. To handle this,	text
+fbef715001	1	933	#/texts/927	FeatureFunction	code
+a404cf302a	1	934	#/texts/928	to substitute default values for missing entries. 	text
+5004e68bf4	1	935	#/texts/929	So far, we've been using a personal access token t	text
+fdf5e7315e	1	936	#/texts/592	Diagram of a Model Serving architecture showing da	caption
+313c4c2c63	1	937	#/texts/862	UI view displaying the logged artifacts of the lig	caption
+ebd3e9c01c	1	938	#/texts/930	OAuth Authentication	title
+05f988efec	1	939	#/texts/931	Personal access tokens are powerful because they g	text
+e1497636cc	1	940	#/texts/932	Workspace admins have the required permissions to 	text
+c9da711cf4	1	941	#/texts/933	6	text
+cc8a0a4469	1	942	#/texts/934	Once they create the service principal, they must 	text
+8640e78229	1	943	#/texts/935	Figure 4-6	text
+22af08a34b	1	944	#/texts/936	depicts the \"Service principals\" view in the UI.	text
+55221522d8	1	945	#/pictures/5	The image shows the \"Service principals\" view in t	picture
+daad8fe71a	1	946	#/texts/938	Figure 4-7	text
+3ecd851fd1	1	947	#/texts/939	depicts the Permission Settings view in the UI for	text
+31ae01003b	1	948	#/texts/940	hotel-booking-pyfunc	code
+59435f8a38	1	949	#/texts/941	).	text
+3d6491c47b	1	950	#/pictures/6	Screenshot showing the Permission Settings view wh	picture
+a41af16977	1	951	#/texts/943	Once we've created the service principal and set t	text
+728f17d69c	1	952	#/texts/944	programmatically	text
+fad32b34aa	1	953	#/texts/945	or via the \"Service principal details\" page in the	text
+ead38c90e0	1	954	#/texts/946	Figure 4-8	text
+27f28a6ae0	1	955	#/texts/947	). The secret can have a maximum lifetime of 730 d	text
+13382c5039	1	956	#/pictures/7	The \"Service principal details\" page in the UI sho	picture
+19e2e1127d	1	957	#/texts/949	Let's store the values of	text
+0bae73c2c5	1	958	#/texts/950	DATABRICKS_CLIENT_ID	code
+b51b46ca36	1	959	#/texts/951	(the same as in	text
+87abba74f2	1	960	#/texts/952	Application ID	code
+5456bb0880	1	961	#/texts/953	) and	text
+43a1934da5	1	962	#/texts/954	DATABRICKS_CLIENT_SECRET	code
+a91ae87491	1	963	#/texts/955	in the	text
+198ddbd7bc	1	964	#/texts/956	.env	text
+9e137c4271	1	965	#/texts/957	file, so that we can run the following code from t	text
+62ac14f635	1	966	#/texts/958	7	text
+9090c30259	1	967	#/texts/959	import os	code
+8dea0dd7a1	1	968	#/texts/960		code
+6d6c987c07	1	969	#/texts/961	import requests	code
+3df24cc5de	1	970	#/texts/962		code
+1900bb4663	1	971	#/texts/963	from dotenv import load_dotenv	code
+6420ac8f08	1	972	#/texts/964		code
+fc3cbfe9e0	1	973	#/texts/965	from requests.auth import HTTPBasicAuth	code
+b6a0a72459	1	974	#/texts/966		code
+32970855dd	1	975	#/texts/967	load_dotenv ()	code
+25b2a7de1b	1	976	#/texts/968		code
+1524745aa1	1	977	#/texts/969	def get_token (): response = requests . post ( f \"	code
+221a139093	1	978	#/texts/970		code
+29f0599dd8	1	979	#/texts/971	token = get_token ()	code
+67bc033cc9	1	980	#/texts/972	The token we fetched will be valid for one hour. F	text
+91762f1619	1	981	#/texts/973	Databricks OAuth documentation	text
+f2c0cf348e	1	982	#/texts/974	.	text
+674397d377	1	983	#/texts/975	Now, before we move on, let's discuss some importa	text
+fcd5ecfde6	1	984	#/texts/937	The image shows the \"Service principals\" view in t	caption
+6db6e34f23	1	985	#/texts/942	Screenshot showing the Permission Settings view wh	caption
+38851c37c7	1	986	#/texts/948	The \"Service principal details\" page in the UI sho	caption
+0cbdc94996	1	987	#/texts/976	Serving Limitations	title
+f352cb2ab1	1	988	#/texts/977	Databricks Model Serving offers a scalable way to 	text
+9fa7b11d92	1	989	#/texts/978	A few are likely to surface during a migration:	text
+9c5981888e	1	990	#/texts/979	Request format	list_item
+2eadea4b6f	1	991	#/texts/980	Endpoints expect a predefined request payload sche	list_item
+753aceccf8	1	992	#/texts/981	Networking	list_item
+a4abe43b6c	1	993	#/texts/982	Private connectivity is not always available out o	list_item
+aa641befc4	1	994	#/texts/983	CPU memory	list_item
+e1ab19bc3b	1	995	#/texts/984		list_item
+f89002531c	1	996	#/texts/985	By default, each CPU model endpoint is allocated 4	text
+c2503960e6	1	997	#/texts/986	CPU_MEDIUM	code
+2656574f20	1	998	#/texts/987	and	text
+65399fb882	1	999	#/texts/988	CPU_LARGE	code
+a1d9d91186	1	1000	#/texts/989	workload types let you trade concurrency for more 	text
+4b8c427fcf	1	1001	#/texts/990	Payload and logging size	list_item
+9497e2ec81	1	1002	#/texts/991	Requests are limited to 16 MB each. Separately, re	list_item
+26a94dc445	1	1003	#/texts/992	These are mostly design time decisions rather than	text
+45b055b60b	1	1004	#/texts/993	Databricks documentation	text
+a49f021c1d	1	1005	#/texts/994	lists the full set of current limits.	text
+cb904bb77e	1	1006	#/texts/995	None of this should suggest that the platform is c	text
+9bbef3f3fd	1	1007	#/texts/996	GPU serving, though outside the scope of this book	text
+e264849fc4	1	1008	#/texts/997	8	text
+fabd75e740	1	1009	#/texts/998	It migrated its grammar correction model from a se	text
+89ef4aff27	1	1010	#/texts/999	Conclusion	title
+967a9ec4ed	1	1011	#/texts/1000	In this chapter, we explored the various Model Ser	text
+37c753a420	1	1012	#/texts/1001	Let's now summarize when each serving approach is 	text
+eda4f1e10c	1	1013	#/texts/1002	Feature Serving	list_item
+3f7a0af70f	1	1014	#/texts/1003	This is useful when predictions are precomputed an	list_item
+ee168461b1	1	1015	#/texts/1004	Model Serving	list_item
+84830c8d61	1	1016	#/texts/1005	This is the right choice when predictions need to 	list_item
+aea8e9df25	1	1017	#/texts/1006	Model Serving with feature lookup	list_item
+387bd56142	1	1018	#/texts/1007	This is appropriate when predictions are computed 	list_item
+424a18aa69	1	1019	#/texts/1008	The different options fit different operational re	text
+64192b048c	1	1020	#/texts/1009	Now, with Model Serving in place, our next step is	text
+39e9dbf91a	1	1021	#/texts/1010	1	text
+c013e2d86a	1	1022	#/texts/1011	For a detailed discussion, see Alex Deng,	text
+d1e6b2f918	1	1023	#/texts/1012	Causal Inference and Its Applications in Online In	text
+fcf0bdd9e2	1	1024	#/texts/1013	(self-pub online, 2023), ch. 8, \"Statistical Analy	text
+ab2b87231b	1	1025	#/texts/1014	https://oreil.ly/XlMkP	text
+0d7a12f6d0	1	1026	#/texts/1015	.	text
+0fcdb1fe06	1	1027	#/texts/1016	2	text
+2f76a7a611	1	1028	#/texts/1017	The Lakebase Autoscaling model is the default for 	text
+3ef86fd514	1	1029	#/texts/1018	the Databricks documentation	text
+c1611065da	1	1030	#/texts/1019	.	text
+98fe699bfc	1	1031	#/texts/1020	3	text
+7650b1cb70	1	1032	#/texts/1021	This is a generic recommendation for Lakeflow Spar	text
+c61066a38f	1	1033	#/texts/1022	the Databricks documentation	text
+16d86ead56	1	1034	#/texts/1023	.	text
+3f4b4fa90a	1	1035	#/texts/1024	4	text
+b19c3170bb	1	1036	#/texts/1025	Consult	text
+85f3b4dcdf	1	1037	#/texts/1026	the Databricks documentation on constraints	text
+f1243c8ebe	1	1038	#/texts/1027	for more details.	text
+289110b6ad	1	1039	#/texts/1028	5	text
+fed2f386f3	1	1040	#/texts/1029	For cost efficiency reasons during development, yo	text
+07522ab2d8	1	1041	#/texts/1030	he Databricks documentation	text
+7b1fbf5512	1	1042	#/texts/1031	for details.	text
+7e821142ce	1	1043	#/texts/1032	6	text
+452d950151	1	1044	#/texts/1033	For Databricks on Azure, it is common to use Micro	text
+52ba5827e0	1	1045	#/texts/1034	the Databricks documentation	text
+69fc2cb119	1	1046	#/texts/1035	for more details.	text
+c0e10b22a5	1	1047	#/texts/1036	7	text
+f4b6aab0a3	1	1048	#/texts/1037	Make sure to add the	text
+03704b9089	1	1049	#/texts/1038	.env	text
+edc85fece2	1	1050	#/texts/1039	file to	text
+f8b4e443b7	1	1051	#/texts/1040	.gitignore	text
+f4d65658ff	1	1052	#/texts/1041	to avoid accidentally committing secrets to your s	text
+f037a479d8	1	1053	#/texts/1042	.env	text
+c220c3beae	1	1054	#/texts/1043	files are convenient for local development, produc	text
+6210320e41	1	1055	#/texts/1044	8	text
+785f7f1ebe	1	1056	#/texts/1045	Read the blog	text
+01718b1d5b	1	1057	#/texts/1046	\"How Superhuman and Databricks built a 200K QPS in	text
+6f73d0c64c	1	1058	#/texts/1047	.	text

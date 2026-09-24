@@ -1,0 +1,1235 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+9b8f3f88b8	1	0	#/texts/0	Chapter 2. Developing on Databricks	title
+5e8b738976	1	1	#/texts/1	Databricks has grown significantly in popularity o	text
+928185da96	1	2	#/texts/2	Notebooks are first-class citizens in Databricks a	text
+c35b447183	1	3	#/texts/3	This refactoring typically involves the following:	text
+b3abcad317	1	4	#/texts/4	Creating functions, classes, and modules	list_item
+e1319e1035	1	5	#/texts/5	Separating tasks into logical components	list_item
+cb595e0f44	1	6	#/texts/6	Isolating configurations that may evolve over time	list_item
+f80c94a2ee	1	7	#/texts/7	Adding unit tests	list_item
+baa9026284	1	8	#/texts/8	Implementing logging and documentation	list_item
+0a87eb6966	1	9	#/texts/9	Packaging the project's code	list_item
+8eab6a3dea	1	10	#/texts/10	Throughout my career, I have often seen data scien	text
+a144df4075	1	11	#/texts/11	I believe data scientists should be empowered to w	text
+3458ebab75	1	12	#/texts/12	Developing on Databricks relies heavily on cluster	text
+79af643010	1	13	#/texts/13	Cluster Configurations on Databricks	title
+dd9d877b16	1	14	#/texts/14	I'll start by showing you how to set up an all-pur	text
+6fa6bfb4e0	1	15	#/texts/15	Databricks Free Edition	text
+bf6cd1e288	1	16	#/texts/16	. All code examples are compatible with both clust	text
+7b5933ca0d	1	17	#/texts/17	Chapter 1	text
+561a2de3c0	1	18	#/texts/18	, I explained when and why you might choose server	text
+6049db242c	1	19	#/texts/19	All-Purpose and Jobs Compute Configuration	section_header
+5506ed53f2	1	20	#/texts/20	Before we start developing on Databricks, we need 	text
+2e761f364e	1	21	#/texts/21	Figure 2-1	text
+7c81b03a3c	1	22	#/texts/22	shows the recommended configurations of the cluste	text
+59b91ad4b7	1	23	#/texts/23	Policy	list_item
+c30d1c3d3d	1	24	#/texts/24	Set this to Personal Compute.	list_item
+57b32646e2	1	25	#/texts/25	Databricks runtime	list_item
+9707f5f266	1	26	#/texts/26	Set this to 17.3 LTS.	list_item
+7cde8bf792	1	27	#/texts/27	Preferred node type	list_item
+6d2037a06d	1	28	#/texts/28	Select 16 GB Memory, which is one of the smallest 	list_item
+f40b26dc78	1	29	#/texts/29	Terminate after _____ minutes of activity	list_item
+98bb1414a3	1	30	#/texts/30	Set this to 30 minutes to reduce costs.	list_item
+4e8325504d	1	31	#/texts/31	Tags	list_item
+93aaa30c97	1	32	#/texts/32	Set whatever tags you'll need to make sure develop	list_item
+abd2e5e007	1	33	#/pictures/0	Screenshot of a configuration page for creating a 	picture
+b5342ee1ae	1	34	#/texts/34	Let's go through all the different components of t	text
+31f469bba0	1	35	#/texts/35	Policies and access modes	section_header
+fe7eb9a098	1	36	#/texts/36	When creating a cluster, you can choose from the f	text
+fce5f4b855	1	37	#/texts/37	Personal Compute	list_item
+0e4d23f05d	1	38	#/texts/38	This is ideal for creating single-node compute res	list_item
+58c751cecc	1	39	#/texts/39	Shared Compute	list_item
+21162633a1	1	40	#/texts/40	This is suitable for creating larger, multinode re	list_item
+32a550fe7f	1	41	#/texts/41	Power User Compute	list_item
+85efbd5925	1	42	#/texts/42	This is an upgraded version of Personal Compute th	list_item
+f60310f3d1	1	43	#/texts/43	Unrestricted	list_item
+d0873e9632	1	44	#/texts/44	This allows full access to all compute configurati	list_item
+1aabf55eb5	1	45	#/texts/45	By default, only workspace admins can create clust	text
+4ae7eb92b1	1	46	#/texts/46	You also need to pay attention to the	text
+7c54a3acbf	1	47	#/texts/47	access modes	text
+a6d17a54fe	1	48	#/texts/48	: Dedicated (formerly Single), Standard (formerly 	text
+1c0d9bd0d2	1	49	#/texts/49	limitations	text
+9660b8e2ed	1	50	#/texts/50	. For example, you need to put init script locatio	text
+f808a7de1d	1	51	#/texts/51	documentation	text
+064f51a5f5	1	52	#/texts/52	for details.	text
+f714ca3f69	1	53	#/texts/53	Overall, for ML workflows, I recommend using Dedic	text
+42aac241d8	1	54	#/texts/54	Runtime versions	section_header
+4024977a43	1	55	#/texts/55	Databricks Runtime	text
+3bcce522f8	1	56	#/texts/56	is the set of software artifacts that run on Datab	text
+acd30f6853	1	57	#/texts/57	In this book, I am using	text
+9b8b1d7ab8	1	58	#/texts/58	Databricks Runtime 17.3 LTS	text
+45ee58beec	1	59	#/texts/59	, which is, at the moment of writing this book, th	text
+3932b22864	1	60	#/texts/60	an overview of LTS runtimes	text
+b5abf17eb6	1	61	#/texts/61	and their end-of-support dates. For instance, the 	text
+fc68d0bd19	1	62	#/texts/62	The runtime comes with a pre-set system environmen	text
+0e06d5ee44	1	63	#/texts/63	Operating system: Ubuntu 24.04.3 LTS	list_item
+e6b3a7258f	1	64	#/texts/64	Java: Zulu17.58+21-CA	list_item
+ad5f103971	1	65	#/texts/65	Scala: 2.13.16	list_item
+5b91742aec	1	66	#/texts/66	Python: 3.12.3	list_item
+9294c16baa	1	67	#/texts/67	R: 4.4.2	list_item
+a5461a86f4	1	68	#/texts/68	Delta Lake: 4.0.0	list_item
+df22f9c674	1	69	#/texts/69	In addition to the pre-set environment, runtimes c	text
+c3f6ff6be6	1	70	#/texts/70	Photon acceleration	section_header
+3b8a048acb	1	71	#/texts/71	Photon	text
+ca09a98dc8	1	72	#/texts/72	is Databricks' native vectorized query engine, and	text
+73d1b01904	1	73	#/texts/73	However, Photon only accelerates Spark operations 	text
+3b16c7d842	1	74	#/texts/74	My advice: enable Photon for data preprocessing ta	text
+44f48d35d2	1	75	#/texts/75	Worker and driver nodes	section_header
+e653eb481c	1	76	#/texts/76	In a single-node setup, you do not have an option 	text
+605b76ee11	1	77	#/texts/77	If your task involves large-scale data processing 	text
+557d4e6e23	1	78	#/texts/78	Advanced settings	section_header
+8e6a807ad0	1	79	#/texts/79	In the advanced settings of the cluster, you can d	text
+6a7e89c4b2	1	80	#/texts/80	Set up environment variables (e.g., referencing se	list_item
+78129a16d1	1	81	#/texts/81	Define init scripts	list_item
+f745afa3c0	1	82	#/texts/82	Specify a Docker image to initialize your cluster	list_item
+c312fc8aaa	1	83	#/texts/83	Specify a logging location	list_item
+f5fd7fc1d6	1	84	#/texts/84	Cost tracking	section_header
+b232ada84a	1	85	#/texts/85	You can also track cluster-related costs by applyi	text
+84af0e1a46	1	86	#/texts/86	Serverless Compute	section_header
+0646393a2e	1	87	#/texts/87	When it comes to the all-purpose or jobs compute c	text
+95c9000a36	1	88	#/texts/88	You can use serverless compute for both developmen	text
+96724aec4c	1	89	#/texts/89	Unlike all-purpose or job compute, we cannot choos	text
+a353dfa4b3	1	90	#/texts/90	Serverless environments	section_header
+ce1a44fd37	1	91	#/texts/91	In our project, we use Python 3.12, which means we	text
+e87bd08e03	1	92	#/texts/92	serverless environment version 4	text
+92139d9ca1	1	93	#/texts/93	, which comes with the following configurations:	text
+7e14353c6a	1	94	#/texts/94	Operating system: Ubuntu 24.04.2 LTS	list_item
+686d988cc7	1	95	#/texts/95	Python: 3.12.3	list_item
+0333687e2b	1	96	#/texts/96	Databricks Connect: 17	list_item
+cc0a80a6ec	1	97	#/texts/97	Scala: 2.13.16	list_item
+459c8f0a4f	1	98	#/texts/98	JDK: 17	list_item
+861fc34ff8	1	99	#/texts/99	Similar to runtimes, serverless environments come 	text
+b6a10d9f69	1	100	#/texts/100	Like runtimes, environments have a support cycle o	text
+9d1b305127	1	101	#/texts/101	release notes	text
+6e9f545dc7	1	102	#/texts/102	for the full overview.	text
+31ebb9fb82	1	103	#/texts/103	Cost tracking	section_header
+71e278f2fa	1	104	#/texts/104	While you can track the costs of classic compute c	text
+a340c5d195	1	105	#/texts/105	Usage policies can be created programmatically, or	text
+e7cc3efb7a	1	106	#/texts/106	Figure 2-2	text
+e835055024	1	107	#/texts/107	). You can also assign permissions to individual u	text
+e9f6da7f5a	1	108	#/texts/108	Figure 2-3	text
+6c4dcbc325	1	109	#/texts/109	). It's also important to note that if you don't s	text
+1522c62212	1	110	#/pictures/1	Diagram showing the interface for editing a server	picture
+4be060ce89	1	111	#/pictures/2	Screenshot of a UI displaying serverless usage pol	picture
+d579555de9	1	112	#/texts/33	Screenshot of a configuration page for creating a 	caption
+34a0826257	1	113	#/texts/110	Diagram showing the interface for editing a server	caption
+43fc06eac6	1	114	#/texts/111	Screenshot of a UI displaying serverless usage pol	caption
+4b985bf675	1	115	#/texts/112	Project Setup	title
+31d6b2eefc	1	116	#/texts/113	In this section, I will walk you through the datas	text
+56261239fd	1	117	#/texts/114	The book repository can be found on GitHub at	text
+d74a04ad97	1	118	#/texts/115	https://github.com/mvechtomova/oreilly-mlops-with-	text
+910020d509	1	119	#/texts/116	. First of all, you should fork the repository so 	text
+ed435f6a99	1	120	#/texts/117	mlops	text
+63b35f44ad	1	121	#/texts/118	(which covers Chapters	text
+eeecca22d1	1	122	#/texts/119	2	text
+f15dc9a356	1	123	#/texts/120	through	text
+2c04ea3a8c	1	124	#/texts/121	6	text
+10fe93eb4e	1	125	#/texts/122	) and	text
+90c0bb406e	1	126	#/texts/123	llmops	text
+76d5042ea6	1	127	#/texts/124	(which covers Chapters	text
+452f751265	1	128	#/texts/125	7	text
+4784e979cb	1	129	#/texts/126	through	text
+62a708b14c	1	130	#/texts/127	9	text
+6fa841ee07	1	131	#/texts/128	).	text
+4b963d1f36	1	132	#/texts/129	For now, we'll talk about the	text
+38c7f24701	1	133	#/texts/130	mlops	text
+59fc1bf527	1	134	#/texts/131	folder, which is structured into the following sub	text
+42a0c671f0	1	135	#/texts/132	notebooks/	list_item
+adceb842d5	1	136	#/texts/133	This folder contains notebooks used in different c	list_item
+5cbe9bdb7d	1	137	#/texts/134	scripts/	list_item
+d91f9aecdd	1	138	#/texts/135	This folder contains Python scripts that are execu	list_item
+1a19ed8b44	1	139	#/texts/136	databricks.yml	list_item
+96b1fd7f5c	1	140	#/texts/137	This is the file the Databricks job is defined in.	list_item
+c71d8d7b15	1	141	#/texts/138	pyproject.toml	list_item
+12c0831c9b	1	142	#/texts/139	This file contains the Python package definition f	list_item
+55ae56b249	1	143	#/texts/140	project_config.yml	list_item
+b5d7d29370	1	144	#/texts/141	This file contains isolated configurations of the 	list_item
+6f8040412a	1	145	#/texts/142	src	list_item
+7af825ae11	1	146	#/texts/143	This folder contains packaged code for the project	list_item
+f13d1fe500	1	147	#/texts/144	data	list_item
+7c5f820339	1	148	#/texts/145	This folder contains the required data for the pro	list_item
+0e4556d878	1	149	#/texts/146	tests	list_item
+300221f228	1	150	#/texts/147	This folder contains unit tests.	list_item
+005e4e9715	1	151	#/texts/148	version.txt	list_item
+820fbc2de8	1	152	#/texts/149	This file contains a version number that is used f	list_item
+75702ef6ce	1	153	#/texts/150	First, let's discuss the dataset in the	text
+e7ead2c82e	1	154	#/texts/151	data	code
+115b923e8b	1	155	#/texts/152	folder.	text
+ca35dd89e3	1	156	#/texts/153	The Dataset	section_header
+9a3836f865	1	157	#/texts/154	In Chapters	text
+98f37e64f9	1	158	#/texts/155	2	text
+cbe69d1839	1	159	#/texts/156	through	text
+a54af24f30	1	160	#/texts/157	6	text
+4382ff1b05	1	161	#/texts/158	, we use the Hotel Booking Cancellation Prediction	text
+29db73f949	1	162	#/texts/159	1	text
+7cadb14209	1	163	#/texts/160	The dataset contains various features related to b	text
+3c18b7128c	1	164	#/texts/161	This is a dataset that is close to a real-life sce	text
+50909a96ba	1	165	#/texts/162	3	text
+bb5e89073a	1	166	#/texts/163	through	text
+ee61b565fd	1	167	#/texts/164	5	text
+82a5d54c5c	1	168	#/texts/165	, we will work on the following scenarios:	text
+2cb2a6357f	1	169	#/texts/166	Model Serving	list_item
+ac32627525	1	170	#/texts/167	This is real-time inference in which all the featu	list_item
+e3f3ac98e2	1	171	#/texts/168	Model Serving with feature lookup	list_item
+68f84557a3	1	172	#/texts/169	This is real-time inference in which some features	list_item
+b5d52cbac3	1	173	#/texts/170	Feature Serving	list_item
+76555c0c51	1	174	#/texts/171	This is real-time retrieval in which the predicted	list_item
+1e65c3e56d	1	175	#/texts/172	In the	text
+3ad7921369	1	176	#/texts/173	project_config.yml	text
+8e34b28fb2	1	177	#/texts/174	file, I specified the target and features that wil	text
+df30ea80d4	1	178	#/texts/175	Hydra	text
+677e3d0675	1	179	#/texts/176	project.	text
+047e488bdd	1	180	#/texts/177	You'll also notice the	text
+f74b3b3d45	1	181	#/texts/178	usage_policy_id	code
+9b20dd02ea	1	182	#/texts/179	parameter. We created the usage policy in the sect	text
+3b82f9f756	1	183	#/texts/180	\"Cost tracking\"	text
+14c00bd214	1	184	#/texts/181	, and I'm including it here so you can pass the us	text
+ce9b4ef30f	1	185	#/texts/182	dev : catalog : mlops_dev schema : hotel_booking	code
+6441d5d7d4	1	186	#/texts/183		code
+7514977945	1	187	#/texts/184	acc : catalog : mlops_acc schema : hotel_booking	code
+d19aeca14b	1	188	#/texts/185		code
+4d95fcdbe6	1	189	#/texts/186	prd : catalog : mlops_prd schema : hotel_booking	code
+9e587e40af	1	190	#/texts/187		code
+1cae7421f5	1	191	#/texts/188	parameters : learning_rate : 0.05 n_estimators : 2	code
+21cd6de284	1	192	#/texts/189		code
+8a9239b52b	1	193	#/texts/190	num_features : - number_of_adults - number_of_chil	code
+61096fe6d7	1	194	#/texts/191		code
+480bd83b0d	1	195	#/texts/192	cat_features : - type_of_meal - room_type - arriva	code
+68126ce0d4	1	196	#/texts/193		code
+a9112437f7	1	197	#/texts/194	target : average_price	code
+87a55c68b9	1	198	#/texts/195		code
+5492aacedb	1	199	#/texts/196	usage_policy_id : cdad6f29 - a213 - 4525 - 9330 - 	code
+d4f44d2e1d	1	200	#/texts/197	Next, the	text
+30010c7ba6	1	201	#/texts/198	project_config.yml	text
+8cbe156b2c	1	202	#/texts/199	file contains model hyperparameters, plus catalogs	text
+18d95d10c4	1	203	#/texts/200	Chapter 5	text
+d5798c0995	1	204	#/texts/201	.	text
+7a89470394	1	205	#/texts/202	We will also get to hyperparameter tuning in	text
+1714080f9c	1	206	#/texts/203	Chapter 3	text
+90592ffb4c	1	207	#/texts/204	, where we'll discuss how we can use MLflow to log	text
+bcadde4363	1	208	#/texts/205	Python Tooling	section_header
+ddda8cd5be	1	209	#/texts/206	Most people in the industry are convinced that we 	text
+09f138e436	1	210	#/texts/207	The Python ecosystem has changed significantly ove	text
+9d849ae78b	1	211	#/texts/208	setup.py	text
+aa17dbe0d4	1	212	#/texts/209	together with	text
+d715f2824d	1	213	#/texts/210	requirements.txt	text
+353ef47683	1	214	#/texts/211	, plus the following set of tools:	text
+0b27b3d50f	1	215	#/texts/212	venv or virtualenv	list_item
+80d25a707d	1	216	#/texts/213		list_item
+a1022c1b7a	1	217	#/texts/214	They used these for virtual environment management	text
+49a3a0a9bf	1	218	#/texts/215	virtualenv	text
+167ae6a1e7	1	219	#/texts/216	is a package maintained by Python Packaging Author	text
+7e49cf64aa	1	220	#/texts/217	pip	list_item
+f0c42dcf82	1	221	#/texts/218	They used this for package management.	list_item
+b9e61aab94	1	222	#/texts/219	setuptools	list_item
+c0e7a1c1b0	1	223	#/texts/220	They used this for build backend.	list_item
+caba6429aa	1	224	#/texts/221	twine	list_item
+ea40fc5ae8	1	225	#/texts/222	They used this for package publishing.	list_item
+6a44057a67	1	226	#/texts/223	In data analytics and data science,	text
+888d89c3a5	1	227	#/texts/224	conda	text
+424fcbb2fb	1	228	#/texts/225	was a popular choice. This was a result of the eff	text
+be87994ef0	1	229	#/texts/226	2	text
+74448ec521	1	230	#/texts/227	with the goal of bringing Python into business dat	text
+bad76879d9	1	231	#/texts/228	In 2016, the	text
+e9ac68da79	1	232	#/texts/229	PEP 518 standard	text
+45363af909	1	233	#/texts/230	was introduced, and it specified that build system	text
+284b845de7	1	234	#/texts/231	pyproject.toml	text
+61bea3634d	1	235	#/texts/232	file. In 2020,	text
+b4a8042d70	1	236	#/texts/233	PEP 621	text
+835c098d57	1	237	#/texts/234	was introduced, and it defined how project metadat	text
+b46c9320ac	1	238	#/texts/235	pyproject.toml	text
+e084dc7f60	1	239	#/texts/236	file.	text
+a0c913346b	1	240	#/texts/237	Between 2017 and 2020, multiple projects started u	text
+50b0f2b14c	1	241	#/texts/238	pyproject.toml	text
+b4830faad2	1	242	#/texts/239	to serve multiple purposes and try to eliminate th	text
+1c75030c34	1	243	#/texts/240	hatch	text
+38c55bd4b6	1	244	#/texts/241	,	text
+a34430902a	1	245	#/texts/242	poetry	text
+6ed7ebadaf	1	246	#/texts/243	,	text
+e7183ee9d4	1	247	#/texts/244	3	text
+94d4bf6971	1	248	#/texts/245	and	text
+46192de79c	1	249	#/texts/246	pdm	text
+8c83334f08	1	250	#/texts/247	.	text
+a8973c3c07	1	251	#/texts/248	In 2023, Rust started taking over the Python ecosy	text
+b69341cdf8	1	252	#/texts/249	uv	text
+3140c6e07f	1	253	#/texts/250	developed by Astral entered the market, and it has	text
+e855755929	1	254	#/texts/251	The uv tool is, in my opinion, by far the most int	text
+b57fa9fdaa	1	255	#/texts/252	4	text
+8129823a57	1	256	#/texts/253	You should follow the	text
+052cfce98b	1	257	#/texts/254	official installation instructions	text
+95c48f3938	1	258	#/texts/255	to install uv.	text
+284d1c105f	1	259	#/texts/256	The pyproject.toml file	section_header
+f4564d6e56	1	260	#/texts/257	Let's walk through the sections of the	text
+3bd4c589c7	1	261	#/texts/258	pyproject.toml	text
+f99ef75dbd	1	262	#/texts/259	file we will use for the MLOps project.	text
+514a029f42	1	263	#/texts/260	Project section	section_header
+7559addb56	1	264	#/texts/261	In the	text
+d9d58cc937	1	265	#/texts/262	project	code
+b9e0853557	1	266	#/texts/263	section of the	text
+26a4f6197a	1	267	#/texts/264	pyproject.toml	text
+3cf0fcce1b	1	268	#/texts/265	file, we specify the Python version and all the pr	text
+3d4adc0534	1	269	#/texts/266	[ project ]	code
+51f6c83203	1	270	#/texts/267		code
+23cf52737b	1	271	#/texts/268	name = \"hotel-booking\"	code
+32a27e1e2a	1	272	#/texts/269		code
+2dff955177	1	273	#/texts/270	dynamic = [ \"version\" ]	code
+5502d834ea	1	274	#/texts/271		code
+304d6ccb7d	1	275	#/texts/272	description = \"Code accompanying MLOps with Databr	code
+6395471acc	1	276	#/texts/273		code
+e07649e2c9	1	277	#/texts/274	requires - python = \">=3.12, <3.13\"	code
+1a16eac1a3	1	278	#/texts/275		code
+eb72db1d61	1	279	#/texts/276	dependencies = [ \"mlflow==3.11.1\" , \"cffi==1.17.1\"	code
+d69129d7f5	1	280	#/texts/277		code
+70e73077f8	1	281	#/texts/278	]	code
+40486d7efb	1	282	#/texts/279		code
+c983d37072	1	283	#/texts/280	[ project . optional - dependencies ]	code
+7daf480d63	1	284	#/texts/281		code
+5b0b9d8bea	1	285	#/texts/282	dev = [ \"databricks-connect>=17.3.2, <18\" , \"ipyke	code
+8b45e20eee	1	286	#/texts/283		code
+f3937682d8	1	287	#/texts/284	ci = [ \"databricks-connect>=17.3.2, <18\" , \"pre-co	code
+479623476c	1	288	#/texts/285	First of all, it is important to note that we use 	text
+0023419387	1	289	#/texts/286	Secondly, all the package dependencies are pinned 	text
+4ce86f2a94	1	290	#/texts/287	When you're installing the package, you don't need	text
+c8455d8ddc	1	291	#/texts/288	pyproject.toml	text
+bcacd7b49c	1	292	#/texts/289	file. These dependencies are included in the packa	text
+a79eaa2368	1	293	#/texts/290	Optional dependencies are also defined in the	text
+426d9dfab6	1	294	#/texts/291	pyproject.toml	text
+3be1cfa7df	1	295	#/texts/292	file, and you can install them when you need them 	text
+491b975250	1	296	#/texts/293	Build-system section	section_header
+d4385a3fa7	1	297	#/texts/294	The	text
+bbc9acceff	1	298	#/texts/295	build-system	code
+82fa2593d4	1	299	#/texts/296	section of the	text
+09c98e6e16	1	300	#/texts/297	pyproject.toml	text
+61e65f9a4a	1	301	#/texts/298	file specifies the build backend that is used to p	text
+b7879e3ebd	1	302	#/texts/299	version.txt	text
+963b6a5dcb	1	303	#/texts/300	file.	text
+4bd830b8df	1	304	#/texts/301	While several alternative build backends are avail	text
+b30e701e58	1	305	#/texts/302	build backend provided by uv	text
+8d70e3282f	1	306	#/texts/303	, or	text
+c55eab4054	1	307	#/texts/304	Hatchling	text
+4ff731667f	1	308	#/texts/305	, setuptools remains the most mature and widely su	text
+2d951b8903	1	309	#/texts/306	[ build - system ]	code
+04982a9d02	1	310	#/texts/307		code
+56e7195f27	1	311	#/texts/308	requires = [ \"setuptools>=72.0\" ]	code
+764a28266e	1	312	#/texts/309		code
+8db8d4c9a7	1	313	#/texts/310	build - backend = \"setuptools.build_meta\"	code
+5e69f1d766	1	314	#/texts/311		code
+b7d4f85b2f	1	315	#/texts/312	[ tool . setuptools . packages . find ]	code
+cba53729c1	1	316	#/texts/313		code
+f2bd1e6e45	1	317	#/texts/314	where = [ \"src\" ]	code
+9a55cacf38	1	318	#/texts/315		code
+cf0aa95820	1	319	#/texts/316	include = [ \"hotel_booking*\" ]	code
+d2587f07a6	1	320	#/texts/317		code
+e6b03ebabb	1	321	#/texts/318	[ tool . setuptools . dynamic ]	code
+7d9e5583a6	1	322	#/texts/319		code
+e578d0df8e	1	323	#/texts/320	version = { file = \"version.txt\" }	code
+3c18dc24d8	1	324	#/texts/321	Linting and formatting	section_header
+b4dec23667	1	325	#/texts/322	For linting and formatting, we use	text
+13e7a62bb7	1	326	#/texts/323	Ruff	text
+c9b7c11ba7	1	327	#/texts/324	, which is the fastest tool out there for this pur	text
+ce76f234c3	1	328	#/texts/325	tool	code
+25fb184c21	1	329	#/texts/326	section of the	text
+1decb27ab7	1	330	#/texts/327	pyproject.toml	text
+a82fa13b5c	1	331	#/texts/328	file:	text
+cf07cce36d	1	332	#/texts/329	[ tool . ruff ]	code
+d5ee1ee519	1	333	#/texts/330		code
+934936b44f	1	334	#/texts/331	line - length = 90	code
+1745060e6a	1	335	#/texts/332		code
+4cff8451d4	1	336	#/texts/333	[ tool . ruff . lint ]	code
+534416b4f6	1	337	#/texts/334		code
+27f9d4b228	1	338	#/texts/335	select = [ \"F\" , # pyflakes rules \"E\" , # pycodest	code
+88b5c68209	1	339	#/texts/336		code
+8ebe3109f1	1	340	#/texts/337	]	code
+57ce0cd29a	1	341	#/texts/338		code
+dbc857a2e3	1	342	#/texts/339	ignore = [ \"D107\" , # Missing docstring in `__init	code
+a9c048aff9	1	343	#/texts/340		code
+1e50ffdc59	1	344	#/texts/341	]	code
+f31da8cb49	1	345	#/texts/342		code
+953048ed38	1	346	#/texts/343	[ tool . ruff . format ]	code
+15e9e26657	1	347	#/texts/344		code
+52e5e3af17	1	348	#/texts/345	indent - style = \"space\"	code
+649d5a3a7d	1	349	#/texts/346	These configurations are also used for	text
+4d099df08a	1	350	#/texts/347	pre-commit	code
+d39974f83d	1	351	#/texts/348	hooks that should be installed locally to enforce 	text
+6c2de3898c	1	352	#/texts/349	.pre-commit-config.yaml	text
+915c06706a	1	353	#/texts/350	file:	text
+9f3b436898	1	354	#/texts/351	exclude : ^ tests / resources /	code
+a41ad10c46	1	355	#/texts/352		code
+c47abaa3f2	1	356	#/texts/353	repos : - repo : https : // github . com / pre - c	code
+0a6e30f92e	1	357	#/texts/354	To make pre-commit hooks execute on every commit, 	text
+cdde98b2b5	1	358	#/texts/355	pre-commit install	code
+aae63da457	1	359	#/texts/356	command. To ensure all the files follow the predef	text
+2f0ddb1b3b	1	360	#/texts/357	uv run pre-commit run -all-files	code
+c9588d4614	1	361	#/texts/358	command as part of the CI pipeline.	text
+4f9559b1b1	1	362	#/texts/359	Pytest configurations	section_header
+cb4cea05c8	1	363	#/texts/360	The	text
+ff15e510ef	1	364	#/texts/361	pyproject.toml	text
+6b829d28d7	1	365	#/texts/362	file can also contain some pytest configurations t	text
+0d796e03b1	1	366	#/texts/363	testpaths	code
+f27b1cfc58	1	367	#/texts/364	and	text
+fb2766ed99	1	368	#/texts/365	pythonpath	code
+49782c63c0	1	369	#/texts/366	configurations:	text
+13a2bb12b4	1	370	#/texts/367	[ tool . pytest . ini_options ]	code
+f642db50e9	1	371	#/texts/368		code
+0b19c0f4f6	1	372	#/texts/369	addopts = \"-s --no-header --no-summary\"	code
+4405588976	1	373	#/texts/370		code
+196378b509	1	374	#/texts/371	testpaths = [ \"tests\" ]	code
+ae432d4023	1	375	#/texts/372		code
+b4cf161331	1	376	#/texts/373	pythonpath = [ \".\" ]	code
+757027ba30	1	377	#/texts/374	Now that we've gone through the	text
+ff3bf77b72	1	378	#/texts/375	pyproject.toml	text
+ae38505aaa	1	379	#/texts/376	file and the dataset, let's take a deep dive into 	text
+eda555a5fc	1	380	#/texts/377	Project Code: Data Preprocessing	section_header
+6a2038803a	1	381	#/texts/378	You can find the	text
+330d750b6f	1	382	#/texts/379	chapter2_preprocess_data.py	text
+d7069b11a6	1	383	#/texts/380	script in the	text
+eb8f931e31	1	384	#/texts/381	notebooks	text
+ff59ca64e2	1	385	#/texts/382	folder. Note that for the code to run, you must ei	text
+85dfaa808a	1	386	#/texts/383	project_config.yml	text
+71469ec80d	1	387	#/texts/384	file under the	text
+34ebd90738	1	388	#/texts/385	dev	code
+5e0b2ad58b	1	389	#/texts/386	key or update the file with the catalog name and s	text
+6ac49bc5df	1	390	#/texts/387	First of all, we create a Spark session and load t	text
+d56424f2bc	1	391	#/texts/388	from pyspark.sql import SparkSession	code
+d00cf6b2ab	1	392	#/texts/389		code
+a6b7e62ea0	1	393	#/texts/390	from hotel_booking.config import ProjectConfig	code
+11bb6989c3	1	394	#/texts/391		code
+4889bf1851	1	395	#/texts/392	spark = SparkSession . builder . getOrCreate ()	code
+ce724139d3	1	396	#/texts/393		code
+a7f6ca378d	1	397	#/texts/394	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+d2ede86b0f	1	398	#/texts/395		code
+7d3a1027a6	1	399	#/texts/396	catalog = cfg . catalog	code
+518ceebe50	1	400	#/texts/397		code
+70bf90be19	1	401	#/texts/398	schema = cfg . schema	code
+e585e01826	1	402	#/texts/399	We use the	text
+9ccb9b536f	1	403	#/texts/400	ProjectConfig	code
+1c5fd5c442	1	404	#/texts/401	class from the	text
+640e9b976b	1	405	#/texts/402	config	code
+59d6c94bd5	1	406	#/texts/403	module of our custom	text
+4c5c69dffa	1	407	#/texts/404	hotel_booking	code
+db4d6b467d	1	408	#/texts/405	package. This class is built on	text
+718291f58f	1	409	#/texts/406	Pydantic	text
+0ada4e2f95	1	410	#/texts/407	, which provides robust data validation to ensure 	text
+faa59d6be0	1	411	#/texts/408	Beyond basic type checking, Pydantic supports enfo	text
+3e16730ec8	1	412	#/texts/409	In the following example, we enforce an opinionate	text
+71daf34abb	1	413	#/texts/410	Field()	code
+cbd4da09cf	1	414	#/texts/411	validator. Specifically, we use parameters such as	text
+d7e98eae92	1	415	#/texts/412	gt	code
+50274d8919	1	416	#/texts/413	(greater than) and	text
+26ee4b3361	1	417	#/texts/414	le	code
+18ed4ed948	1	418	#/texts/415	(less than or equal to) to define acceptable bound	text
+06a6923f11	1	419	#/texts/416	import yaml	code
+51bd56b727	1	420	#/texts/417		code
+4ebdc7294a	1	421	#/texts/418	from pydantic import BaseModel , ConfigDict , Fiel	code
+639b39d66c	1	422	#/texts/419		code
+8966488abd	1	423	#/texts/420	class Parameters ( BaseModel ): \"\"\"Model training 	code
+bf1070baa2	1	424	#/texts/421		code
+5e9843fedf	1	425	#/texts/422	class ProjectConfig ( BaseModel ): \"\"\"Project conf	code
+af47574d1c	1	426	#/texts/423		code
+476235a362	1	427	#/texts/424	:param config_path: Path to the YAML configuration	code
+a692d51df7	1	428	#/texts/425		code
+09579a4e4e	1	429	#/texts/426	:param env: Environment name to load environment-s	code
+443fe85d32	1	430	#/texts/427		code
+84a9f7c26e	1	431	#/texts/428	:return: ProjectConfig instance initialized with p	code
+ace3d5802a	1	432	#/texts/429		code
+d180ca89c0	1	433	#/texts/430	\"\"\" if env not in [ \"prd\" , \"acc\" , \"dev\" ]: raise	code
+275373d0e4	1	434	#/texts/431	Before we proceed, we need to make sure the catalo	text
+c6e95666d9	1	435	#/texts/432	spark . sql ( f \"CREATE CATALOG IF NOT EXISTS { ca	code
+e36ea345b4	1	436	#/texts/433		code
+594e287d16	1	437	#/texts/434	spark . sql ( f \"CREATE SCHEMA IF NOT EXISTS { cat	code
+794ddcbdee	1	438	#/texts/435	After we create the Spark session, load the config	text
+ab7acea101	1	439	#/texts/436	5	text
+6b4ee68585	1	440	#/texts/437	Also note that we enable	text
+2ca98e6103	1	441	#/texts/438	ChangeDataFeed	code
+9523b5af34	1	442	#/texts/439	to track all row-level changes between versions of	text
+bf35e5a2e6	1	443	#/texts/440	from datetime import datetime	code
+e8a8cddb70	1	444	#/texts/441		code
+c2fb87f07a	1	445	#/texts/442	import pandas as pd	code
+204b929a2c	1	446	#/texts/443		code
+d8d968e2a8	1	447	#/texts/444	df = pd . read_csv ( \"../data/booking.csv\" )	code
+ccc4d08fb6	1	448	#/texts/445		code
+2a0f80e9c4	1	449	#/texts/446	df . columns = df . columns . str . replace ( r \"[	code
+fa08c0fc13	1	450	#/texts/447		code
+d0786ff1b5	1	451	#/texts/448	df [ \"date_of_reservation\" ] = df [ \"date_of_reser	code
+9c890ed3e3	1	452	#/texts/449		code
+15e8536d8c	1	453	#/texts/450	)	code
+c131e20d6b	1	454	#/texts/451		code
+8f6ff05b8e	1	455	#/texts/452	df [ \"date_of_reservation\" ] = df [ \"date_of_reser	code
+97aefa7c5e	1	456	#/texts/453		code
+5ca821122c	1	457	#/texts/454	)	code
+c9d796ab4b	1	458	#/texts/455		code
+918c1dc52f	1	459	#/texts/456	df [ \"arrival_date\" ] = df [ \"date_of_reservation\"	code
+b2206cd3f2	1	460	#/texts/457		code
+3045e4a90c	1	461	#/texts/458	)	code
+ee0c1e1c30	1	462	#/texts/459		code
+d8b3116069	1	463	#/texts/460	df [ \"arrival_month\" ] = df [ \"arrival_date\" ] . d	code
+c0d93b9741	1	464	#/texts/461		code
+211edc6881	1	465	#/texts/462	dst_table = f \" { catalog } . { schema } .hotel_bo	code
+bc6db195ee	1	466	#/texts/463		code
+b177d1b386	1	467	#/texts/464	spark . createDataFrame ( df ) . write . mode ( \"o	code
+1bdf3c55cd	1	468	#/texts/465		code
+7e0c138f1a	1	469	#/texts/466	spark . sql ( f \"\"\"ALTER TABLE { dst_table }	code
+2493ee3939	1	470	#/texts/467		code
+e0c443e15f	1	471	#/texts/468	SET TBLPROPERTIES (delta.enableChangeDataFeed = tr	code
+c6b38f5126	1	472	#/texts/469		code
+e1c45c6482	1	473	#/texts/470	)	code
+325f89fa82	1	474	#/texts/471	Now that we've gone through the code (the full ver	text
+0aadc5dc23	1	475	#/texts/472	Databricks Developer Tools	title
+fbdbb345f9	1	476	#/texts/473	There are four main local developer tools Databric	text
+f353a9023c	1	477	#/texts/474	Databricks CLI	section_header
+efd61d5610	1	478	#/texts/475	Databricks CLI	text
+19cfe870db	1	479	#/texts/476	is a command line interface that allows you to int	text
+b8164e58e2	1	480	#/texts/477	You should use Databricks CLI to authenticate towa	text
+90835f9415	1	481	#/texts/478	comprehensive documentation	text
+0cffa08cd5	1	482	#/texts/479	on how to do it on different OS.	text
+95cc1d8dee	1	483	#/texts/480	Databricks CLI provides multiple authentication op	text
+a2055b50f7	1	484	#/texts/481	user-to-machine authentication	text
+5bc22441f4	1	485	#/texts/482	,	text
+d272a7f1a1	1	486	#/texts/483	6	text
+98aef7dc46	1	487	#/texts/484	which relies on short-lived OAuth tokens that expi	text
+8ceab3b923	1	488	#/texts/485	For the workspace-level commands, use the followin	text
+343d9f9f42	1	489	#/texts/486	databricks auth login --host workspace-url	code
+4a25bbc19a	1	490	#/texts/487	It creates an authentication profile in the	text
+a4df23b7b7	1	491	#/texts/488	.databrickscfg	text
+06cab2cb58	1	492	#/texts/489	file that contains the profile name and configurat	text
+e15c5804be	1	493	#/texts/490	[ mlops - book ]\nhost =	code
+ab287288a2	1	494	#/texts/491	https : / / oreil . ly / DtiuJ	code
+95857fc2e4	1	495	#/texts/492	auth_type = databricks - cli	code
+245cb73ccb	1	496	#/texts/493	You use the profiles to authenticate with Databric	text
+54af2222f1	1	497	#/texts/494	Declarative Automation Bundles	section_header
+727e73037e	1	498	#/texts/495	You may have noticed that the repository contains 	text
+45a613a3d0	1	499	#/texts/496	databricks.yml	text
+094edf40d4	1	500	#/texts/497	file. This is the DAB configuration file, which mu	text
+887c1837a4	1	501	#/texts/498	At their core, DABs enable you to manage Databrick	text
+49001cf6b5	1	502	#/texts/499	databricks.yml	text
+8ceb437e95	1	503	#/texts/500	file, you can define the artifacts and resources y	text
+610a23ebdb	1	504	#/texts/501	Chapter 5	text
+c15c96903f	1	505	#/texts/502	, we'll take a deep dive into specific resources y	text
+bc3e81739a	1	506	#/texts/503	Syntax of the databricks.yml file	section_header
+cf4926029b	1	507	#/texts/504	First, every	text
+02bc7364c2	1	508	#/texts/505	databricks.yml	text
+4499c41458	1	509	#/texts/506	file must contain a	text
+c1f0caca85	1	510	#/texts/507	bundle	code
+883c71c528	1	511	#/texts/508	section with a name. Optionally, you can specify t	text
+5c5d905634	1	512	#/texts/509	cluster_id	code
+a78c75a313	1	513	#/texts/510	, which will override any other cluster specificat	text
+17d840a744	1	514	#/texts/511	cluster_id	code
+4b81d61970	1	515	#/texts/512	under the target section for development purposes 	text
+c41eeb6c6d	1	516	#/texts/513	cluster_id	code
+d552a8208f	1	517	#/texts/514	specification is not relevant for serverless compu	text
+da091408b3	1	518	#/texts/515	bundle : # Required. name : string # Required. dat	code
+9bdc3031cb	1	519	#/texts/516	The	text
+9c132a2a2b	1	520	#/texts/517	artifacts	code
+19f729746f	1	521	#/texts/518	section is where you can specify which packages ne	text
+5cb3a0c14e	1	522	#/texts/519	For the whl type, you can set the	text
+60e6575826	1	523	#/texts/520	dynamic_version	code
+74428830b0	1	524	#/texts/521	parameter. If you set it to	text
+579d5a07f5	1	525	#/texts/522	true	code
+519699bd6f	1	526	#/texts/523	, a dynamic version with a timestamp will be creat	text
+dc9556206f	1	527	#/texts/524	artifacts :	code
+3dba7510e1	1	528	#/texts/525	some - unique - artifact - identifier	code
+ef8fb833fc	1	529	#/texts/526	:\nbuild : string\nfiles :\n- source : string\npath : 	code
+29240c16a4	1	530	#/texts/527	You can also set up	text
+a3b71e1ae8	1	531	#/texts/528	custom variables	text
+8d677b3649	1	532	#/texts/529	directly in the	text
+fdfb7145a5	1	533	#/texts/530	databricks.yml	text
+401139f856	1	534	#/texts/531	file. Then, you can pass these variables to the de	text
+83ae691dba	1	535	#/texts/532	databricks bundle deploy -var	code
+1f94058d75	1	536	#/texts/533	command. For traceability purposes, it is a good i	text
+8f8761b002	1	537	#/texts/534	git_sha	code
+907c2e919d	1	538	#/texts/535	variable. We will use this later to tag our experi	text
+44023f1b33	1	539	#/texts/536	You define these variables within a	text
+96e8eff854	1	540	#/texts/537	variables	code
+c19c754d15	1	541	#/texts/538	section like this:	text
+dbc0d79937	1	542	#/texts/539	variables :	code
+c925f47b71	1	543	#/texts/540	some - unique - variable - name	code
+005c939191	1	544	#/texts/541	:\ndescription : string\ndefault : string or complex	code
+a410814d4f	1	545	#/texts/542	To keep your	text
+e2a3c8b590	1	546	#/texts/543	databricks.yml	text
+9f6473699a	1	547	#/texts/544	file clean and maintainable, especially as your pr	text
+daf8a6307f	1	548	#/texts/545	include	code
+dc063118bb	1	549	#/texts/546	section. This modular approach helps you avoid a s	text
+6b4de252c6	1	550	#/texts/547	include :\n- '	code
+1338444f78	1	551	#/texts/548	some-file-or-path-glob-to-include	code
+50002d91af	1	552	#/texts/549	'\n- '	code
+0224a9315c	1	553	#/texts/550	another-file-or-path-glob-to-include	code
+62a64c0f93	1	554	#/texts/551	'	code
+ecdac4fc01	1	555	#/texts/552	In the	text
+a7838b8443	1	556	#/texts/553	sync	code
+2bc8088254	1	557	#/texts/554	section of the	text
+7f8ed0eb13	1	558	#/texts/555	databricks.yml	text
+cabb577dc5	1	559	#/texts/556	file, you can specify what files or directories sh	text
+c627449542	1	560	#/texts/557	sync :\ninclude :\n- '	code
+409dcb49e2	1	561	#/texts/558	some-file-or-path-glob-to-include	code
+5d9d4113a6	1	562	#/texts/559	'\n- '	code
+003f4b8246	1	563	#/texts/560	another-file-or-path-glob-to-include	code
+6b1149bf5c	1	564	#/texts/561	'\nexclude :\n- '	code
+568d68fadf	1	565	#/texts/562	some-file-or-path-glob-to-exclude	code
+143a19ab2f	1	566	#/texts/563	'	code
+2a52d0f638	1	567	#/texts/564	- ' another-file-or-path-glob-to-exclude	code
+82d1cd2018	1	568	#/texts/565	'\npaths :\n- '	code
+85f534f62d	1	569	#/texts/566	some-file-or-path-to-synchronize	code
+36f1742b38	1	570	#/texts/567	'	code
+890b9181bc	1	571	#/texts/568	Next, in the	text
+f9dcfd3337	1	572	#/texts/569	resources	code
+d9a1aeca31	1	573	#/texts/570	section of the	text
+9e910f7d1e	1	574	#/texts/571	databricks.ym l	text
+ae43b1c4da	1	575	#/texts/572	file, you can define all the resources that should	text
+7454d43f86	1	576	#/texts/573	7	text
+9ba79f6436	1	577	#/texts/574	This is how you define resources in the	text
+0a050028a4	1	578	#/texts/575	databricks.yml	text
+4974a68b30	1	579	#/texts/576	file:	text
+07e17123ec	1	580	#/texts/577	resources :\nclusters :	code
+3ad83ee05b	1	581	#/texts/578	some - unique - programmatic - identifier - for - 	code
+78171b90e2	1	582	#/texts/579	:\n# See the REST API create request payload refere	code
+04d2eb199b	1	583	#/texts/580	some - unique - programmatic - identifier - for - 	code
+37e4b9e15b	1	584	#/texts/581	:\n# See the REST API create request payload refere	code
+8e76eb6dce	1	585	#/texts/582	some - unique - programmatic - identifier - for - 	code
+59b09e5a8d	1	586	#/texts/583	:\n# See the REST API create request payload refere	code
+d5e97904c7	1	587	#/texts/584	some - unique - programmatic - identifier - for - 	code
+6883aeb333	1	588	#/texts/585	:\n# See the REST API create request payload refere	code
+e5b629f584	1	589	#/texts/586	some - unique - programmatic - identifier - for - 	code
+06e7026063	1	590	#/texts/587	:\n# See the REST API create request payload refere	code
+9a1f0c99cf	1	591	#/texts/588	In the	text
+509dcae1a0	1	592	#/texts/589	permissions	code
+617f9f3626	1	593	#/texts/590	section, you can specify permissions for all the r	text
+de5c182249	1	594	#/texts/591	CAN_VIEW	code
+a43f0e047e	1	595	#/texts/592	,	text
+3d118df6e4	1	596	#/texts/593	CAN_MANAGE	code
+cc5ce44065	1	597	#/texts/594	, and	text
+3cd85f9bdd	1	598	#/texts/595	CAN_RUN	code
+658a3094c8	1	599	#/texts/596	. You can also specify permissions on the resource	text
+b29093ff23	1	600	#/texts/597	permissions : - level : < permission - level > gro	code
+84fed46f43	1	601	#/texts/598	The	text
+b6114588ae	1	602	#/texts/599	run_as	code
+21090334a7	1	603	#/texts/600	section allows you to specify the identity, such a	text
+d4d92ad4fd	1	604	#/texts/601	CAN_USE	code
+bfac1eec57	1	605	#/texts/602	permissions for the service principal to use this 	text
+065c1c2e7f	1	606	#/texts/603	run_as : service_principal_name : < service - prin	code
+ebb7947a5a	1	607	#/texts/604	Finally, you can use the	text
+0919794e23	1	608	#/texts/605	targets	code
+c3687837c2	1	609	#/texts/606	section to override settings that are specified el	text
+2e9e99d644	1	610	#/texts/607	databricks.yml	text
+f3e30736d4	1	611	#/texts/608	file. For development purposes, it is convenient t	text
+d9dc299a2c	1	612	#/texts/609	cluster_id	code
+230537695a	1	613	#/texts/610	under the	text
+6be282c673	1	614	#/texts/611	dev	code
+f17f624a10	1	615	#/texts/612	target and utilize the development mode.	text
+73646b539a	1	616	#/texts/613	The development mode enables the following behavio	text
+aadcd8a468	1	617	#/texts/614	8	text
+3ce03ea66b	1	618	#/texts/615		list_item
+7e01276bb0	1	619	#/texts/616	It adds the	text
+57535fea29	1	620	#/texts/617	[dev ${workspace.current_user.short_name}]	code
+cb498765cb	1	621	#/texts/618	prefix to all resource names, and it tags each job	text
+ffc0d632b6	1	622	#/texts/619	dev	code
+4ae4006d5c	1	623	#/texts/620	Databricks tag.	text
+54d8d6a151	1	624	#/texts/621	It allows you to override job clusters (which is n	list_item
+7484d13385	1	625	#/texts/622	It pauses all schedules and triggers.	list_item
+761562f4f1	1	626	#/texts/623	It enables concurrent runs on all deployed jobs an	list_item
+7becad602d	1	627	#/texts/624	This is how you can define targets in the	text
+3ed623d3dc	1	628	#/texts/625	databricks.yml	text
+a527754076	1	629	#/texts/626	file:	text
+2ecc09b13d	1	630	#/texts/627	targets :	code
+cbd7ef357b	1	631	#/texts/628	some - unique - programmatic - identifier - for - 	code
+2c44dd2f70	1	632	#/texts/629	:\nartifacts :\n# See the preceding \"artifacts\" synt	code
+62bed476fd	1	633	#/texts/630	preset	code
+8061c0b918	1	634	#/texts/631	:	code
+1fd6d83ac9	1	635	#/texts/632	value	code
+cf885afbbd	1	636	#/texts/633	resources :\n# See the preceding \"resources\" syntax	code
+3bd3805b1c	1	637	#/texts/634	preceding - unique - variable - name	code
+8fc07af788	1	638	#/texts/635	:	code
+6aae40eaec	1	639	#/texts/636	non - default - value	code
+b871f9d43e	1	640	#/texts/637	workspace :\n# See the preceding \"workspace\" syntax	code
+77d635cd85	1	641	#/texts/638	It is common practice to define the	text
+c17ff1a511	1	642	#/texts/639	workspace	code
+207630399b	1	643	#/texts/640	configuration	text
+e992e2593b	1	644	#/texts/641	under a target because workspace-related values, s	text
+35985d4bb9	1	645	#/texts/642	9	text
+ab5ec8bf36	1	646	#/texts/643	The	text
+1b229be30a	1	647	#/texts/644	workspace	code
+df12f5b33b	1	648	#/texts/645	section can contain the following information:	text
+6d6705ce7e	1	649	#/texts/646	workspace : artifact_path : string auth_type : str	code
+1f1de9e8a1	1	650	#/texts/647	Note that in development mode, the bundle's root p	text
+b356519838	1	651	#/texts/648	root_path	code
+35697ab06a	1	652	#/texts/649	values for different targets.	text
+bbb288e4c7	1	653	#/texts/650	Now that we've covered the different sections of t	text
+54dd1a2988	1	654	#/texts/651	databricks.yml	text
+e40bc175ba	1	655	#/texts/652	file, let's take a closer look at the version used	text
+0776bb4a63	1	656	#/texts/653	The databricks.yml file	section_header
+7521fa7325	1	657	#/texts/654	In the	text
+682c38215a	1	658	#/texts/655	databricks.yml	text
+bc4e9c1ce9	1	659	#/texts/656	file, we specify the bundle name first:	text
+1520627249	1	660	#/texts/657	bundle : name : oreilly - mlops - with - databrick	code
+5df4a18d87	1	661	#/texts/658	Then, we define the artifacts to build. In this ca	text
+6103ad74d8	1	662	#/texts/659	uv build	code
+db1a8acb79	1	663	#/texts/660	command to create the package wheel, which we can 	text
+471f862a92	1	664	#/texts/661	artifacts : default : type : whl build : uv build 	code
+1b555f8417	1	665	#/texts/662	If you have multiple packages within the same repo	text
+2cd1c2faff	1	666	#/texts/663	pyproject.toml	text
+6afaa2fe42	1	667	#/texts/664	file.	text
+8b90147f63	1	668	#/texts/665	Next, we define the following bundle variables:	text
+227a62ba15	1	669	#/texts/666		list_item
+93ac209b7c	1	670	#/texts/667	git_sha	code
+72488eddca	1	671	#/texts/668	and	text
+10366ea941	1	672	#/texts/669	branch	code
+a109032d3e	1	673	#/texts/670		list_item
+ac956c30e6	1	674	#/texts/671	We will use these later as arguments for our Pytho	text
+194c281c7d	1	675	#/texts/672	git_sha	code
+85a4aa40cb	1	676	#/texts/673	and	text
+fec0c308d5	1	677	#/texts/674	branch	code
+8bc5c76417	1	678	#/texts/675	values.	text
+167979c2f3	1	679	#/texts/676	schedule_pause_status	list_item
+4d40c9d559	1	680	#/texts/677		list_item
+e7895d5d7d	1	681	#/texts/678	We can use this to pause the scheduled job when th	text
+583dba8101	1	682	#/texts/679	acc	code
+267164ba5c	1	683	#/texts/680	target.	text
+a02ab87d0f	1	684	#/texts/681	usage_policy_id	list_item
+5daf776cd7	1	685	#/texts/682		list_item
+5b2cb755ec	1	686	#/texts/683	We can use this to pass to serverless resources de	text
+537d307b15	1	687	#/texts/684	Chapter 9	text
+c35e148fd4	1	688	#/texts/685	.	text
+be48a80215	1	689	#/texts/686	The following example shows how to deploy these bu	text
+aced0f8af8	1	690	#/texts/687	variables :	code
+f9687eb24b	1	691	#/texts/688		code
+238643b05b	1	692	#/texts/689	git_sha :	code
+4c0ec9aa2d	1	693	#/texts/690		code
+c30c0ea6c5	1	694	#/texts/691	description : git_sha	code
+3982462d49	1	695	#/texts/692		code
+7889e69fbf	1	696	#/texts/693	default : abcd	code
+958a2aa435	1	697	#/texts/694		code
+d77b127fa5	1	698	#/texts/695	branch :	code
+df93486a53	1	699	#/texts/696		code
+c19e1f2d42	1	700	#/texts/697	description : branch	code
+c1769df213	1	701	#/texts/698		code
+e0daf936ba	1	702	#/texts/699	default : main	code
+2ede012576	1	703	#/texts/700		code
+ed903a472b	1	704	#/texts/701	schedule_pause_status :	code
+798311c820	1	705	#/texts/702		code
+a9299af75d	1	706	#/texts/703	description : schedule pause status	code
+f5d24199f7	1	707	#/texts/704		code
+9c2deb0d19	1	708	#/texts/705	default : PAUSED	code
+7773fb35c5	1	709	#/texts/706		code
+be0d68e339	1	710	#/texts/707	# matches project_config.yml	code
+a96b240ba7	1	711	#/texts/708		code
+20b5bf7348	1	712	#/texts/709	usage_policy_id :	code
+a26df82ebb	1	713	#/texts/710		code
+f992a57b79	1	714	#/texts/711	description : usage/budget policy id for cost attr	code
+ff62709226	1	715	#/texts/712		code
+58c3ebd9f3	1	716	#/texts/713	default : cdad6f29-a213-4525-9330-e25b90afbe7a	code
+2b3bb77d48	1	717	#/texts/714	In the	text
+2dd080203e	1	718	#/texts/715	sync	code
+517b27a956	1	719	#/texts/716	section, we specify the	text
+5ed3f026eb	1	720	#/texts/717	dist	code
+8b668073d3	1	721	#/texts/718	folder to make sure the built artifacts are easily	text
+673249fdfe	1	722	#/texts/719	sync : include : - dist /*	code
+77994f585d	1	723	#/texts/720	Note that we haven't defined any resources directl	text
+133866b12c	1	724	#/texts/721	databricks.yml	text
+d22aba7f56	1	725	#/texts/722	file. Instead, we've created separate YAML files f	text
+a5c8793f09	1	726	#/texts/723	include : - resources /*	code
+eddd166928	1	727	#/texts/724	Finally, in the	text
+f0e48ce0ae	1	728	#/texts/725	targets	code
+89ed4ed93a	1	729	#/texts/726	section, we define three targets:	text
+0b626feed7	1	730	#/texts/727	dev	code
+0da81bc231	1	731	#/texts/728	,	text
+b41b6aae17	1	732	#/texts/729	acc	code
+32785fa3f0	1	733	#/texts/730	, and	text
+a082091857	1	734	#/texts/731	prd	code
+f2f1237e0e	1	735	#/texts/732	. The	text
+33c66e6b49	1	736	#/texts/733	dev	code
+087b263a14	1	737	#/texts/734	target is our default and is used primarily for de	text
+48d2882592	1	738	#/texts/735	dev ${workspace.current_user.short_name}	code
+f0f8613509	1	739	#/texts/736	prefix to all deployed resources and pauses any sc	text
+f1510abd2c	1	740	#/texts/737	The	text
+641dc7f86a	1	741	#/texts/738	acc	code
+5178f37bcc	1	742	#/texts/739	target is intended for acceptance testing, and	text
+36a8c28074	1	743	#/texts/740	prd	code
+727ab8c7db	1	744	#/texts/741	is used for deploying code to production. The foll	text
+5e1f95ee8a	1	745	#/texts/742	targets : dev : default : true mode : development 	code
+5bef690632	1	746	#/texts/743	In	text
+d5ed5bba2b	1	747	#/texts/744	Chapter 5	text
+ef29f8a593	1	748	#/texts/745	, we'll take a closer look at these environments a	text
+df9d6fd477	1	749	#/texts/746	Now that we've gone through the	text
+5b51014498	1	750	#/texts/747	databricks.yml	text
+d52bab5170	1	751	#/texts/748	file, let's take a closer look at how we can inter	text
+8e18e62bd8	1	752	#/texts/749	Using DABs	section_header
+602e328e47	1	753	#/texts/750	Before we go into details, you need to make sure t	text
+6eff089898	1	754	#/texts/751	databricks.yml	text
+57eadf65b3	1	755	#/texts/752	file. Without this change, you won't be able to ru	text
+67d5ac1cdb	1	756	#/texts/753	There are four main Databricks CLI commands relate	text
+b15fdf6bc2	1	757	#/texts/754	databricks bundle validate	list_item
+a8b0b73f00	1	758	#/texts/755		list_item
+13105b7f68	1	759	#/texts/756	This checks whether your	text
+dac6576f62	1	760	#/texts/757	databricks.yml	text
+f63ac15de5	1	761	#/texts/758	file is configured correctly.	text
+86c278e7a0	1	762	#/texts/759	databricks bundle deploy	list_item
+b5bad9b393	1	763	#/texts/760		list_item
+390dc2ffd1	1	764	#/texts/761	This deploys the resources defined in your	text
+7552ea501c	1	765	#/texts/762	databricks.yml	text
+7ec28f70d0	1	766	#/texts/763	file.	text
+ab7a71d25a	1	767	#/texts/764	databricks bundle run <job resource name>	list_item
+0b2100fd45	1	768	#/texts/765	This executes the specified job.	list_item
+6dc4e4bbe2	1	769	#/texts/766	databricks bundle destroy	list_item
+cc946449f1	1	770	#/texts/767	This removes all the assets that were created by t	list_item
+e96d4782f1	1	771	#/texts/768	After the	text
+7b2a47527b	1	772	#/texts/769	databricks bundle deploy	code
+14da04fd60	1	773	#/texts/770	command is executed, all the project files and bui	text
+d15432274d	1	774	#/texts/771	root_path	code
+bfe066b45a	1	775	#/texts/772	location specified under target. There, you'll fin	text
+b5a6169ff4	1	776	#/texts/773	The artifacts folder	list_item
+661eefb706	1	777	#/texts/774	This holds the Python wheel files that were built 	list_item
+f502d303e2	1	778	#/texts/775	The files folder	list_item
+5211e05219	1	779	#/texts/776	This contains all your project's source files.	list_item
+239b442733	1	780	#/texts/777	The state folder	list_item
+f9c9c73115	1	781	#/texts/778		list_item
+f2804c98cb	1	782	#/texts/779	This stores the Terraform state of the bundle.	text
+fb5253bc60	1	783	#/texts/780	10	text
+41ef79c705	1	784	#/texts/781	The resources folder	list_item
+b1fb18ebf1	1	785	#/texts/782	This contains the direct deployment state file.	list_item
+e9962d7b5f	1	786	#/texts/783	It's important to pay attention to authentication 	text
+c06829515c	1	787	#/texts/784	For any command run from the bundle working direct	list_item
+63be58b160	1	788	#/texts/785		list_item
+903d4e4a8e	1	789	#/texts/786	Evaluate and authenticate the values of environmen	text
+e5a4c373f2	1	790	#/texts/787	DATABRICKS_HOST	code
+33679ff0f7	1	791	#/texts/788	and	text
+4aa27a3102	1	792	#/texts/789	DATABRICKS_TOKEN	code
+7fcaca6c75	1	793	#/texts/790	).	text
+8aaec3d658	1	794	#/texts/791		list_item
+3559ba3e69	1	795	#/texts/792	Evaluate and authenticate the configuration profil	text
+ebe85ee421	1	796	#/texts/793	.databrickscfg	text
+87616c3244	1	797	#/texts/794	file.	text
+3a2e77f309	1	798	#/texts/795	Note that if you happen to have an environment var	text
+8aa215d5a7	1	799	#/texts/796	Databricks Connect	section_header
+e041920254	1	800	#/texts/797	Databricks Connect	text
+b9af0cb4e3	1	801	#/texts/798	is a Python package that allows you to trigger an 	text
+a457bc4997	1	802	#/texts/799	Before we proceed, you need to make sure that the 	text
+7f13f794c9	1	803	#/texts/800	We have already gone through the	text
+5456f1bf21	1	804	#/texts/801	pyproject.toml	text
+05b012919f	1	805	#/texts/802	setup and uv. Now, you need to create a virtual en	text
+992067e790	1	806	#/texts/803	project	text
+377ca2a7f7	1	807	#/texts/804	folder in a terminal, you can run the	text
+9ab7101b45	1	808	#/texts/805	uv sync	code
+9e379f4983	1	809	#/texts/806	command as follows:	text
+61b4b947ef	1	810	#/texts/807	uv sync -- extra dev #You can also run an alternat	code
+e94726d2c2	1	811	#/texts/808		code
+4b09f77708	1	812	#/texts/809	source . venv / bin / activate python	code
+ae28ae2768	1	813	#/texts/810	Note that you need to use Python 3.12 and Databric	text
+a6c4f0bad5	1	814	#/texts/811	from databricks.connect import DatabricksSession	code
+a438cc0928	1	815	#/texts/812		code
+a4a4d54b52	1	816	#/texts/813	spark = DatabricksSession . builder . profile ( \"m	code
+ab98e3620c	1	817	#/texts/814		code
+d36377c145	1	818	#/texts/815	df = spark . read . table ( \"samples.nyctaxi.trips	code
+01e1d880d2	1	819	#/texts/816		code
+2aabae4e6b	1	820	#/texts/817	df . show ( 5 )	code
+3be0845c80	1	821	#/texts/818	Alternatively, you can use an interactive cluster 	text
+a77bee9c92	1	822	#/texts/819	Spark commands will run on a Databricks cluster.	text
+d7762d2c52	1	823	#/texts/820	There are a couple of things to pay attention to h	text
+2ab7dd5539	1	824	#/texts/821		list_item
+32fa998493	1	825	#/texts/822	You need to choose the correct profile from the	text
+7651638dc1	1	826	#/texts/823	.databrickscfg	text
+cd66a703d6	1	827	#/texts/824	file. If the profile is named DEFAULT, it is not n	text
+3a9d3fe2bd	1	828	#/texts/825		list_item
+738403f235	1	829	#/texts/826	You'll use	text
+158b9e83e3	1	830	#/texts/827	DatabricksSession	code
+82d587c899	1	831	#/texts/828	to run Spark code. If you, for example, run	text
+2e2ab45c63	1	832	#/texts/829	df.toPandas()	code
+c0e87bf157	1	833	#/texts/830	, which you may need for an ML library you are usi	text
+16b301dc55	1	834	#/texts/831	It may be surprising, but you can import PySpark, 	text
+f9fc00e65d	1	835	#/texts/832	( test )	code
+1c98475aea	1	836	#/texts/833	mariavechtomova@Mac	code
+2be651232b	1	837	#/texts/834	test	code
+002ff21b5b	1	838	#/texts/835	% uv pip install databricks-connect	code
+19424de88e	1	839	#/texts/836	== 17	code
+feb6679240	1	840	#/texts/837	.3.5 Resolved	code
+956d72dec3	1	841	#/texts/838	30	code
+980d5de032	1	842	#/texts/839	packages	code
+c904058b39	1	843	#/texts/840	in	code
+b94f9cfcdf	1	844	#/texts/841	293ms Prepared	code
+e5e8d2123b	1	845	#/texts/842	8	code
+7b371b42c7	1	846	#/texts/843	packages	code
+fba2a03196	1	847	#/texts/844	in	code
+d0aec9c10f	1	848	#/texts/845	593ms Installed	code
+2d0a35c63e	1	849	#/texts/846	30	code
+392850c212	1	850	#/texts/847	packages	code
+e78ef495ed	1	851	#/texts/848	in	code
+0a5e97cc38	1	852	#/texts/849	301ms\n+	code
+c8aa46a1b9	1	853	#/texts/850	certifi == 2026	code
+722cf63909	1	854	#/texts/851	.1.4	code
+cd87c94ac6	1	855	#/texts/852	|	code
+069bea317b	1	856	#/texts/853	+	code
+d65879dac7	1	857	#/texts/854	cffi == 2	code
+c45dbfb0a7	1	858	#/texts/855	.0.0\n+ charset-normalizer	code
+5f3db53f29	1	859	#/texts/856	== 3	code
+a6781a90e5	1	860	#/texts/857	.4.4	code
+31b469ff5f	1	861	#/texts/858	|	code
+3312e9e5f4	1	862	#/texts/859	+	code
+d8130c6160	1	863	#/texts/860	cryptography == 46	code
+9406b9f8c0	1	864	#/texts/861	.0.5	code
+43c8ecd254	1	865	#/texts/862	|	code
+3d8f7d8204	1	866	#/texts/863	+ databricks-connect	code
+077a1a7500	1	867	#/texts/864	== 17	code
+6edc1d9ba6	1	868	#/texts/865	.3.5	code
+d1b64057d5	1	869	#/texts/866	|	code
+179a36d63e	1	870	#/texts/867	+ databricks-sdk	code
+cbd5cc9e3a	1	871	#/texts/868	== 0	code
+5d22d0f9e0	1	872	#/texts/869	.89.0	code
+25d7c7e93d	1	873	#/texts/870	|	code
+7f5dd87bef	1	874	#/texts/871	+ google-auth	code
+29402980c8	1	875	#/texts/872	== 2	code
+2c689fa360	1	876	#/texts/873	.48.0\n+ googleapis-common-protos	code
+1541543878	1	877	#/texts/874	== 1	code
+4655a489ce	1	878	#/texts/875	.72.0	code
+d8a943663e	1	879	#/texts/876	|	code
+36c0968726	1	880	#/texts/877	+	code
+e67cb302c8	1	881	#/texts/878	grpcio == 1	code
+86a40458e1	1	882	#/texts/879	.78.0	code
+996c16d439	1	883	#/texts/880	|	code
+ed62b6d74f	1	884	#/texts/881	+ grpcio-status	code
+1cff5b2b6d	1	885	#/texts/882	== 1	code
+a33b41916b	1	886	#/texts/883	.78.0	code
+69910b14d6	1	887	#/texts/884	|	code
+7e1eda7d05	1	888	#/texts/885	+	code
+cd64f42f94	1	889	#/texts/886	idna == 3	code
+16442bb660	1	890	#/texts/887	.11	code
+5b28648095	1	891	#/texts/888	|	code
+23aee82988	1	892	#/texts/889	+	code
+2a45d8cc4e	1	893	#/texts/890	numpy == 2	code
+99a9ca8439	1	894	#/texts/891	.4.2\n+	code
+bfe8e42e51	1	895	#/texts/892	packaging == 26	code
+a842b483d3	1	896	#/texts/893	.0\n+	code
+beb95918c0	1	897	#/texts/894	pandas == 2	code
+c71394c313	1	898	#/texts/895	.3.3\n+	code
+44cc3d9885	1	899	#/texts/896	protobuf == 6	code
+a9168e016a	1	900	#/texts/897	.33.5\n+	code
+fa9a30324d	1	901	#/texts/898	Py4J == 0	code
+238185d561	1	902	#/texts/899	.10.9.9\n+	code
+44a7fde107	1	903	#/texts/900	pyarrow == 23	code
+ad4fdc152c	1	904	#/texts/901	.0.1\n+	code
+48cf276659	1	905	#/texts/902	pyasn1 == 0	code
+98efa2d637	1	906	#/texts/903	.6.2\n+ pyasn1-modules	code
+d17408a736	1	907	#/texts/904	== 0	code
+855230b8a1	1	908	#/texts/905	.4.2	code
+8c728b8abe	1	909	#/texts/906	|	code
+757068ebba	1	910	#/texts/907	+	code
+0554b2c870	1	911	#/texts/908	pycparser == 3	code
+90783df173	1	912	#/texts/909	.0\n+ python-dateutil	code
+36325a8692	1	913	#/texts/910	== 2	code
+0eca031125	1	914	#/texts/911	.9.0.post@\n+	code
+3975becd96	1	915	#/texts/912	pytz == 2025	code
+0f5522f44b	1	916	#/texts/913	.2\n+	code
+fe146fdedd	1	917	#/texts/914	requests == 2	code
+f48100ae22	1	918	#/texts/915	.32.5\n+	code
+5ed5425e57	1	919	#/texts/916	rsa == 4	code
+fd97ddaaed	1	920	#/texts/917	.9.1	code
+c2dac23613	1	921	#/texts/918	|	code
+6c155cecfe	1	922	#/texts/919	+	code
+de81dd5fa2	1	923	#/texts/920	setuptools == 82	code
+b024f22c6e	1	924	#/texts/921	.0.0\n+	code
+26235feb59	1	925	#/texts/922	six == 1	code
+39d0c5b26b	1	926	#/texts/923	.17.0\n+ typing-extensions	code
+6c238cbbca	1	927	#/texts/924	== 4	code
+1d76504e6e	1	928	#/texts/925	.15.0	code
+75a841106a	1	929	#/texts/926	|	code
+82e73481f7	1	930	#/texts/927	+	code
+a63f7c0bb3	1	931	#/texts/928	tzdata == 2025	code
+7d2e2edbc2	1	932	#/texts/929	.3	code
+6a9fc7cf86	1	933	#/texts/930	|	code
+065ac7cd6c	1	934	#/texts/931	+	code
+7ef480438f	1	935	#/texts/932	urllib3 == 2	code
+83640d028e	1	936	#/texts/933	.6.3\n+	code
+5d8b5ac771	1	937	#/texts/934	zstandard == 0	code
+92f9734e49	1	938	#/texts/935	.25.0	code
+e70da25238	1	939	#/texts/936	This is because PySpark is \"hidden\" and embedded i	text
+5d40deb037	1	940	#/texts/937	.venv/lib/python3.12/site-packages	code
+3ec3d208f6	1	941	#/texts/938	as follows:	text
+f4e66247b9	1	942	#/texts/939	( test )	code
+aadf7b49c4	1	943	#/texts/940	mariavechtomova@Mac site-packages % ls -la	code
+cabaf29f1f	1	944	#/texts/941	|	code
+4572192931	1	945	#/texts/942	grep pyspark drwxr-xI-x@	code
+5f2b410567	1	946	#/texts/943	56	code
+7fbb91fab0	1	947	#/texts/944	mariavechtomova staff	code
+0e03fa93cc	1	948	#/texts/945	1792	code
+b2ab4224a8	1	949	#/texts/946	Feb	code
+f96aba133d	1	950	#/texts/947	18 00	code
+2a1d634ebc	1	951	#/texts/948	:23 pyspark	code
+b972107905	1	952	#/texts/949	If you try to use	text
+fdd86df021	1	953	#/texts/950	SparkSession	code
+28a40882bd	1	954	#/texts/951	instead of	text
+4b9139740d	1	955	#/texts/952	DatabricksSession	code
+f76471f7ad	1	956	#/texts/953	, however, it would not work because it misses nec	text
+378401dfb1	1	957	#/texts/954	from pyspark.sql import SparkSession	code
+338fbdf973	1	958	#/texts/955		code
+7882bdefc3	1	959	#/texts/956	spark = SparkSession . builder . getOrCreate ()	code
+9ec8a7db7c	1	960	#/texts/957		code
+2ccf662402	1	961	#/texts/958	df = spark . read . table ( \"samples.nyctaxi.trips	code
+b6c8878e3a	1	962	#/texts/959		code
+f9e0bf613c	1	963	#/texts/960	df . show ( 5 )	code
+dd3bc93722	1	964	#/texts/961	In this case, import works without issues because 	text
+1a8084d303	1	965	#/texts/962	RuntimeError : \" Only remote Spark sessions using 	code
+e449af25e2	1	966	#/texts/963		code
+57a2c30246	1	967	#/texts/964	DatabricksSession . builder to create a remote Spa	code
+d912b35607	1	968	#/texts/965	The same command does work in the Databricks exten	text
+4a2b44fb76	1	969	#/texts/966	.databricks.env	text
+709898d940	1	970	#/texts/967	file it creates inside the	text
+0e81d34046	1	971	#/texts/968	.databricks	text
+f44f36ad53	1	972	#/texts/969	folder of your project. It contains the following 	text
+045e1f20a4	1	973	#/texts/970	DATABRICKS_AUTH_TYPE	list_item
+95eb5badae	1	974	#/texts/971	DATABRICKS_BUNDLE_TARGET	list_item
+5d9c7805fe	1	975	#/texts/972	DATABRICKS_HOST	list_item
+6c56ac3c05	1	976	#/texts/973	DATABRICKS_METADATA_SERVICE_URL	list_item
+ebf17a0bce	1	977	#/texts/974	DATABRICKS_PROJECT_ROOT	list_item
+b935ebc4e6	1	978	#/texts/975	DATABRICKS_SERVERLESS_COMPUTE_ID	list_item
+7ac6148bc6	1	979	#/texts/976	PROFILE	list_item
+a09a221eea	1	980	#/texts/977	PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT	list_item
+22f026f1fd	1	981	#/texts/978	SPARK_CONNECT_PROGRESS_BAR_ENABLED	list_item
+3b21c8eb46	1	982	#/texts/979	SPARK_CONNECT_USER_AGENT	list_item
+025a1d1288	1	983	#/texts/980	Databricks Extension for Visual Studio Code	section_header
+f0b6a89d45	1	984	#/texts/981	The Databricks extension for Visual Studio Code in	text
+ab111ca87f	1	985	#/texts/982	11	text
+c2888a844f	1	986	#/texts/983	This makes it very easy to connect to the Databric	text
+4919b3be32	1	987	#/texts/984	Since this is a monolithic repository (monorepo) s	text
+6adbdb0e4c	1	988	#/texts/985	12	text
+62664fc880	1	989	#/texts/986	which will automatically detect the virtual enviro	text
+3e04d62092	1	990	#/texts/987	After you've installed the extension, follow these	text
+c21edffaf8	1	991	#/texts/988		list_item
+f7e19c0539	1	992	#/texts/989	Open the project; make sure to choose the	text
+f16114b7a7	1	993	#/texts/990	mlops	text
+7b4dd75978	1	994	#/texts/991	folder of the repository as the local folder, as s	text
+fa07613f41	1	995	#/texts/992	Figure 2-4	text
+eb8b9f7080	1	996	#/texts/993	).	text
+859df63894	1	997	#/texts/994		list_item
+cd3be2adec	1	998	#/texts/995	Run the	text
+c0646e5f4c	1	999	#/texts/996	cd mlops & uv sync -extra dev	code
+8536dbd1d1	1	1000	#/texts/997	command to sync dependencies and make sure that th	text
+b01b6b4d57	1	1001	#/texts/998	Select an interpreter using Python extension (or i	list_item
+4985ad35f8	1	1002	#/texts/999		list_item
+6328c6dfe4	1	1003	#/texts/1000	Make sure the	text
+ae7676489e	1	1004	#/texts/1001	databricks.yml	text
+a10223cfca	1	1005	#/texts/1002	file in the	text
+80a7156fb7	1	1006	#/texts/1003	mlops	text
+eae14ad306	1	1007	#/texts/1004	folder contains the host that matches the host of 	text
+4559cfb778	1	1008	#/texts/1005	Authenticate using the same profile.	list_item
+14b97c33b7	1	1009	#/texts/1006	Select the cluster that you created earlier or cho	list_item
+e873f8f297	1	1010	#/texts/1007	In the end, Remote Folder must be present under CO	text
+3924aadc28	1	1011	#/texts/1008	Figure 2-4	text
+0860f23092	1	1012	#/texts/1009	).	text
+43769fba5f	1	1013	#/pictures/3	Screenshot showing the Databricks extension config	picture
+a63514ed1b	1	1014	#/texts/1011	Now, let's create a	text
+1b2f56ab03	1	1015	#/texts/1012	demo.py	text
+c25c2f8d2d	1	1016	#/texts/1013	file (the same code we tried to run from a termina	text
+2927f8a1b2	1	1017	#/texts/1014	# Databricks notebook source	code
+3a96052ddd	1	1018	#/texts/1015	so that the code can be recognized as a notebook (	text
+ea055a9475	1	1019	#/texts/1016	Figure 2-5	text
+a74ac7888c	1	1020	#/texts/1017	). The cells are delimited by a line containing	text
+c925f2e938	1	1021	#/texts/1018	# COMMAND ----------	code
+2d26a31054	1	1022	#/texts/1019	.	text
+c89bac5017	1	1023	#/texts/1020	13	text
+62f0b6343b	1	1024	#/pictures/4	Screenshot of a Databricks notebook in VS Code sho	picture
+9fe7c051f5	1	1025	#/texts/1022	We can run the code interactively by clicking	text
+0f6d830440	1	1026	#/texts/1023	Run Cell	code
+3553ebc3d0	1	1027	#/texts/1024	. We can also execute project code (for example,	text
+b0ee2e928f	1	1028	#/texts/1025	notebooks/chapter2_preprocess_data.py	text
+9c030eefc3	1	1029	#/texts/1026	) from VS Code in a similar way.	text
+f505f43356	1	1030	#/texts/1027	However, some code can only run in a Databricks en	text
+08d5770445	1	1031	#/texts/1028	databricks-feature-engineering	code
+ceedbfac0e	1	1032	#/texts/1029	package is not supported locally, and some Delta t	text
+54519c0bd1	1	1033	#/texts/1030	Let's explore how to make notebooks available in t	text
+5a16270404	1	1034	#/texts/1031	The Databricks extension for Visual Studio Code al	text
+e560a18426	1	1035	#/texts/1032	Sync	code
+b0ec3a05c4	1	1036	#/texts/1033	button in the Remote Folder tab on the screen show	text
+92fd602e0d	1	1037	#/texts/1034	Figure 2-4	text
+392efb453e	1	1038	#/texts/1035	, and the extension will run the	text
+671c0ce290	1	1039	#/texts/1036	databricks sync <folder> /Users/<user_name>/<folde	code
+1cc8b98c9b	1	1040	#/texts/1037	command in the background. As a result, any local 	text
+65b9be6aa6	1	1041	#/texts/1038	You can also use this approach to make a wheel fil	text
+42fbe2897a	1	1042	#/texts/1039	uv build	code
+e688f74036	1	1043	#/texts/1040	command, and the wheel you generate will be synced	text
+ee0eaa4728	1	1044	#/texts/1041	.gitignore	text
+4b0e4dca87	1	1045	#/texts/1042	file).	text
+a79a50b701	1	1046	#/texts/1043	It is important to note that the	text
+2f71f86dcf	1	1047	#/texts/1044	databricks sync	code
+9daa8ad1d6	1	1048	#/texts/1045	command provides one-way synchronization. Changes 	text
+377643657b	1	1049	#/texts/1046	Alternatively, you can make the code accessible in	text
+5d90ef3b3a	1	1050	#/texts/1047	Finally, you can use the	text
+b11f6f6627	1	1051	#/texts/1048	databricks bundle deploy	code
+f682b29928	1	1052	#/texts/1049	command to make all project files available in the	text
+f4f7b38671	1	1053	#/texts/1050	mlops	text
+fafd8bd4e5	1	1054	#/texts/1051	folder that contains the	text
+8eba93a427	1	1055	#/texts/1052	databricks.yml	text
+96f7358158	1	1056	#/texts/1053	file.) However, this method also provides one-way 	text
+7e12f514e5	1	1057	#/texts/1054	sync	code
+f62d218230	1	1058	#/texts/1055	command together with	text
+b0d8e6d687	1	1059	#/texts/1056	bundle deploy	code
+c07b445d03	1	1060	#/texts/1057	may corrupt the bundle state.	text
+9e748be251	1	1061	#/texts/1058	Running Code in a Databricks Notebook	section_header
+7fe85b91be	1	1062	#/texts/1059	You may have noticed that the	text
+b855325000	1	1063	#/texts/1060	chapter2_preprocess_data.py	text
+e874d3f588	1	1064	#/texts/1061	script is also just a Python file (not an	text
+47e80d0cc8	1	1065	#/texts/1062	IPython	text
+1887ed26ea	1	1066	#/texts/1063	notebook with the	text
+2f7660e1dc	1	1067	#/texts/1064	.ipynb	text
+48cb82da4c	1	1068	#/texts/1065	extension) that has	text
+7676a2cdca	1	1069	#/texts/1066	#Databricks notebook source	code
+fd08b06a57	1	1070	#/texts/1067	as the first line and that the cells are delimited	text
+395acd07dc	1	1071	#/texts/1068	# COMMAND ----------	code
+66a6e15b3a	1	1072	#/texts/1069	.	text
+8a9d9a283c	1	1073	#/texts/1070	Let's assume we used the	text
+88fc4a2a59	1	1074	#/texts/1071	databricks bundle deploy	code
+c5125b947d	1	1075	#/texts/1072	command, which makes this notebook available under	text
+58503e326f	1	1076	#/texts/1073	Figure 2-6	text
+1d51ccbff2	1	1077	#/texts/1074	shows what the notebook looks like if we open it.	text
+40886f10ae	1	1078	#/pictures/5	Screenshot of a Databricks notebook showing Python	picture
+275a67927a	1	1079	#/texts/1076	To run a Databricks notebook, you need to select a	text
+c761ed843c	1	1080	#/texts/1077	Using serverless compute	section_header
+a75488f3b8	1	1081	#/texts/1078	When using serverless compute, you must choose an 	text
+ef54f52c53	1	1082	#/texts/1079	Figure 2-7	text
+9f567c1c27	1	1083	#/texts/1080	, we select a Base environment of Standard v4 and 	text
+1af807ffc0	1	1084	#/texts/1081	artifacts/.internal	text
+91fe54ad87	1	1085	#/texts/1082	folder). Notice that we selected the	text
+1ce591b53f	1	1086	#/texts/1083	mlops_usage_policy	code
+579f98c783	1	1087	#/texts/1084	here so that the costs related to project developm	text
+4069291da2	1	1088	#/pictures/6	Screenshot of a serverless environment configurati	picture
+8307732fa1	1	1089	#/texts/1086	Since selecting an environment is a manual process	text
+295df9bf46	1	1090	#/texts/1087	This environment will be automatically applied to 	text
+9cf6edd175	1	1091	#/texts/1088	env_v4.yaml	text
+c20162a287	1	1092	#/texts/1089	file will be uploaded to	text
+eadad2b7cc	1	1093	#/texts/1090	/Volumes/mlops_dev/utils/envs/	text
+350fc60910	1	1094	#/texts/1091	:	text
+6aa6685e85	1	1095	#/texts/1092	environment_version : \"4\"	code
+2c4f10330f	1	1096	#/texts/1093		code
+2a77192773	1	1097	#/texts/1094	dependencies : - mlflow == 3.11.1 - numpy == 2.4.0	code
+fd6dee91db	1	1098	#/texts/1095	Figure 2-8	text
+56a2b84c1e	1	1099	#/texts/1096	demonstrates how a workspace admin (who will have 	text
+a1fcb99beb	1	1100	#/texts/1097	Workspace Compute	text
+ab8e93eb69	1	1101	#/texts/1098	settings. The	text
+bd49ef8f4b	1	1102	#/texts/1099	Compute	text
+bec5f8b536	1	1103	#/texts/1100	settings also allow you to configure a default pac	text
+6488b05e20	1	1104	#/texts/1101	JFrog	text
+cba3edac07	1	1105	#/texts/1102	or another private package repository.	text
+75bd510d70	1	1106	#/pictures/7	Dialog box in the workspace settings to create a n	picture
+77c459a7c1	1	1107	#/texts/1104	Using all-purpose compute	section_header
+1078eee671	1	1108	#/texts/1105	If serverless compute does not satisfy your develo	text
+3cd197ae45	1	1109	#/texts/1106	Much like how you installed a custom library in th	text
+0efc667792	1	1110	#/texts/1107	artifacts/.internal	text
+b15eff2ccd	1	1111	#/texts/1108	folder (see	text
+320124e3f7	1	1112	#/texts/1109	Figure 2-9	text
+9f6e1b49c8	1	1113	#/texts/1110	).	text
+7f081eb3dd	1	1114	#/texts/1111	14	text
+5c5615c009	1	1115	#/pictures/8	Interface for selecting the file path to install a	picture
+5e5e14b1a2	1	1116	#/texts/1113	If the custom package has dependencies hosted in a	text
+7f42b8866d	1	1117	#/texts/1114	We have already gone through the options for makin	text
+1d354a4beb	1	1118	#/texts/1115	To install specific libraries across all nodes of 	text
+55e3481624	1	1119	#/texts/1116	%pip install	code
+85886b759e	1	1120	#/texts/1117	command. This allows you to install them from PyPi	text
+565343c4e1	1	1121	#/texts/1118	You can also install all the project dependencies 	text
+9a31ac7c1f	1	1122	#/texts/1119	pyproject.toml	text
+69a5ec9333	1	1123	#/texts/1120	file by running the	text
+15a976e704	1	1124	#/texts/1121	pip install -e .	code
+0da86edb35	1	1125	#/texts/1122	command and restarting Python with the	text
+9b92e83bec	1	1126	#/texts/1123	dbutils.library.restartPython( )	code
+ea8ea2e2b0	1	1127	#/texts/1124	command. To make the project itself importable, yo	text
+5fe606482a	1	1128	#/texts/1125	from pathlib import Path	code
+c94530328b	1	1129	#/texts/1126		code
+fec4d71d2e	1	1130	#/texts/1127	import sys	code
+8e52e5ef07	1	1131	#/texts/1128		code
+e2c2e29bd4	1	1132	#/texts/1129	sys . path . append ( str ( Path . cwd () . parent	code
+94f6fc648a	1	1133	#/texts/1130	However, this is necessary in this example because	text
+0fe074f3ae	1	1134	#/texts/1131	src	text
+458a971040	1	1135	#/texts/1132	folder.	text
+1e8943f232	1	1136	#/texts/1133	Overall, developing directly in a Databricks noteb	text
+39a9cfbffb	1	1137	#/texts/1134	However, you cannot fully reproduce the same envir	text
+c65d71d98f	1	1138	#/texts/1135	The closest you can get locally is by using a Data	text
+657999b434	1	1139	#/texts/1136	Fortunately, Databricks developer tools are quite 	text
+cd52e62a90	1	1140	#/texts/1137	databricks bundle run <job-resource-name>	code
+11bdf307eb	1	1141	#/texts/1138	command. We will go through this approach in	text
+9a1ee73782	1	1142	#/texts/1139	Chapter 5	text
+cd93295b8b	1	1143	#/texts/1140	(for classical ML) and	text
+b1fda5d88d	1	1144	#/texts/1141	Chapter 9	text
+c9fc168301	1	1145	#/texts/1142	(for LLM-based applications).	text
+6abfbb8839	1	1146	#/texts/1010	Screenshot showing the Databricks extension config	caption
+82173de3aa	1	1147	#/texts/1021	Screenshot of a Databricks notebook in VS Code sho	caption
+e1bde9fbc2	1	1148	#/texts/1075	Screenshot of a Databricks notebook showing Python	caption
+da0b93c7f1	1	1149	#/texts/1085	Screenshot of a serverless environment configurati	caption
+1f1e723f8b	1	1150	#/texts/1103	Dialog box in the workspace settings to create a n	caption
+01520ae5c8	1	1151	#/texts/1112	Interface for selecting the file path to install a	caption
+a3bfc7984d	1	1152	#/texts/1143	Conclusion	title
+cadc095376	1	1153	#/texts/1144	In this chapter, we went through the cluster confi	text
+8f7902a86c	1	1154	#/texts/1145	Refactor your code into functions and create class	list_item
+8b34daa337	1	1155	#/texts/1146	Move code to separate modules. Create a new module	list_item
+de479dfb40	1	1156	#/texts/1147		list_item
+b6f8f606b9	1	1157	#/texts/1148	Package your code. Treat every Python project as a	text
+482386f044	1	1158	#/texts/1149	pyproject.toml	text
+e1a0240c70	1	1159	#/texts/1150	file.	text
+558b77f88f	1	1160	#/texts/1151		list_item
+0085fa22d4	1	1161	#/texts/1152	Create a configuration file or module (like the	text
+72fde28b09	1	1162	#/texts/1153	project_config.yaml	text
+2607f6ccfb	1	1163	#/texts/1154	file) to store hyperparameters and settings. Keepi	text
+7b8acc49ed	1	1164	#/texts/1155	Add logging to provide a detailed record of what h	list_item
+ef6fc895c8	1	1165	#/texts/1156	Test your code to \"fail fast\" so you can avoid fac	list_item
+3fa3416f3a	1	1166	#/texts/1157	1	text
+9dada72b0f	1	1167	#/texts/1158	You can download the dataset from	text
+a1c833d102	1	1168	#/texts/1159	Kaggle	text
+b7e3f72860	1	1169	#/texts/1160	.	text
+62743f3ac2	1	1170	#/texts/1161	2	text
+2687e712e2	1	1171	#/texts/1162	You can read more about Anaconda on	text
+a0a72de1bb	1	1172	#/texts/1163	their official website	text
+a9bd2a1df0	1	1173	#/texts/1164	.	text
+8abc24e219	1	1174	#/texts/1165	3	text
+e646d5c0fd	1	1175	#/texts/1166	Poetry did better than other tools, became one of 	text
+5bb29f7c59	1	1176	#/texts/1167	pyproject.toml	text
+4d098d4304	1	1177	#/texts/1168	. You can read a blog about the	text
+40983fdf11	1	1178	#/texts/1169	popularity of Python build backends over time	text
+99004fa961	1	1179	#/texts/1170	.	text
+a3cd49e71e	1	1180	#/texts/1171	4	text
+3467f5580f	1	1181	#/texts/1172	As of 2026, the company behind uv, Astral, has bee	text
+50f34c05ad	1	1182	#/texts/1173	pyproject.toml	text
+4f675252ef	1	1183	#/texts/1174	standard we follow in this book should ensure stab	text
+64051c211a	1	1184	#/texts/1175	5	text
+34c622bf86	1	1185	#/texts/1176	Note that we use the	text
+bd5c43061b	1	1186	#/texts/1177	\"overwrite\"	code
+6c4f2d6393	1	1187	#/texts/1178	mode here as we are dealing with a static dataset.	text
+c6fbb6d837	1	1188	#/texts/1179	6	text
+634ca8a39e	1	1189	#/texts/1180	For more details, consult	text
+f2050a4752	1	1190	#/texts/1181	the Databricks documentation	text
+fff1066eb5	1	1191	#/texts/1182	.	text
+a27530d371	1	1192	#/texts/1183	7	text
+023bb21092	1	1193	#/texts/1184	Consult the Databricks documentation at	text
+b3aa3bc1a2	1	1194	#/texts/1185	https://oreil.ly/6gL1u	text
+aa6549b6e7	1	1195	#/texts/1186	for all supported DABs resources.	text
+001115d842	1	1196	#/texts/1187	8	text
+e86898d02a	1	1197	#/texts/1188	Consult the Databricks documentation at	text
+5541cbd050	1	1198	#/texts/1189	https://oreil.ly/qSSdT	text
+d9d36dfeb3	1	1199	#/texts/1190	for more details on development mode.	text
+46c3aea5c6	1	1200	#/texts/1191	9	text
+216dc0b1c8	1	1201	#/texts/1192	You can also define the	text
+c834a8effe	1	1202	#/texts/1193	workspace	code
+3bb01dc7c6	1	1203	#/texts/1194	configuration at the top level of the file, but it	text
+03f3afeecb	1	1204	#/texts/1195	10	text
+0a640805ae	1	1205	#/texts/1196	DABs were originally built on top of	text
+749d2e2e5b	1	1206	#/texts/1197	the Databricks Terraform provider	text
+76412015d5	1	1207	#/texts/1198	. Databricks CLI version 0.279.0 and above support	text
+6e7c5286c3	1	1208	#/texts/1199	Terraform	text
+c2033481af	1	1209	#/texts/1200	and	text
+14a8d5c1ea	1	1210	#/texts/1201	direct	text
+1a2e9297d3	1	1211	#/texts/1202	. The Terraform deployment engine will eventually 	text
+bda1baf965	1	1212	#/texts/1203	Databricks Go SDK	text
+32d6d01416	1	1213	#/texts/1204	.	text
+b89c1e9b19	1	1214	#/texts/1205	11	text
+83726a8630	1	1215	#/texts/1206	To install the extension, follow	text
+42afae601d	1	1216	#/texts/1207	the official documentation	text
+f809744bce	1	1217	#/texts/1208	.	text
+0f2c8ef563	1	1218	#/texts/1209	12	text
+7de25d2cfb	1	1219	#/texts/1210	You can find Python Envy in	text
+c01c99ab9a	1	1220	#/texts/1211	the Visual Studio Code marketplace	text
+48797f19f0	1	1221	#/texts/1212	.	text
+a1358eaec6	1	1222	#/texts/1213	13	text
+0ab984294c	1	1223	#/texts/1214	This works because the extension created a configu	text
+3482b7850d	1	1224	#/texts/1215	vscode	text
+88dd195b25	1	1225	#/texts/1216	folder (	text
+aa4cfdb2de	1	1226	#/texts/1217	settings.json	code
+b12e7a9116	1	1227	#/texts/1218	).	text
+4201a56337	1	1228	#/texts/1219	14	text
+3ba475394c	1	1229	#/texts/1220	Given that we also synchronized the	text
+8bfcdd94bf	1	1230	#/texts/1221	dist	text
+5ade4eb71c	1	1231	#/texts/1222	folder in the bundle configuration, we could refer	text
+b39dfccf55	1	1232	#/texts/1223	dist	text
+956a2db32a	1	1233	#/texts/1224	folder instead.	text

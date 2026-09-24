@@ -1,0 +1,440 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+c0e8c60dd5	1	0	#/texts/0	Chapter 2. End-to-End GenAI Application Lifecycle 	title
+532fe0dd9c	1	1	#/texts/1	If	text
+117df116df	1	2	#/texts/2	Chapter 1	text
+38895f2c34	1	3	#/texts/3	was our friendly neighborhood tour of MLflow, this	text
+0c00282821	1	4	#/texts/4	MLflow 3.x is built for that loop. MLflow Tracing 	text
+d2ca859597	1	5	#/texts/5	In this chapter, we introduce a five-phase lifecyc	text
+483f1908f7	1	6	#/texts/6	Develop	list_item
+9d461e0031	1	7	#/texts/7	Focuses on building a traceable, testable applicat	list_item
+8ba5bc91ce	1	8	#/texts/8	Evaluate	list_item
+111d597bee	1	9	#/texts/9	Formalizes quality before deployment, using curate	list_item
+7dafb8b0d6	1	10	#/texts/10	Deploy	list_item
+c156cd1bfd	1	11	#/texts/11	Promotes versioned artifacts through controlled re	list_item
+27811f8376	1	12	#/texts/12	Monitor	list_item
+16954d3d35	1	13	#/texts/13	Observes real-world behavior through structured tr	list_item
+92d3152229	1	14	#/texts/14	Improve	list_item
+8621c8b0bd	1	15	#/texts/15	Closes the loop with targeted, evidence-backed cha	list_item
+58169390f5	1	16	#/texts/16	This structure is intentional. Evaluation precedes	text
+3b995119e8	1	17	#/texts/17	We will keep the Unity Airways chatbot customer as	text
+f7305605fa	1	18	#/texts/18	Chapter 1	text
+5622250d7b	1	19	#/texts/19	as our grounding example. It provides a concrete c	text
+a02f937b9c	1	20	#/texts/20	By the end of this chapter, you should have a clea	text
+ef920e899b	1	21	#/texts/21	Overview of the GenAI Application Lifecycle with M	title
+51029bee51	1	22	#/texts/22	This section zooms out to the full lifecycle: what	text
+fd26becdc0	1	23	#/texts/23	Figure 2-1	text
+e5399fcf50	1	24	#/texts/24	). The goal is a clear mental model that teams can	text
+3b20114ace	1	25	#/pictures/0	Diagram illustrating the five-phase GenAI applicat	picture
+e38dd9faa5	1	26	#/texts/26	The Five-Phase GenAI Lifecycle	section_header
+dbd309134a	1	27	#/texts/27	The	text
+3444f669d2	1	28	#/texts/28	develop	text
+e996066239	1	29	#/texts/29	phase begins with a prompt, a model route, and opt	text
+4a21407667	1	30	#/texts/30	This is also where you reduce risk before anything	text
+6d033f49ad	1	31	#/texts/31	The	text
+eb5b45cb04	1	32	#/texts/32	evaluate	text
+f705037d2c	1	33	#/texts/33	phase replaces vibe checks with evidence before yo	text
+06f28645ad	1	34	#/texts/34	The	text
+f5e5174d0c	1	35	#/texts/35	deploy	text
+77188c29bc	1	36	#/texts/36	phase promotes a versioned candidate to a reliable	text
+4005f061e4	1	37	#/texts/37	The	text
+01dd7d86a8	1	38	#/texts/38	monitor	text
+4053697861	1	39	#/texts/39	phase is where you learn what is true under real-w	text
+d77be37097	1	40	#/texts/40	The	text
+d98eb263d7	1	41	#/texts/41	improve	text
+64e876c52b	1	42	#/texts/42	phase closes the loop with targeted change. Once y	text
+b87128f09d	1	43	#/texts/43	What This Lifecycle Solves	section_header
+7540352a91	1	44	#/texts/44	Traditional software lives in a mostly determinist	text
+0544a949c9	1	45	#/texts/45	Quality is hard to measure consistently.	list_item
+f046785cab	1	46	#/texts/46	Probabilistic outputs and multicriteria judgment m	list_item
+f9fd238c2f	1	47	#/texts/47	Observability gets harder as systems become compou	list_item
+a6a843d84b	1	48	#/texts/48	Beyond a single prompt, failures become subtle: re	list_item
+87fc07b0cb	1	49	#/texts/49	Iteration slows down without reusable evaluation d	list_item
+101107cab8	1	50	#/texts/50	Manual testing and ad hoc examples do not scale. A	list_item
+3c35d5e196	1	51	#/texts/51	Cost and performance trade-offs are unavoidable.	list_item
+7453eeb62b	1	52	#/texts/52	Larger models may perform better but can be slower	list_item
+4056c901d7	1	53	#/texts/53	Together, these challenges explain why a structure	text
+0c78169486	1	54	#/texts/54	Hallmarks of Effective GenAI Workflows	section_header
+52ac99552d	1	55	#/texts/55	Effective workflows tend to look similar across en	text
+529ad1d130	1	56	#/texts/56	Table 2-1	text
+3baa6f0e79	1	57	#/texts/57	contrasts sustainable \"do\" and \"don't\" best practi	text
+f4c2943b70	1	58	#/tables/0	| Area                 | Do                       	table
+bfdf1f5ced	1	59	#/texts/58	Use a consistent tracing schema from development t	text
+83f03dd714	1	60	#/texts/59	Maintain versioned evaluation datasets that evolve	text
+7066fee99f	1	61	#/texts/60	Define scorers that reflect business value and dom	text
+445f64a797	1	62	#/texts/61	Gate deployments with explicit quality thresholds 	text
+59efa4fbb1	1	63	#/texts/62	Version prompts, models, and configurations as a c	text
+964aa5a9bb	1	64	#/texts/63	Preserve lineage from each live response back to t	text
+e5e2cfecbf	1	65	#/texts/64	Track token and latency costs as first-class signa	text
+cc19334e51	1	66	#/texts/65	Sustainable teams use these artifacts to make impr	text
+9240d3f516	1	67	#/texts/66	Applying the Lifecycle to the Unity Airways Use Ca	section_header
+4837597770	1	68	#/texts/67	For the Unity Airways customer assistant, we'll ap	text
+8c4509b3b1	1	69	#/texts/68	Development	list_item
+7e2779e5db	1	70	#/texts/69	Development starts with a minimal agent that can l	list_item
+781e4477e9	1	71	#/texts/70	Evaluation	list_item
+e6440165bb	1	72	#/texts/71	Evaluation turns early findings into a curated set	list_item
+5cb5720329	1	73	#/texts/72	Deployment	list_item
+605f6322b3	1	74	#/texts/73	Deployment promotes a versioned application behind	list_item
+cb383347a4	1	75	#/texts/74	Monitoring	list_item
+7620f94efa	1	76	#/texts/75	Monitoring collects real questions and reveals iss	list_item
+dbb6951c97	1	77	#/texts/76	Improvement	list_item
+0b3ad8c21e	1	78	#/texts/77	Improvement introduces targeted changes, such as t	list_item
+7926683ec3	1	79	#/texts/78	This loop is the main idea of the chapter. Later c	text
+89a7474dc5	1	80	#/texts/25	Diagram illustrating the five-phase GenAI applicat	caption
+a6a348d995	1	81	#/texts/79	Develop with MLflow	title
+bc8e883534	1	82	#/texts/80	Now that you have the five phases in view, let's l	text
+7836d2de54	1	83	#/texts/81	Development is successful when you can do three th	text
+45dac46339	1	84	#/texts/82	Explain behavior with traces rather than guess fro	list_item
+319bab4c17	1	85	#/texts/83	Reproduce results by keeping prompts, configuratio	list_item
+0edd2d9d6d	1	86	#/texts/84	Leave behind an evidence base that makes evaluatio	list_item
+2f841011d7	1	87	#/texts/85	This is why development goes beyond getting a corr	text
+98c56aea48	1	88	#/texts/86	Evidence-Driven Development Workflow	section_header
+432af7613a	1	89	#/texts/87	As	text
+dfe45e26f9	1	90	#/texts/88	Figure 2-2	text
+47cfec4695	1	91	#/texts/89	illustrates, the development workflow starts with 	text
+6416901bb6	1	92	#/pictures/1	Diagram illustrating a data-driven development cyc	picture
+edc7c10dce	1	93	#/texts/91	Refinement becomes data driven. You adjust prompts	text
+efbea77de4	1	94	#/texts/92	Building the Minimum Evaluable Product	section_header
+60700abf6a	1	95	#/texts/93	A good development phase does not end at the first	text
+ff4b9e0c7a	1	96	#/texts/94	That is what we mean by the \"minimum evaluable pro	text
+7d7936397a	1	97	#/texts/95	Start with a single end-to-end path: for example, 	text
+d736dea0f8	1	98	#/texts/96	Next, take a handful of realistic requests from tr	text
+6db6e555f5	1	99	#/texts/97	Then define a minimal set of scorers that reflect 	text
+d815591c72	1	100	#/texts/98	Structure validity, such as whether the output con	list_item
+feae2d8186	1	101	#/texts/99	Groundedness with citation, such as requiring that	list_item
+9d92226959	1	102	#/texts/100	Finally, version the pieces together. Version the 	text
+97de529d7a	1	103	#/texts/101	In the Unity Airways assistant, the first path mig	text
+5bcd801f36	1	104	#/texts/102	Practicing Trace-First Development	section_header
+7a72e9bacd	1	105	#/texts/103	Observability should not be an afterthought that a	text
+f3757275f6	1	106	#/texts/104	Tracing answer practical questions without digging	text
+26dbe5afc4	1	107	#/texts/105	What did the retriever return, and how long did it	list_item
+95002d0025	1	108	#/texts/106	Which tools succeeded or failed, and why?	list_item
+7afb9fafa4	1	109	#/texts/107	How was the prompt resolved in context?	list_item
+2c21c43a49	1	110	#/texts/108	Where did tokens and milliseconds actually go?	list_item
+b957c656eb	1	111	#/texts/109	Nested steps make compound applications legible. Y	text
+d3a88d60e6	1	112	#/texts/110	Keep step naming consistent.	list_item
+230c624207	1	113	#/texts/111	Record configuration next to behavior.	list_item
+d7ff78cfcb	1	114	#/texts/112	Route traces from notebooks, IDE runs, and local s	list_item
+cdfb86fe86	1	115	#/texts/113	Privacy and governance start here:	text
+965a651974	1	116	#/texts/114	Minimize raw personally identifiable information (	list_item
+ea26685576	1	117	#/texts/115	Align development and production environment schem	list_item
+648731ebc3	1	118	#/texts/116	Tag sensitive examples so they do not leak into sc	list_item
+f0864d3cad	1	119	#/texts/117	The speed comes from the consistency of the signal	text
+c61a3746bc	1	120	#/texts/118	Chapter 5	text
+0143f3d1a1	1	121	#/texts/119	.	text
+b037bd336e	1	122	#/texts/120	Versioning Development Process	section_header
+0280fd4547	1	123	#/texts/121	In GenAI applications, prompts and configurations 	text
+e56e7f624e	1	124	#/texts/122	For prompts and configuration:	text
+2d3d30d9a8	1	125	#/texts/123	Version prompts and runtime configuration alongsid	list_item
+2ab3e8ff0a	1	126	#/texts/124	Use descriptive names for prompt variants so inten	list_item
+ecef667e80	1	127	#/texts/125	Capture intended use, constraints, and guardrails 	list_item
+ebcf85efae	1	128	#/texts/126	Centralize shared constants such as tool names, re	list_item
+fbe62c375a	1	129	#/texts/127	Link prompt sections to the scorers they are meant	list_item
+a14b6331e3	1	130	#/texts/128	For retrieval and tools:	text
+faa5f3cb31	1	131	#/texts/129	Document inputs, outputs, error modes, and timeout	list_item
+b615cb5776	1	132	#/texts/130	Return machine-readable errors so the orchestrator	list_item
+63aa3ff7d4	1	133	#/texts/131	Start with deterministic retrieval settings so att	list_item
+324ba13787	1	134	#/texts/132	Log retrieval identifiers and snippet hashes as ML	list_item
+3fc12b68e6	1	135	#/texts/133	MLflow experiments and registries make it practica	text
+35cf0a0bc5	1	136	#/texts/134	Balancing Quality, Cost, Latency, Safety, and Prod	section_header
+dfaa35986e	1	137	#/texts/135	Quality is multidimensional, and it shares the sta	text
+83de569ebe	1	138	#/texts/136	Make trade-offs visible by attributing usage and t	text
+241a1fd02e	1	139	#/texts/137	p50 and p95 latency targets	list_item
+b0be9e140e	1	140	#/texts/138	Cost per request, segmented by intent or route	list_item
+46f0146b6c	1	141	#/texts/139	Use these to guide design choices as you compare:	text
+0e645817cd	1	142	#/texts/140	Smaller versus larger models	list_item
+c0c1945449	1	143	#/texts/141	Stricter grounding versus simpler prompts	list_item
+d98d8b64db	1	144	#/texts/142	Deeper toolchains versus direct answers	list_item
+13e14808c8	1	145	#/texts/143	Safety is important too. Write down non-negotiable	text
+56bf4875c7	1	146	#/texts/144	The qualitative side matters as much as the quanti	text
+513d2de27f	1	147	#/texts/145	The Disciplined Iteration Loop	section_header
+1f89ad081d	1	148	#/texts/146	Teams will naturally bounce between notebooks, IDE	text
+db26fe7c57	1	149	#/texts/147	Notebooks for shared visibility and quick collabor	list_item
+c2bbf93296	1	150	#/texts/148	Local runs for tight edit-and-rerun cycles	list_item
+5f83fd1bbe	1	151	#/texts/149	Small local services to feel real latency, concurr	list_item
+50f30dbdf7	1	152	#/texts/150	Whatever mix you use, emit traces to the same back	text
+67f8ac7a08	1	153	#/texts/151	State a hypothesis for the change. Write down what	list_item
+bc8dcbf13a	1	154	#/texts/152	Run representative scenarios that reflect real usa	list_item
+b9617fae91	1	155	#/texts/153	Inspect the trace graph to confirm the system beha	list_item
+1cb163b394	1	156	#/texts/154	Evaluate on a fixed seed set with fixed scorers so	list_item
+54db19e00b	1	157	#/texts/155	Compare to a baseline run using the same scenarios	list_item
+c26807952f	1	158	#/texts/156	Decide to promote or discard based on evidence, no	list_item
+f74ecb0bf5	1	159	#/texts/157	Finally, set thresholds that prevent slow regressi	text
+5e3365f58f	1	160	#/texts/90	Diagram illustrating a data-driven development cyc	caption
+95399f7642	1	161	#/texts/158	Evaluate with MLflow	title
+74ed805f52	1	162	#/texts/159	Evaluation is where a GenAI application earns the 	text
+b84a07f3b9	1	163	#/texts/160	Chapter 6	text
+cca2bc5094	1	164	#/texts/161	, we go deeper on dataset design, scorer implement	text
+b5f323ae92	1	165	#/texts/162	The evaluation loop follows a clear sequence:	text
+70ffa79f9a	1	166	#/texts/163	Form a hypothesis.	list_item
+2c2bdcb7f2	1	167	#/texts/164	Assemble or update a dataset.	list_item
+712022594f	1	168	#/texts/165	Score consistently.	list_item
+c9b1be784e	1	169	#/texts/166	Analyze the results.	list_item
+d0f4a2a0b3	1	170	#/texts/167	Decide whether to deploy.	list_item
+6a70fb143a	1	171	#/texts/168	Make the next change when needed.	list_item
+a0c5c8f41a	1	172	#/texts/169	The discipline is that every evaluation run should	text
+51be1310d8	1	173	#/texts/170	Tightening a refund prompt will raise groundedness	list_item
+718350ac0e	1	174	#/texts/171	A smaller model paired with stricter retrieval wil	list_item
+7479475226	1	175	#/texts/172	Adding a booking lookup tool will reduce evasive a	list_item
+5073e98e71	1	176	#/texts/173	Framing the change as a hypothesis keeps evaluatio	text
+37e578bd20	1	177	#/texts/174	Evaluation Objectives	section_header
+a0f206a061	1	178	#/texts/175	Evaluation should make three things routine:	text
+ea430f96f3	1	179	#/texts/176	Consistency	list_item
+33b5638209	1	180	#/texts/177	Each candidate is tested under the same scenarios 	list_item
+1be6d84cc5	1	181	#/texts/178	Comparability	list_item
+ae8dbf62ff	1	182	#/texts/179	You can compare candidates to a baseline without c	list_item
+529e4df916	1	183	#/texts/180	Diagnosability	list_item
+5063901e68	1	184	#/texts/181	When scores shift, traces explain why, down to the	list_item
+6752ef13e2	1	185	#/texts/182	Without these properties, promotion decisions drif	text
+4ca9662415	1	186	#/texts/183	Evaluation Workflow	section_header
+1a940ba6b3	1	187	#/texts/184	Figure 2-3	text
+8cc17fa2c1	1	188	#/texts/185	illustrates a practical MLflow evaluation workflow	text
+fbbf4b43e3	1	189	#/texts/186	Scores highlight performance shifts. Linked traces	text
+ce9a1fe440	1	190	#/pictures/2	Diagram illustrating an evaluation workflow that i	picture
+f7ed547050	1	191	#/texts/188	Building and Maintaining Evaluation Datasets	section_header
+e4794c56f4	1	192	#/texts/189	Quality only matters in the situations you actuall	text
+2938a8b223	1	193	#/texts/190	Start by harvesting representative requests from M	text
+649af9bd93	1	194	#/texts/191	When you need broader coverage, add a limited numb	text
+f75314a5b1	1	195	#/texts/192	Finally, treat the dataset as a versioned artifact	text
+4c3dd73a52	1	196	#/texts/193	Interpreting Scores and Traces Together	section_header
+7080491db5	1	197	#/texts/194	No single metric can capture the full quality and 	text
+67ba7b6cac	1	198	#/texts/195	Code-based scorers	list_item
+17dbcc597a	1	199	#/texts/196	These are most useful for objective requirements, 	list_item
+a90049bd68	1	200	#/texts/197	LLM judges	list_item
+282d8eecab	1	201	#/texts/198	These are useful for semantic qualities, such as h	list_item
+0ace8abfd8	1	202	#/texts/199	Human ratings	list_item
+ec76a484e7	1	203	#/texts/200	Use these when the stakes are high, the task is am	list_item
+1a6daa8667	1	204	#/texts/201	MLflow's evaluation harness supports these in a si	text
+3fe2b56ba8	1	205	#/texts/202	Calibration matters when you use model-based judge	text
+ab3d45cefd	1	206	#/texts/203	Scores reveal what changed. Traces explain why. Wh	text
+572ddb62ab	1	207	#/texts/204	Human-in-the-Loop Feedback	section_header
+5755f87642	1	208	#/texts/205	Human-in-the-loop evaluation means people remain p	text
+954746db8b	1	209	#/texts/206	Human judgment should enter deliberately and with 	text
+83cfb5408a	1	210	#/texts/207	Disagreements between human ratings and model-base	text
+f589077bb6	1	211	#/texts/208	Diagnosing and Resolving Issues	section_header
+e8bbee6e7e	1	212	#/texts/209	A simple failure taxonomy helps teams move from gu	text
+326b103112	1	213	#/texts/210	Retrieval issues	list_item
+a0c493c667	1	214	#/texts/211	Missing or irrelevant context, outdated policy ver	list_item
+2ab6d2d031	1	215	#/texts/212	Prompting issues	list_item
+59a6f9efd6	1	216	#/texts/213	Incomplete instructions, overly creative phrasing,	list_item
+5d284466ef	1	217	#/texts/214	Tooling issues	list_item
+c5efc7cbca	1	218	#/texts/215	Timeouts, ambiguous error codes, weak contracts	list_item
+2229bf6858	1	219	#/texts/216	Judge issues	list_item
+16c7c4a029	1	220	#/texts/217	Scorers that misapply criteria, thresholds that dr	list_item
+901894a07a	1	221	#/texts/218	Safety issues	list_item
+cb43760071	1	222	#/texts/219	Missing citations, unredacted sensitive data, poli	list_item
+fa0a8022a4	1	223	#/texts/220	Because MLflow Tracing records each request as an 	text
+5e2e586ea1	1	224	#/texts/221	At this point, you should have the core evaluation	text
+20e1cbd2e5	1	225	#/texts/187	Diagram illustrating an evaluation workflow that i	caption
+31a4438d46	1	226	#/texts/222	Deploy with MLflow	title
+b5ad4b91e7	1	227	#/texts/223	The goal of deployment is to promote an evaluated 	text
+c55801cdc8	1	228	#/texts/224	Chapter 8	text
+9a3efa22b7	1	229	#/texts/225	.	text
+5e4f9b63df	1	230	#/texts/226	A useful way to think about deployment is that it 	text
+1e5408e7d8	1	231	#/texts/227		list_item
+9f6193b49c	1	232	#/texts/228	The artifact you are deploying	text
+d5d1302c24	1	233	#/texts/229	, meaning the application package plus its prompts	text
+5671336d6b	1	234	#/texts/230		list_item
+ea9d8a3245	1	235	#/texts/231	The decision that justifies deploying it	text
+6dba0fd0ac	1	236	#/texts/232	, meaning evaluation evidence that shows quality h	text
+a4f12cad84	1	237	#/texts/233	Deployment that is not linked to evidence tends to	text
+70938fdae8	1	238	#/texts/234	In this chapter's lifecycle, the	text
+5c82d6a548	1	239	#/texts/235	deploy phase	text
+9297006990	1	240	#/texts/236	focuses on controlled promotion and serving. It in	text
+ba87d0ad68	1	241	#/texts/237	A reproducible application bundle that can be prom	list_item
+aaac818857	1	242	#/texts/238	A serving surface that is stable and controllable	list_item
+11b757a648	1	243	#/texts/239	A release process that ramps traffic gradually	list_item
+8632033a46	1	244	#/texts/240	Clear lineage and rollback routes	list_item
+8d96a9d6cb	1	245	#/texts/241	The same tracing schema used during development so	list_item
+c07e696213	1	246	#/texts/242	On Databricks, this often means a model serving en	text
+d0e3404f3c	1	247	#/texts/243	Versioning Applications, Prompts, and Models	section_header
+eb4f69be5e	1	248	#/texts/244	Treat your GenAI service like a product with parts	text
+cb7ae31a32	1	249	#/texts/245	A few habits to keep this reliable:	text
+e25496952e	1	250	#/texts/246	Register every candidate with the evidence such as	list_item
+7a3131afff	1	251	#/texts/247	Use labels or aliases such as staging and producti	list_item
+6793fa4c44	1	252	#/texts/248	Keep prompt and application versions explicitly li	list_item
+aa28c39f8f	1	253	#/texts/249	When those links are intact, rollback stops being 	text
+beb2e8794c	1	254	#/texts/250	Deployment and Serving Architecture	section_header
+572314fcbe	1	255	#/texts/251	Figure 2-4	text
+96f342607d	1	256	#/texts/252	illustrates the deployment path as one connected s	text
+280a6d1eed	1	257	#/texts/253	Even if some components run outside Databricks, th	text
+ed194e341e	1	258	#/texts/254	Figure 2-4	text
+a32f534e18	1	259	#/texts/255	highlights what matters most for deployment readin	text
+0de04a05f7	1	260	#/pictures/3	Diagram showing a deployment path with controlled 	picture
+e193da08cd	1	261	#/texts/257	Reproducible Deployments and Controlled Releases	section_header
+9e328068cb	1	262	#/texts/258	Production confidence is earned the same way you e	text
+b109e822e3	1	263	#/texts/259	A few habits to solidify this:	text
+5ceee7615c	1	264	#/texts/260	Promote bundles. The same package should move from	list_item
+45d278bc5e	1	265	#/texts/261	Keep configuration as code. Reference secrets rath	list_item
+9ceb3d93f8	1	266	#/texts/262	Use staging that behaves like the deployed environ	list_item
+0c46fb6871	1	267	#/texts/263	Open the gates gradually. Sample traces at a low r	list_item
+fe10a1be22	1	268	#/texts/264	Canary releases and slow traffic ramps give you an	text
+372151a660	1	269	#/texts/265	What was deployed?	list_item
+530f6a2d74	1	270	#/texts/266	How did it behave?	list_item
+62bc8bc710	1	271	#/texts/267	How does it compare to the baseline?	list_item
+10f469af14	1	272	#/texts/268	When those answers stay consistent across releases	text
+825e4d5ac1	1	273	#/texts/269	Evidence-Based Traffic Promotion and Rollback	section_header
+daae41e0f5	1	274	#/texts/270	Deploying an endpoint is not enough for operationa	text
+94f1f7a3be	1	275	#/texts/271	The pattern is incremental:	text
+67912fb4dd	1	276	#/texts/272	A candidate is eligible only after meeting quality	list_item
+944778a960	1	277	#/texts/273	The gateway routes a small fraction of live traffi	list_item
+ff2031f3cc	1	278	#/texts/274	If results remain stable, traffic ramps until the 	list_item
+2a90229153	1	279	#/texts/275	If regressions appear, rollback is quick because t	list_item
+d469def035	1	280	#/texts/276	This approach keeps product velocity high while mi	text
+757fa61148	1	281	#/texts/277	At this stage, deployment has achieved its purpose	text
+a25b41931a	1	282	#/texts/278	monitor	text
+cfad715adf	1	283	#/texts/279	phase, where the same trace evidence becomes the b	text
+b7f1df6e48	1	284	#/texts/256	Diagram showing a deployment path with controlled 	caption
+ec2215f554	1	285	#/texts/280	Monitor with MLflow	title
+e1d13d86e5	1	286	#/texts/281	After deployment, the system is exposed to real us	text
+729aa3d8b6	1	287	#/texts/282	The foundation is consistency. Every request shoul	text
+7ba8a16226	1	288	#/texts/283	Chapter 9	text
+83980430f9	1	289	#/texts/284	.	text
+f9f4637bc8	1	290	#/texts/285	Monitoring Goals	section_header
+2a00a80324	1	291	#/texts/286	Monitoring is responsible for four outcomes:	text
+69d82739c1	1	292	#/texts/287	Visibility into behavior	list_item
+72dc6740c0	1	293	#/texts/288	What the system actually did, span by span	list_item
+4da2b01a66	1	294	#/texts/289	Reliability signals	list_item
+ec240b82a4	1	295	#/texts/290	Latency, failures, retries, and availability again	list_item
+a2616d3bc1	1	296	#/texts/291	Cost signals	list_item
+7b0669103c	1	297	#/texts/292	Token usage and other consumption indicators that 	list_item
+03af316784	1	298	#/texts/293	Feedback capture	list_item
+07ec0ab603	1	299	#/texts/294	High-signal examples and annotations that should b	list_item
+c324b6c4ec	1	300	#/texts/295	Monitoring is also where governance becomes tangib	text
+7cb33f097c	1	301	#/texts/296	Observability at Scale with Tracing	section_header
+3fa90ac495	1	302	#/texts/297	In production-scale monitoring, every request shou	text
+5c56cec883	1	303	#/texts/298	Retrieval steps and the documents returned	list_item
+6e8330abd6	1	304	#/texts/299	Tool calls and their inputs and outputs	list_item
+1e8bb253d1	1	305	#/texts/300	Intermediate prompts and responses	list_item
+aae5482cee	1	306	#/texts/301	Timings per step and end-to-end latency	list_item
+ec473a6856	1	307	#/texts/302	Errors and retries	list_item
+61d60f1d7d	1	308	#/texts/303	Token usage and estimated cost per step	list_item
+206e2e4731	1	309	#/texts/304	What changes in monitoring is scale and intent. Yo	text
+711e262b54	1	310	#/texts/305	Just as important, traced requests become your mos	text
+42340d066a	1	311	#/texts/306	Figure 2-5	text
+f6908d6227	1	312	#/texts/307	emphasizes a practical point. Monitoring combines 	text
+154971e89d	1	313	#/pictures/4	Diagram illustrating the monitoring process with M	picture
+faa4d821a2	1	314	#/texts/309	Governance and Compliance in Monitoring	section_header
+d863f9cf2a	1	315	#/texts/310	Governance becomes most visible after deployment b	text
+588a6c87db	1	316	#/texts/311	Areas to treat as first-class concerns include:	text
+1a057a48ba	1	317	#/texts/312	Access control	list_item
+ba194a4205	1	318	#/texts/313	Access to prompts, traces, and evaluation data sho	list_item
+82b4a9782e	1	319	#/texts/314	Secrets management	list_item
+4bb2e12b1c	1	320	#/texts/315	Store credentials for model providers, external AP	list_item
+edc26098d2	1	321	#/texts/316	Network controls	list_item
+3e15365414	1	322	#/texts/317	Restrict outbound network access for serving envir	list_item
+5ceebf0f80	1	323	#/texts/318	Privacy and redaction	list_item
+48444d86db	1	324	#/texts/319	Traces should avoid storing personally identifiabl	list_item
+c54c84a03d	1	325	#/texts/320	Retention by data type	list_item
+745794a8f5	1	326	#/texts/321	Keep raw traces short-lived to support debugging w	list_item
+035625a3db	1	327	#/texts/322	Finally, ensure that every deployed version is rec	text
+76bdb68e51	1	328	#/texts/323	The application version and configuration	list_item
+ab02931639	1	329	#/texts/324	The prompt versions and runtime parameters	list_item
+269144459a	1	330	#/texts/325	The model versions invoked	list_item
+51128a36d0	1	331	#/texts/326	The behaviors captured in traces and metrics	list_item
+ea70ea39cc	1	332	#/texts/327	The evaluation results that justified deployment	list_item
+4e09a8d57f	1	333	#/texts/328	This is where governance stops being theoretical a	text
+c13b111d04	1	334	#/texts/329	Operational Reliability and Evidence-Based Monitor	section_header
+d0084d55ee	1	335	#/texts/330	Running a GenAI service requires thinking like a r	text
+f2d0daa5f8	1	336	#/texts/331	Caching is typically best applied to intermediate 	text
+deed217b20	1	337	#/texts/332	Operational control depends on observability. Trac	text
+3c4312c2df	1	338	#/texts/333	Service level objectives express reliability expec	text
+cab7b53472	1	339	#/texts/334	Respond within a defined p95 latency	list_item
+541e4e3515	1	340	#/texts/335	Maintain groundedness above a threshold	list_item
+4472e5d625	1	341	#/texts/336	Stay within a token cost envelope per request	list_item
+1f8cd29f65	1	342	#/texts/337	When any target drifts, you want playbooks that co	text
+44187b9401	1	343	#/texts/338	The important point is that operational decisions 	text
+c420a0f52f	1	344	#/texts/339	This sets up the final phase,	text
+5e7edefbfc	1	345	#/texts/340	improve	text
+fed5f7cdf0	1	346	#/texts/341	, where monitoring signals and trace-backed diagno	text
+a1c7b24ddf	1	347	#/texts/308	Diagram illustrating the monitoring process with M	caption
+5ba11e16c0	1	348	#/texts/342	Improve with MLflow	title
+2dd2c0d7e6	1	349	#/texts/343	Improvement is where the lifecycle pays off. Devel	text
+2a80701c73	1	350	#/texts/344	The goal is	text
+f13e9c29f9	1	351	#/texts/345	measured, explainable progress	text
+08e93488ae	1	352	#/texts/346	. When a system can show what happened, why it hap	text
+9fa196e7e1	1	353	#/texts/347	Improvement Objectives	section_header
+18087fe034	1	354	#/texts/348	This phase has three practical objectives:	text
+e7f8f911fa	1	355	#/texts/349	Diagnose before you change.	list_item
+7585d1eea9	1	356	#/texts/350	Use traces and monitoring signals to identify the 	list_item
+b25227bfd1	1	357	#/texts/351	Make small, reversible interventions.	list_item
+b5cf148013	1	358	#/texts/352	Change one thing with clear intent, and keep rollb	list_item
+7344224438	1	359	#/texts/353	Validate under fixed definitions.	list_item
+d9b7c81b22	1	360	#/texts/354	Run the same evaluation harness so you can attribu	list_item
+4a05ac413b	1	361	#/texts/355	Improvement is successful when it stays discipline	text
+6ad6666600	1	362	#/texts/356	What Improvement Looks Like in Practice	section_header
+724257c9ce	1	363	#/texts/357	Most improvements fall into a small set of pattern	text
+fc2a20ce1f	1	364	#/texts/358	Prompt refinement	list_item
+47dde06b49	1	365	#/texts/359	Clarify instructions, restructure sections, adjust	list_item
+571a9675fa	1	366	#/texts/360	Retrieval tuning	list_item
+78948069f3	1	367	#/texts/361	Tighten filters, update grounding sources, reduce 	list_item
+6e391da649	1	368	#/texts/362	Tool hardening	list_item
+38c2eedd34	1	369	#/texts/363	Improve tool contracts, add machine-readable error	list_item
+6eca97e0c7	1	370	#/texts/364	Model routing changes	list_item
+1d6e156d57	1	371	#/texts/365	Route specific intents to different models when tr	list_item
+2b915f2d73	1	372	#/texts/366	Capability updates	list_item
+2556e4ec49	1	373	#/texts/367	Refresh indexes and documents, or consider fine-tu	list_item
+b0cfcc1f1a	1	374	#/texts/368	The right choice depends on what traces reveal. If	text
+9f3170c6ad	1	375	#/texts/369	Treat all of these as versioned interventions tied	text
+97744ad26c	1	376	#/texts/370	Bridging Offline and Online Signals	section_header
+8be3e34c16	1	377	#/texts/371	Offline evaluation takes you most of the way towar	text
+322e413c9c	1	378	#/texts/372	A few practices connect offline and online learnin	text
+98870bd576	1	379	#/texts/373	Canary deployments	list_item
+fd599d4282	1	380	#/texts/374	These route a small fraction of traffic to a candi	list_item
+ef7d063d14	1	381	#/texts/375	A/B testing	list_item
+ad1aa445d1	1	382	#/texts/376	This randomizes requests between baseline and cand	list_item
+b062f6ed8a	1	383	#/texts/377	Production probes	list_item
+c06230ced5	1	384	#/texts/378	These run scheduled evaluations directly against t	list_item
+e1a8bc51d0	1	385	#/texts/379	Alignment matters. The same metrics, scorers, and 	text
+4cf6e9445b	1	386	#/texts/380	Evaluation assets should evolve with the product:	text
+d57de48b7e	1	387	#/texts/381	Retire outdated examples.	list_item
+8d643c0038	1	388	#/texts/382	Add new cases harvested from recent traces.	list_item
+dd2b6e7256	1	389	#/texts/383	Recalibrate model-based judges when providers or u	list_item
+947b61063e	1	390	#/texts/384	Store scorer prompts, rubrics, and pass criteria a	list_item
+3640661aa4	1	391	#/texts/385	The goal is to keep it current and faithful to wha	text
+217b5ef228	1	392	#/texts/386	The Improve Loop As a Disciplined Practice	section_header
+931a1f7186	1	393	#/texts/387	Figure 2-6	text
+afb2923f6b	1	394	#/texts/388	shows a simple workflow loop structure that keeps 	text
+dc19ab9a40	1	395	#/texts/389	Identify a pattern from monitoring or evaluation r	list_item
+172e20b10c	1	396	#/texts/390	Use traces to locate the failure point and confirm	list_item
+4a36f01f22	1	397	#/texts/391	Propose a small change as a hypothesis.	list_item
+b6f1e2aef3	1	398	#/texts/392	Rerun evaluation on the fixed dataset and scorers.	list_item
+64b5813c48	1	399	#/texts/393	Compare to baseline.	list_item
+e04e09ce6e	1	400	#/texts/394	Deploy only if evidence supports the trade-off, th	list_item
+9c187796d0	1	401	#/texts/395	This is intentionally repetitive. The repetition i	text
+0e40894a9a	1	402	#/pictures/5	Flowchart illustrating a loop driven by monitoring	picture
+09a867c103	1	403	#/texts/397	Grounding Improvement in the Unity Airways Use Cas	section_header
+b5228436d1	1	404	#/texts/398	In the Unity Airways assistant, monitoring might s	text
+3a5a85fd99	1	405	#/texts/399	Refund answers drifting when retrieval returns emp	list_item
+b994cb737c	1	406	#/texts/400	Odd responses when a booking lookup tool times out	list_item
+ae6b06faf9	1	407	#/texts/401	Cost creeping up when retries occur or context win	list_item
+4b4b6facd6	1	408	#/texts/402	Traces make these issues concrete. You can see whe	text
+0ae3767b4c	1	409	#/texts/403	Improvement then becomes targeted:	text
+7ef9713bba	1	410	#/texts/404	Introduce a policy-grounding step when context is 	list_item
+49aae8adaa	1	411	#/texts/405	Tighten retrieval filters to reduce irrelevant sni	list_item
+1e06d8d21d	1	412	#/texts/406	Harden tool contracts and timeouts, and ensure fai	list_item
+6ef88a821f	1	413	#/texts/407	Clarify fee explanation language in the prompt to 	list_item
+31726717a3	1	414	#/texts/408	The candidate is evaluated against the same curate	text
+a5659b791a	1	415	#/texts/409	At this point, the lifecycle should feel like a si	text
+a25d27a6b9	1	416	#/texts/396	Flowchart illustrating a loop driven by monitoring	caption
+b2b83320d7	1	417	#/texts/410	Complete Workflow Integration	title
+c8beb4d23b	1	418	#/texts/411	So far we have described each phase as a distinct 	text
+978c00f785	1	419	#/texts/412	Figure 2-7	text
+8ca9e6e159	1	420	#/texts/413	illustrates the integrated flow as one connected s	text
+cb37ef76b7	1	421	#/pictures/6	Diagram illustrating the integrated workflow of a 	picture
+880f4e6348	1	422	#/texts/415	Two kinds of feedback enrich that dataset:	text
+0e2aea99e5	1	423	#/texts/416	Automated scorers apply deterministic checks and m	list_item
+917b940841	1	424	#/texts/417	Domain experts contribute targeted reviews when am	list_item
+daf9c9bf8b	1	425	#/texts/418	Both forms of feedback travel as trace annotations	text
+1bf309e689	1	426	#/texts/419	Monitoring signals and dataset gaps converge in is	text
+a2fb182f78	1	427	#/texts/420	The improve loop then returns to development, intr	text
+791675aa50	1	428	#/texts/421	Deployment closes the loop, but it does not end th	text
+6679c7a861	1	429	#/texts/414	Diagram illustrating the integrated workflow of a 	caption
+0451ca1632	1	430	#/texts/422	Conclusion and Key Takeaways	title
+4dee14ad20	1	431	#/texts/423	This chapter introduced the GenAI application life	text
+ac354d2228	1	432	#/texts/424	Several enduring practices sustain this workflow:	text
+768d1d946b	1	433	#/texts/425	Instrument early with consistent tracing so every 	list_item
+a3d66efe9a	1	434	#/texts/426	Use versioned evaluation datasets and stable score	list_item
+8513a38926	1	435	#/texts/427	Deploy deliberately with clear lineage, gradual tr	list_item
+87c517349e	1	436	#/texts/428	Monitor distributions of quality, latency, and cos	list_item
+3984e5c5c9	1	437	#/texts/429	Improve with small, hypothesis-driven changes that	list_item
+10c071be08	1	438	#/texts/430	In the next chapter, we shift from lifecycle frami	text

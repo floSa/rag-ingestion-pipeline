@@ -1,0 +1,692 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+775237bab1	1	0	#/texts/0	Chapter 5. MLflow Tracing for GenAI Application Ob	title
+0e2f7737a7	1	1	#/texts/1	In	text
+8347c2868f	1	2	#/texts/2	Chapter 4	text
+dfb078e932	1	3	#/texts/3	, we built a tool-calling agent to answer commonly	text
+8fc2979c65	1	4	#/texts/4	This is where MLflow Tracing can make a real diffe	text
+6a8b777f98	1	5	#/texts/5	Check each step and behavior of an agent.	list_item
+9a54c0c0f4	1	6	#/texts/6	Pinpoint source of bugs and unexpected behavior.	list_item
+f771931813	1	7	#/texts/7	Evaluate and improve application quality.	list_item
+f6f86f804d	1	8	#/texts/8	Monitor performance and optimize costs.	list_item
+7e5e9bb3db	1	9	#/texts/9	Tracing is becoming increasingly essential as the 	text
+ddd7bb6a03	1	10	#/texts/10	Chapter 7	text
+7d51accf50	1	11	#/texts/11	) composed of multiple components, as compared to 	text
+2707cabaf9	1	12	#/texts/12	Chapter 4	text
+fce92809cf	1	13	#/texts/13	.	text
+da6b4fd65d	1	14	#/texts/14	In this chapter, we'll cover the fundamentals of M	text
+dc9c0818fd	1	15	#/texts/15	Understanding MLflow Tracing	title
+133e5a1d61	1	16	#/texts/16	The purpose of MLflow Tracing is to provide a tool	text
+5570d8a644	1	17	#/texts/17	Chapter 4	text
+f4a7128361	1	18	#/texts/18	, MLflow Tracing can record the input question, th	text
+3a2787a00a	1	19	#/texts/19	Figure 5-1	text
+b4b7534857	1	20	#/texts/20	illustrates this process.	text
+4e4e5ab33c	1	21	#/pictures/0	Diagram illustrating the information capture proce	picture
+78a0180c4f	1	22	#/texts/22	While this may sound analogous to logging in conve	text
+cee72f6fd3	1	23	#/texts/23	Table 5-1	text
+fc8c889e23	1	24	#/texts/24	describes these differences.	text
+23a481f7d1	1	25	#/tables/0	|                        | Logging                	table
+4b344b7aca	1	26	#/texts/25	That said, logging and tracing are often used toge	text
+81e6036f0e	1	27	#/texts/26	Before we instrument our GenAI applications with t	text
+ec203c91c1	1	28	#/texts/27	Trace	section_header
+822897e450	1	29	#/texts/28	As mentioned, an MLflow	text
+d70f0a9672	1	30	#/texts/29	Trace	code
+a176b5a45c	1	31	#/texts/30	object captures the end-to-end journey of a reques	text
+8dc0a55c6e	1	32	#/texts/31	TraceInfo	code
+7e06c50625	1	33	#/texts/32	and	text
+0a96daafb7	1	34	#/texts/33	TraceData	code
+5b8963f72e	1	35	#/texts/34	:	text
+eeb498174f	1	36	#/texts/35	TraceInfo	list_item
+c1a751474b	1	37	#/texts/36		list_item
+0a6b80c106	1	38	#/texts/37	Captures the metadata about the overall trace, suc	text
+89ec254ea2	1	39	#/texts/38	TraceInfo	code
+74a9b72273	1	40	#/texts/39	is useful for searching and analyzing traces later	text
+d80e24e30a	1	41	#/texts/40	TraceData	list_item
+86ae0d70ba	1	42	#/texts/41		list_item
+17cc7616c7	1	43	#/texts/42	Consists of a list of	text
+f0ca616a8b	1	44	#/texts/43	Span	code
+42eae8cf5e	1	45	#/texts/44	objects containing detailed information about the 	text
+ad776754eb	1	46	#/texts/45	Span	code
+1e4af74e0e	1	47	#/texts/46	objects are linked together in a hierarchical form	text
+55dc44b9dd	1	48	#/texts/47	Span	section_header
+778c3a1bb9	1	49	#/texts/48	A	text
+c527923fb4	1	50	#/texts/49	Span	code
+a62b7c797f	1	51	#/texts/50	object captures what's happening at each step in a	text
+c6bb12b5ef	1	52	#/texts/51	Note	section_header
+b99d94c703	1	53	#/texts/52	That said, the	text
+179290f592	1	54	#/texts/53	RETRIEVER	code
+96c9c664f4	1	55	#/texts/54	span is a special span type worth calling out, as 	text
+1474d55a03	1	56	#/texts/55	We recommend reviewing MLflow's documentation for 	text
+e4ddf890e6	1	57	#/texts/56	RETRIEVER	code
+f44e79095b	1	58	#/texts/57	span.	text
+b5fd43dd01	1	59	#/texts/58	In short,	text
+883b51089f	1	60	#/texts/59	Trace = TraceInfo + TraceData	code
+c3b0025e01	1	61	#/texts/60	, where	text
+906226b74f	1	62	#/texts/61	TraceData	code
+ec8bed72cd	1	63	#/texts/62	contains a list of	text
+960dac19df	1	64	#/texts/63	Span	code
+2f765b4606	1	65	#/texts/64	types.	text
+2642767ddc	1	66	#/texts/65	Figure 5-2	text
+9f568cc402	1	67	#/texts/66	illustrates these trace components.	text
+8816bd16c8	1	68	#/pictures/1	Diagram illustrating the components of an MLflow t	picture
+817f8e47df	1	69	#/texts/21	Diagram illustrating the information capture proce	caption
+20c7a7e733	1	70	#/texts/67	Diagram illustrating the components of an MLflow t	caption
+0bdb2bd5a0	1	71	#/texts/68	Instrumenting Traces	title
+63576f9d2f	1	72	#/texts/69	In MLflow, there are two ways to enable tracing: a	text
+adee0f6c33	1	73	#/texts/70	Table 5-2	text
+db6cf8011a	1	74	#/texts/71	describes the differences between the two methods.	text
+01dd830103	1	75	#/tables/1	| Tracing type      | Description                 	table
+e8bdce6ff2	1	76	#/texts/72	Automated Tracing	section_header
+f97e4175e6	1	77	#/texts/73	The easiest way to get started is by leveraging ML	text
+16f5d6e64a	1	78	#/texts/74	mlflow.<	code
+73972b05ba	1	79	#/texts/75	flavor	code
+dbbe12034a	1	80	#/texts/76	>.autolog()	code
+5c1b557a5f	1	81	#/texts/77	at the start of your code, where	text
+d5e75fe470	1	82	#/texts/78	<	code
+f4b479041b	1	83	#/texts/79	flavor	code
+ff4b05005d	1	84	#/texts/80	>	code
+b34013023d	1	85	#/texts/81	corresponds to the supported library. For example,	text
+6e4c4adc99	1	86	#/texts/82	mlflow.langchain.autolog()	code
+631db7c095	1	87	#/texts/83	, which will automatically capture the traces:	text
+4e4e2835aa	1	88	#/texts/84	from databricks_langchain import ChatDatabricks	code
+6cdbfb518c	1	89	#/texts/85		code
+dae1152ad0	1	90	#/texts/86	mlflow . langchain . autolog ()	code
+a3c86ce308	1	91	#/texts/87		code
+dd134dbcb3	1	92	#/texts/88	llm = ChatDatabricks ( endpoint = db_resources [ \"	code
+51156cbfc8	1	93	#/texts/89		code
+e58ed007df	1	94	#/texts/90	llm . invoke ( \"How do I book a flight online with	code
+7dfa7784dd	1	95	#/texts/91	When invoking an LLM through the	text
+1010cebc47	1	96	#/texts/92	databricks_langchain	code
+fd46fb4a48	1	97	#/texts/93	library, you can view the corresponding trace logg	text
+e23d25115d	1	98	#/texts/94	Figure 5-3	text
+4139e49fae	1	99	#/texts/95	.	text
+3b45cbc149	1	100	#/pictures/2	Screenshot of the MLflow Trace UI displaying a log	picture
+1e42214308	1	101	#/texts/97	The operations supported by automated tracing depe	text
+0929b18807	1	102	#/texts/98	Manual Tracing	section_header
+694407ab24	1	103	#/texts/99	MLflow provides two types of APIs for instrumentin	text
+f0b569f33a	1	104	#/texts/100	High-level Fluent APIs	list_item
+ed032f6a8e	1	105	#/texts/101	Instrument tracing with simple APIs. This is easy 	list_item
+89d8bf3db1	1	106	#/texts/102	Low-level MLflow Client APIs	list_item
+f753611821	1	107	#/texts/103	Provides fine-grained control, as compared to Flue	list_item
+6bdc368eb6	1	108	#/texts/104	Manual tracing provides fine-grained control over 	text
+c07532aa72	1	109	#/texts/105	For advanced scenarios that require explicit contr	text
+6f25cfc8e8	1	110	#/texts/106	High-level Fluent APIs	section_header
+7eb01ac731	1	111	#/texts/107	The Fluent APIs provide a straightforward way to a	text
+e47999664d	1	112	#/texts/108	Let's explore how the	text
+abe150b8ed	1	113	#/texts/109	mlflow.trace	code
+c20b05e638	1	114	#/texts/110	decorator works, as shown in	text
+3ff483ed37	1	115	#/texts/111	Example 5-1	text
+66aa5f8267	1	116	#/texts/112	.	text
+0892825cd9	1	117	#/texts/113	Example 5-1. MLflow trace decorator	section_header
+94a330f017	1	118	#/texts/114	#Load the required configurations	code
+b024db49d4	1	119	#/texts/115		code
+db14adb6a9	1	120	#/texts/116	import mlflow	code
+31fb31d9c4	1	121	#/texts/117		code
+bd32e7fe73	1	122	#/texts/118	import yaml	code
+9be4db2a08	1	123	#/texts/119		code
+b1097d7304	1	124	#/texts/120	with open ( \"../conf/chapter05_conf.yml\" , \"r\" ) a	code
+8664ffceea	1	125	#/texts/121		code
+7a60f204d7	1	126	#/texts/122	retriever_configs = model_config . get ( \"retrieve	code
+e91b387083	1	127	#/texts/123		code
+214e7807fa	1	128	#/texts/124	db_resources = model_config . get ( \"databricks_re	code
+fa69810f43	1	129	#/texts/125		code
+52dbb71d96	1	130	#/texts/126	#Create the Python class	code
+b5650d7167	1	131	#/texts/127		code
+2a27875dce	1	132	#/texts/128	from typing import List , Dict , Optional , Any	code
+70c6610f46	1	133	#/texts/129		code
+09733c1527	1	134	#/texts/130	from databricks.vector_search.client import Vector	code
+0e85e3420f	1	135	#/texts/131		code
+4cb02f457d	1	136	#/texts/132	from mlflow.entities import SpanType , Document	code
+34f9e61970	1	137	#/texts/133		code
+50b5cf9c9e	1	138	#/texts/134	class VectorSearchWrapper : def __init__ ( self , 	code
+61079d33af	1	139	#/texts/135	The	text
+ab18cb15f5	1	140	#/texts/136	VectorSearchWrapper	code
+f2314e5817	1	141	#/texts/137	class connects to a Databricks Vector Search index	text
+c782cf4738	1	142	#/texts/138	Chapter 4	text
+fa9cb9a74b	1	143	#/texts/139	, where we used LangChain's integration, here we i	text
+334ae2e625	1	144	#/texts/140	Inside the class, the	text
+a3ee743b7a	1	145	#/texts/141	search	code
+79cdfc4eef	1	146	#/texts/142	method executes a similarity search on the vector 	text
+3315253c2f	1	147	#/texts/143	Let's execute the	text
+03be8f60ac	1	148	#/texts/144	search	code
+1c03ab58f1	1	149	#/texts/145	method:	text
+d4f1fee4f2	1	150	#/texts/146	client = VectorSearchWrapper ( retriever_configs [	code
+08b145d59f	1	151	#/texts/147		code
+d6a5f574a6	1	152	#/texts/148	# Normal search (docs don't render)	code
+491cfe9c3e	1	153	#/texts/149		code
+25ce9bd9e8	1	154	#/texts/150	results = client . search ( \"How do I book a fligh	code
+e690f6b727	1	155	#/texts/151	After execution, MLflow captures a trace named	text
+ce5d7823a5	1	156	#/texts/152	single_retriever_search	code
+6f54391471	1	157	#/texts/153	, which can be viewed in the notebook's UI (	text
+fb4b734f4b	1	158	#/texts/154	Figure 5-4	text
+4a5b6f8a55	1	159	#/texts/155	).	text
+74d2750f95	1	160	#/pictures/3	The MLflow Trace UI displays a trace named \"single	picture
+6465ff6c1c	1	161	#/texts/157	For the	text
+c0a4becc84	1	162	#/texts/158	search	code
+2590f8cda3	1	163	#/texts/159	method, we applied the	text
+1707ddc0e0	1	164	#/texts/160	mlflow.trace()	code
+2f35972eec	1	165	#/texts/161	decorator, configuring the	text
+17e2f115b4	1	166	#/texts/162	span_type	code
+f59eb73ede	1	167	#/texts/163	to one of MLflow's default span types (in this cas	text
+7d2a3e0f73	1	168	#/texts/164	RETRIEVER	code
+94cb949f21	1	169	#/texts/165	), naming the trace	text
+624457741d	1	170	#/texts/166	single_retriever_search	code
+3c3706f195	1	171	#/texts/167	, and adding a	text
+8d1323166a	1	172	#/texts/168	vs_type	code
+e51774a40e	1	173	#/texts/169	attribute. In the notebook's tracing UI, all of th	text
+e812c2d9af	1	174	#/texts/170	RETRIEVER	code
+1ca75caf11	1	175	#/texts/171	span type is shown as a magnifying glass icon, the	text
+e024b18fbf	1	176	#/texts/172	We also added additional attributes using	text
+a76f6a401c	1	177	#/texts/173	span.set_attributes()	code
+5b3abaacba	1	178	#/texts/174	, which are displayed in the UI. Furthermore, we a	text
+dc39e4c043	1	179	#/texts/175	mlflow.update_current_trace()	code
+fdbba1da13	1	180	#/texts/176	. These tags do not appear in the notebook's trace	text
+62690d1ae5	1	181	#/texts/177	Figure 5-5	text
+e1134eed36	1	182	#/texts/178	).	text
+70312a8185	1	183	#/pictures/4	Screenshot of the MLflow Experiment UI's Traces ta	picture
+bb5f8c8bb2	1	184	#/texts/180	The	text
+26e25f4369	1	185	#/texts/181	search	code
+54c0d33752	1	186	#/texts/182	method directly returns the results from the	text
+159e91754a	1	187	#/texts/183	similarity_search	code
+431c4d095c	1	188	#/texts/184	method of the Python SDK. In the notebook's tracin	text
+663c47b470	1	189	#/texts/185	Figure 5-6	text
+cd1c8f2a0a	1	190	#/texts/186	).	text
+adb82543cb	1	191	#/pictures/5	Screenshot of a UI displaying JSON trace output fr	picture
+aa93fdde83	1	192	#/texts/188	This happens because, although we set the span typ	text
+7c14acea18	1	193	#/texts/189	RETRIEVER	code
+55f56002bc	1	194	#/texts/190	, the function's output does not yet follow the sc	text
+ebdde3ea30	1	195	#/texts/191	We'll add a	text
+97bd459f58	1	196	#/texts/192	parse_search_result	code
+1e0b5dc09d	1	197	#/texts/193	method that converts the output from the	text
+2f842a1a88	1	198	#/texts/194	similarity_search	code
+67ae18ba5d	1	199	#/texts/195	method of the Python SDK into the schema (a list o	text
+2bfd42520d	1	200	#/texts/196	mlflow.entities.Document	code
+ba4fc68a0b	1	201	#/texts/197	) that MLflow expects to enable a user-friendly di	text
+6efb3cc377	1	202	#/texts/198	Example 5-2	text
+25de7d4168	1	203	#/texts/199	demonstrates this.	text
+d46ebc8656	1	204	#/texts/200	Example 5-2. RETRIEVER span output schema	section_header
+31685cdaa3	1	205	#/texts/201	@mlflow . trace ( span_type = SpanType . PARSER , 	code
+17cf36859d	1	206	#/texts/202		code
+9b3c1ab098	1	207	#/texts/203	def parse_search_result ( self , search_result ): 	code
+2ae83522ef	1	208	#/texts/204	The second method is the	text
+087cc24aad	1	209	#/texts/205	refined_search	code
+c666c28fa3	1	210	#/texts/206	method, which functions like the original search m	text
+72150d1cdd	1	211	#/texts/207	parse_search_result	code
+33e817108c	1	212	#/texts/208	:	text
+3ea0ebfca7	1	213	#/texts/209	@mlflow.trace(span_type=SpanType.RETRIEVER)\ndef re	code
+372dc4cebd	1	214	#/texts/210	Now when we execute the	text
+708398ab14	1	215	#/texts/211	refined_search	code
+5d5d4da347	1	216	#/texts/212	method, as follows, we can see that the outputs ar	text
+6d418b7a59	1	217	#/texts/213	Figure 5-7	text
+23d374ce26	1	218	#/texts/214	):	text
+4137275f06	1	219	#/texts/215	# Refined search (docs render)	code
+5e19068158	1	220	#/texts/216		code
+65262bdb5d	1	221	#/texts/217	client = VectorSearchWrapper ( retriever_configs [	code
+04e7a3c01e	1	222	#/texts/218		code
+0d49462e7d	1	223	#/texts/219	refined_search = client . refined_search ( \"How do	code
+bcf83f06a7	1	224	#/pictures/6	Screenshot showing the trace breakdown of the `ref	picture
+5a075ab89c	1	225	#/texts/221	In this example, we explored how to use the	text
+a872045ad8	1	226	#/texts/222	mlflow.trace()	code
+228e04f5bd	1	227	#/texts/223	decorator to add custom traces. More importantly, 	text
+1f54452e76	1	228	#/texts/224	RETRIEVER	code
+329901147f	1	229	#/texts/225	span to ensure they are displayed in a user-friend	text
+3fb4bf7487	1	230	#/texts/226	Note	section_header
+0060c0b207	1	231	#/texts/227	Formatting the outputs of a	text
+9bed6568e9	1	232	#/texts/228	RETRIEVER	code
+1a4da13e94	1	233	#/texts/229	span is about more than aesthetics or readability.	text
+a7a110ae10	1	234	#/texts/230	RETRIEVER	code
+5013f7ff58	1	235	#/texts/231	span is also required by MLflow for evaluating ret	text
+b856cbf952	1	236	#/texts/232	Chapter 6	text
+751b202c37	1	237	#/texts/233	.	text
+b1bf02f640	1	238	#/texts/234	This example was relatively simple. So next, let's	text
+4761c84efd	1	239	#/texts/235	Let's create a new retrieval class that takes an i	text
+1fe6c4c7ff	1	240	#/texts/236	Figure 5-8	text
+935f0d5459	1	241	#/texts/237	illustrates this.	text
+00b5564388	1	242	#/pictures/7	Diagram showing the MultiRetriever class workflow,	picture
+61e4f02d73	1	243	#/texts/239	First, we will create a new Python class,	text
+2737670b40	1	244	#/texts/240	MultiRetriever	code
+3fa1b533f8	1	245	#/texts/241	, to implement this functionality. The class accep	text
+41df625af2	1	246	#/texts/242	VectorSearchWrapper	code
+b0878ed9a2	1	247	#/texts/243	class that we defined previously. As for the LLM, 	text
+e655454d6c	1	248	#/texts/244	ChatDatabricks	code
+973211d43f	1	249	#/texts/245	object from LangChain. We also enable autologging 	text
+c9da6d072d	1	250	#/texts/246	mlflow.langchain.autolog()	code
+fe8edb5f7a	1	251	#/texts/247	.	text
+0a0c097508	1	252	#/texts/248	Example 5-3	text
+23e85c5029	1	253	#/texts/249	demonstrates this.	text
+aeb8855865	1	254	#/texts/250	Example 5-3. Tracing across multiple threads	section_header
+79912c59e3	1	255	#/texts/251	# python	code
+d648bdaf7f	1	256	#/texts/252		code
+4c8837e96c	1	257	#/texts/253	from typing import List , Dict , Optional , Any	code
+e72084d058	1	258	#/texts/254		code
+a7259e81c9	1	259	#/texts/255	from concurrent.futures import ThreadPoolExecutor 	code
+26508b58c2	1	260	#/texts/256		code
+70c81e0c05	1	261	#/texts/257	import contextvars	code
+0c48787fa9	1	262	#/texts/258		code
+a6f816633b	1	263	#/texts/259	import mlflow	code
+e9170c5c74	1	264	#/texts/260		code
+9e836f651f	1	265	#/texts/261	from mlflow.entities import SpanType	code
+bae336a26f	1	266	#/texts/262		code
+b5bb16ece4	1	267	#/texts/263	from databricks_langchain import ChatDatabricks	code
+f9a2ca5f05	1	268	#/texts/264		code
+a0c74c287c	1	269	#/texts/265	import ast	code
+0dd50c5523	1	270	#/texts/266		code
+7affe46445	1	271	#/texts/267	import json	code
+1c6306acd7	1	272	#/texts/268		code
+8fb2bb44b0	1	273	#/texts/269	mlflow . langchain . autolog ()	code
+af86eb6720	1	274	#/texts/270		code
+f3ca80f615	1	275	#/texts/271	class MultiRetriever : def __init__ ( self , retri	code
+07b08066cf	1	276	#/texts/272	Next, we define a method to perform query generati	text
+c20efa74db	1	277	#/texts/273	def query_generation ( self , query_text : str ) -	code
+c1c103bd0f	1	278	#/texts/274		code
+17b389fe1a	1	279	#/texts/275	MultiRetriever . query_generation = query_generati	code
+11bf242d46	1	280	#/texts/276	Note	section_header
+1a4357b69d	1	281	#/texts/277	Query generation is a common technique for improvi	text
+2b586041ee	1	282	#/texts/278	Then, we create a method to perform parallel retri	text
+785605d47d	1	283	#/texts/279	ThreadPoolExecutor	code
+a267f27895	1	284	#/texts/280	. The	text
+c69fce6c96	1	285	#/texts/281	ThreadPoolExecutor	code
+68844de529	1	286	#/texts/282	will parallelize the	text
+9db06cb209	1	287	#/texts/283	refined_search	code
+d1304c0693	1	288	#/texts/284	method that we defined in	text
+c426ea92a3	1	289	#/texts/285	VectorSearchWrapper	code
+f7bb50140c	1	290	#/texts/286	:	text
+f42436d12f	1	291	#/texts/287	@mlflow.trace(span_type=SpanType.RETRIEVER)\ndef ex	code
+feb2a60433	1	292	#/texts/288	Finally, we create the	text
+27f669fa07	1	293	#/texts/289	query_generation_search	code
+a61a7c4b4c	1	294	#/texts/290	method to combine the preceding methods to execute	text
+2b25d1b8fd	1	295	#/texts/291	def query_generation_search ( self , query_text : 	code
+236d38acd1	1	296	#/texts/292		code
+d83f110f8a	1	297	#/texts/293	) -> List [ Document ]: \"\"\"	code
+c24f0c0dc9	1	298	#/texts/294		code
+95b6a7de08	1	299	#/texts/295	Orchestrate query generation, retrieval, and reran	code
+49562ce9ba	1	300	#/texts/296		code
+382cca4cd3	1	301	#/texts/297	\"\"\" with mlflow . start_span ( name = \"Custom Retr	code
+318c428f2f	1	302	#/texts/298		code
+ed7316f93a	1	303	#/texts/299	MultiRetriever . query_generation_search = query_g	code
+539361da71	1	304	#/texts/300	Now when we execute the	text
+0f73c25300	1	305	#/texts/301	query_generation_search	code
+3194bd6f3d	1	306	#/texts/302	method, as follows, we can see that the query is f	text
+414f79e2ba	1	307	#/texts/303	ChatDatabricks	code
+22ac13cb37	1	308	#/texts/304	for query generation and then passed to	text
+e78ff65666	1	309	#/texts/305	execute_parallel_search	code
+bf2dc58ed2	1	310	#/texts/306	for parallel retrieval:	text
+8b26225eea	1	311	#/texts/307	multi_retriever = MultiRetriever ( retriever_confi	code
+95df13b09d	1	312	#/texts/308		code
+a2344317c9	1	313	#/texts/309	results = multi_retriever . query_generation_searc	code
+046c6a05b5	1	314	#/texts/310		code
+499e8e5495	1	315	#/texts/311	)	code
+20a53e05c0	1	316	#/texts/312	The trace of	text
+0ae52dc556	1	317	#/texts/313	execute_parallel_search	code
+4b53da039a	1	318	#/texts/314	includes two child spans:	text
+ca8af2a168	1	319	#/texts/315	refined_search_1	code
+e178c87224	1	320	#/texts/316	and	text
+5559be70e0	1	321	#/texts/317	refined_search_2	code
+c5ce912fbc	1	322	#/texts/318	.	text
+092262685b	1	323	#/texts/319	Figure 5-9	text
+955f98d1d2	1	324	#/texts/320	illustrates this.	text
+f90fb5f8fb	1	325	#/pictures/8	Diagram illustrating the trace breakdown of the mu	picture
+b66f19361a	1	326	#/texts/322	There are a few key points to unpack here. First, 	text
+afb1d0a1e1	1	327	#/texts/323	ChatDatabricks	code
+d0cd53eb62	1	328	#/texts/324	trace was captured even though we did not add any 	text
+26b73ffe13	1	329	#/texts/325	mlflow.langchain.autolog()	code
+caf84b18ee	1	330	#/texts/326	, which automatically captures traces from LangCha	text
+991beed296	1	331	#/texts/327	You'll also notice that	text
+718e8f1c4b	1	332	#/texts/328	refined_search_1	code
+4a2707e1ab	1	333	#/texts/329	and	text
+8772dbcc30	1	334	#/texts/330	refined_search_2	code
+722e03afe2	1	335	#/texts/331	are captured as child spans of	text
+143eb7e5e4	1	336	#/texts/332	execute_parallel_search	code
+4161dd76e4	1	337	#/texts/333	. MLflow automatically detects parent-child relati	text
+b8d3f3ef85	1	338	#/texts/334	For parallel retrieval, we use	text
+d2075e0331	1	339	#/texts/335	ThreadPoolExecutor	code
+1135e6670f	1	340	#/texts/336	. MLflow Tracing relies on Python's built-in Conte	text
+59034e3a3a	1	341	#/texts/337	Note	section_header
+d28986b109	1	342	#/texts/338	In our Unity Airways practice example, we used the	text
+5159b373d5	1	343	#/texts/339	Finally, you may have noticed that the trace for t	text
+d8edbd959e	1	344	#/texts/340	query_generation_search	code
+a9273bff51	1	345	#/texts/341	method is captured even though we did not declare 	text
+c694ce434d	1	346	#/texts/342	mlflow.trace()	code
+99a5cb538b	1	347	#/texts/343	decorator for this method. Instead, we used the	text
+cd586b793e	1	348	#/texts/344	mlflow.start_span()	code
+0a2cc6c821	1	349	#/texts/345	context manager to create the span. The difference	text
+f31cacd30d	1	350	#/texts/346	Like the	text
+292dc3d586	1	351	#/texts/347	mlflow.trace()	code
+7e21c73c47	1	352	#/texts/348	decorator, the context manager automatically captu	text
+db1847f883	1	353	#/texts/349	Next, we complete this example by adding a custom 	text
+a0c9c3ac12	1	354	#/texts/350	Figure 5-10	text
+b16ff45b49	1	355	#/texts/351	depicts this. This function leverages an LLM to de	text
+ce96e76cb8	1	356	#/pictures/9	Diagram of a MultiRetriever system showing the flo	picture
+f75942ae51	1	357	#/texts/353	To do this, we first create a class	text
+4f11417fc9	1	358	#/texts/354	CustomLangchainTracer	code
+acfcf4550a	1	359	#/texts/355	. This class inherits from	text
+e35dfad65d	1	360	#/texts/356	MlflowLangchainTracer	code
+b9c1a172ae	1	361	#/texts/357	, a handler injected into LangChain's model infere	text
+d7d29dfdf6	1	362	#/texts/358	on_chain_start	code
+020e16103f	1	363	#/texts/359	and	text
+2db4b4a8b3	1	364	#/texts/360	on_llm_start	code
+b990f2d8dd	1	365	#/texts/361	, and concludes the span when the action finishes.	text
+e65606ef29	1	366	#/texts/362	If we want to customize the behavior of automated 	text
+0c56b10246	1	367	#/texts/363	MlflowLangchainTracer	code
+60e4664016	1	368	#/texts/364	and implement our own logic.	text
+a2d5d85d4f	1	369	#/texts/365	Example 5-4	text
+bf724cdb69	1	370	#/texts/366	demonstrates this.	text
+ab49a3ff84	1	371	#/texts/367	Example 5-4. Customizing the behavior of automated	section_header
+7984618ed3	1	372	#/texts/368	from mlflow.langchain.langchain_tracer import Mlfl	code
+4826f4cbfb	1	373	#/texts/369		code
+9354181274	1	374	#/texts/370	from langchain_core.messages import BaseMessage	code
+aa252dd9b4	1	375	#/texts/371		code
+f7201d6f7f	1	376	#/texts/372	from uuid import UUID	code
+a48831df23	1	377	#/texts/373		code
+69bc55ddc9	1	378	#/texts/374	class CustomLangchainTracer ( MlflowLangchainTrace	code
+6ad0a0d50b	1	379	#/texts/375	Next, we create the	text
+8bb42e6cfa	1	380	#/texts/376	rerank_results	code
+57d8725a97	1	381	#/texts/377	method. This is a simple reranker that takes all t	text
+f031408c97	1	382	#/texts/378	ChatDatabricks	code
+f16bb6d057	1	383	#/texts/379	, the	text
+c5900aa6d1	1	384	#/texts/380	CustomLangchainTracer	code
+782aeddcb6	1	385	#/texts/381	created in the previous step is passed as a callba	text
+75b5330946	1	386	#/texts/382	invoke	code
+711a86bb26	1	387	#/texts/383	method. The	text
+13f5127eb8	1	388	#/texts/384	rerank_results	code
+866a8aaa75	1	389	#/texts/385	method returns a sorted list of the reranked chunk	text
+12d47a8ce0	1	390	#/texts/386	def rerank_results ( self , query_text : str , sea	code
+a5d59b8be2	1	391	#/texts/387		code
+3195cdcb8b	1	392	#/texts/388	) -> List [ Document ]: if not search_results : re	code
+7111f5acce	1	393	#/texts/389		code
+b6a681eff2	1	394	#/texts/390	MultiRetriever . rerank_results = rerank_results	code
+8cf228ba5d	1	395	#/texts/391	We would also create a simple method to filter onl	text
+ebc1d0c7f7	1	396	#/texts/392	@mlflow . trace ( span_type = \"Function\" )	code
+8117ff9ffd	1	397	#/texts/393		code
+ad2b2b6594	1	398	#/texts/394	def apply_top_k_filter ( self , results : List [ D	code
+3d99d5db81	1	399	#/texts/395		code
+d423eb23ca	1	400	#/texts/396	) -> List [ Document ]: if top_k is not None : ret	code
+0f07202955	1	401	#/texts/397		code
+9a2762dd0c	1	402	#/texts/398	MultiRetriever . apply_top_k_filter = apply_top_k_	code
+aebb9c5b14	1	403	#/texts/399	Finally, we update the	text
+3f44e016d0	1	404	#/texts/400	query_generation_search	code
+b268d66a10	1	405	#/texts/401	method to include the reranking functionality:	text
+b592a1aedc	1	406	#/texts/402	def query_generation_search ( self , query_text : 	code
+d0e0632129	1	407	#/texts/403		code
+ae01e35f2d	1	408	#/texts/404	) -> List [ Document ]: with mlflow . start_span (	code
+60479074c5	1	409	#/texts/405	Now when we execute	text
+cc89ffa590	1	410	#/texts/406	query_generation_search	code
+ee81046a31	1	411	#/texts/407	method, as shown here, we can see that the	text
+321d1eadf3	1	412	#/texts/408	CustomReranker	code
+951d6cc5e6	1	413	#/texts/409	and	text
+ebea83caff	1	414	#/texts/410	apply_top_k_filter	code
+3dae34bd25	1	415	#/texts/411	spans are added to the trace (see	text
+2f132567a8	1	416	#/texts/412	Figure 5-11	text
+c9d672341f	1	417	#/texts/413	):	text
+55e40a774f	1	418	#/texts/414	multi_retriever = MultiRetriever ( retriever_confi	code
+da022125d5	1	419	#/texts/415		code
+710b55b991	1	420	#/texts/416	results = multi_retriever . query_generation_searc	code
+fbae345ad8	1	421	#/texts/417		code
+bd93f5ffe1	1	422	#/texts/418	)	code
+a805d920cb	1	423	#/texts/419	An interesting point is that, even though	text
+c661eadf35	1	424	#/texts/420	CustomReranker	code
+589047b75c	1	425	#/texts/421	invokes an LLM for the reranking, its span type is	text
+e35f51ee1c	1	426	#/texts/422	RERANKER	code
+d4cbf8d81a	1	427	#/texts/423	. This is because we modified the automated tracin	text
+df82b239a1	1	428	#/texts/424	CustomLangchainTracer	code
+c6389af46d	1	429	#/texts/425	to set the span type to	text
+47ac267295	1	430	#/texts/426	RERANKER	code
+18e55f4d4c	1	431	#/texts/427	instead of the default	text
+066800223b	1	432	#/texts/428	LLM	code
+57ae18a2a5	1	433	#/texts/429	type.	text
+a64ea4f26b	1	434	#/pictures/10	Diagram showing the tracing breakdown of a search 	picture
+d8d1901119	1	435	#/texts/431	Note	section_header
+6f432b6dc2	1	436	#/texts/432	Reranking is one of the most commonly used techniq	text
+29760fd7ad	1	437	#/texts/433	It also helps track performance impacts, as some r	text
+058f02dbbb	1	438	#/texts/434	With this visibility, you can more effectively exp	text
+fb4b349831	1	439	#/texts/435	Now all that is left to complete this example is t	text
+05aafdd392	1	440	#/texts/436	CustomRag	code
+6c903e68ea	1	441	#/texts/437	.	text
+91732b30fd	1	442	#/texts/438	Example 5-5	text
+fa29f7434c	1	443	#/texts/439	demonstrates this.	text
+b941a361b6	1	444	#/texts/440	Example 5-5. Output reducer	section_header
+f5ba3efd91	1	445	#/texts/441	class CustomRag : def __init__ ( self , retriever 	code
+bbe8f7ea1c	1	446	#/texts/442		code
+84b88e3937	1	447	#/texts/443	only on the provided information. Here is some con	code
+7282524e3a	1	448	#/texts/444		code
+f28a915ff3	1	449	#/texts/445	you answer the following question: { docs } .	code
+2c4df14264	1	450	#/texts/446		code
+99f6b9f583	1	451	#/texts/447	Answer directly, do not repeat the question. Based	code
+a6f9bbd5f8	1	452	#/texts/448		code
+ff0c965d36	1	453	#/texts/449	question: { query_text } .	code
+7c83fac16e	1	454	#/texts/450		code
+8f6ddad9ab	1	455	#/texts/451	If you don't know the answer, just say that you do	code
+78485dac25	1	456	#/texts/452		code
+67eb74f691	1	457	#/texts/453	\"\"\" llm_stream = self . llm . stream ( llm_prompt 	code
+1499c9e2d9	1	458	#/texts/454	When deploying GenAI applications, streaming respo	text
+d168781e71	1	459	#/texts/455	custom_rag = CustomRag ( multi_retriever )	code
+5d9e2a1250	1	460	#/texts/456		code
+49a103144c	1	461	#/texts/457	display_str = ''	code
+b21bfd23d2	1	462	#/texts/458		code
+e84ea82f0d	1	463	#/texts/459	for chunk in custom_rag . llm_call_docs ( \"How do 	code
+9ab227b603	1	464	#/texts/460		code
+6be16f5cba	1	465	#/texts/461	display_str	code
+326623fc70	1	466	#/texts/462	In	text
+42e7452fbf	1	467	#/texts/463	Figure 5-12	text
+532ff32fd5	1	468	#/texts/464	, you can see that MLflow now successfully capture	text
+958719e2d1	1	469	#/texts/465	In the	text
+3ccef9159c	1	470	#/texts/466	CustomRag	code
+c8c759eca7	1	471	#/texts/467	class, the	text
+3b65ca3c30	1	472	#/texts/468	llm_call_docs	code
+ace66041fb	1	473	#/texts/469	method is decorated with	text
+b176bb4c39	1	474	#/texts/470	mlflow.trace()	code
+06551edcad	1	475	#/texts/471	that includes an	text
+b564c78b08	1	476	#/texts/472	output_reducer	code
+a12c55cf71	1	477	#/texts/473	. This is used to aggregate multiple elements into	text
+dd2c54fdef	1	478	#/pictures/11	Diagram showing MLflow's capture of inputs and out	picture
+3371348eb5	1	479	#/texts/475	In certain scenarios, our GenAI application may pr	text
+da9a21456f	1	480	#/texts/476	Example 5-6	text
+0ce48e2384	1	481	#/texts/477	shows an example.	text
+59f53f26c4	1	482	#/texts/478	Example 5-6. Redacting sensitive information	section_header
+d992f6f1d6	1	483	#/texts/479	import re	code
+1dfab71603	1	484	#/texts/480		code
+6eb448f915	1	485	#/texts/481	import mlflow	code
+4afda3c099	1	486	#/texts/482		code
+d68b3658d2	1	487	#/texts/483	from mlflow.entities.span import Span	code
+3501697fc3	1	488	#/texts/484		code
+301e2a1553	1	489	#/texts/485	EMAIL_PATTERN = r \"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]	code
+dc636d1c71	1	490	#/texts/486		code
+0156722a3e	1	491	#/texts/487	def _redact ( obj ): if isinstance ( obj , str ): 	code
+b10e729eb0	1	492	#/texts/488		code
+8b987be2de	1	493	#/texts/489	def redact_email ( span : Span ) -> None : span . 	code
+3dbfaacabc	1	494	#/texts/490		code
+24bdb7f240	1	495	#/texts/491	mlflow . tracing . configure ( span_processors = [	code
+24aed677b7	1	496	#/texts/492	In	text
+886aa3486b	1	497	#/texts/493	Example 5-6	text
+0ad2e63c29	1	498	#/texts/494	, we define a simple regular expression function t	text
+11e25fbf78	1	499	#/texts/495	mlflow.tracing.configure	code
+7b7fea2c6e	1	500	#/texts/496	, specifying	text
+25025e54cd	1	501	#/texts/497	span_processors	code
+3bdfbd9c12	1	502	#/texts/498	that redact any email addresses present in the tra	text
+5028e7932b	1	503	#/texts/499	Figure 5-13	text
+06af50447e	1	504	#/texts/500	).	text
+fea6b4bc06	1	505	#/pictures/12	A trace breakdown displaying inputs and outputs, w	picture
+38fe4e8fbc	1	506	#/texts/502	There we have it. We just built an end-to-end RAG 	text
+7918389a58	1	507	#/texts/503	Low-level MLflow Client APIs	section_header
+e54bc5964a	1	508	#/texts/504	In the previous section, we explored high-level ML	text
+73242551d5	1	509	#/texts/505	That said, MLflow also provides a set of low-level	text
+666f4b79e7	1	510	#/texts/506	As a general guideline, we recommend using the Cli	text
+933c0aa842	1	511	#/texts/507	To illustrate the complexity of these APIs, we'll 	text
+16620b2be6	1	512	#/texts/508	VectorSearchWrapper	code
+c5babcbebe	1	513	#/texts/509	class introduced earlier in this chapter. Specific	text
+5ede829796	1	514	#/texts/510	low_level_search	code
+e56759076b	1	515	#/texts/511	, which uses the low-level MLflow Client APIs to c	text
+2bbba22a6d	1	516	#/texts/512	Query the vector search index using the Databricks	list_item
+e17ecf6a3c	1	517	#/texts/513		list_item
+a47cc30ab5	1	518	#/texts/514	Parse the results from step 1 into the MLflow-comp	text
+2d9b7526d0	1	519	#/texts/515	parse_search_result	code
+028e154932	1	520	#/texts/516	method we implemented previously.	text
+002745439a	1	521	#/texts/517	While these steps were easily handled with the hig	text
+8e643054b7	1	522	#/texts/518	Figure 5-14	text
+22db6da3f1	1	523	#/texts/519	).	text
+11ca110133	1	524	#/pictures/13	Diagram illustrating the logical workflow for usin	picture
+5fa910f2af	1	525	#/texts/521	We start by creating a trace with a root span. To 	text
+9a2a8dcfcd	1	526	#/texts/522	retrieval_span	code
+e5710383b4	1	527	#/texts/523	and	text
+05a764f7fb	1	528	#/texts/524	parse_span	code
+a1cca50d4c	1	529	#/texts/525	) under the	text
+14c8424977	1	530	#/texts/526	root_span	code
+e9e52aaf96	1	531	#/texts/527	, we need to pass the root span's ID as the	text
+1aac36e2c3	1	532	#/texts/528	parent_id	code
+9264f9aa71	1	533	#/texts/529	for each child span. Because these child spans bel	text
+5258642a93	1	534	#/texts/530	root_span trace_id	code
+09bc45192b	1	535	#/texts/531	.	text
+69bad1059d	1	536	#/texts/532	We also need to explicitly manage each span's life	text
+05850e485d	1	537	#/texts/533	try	code
+7b64b498f7	1	538	#/texts/534	/	text
+3b3a70528b	1	539	#/texts/535	except	code
+3529525a79	1	540	#/texts/536	block to handle failures and ensure the span is al	text
+5be9290e0b	1	541	#/texts/537	By contrast, the high-level Fluent APIs handle spa	text
+6567abf9b6	1	542	#/texts/538	Due to the complexity, the full code example is no	text
+4a0b5ad246	1	543	#/texts/539	If you look through the notebook, it's clear that 	text
+d83f81b2ff	1	544	#/texts/540	mlflow.trace()	code
+843fa046f4	1	545	#/texts/541	decorator. With the low-level Client APIs, you're 	text
+1823a4cd0d	1	546	#/texts/542	While this level of control can be powerful, it ad	text
+77f30044dc	1	547	#/texts/543	No automatic parent-child relationship detection	list_item
+87ab1666c8	1	548	#/texts/544	Manual exception handling required	list_item
+17c896c18f	1	549	#/texts/545	Custom trace ID management	list_item
+80c05a7b87	1	550	#/texts/546	Integration with existing systems	list_item
+27ea98c3f4	1	551	#/texts/547	Warning	section_header
+0fa436e163	1	552	#/texts/548	One important point of warning is that the high-le	text
+37f2e595b3	1	553	#/texts/96	Screenshot of the MLflow Trace UI displaying a log	caption
+634dc960be	1	554	#/texts/156	The MLflow Trace UI displays a trace named \"single	caption
+650e6bb667	1	555	#/texts/179	Screenshot of the MLflow Experiment UI's Traces ta	caption
+b5fb082745	1	556	#/texts/187	Screenshot of a UI displaying JSON trace output fr	caption
+d868815799	1	557	#/texts/220	Screenshot showing the trace breakdown of the `ref	caption
+c2f3f71c21	1	558	#/texts/238	Diagram showing the MultiRetriever class workflow,	caption
+f5fb586eef	1	559	#/texts/321	Diagram illustrating the trace breakdown of the mu	caption
+2fb29cefa1	1	560	#/texts/352	Diagram of a MultiRetriever system showing the flo	caption
+a8e992bdb4	1	561	#/texts/430	Diagram showing the tracing breakdown of a search 	caption
+18405566b3	1	562	#/texts/474	Diagram showing MLflow's capture of inputs and out	caption
+c6d376218b	1	563	#/texts/501	A trace breakdown displaying inputs and outputs, w	caption
+1a264c46d6	1	564	#/texts/520	Diagram illustrating the logical workflow for usin	caption
+da81e22863	1	565	#/texts/549	Querying Traces	title
+33bc619081	1	566	#/texts/550	We have covered in depth how to collect traces, bo	text
+8067f1f001	1	567	#/texts/551	Head over to the Traces tab in the MLflow Experime	text
+008bfdf0be	1	568	#/texts/552	TraceInfo	code
+5bbc09d33a	1	569	#/texts/553	schema. You should see a screen similar to that of	text
+2dd63cf83d	1	570	#/texts/554	Figure 5-15	text
+f080cb328f	1	571	#/texts/555	.	text
+60fec19845	1	572	#/pictures/14	MLflow Experiment UI showing options for filtering	picture
+b551414090	1	573	#/texts/557	MLflow also lets us query traces programmatically 	text
+03844325d9	1	574	#/texts/558	mlflow.search_traces	code
+9bfe08c92c	1	575	#/texts/559	method. This method can return results as either a	text
+d4fd2ff3ed	1	576	#/texts/560	DataFrame	code
+455e09450a	1	577	#/texts/561	(one row per trace) or a list of	text
+aad149f72d	1	578	#/texts/562	Trace	code
+f24aa51241	1	579	#/texts/563	objects. For example, if we want to query traces t	text
+3fe0252525	1	580	#/texts/564	mlflow . search_traces ( filter_string = \"traces.e	code
+29cfe07b83	1	581	#/texts/565		code
+d971b47ab6	1	582	#/texts/566	)	code
+acaf38a54f	1	583	#/texts/567	The returned Pandas	text
+a21dce87d6	1	584	#/texts/568	DataFrame	code
+1512f70c9e	1	585	#/texts/569	provides you with the flexibility to further proce	text
+8d9fa33c9c	1	586	#/texts/570	Table 5-3	text
+c00a33d456	1	587	#/texts/571	lists the searchable fields you can use with	text
+ccbc9c25de	1	588	#/texts/572	mlflow.search_traces	code
+8d15e89093	1	589	#/texts/573	, at the time of writing.	text
+80ce827b4d	1	590	#/tables/2	| Field type     | Search path                | Op	table
+a948b19779	1	591	#/texts/574	metadata.*	code
+2d16614a56	1	592	#/texts/575	=	code
+ba0a2c960c	1	593	#/texts/576	,	text
+27e7d8b7e9	1	594	#/texts/577	!=	code
+1b854e4caa	1	595	#/texts/578	tags.*	code
+c3aa1dad78	1	596	#/texts/579	=	code
+5b687d6c39	1	597	#/texts/580	,	text
+36459a1baf	1	598	#/texts/581	!=	code
+40d3b99eda	1	599	#/texts/582	traces.status	code
+9fc0ea1790	1	600	#/texts/583	=	code
+2623687ab4	1	601	#/texts/584	,	text
+588045f71d	1	602	#/texts/585	!=	code
+03b3e38b8e	1	603	#/texts/586	String equality\n(	text
+d28babcebb	1	604	#/texts/587	OK	code
+bf1a5b8eb3	1	605	#/texts/588	,	text
+d36fc7f817	1	606	#/texts/589	ERROR	code
+f56002e4cd	1	607	#/texts/590	,	text
+170c1d0ee7	1	608	#/texts/591	IN_PROGRESS	code
+c2139fcf26	1	609	#/texts/592	)	text
+a35b452a92	1	610	#/texts/593	traces.name	code
+f00a77629b	1	611	#/texts/594	=	code
+98a600474e	1	612	#/texts/595	,	text
+cd10596f8b	1	613	#/texts/596	!=	code
+8e0a00c808	1	614	#/texts/597	traces.timestamp_ms	code
+28f40e108d	1	615	#/texts/598	=	code
+6b0708e29b	1	616	#/texts/599	,	text
+36728b93e0	1	617	#/texts/600	<	code
+30affa11fc	1	618	#/texts/601	,	text
+cfc7220739	1	619	#/texts/602	<=	code
+0e1225788b	1	620	#/texts/603	,	text
+33257a32b9	1	621	#/texts/604	>	code
+92ae773b80	1	622	#/texts/605	,	text
+1eb2f4035f	1	623	#/texts/606	>=	code
+5e3517d389	1	624	#/texts/607	traces.execution_time_ms	code
+e53af90170	1	625	#/texts/608	=	code
+c1214ce328	1	626	#/texts/609	,	text
+63cf00467e	1	627	#/texts/610	<	code
+86a1df7ec0	1	628	#/texts/611	,	text
+04921c680b	1	629	#/texts/612	<=	code
+9d8c6f7bd1	1	630	#/texts/613	,	text
+21fd8eeef4	1	631	#/texts/614	>	code
+da06f1f988	1	632	#/texts/615	,	text
+c8d0c0c01a	1	633	#/texts/616	>=	code
+7ea40a3958	1	634	#/texts/617	The syntax rules to query the traces are as follow	text
+18efa01141	1	635	#/texts/618	Table prefixes required	list_item
+acd20ccaf1	1	636	#/texts/619		list_item
+f7c53d4e73	1	637	#/texts/620	Always use	text
+85b5af03c9	1	638	#/texts/621	attributes.	code
+2b7568da30	1	639	#/texts/622	,	text
+a16f13af2c	1	640	#/texts/623	tags.	code
+80d59a6b68	1	641	#/texts/624	, or	text
+cb1ab87b33	1	642	#/texts/625	metadata.	code
+2d3d9692d3	1	643	#/texts/626	Backticks for dots	list_item
+adc969f13d	1	644	#/texts/627		list_item
+e01de991dd	1	645	#/texts/628	Fields with dots need backticks, e.g.,	text
+c318e6824a	1	646	#/texts/629	tags.`mlflow.traceName`	code
+c8958c32c2	1	647	#/texts/630	Single quotes only	list_item
+3af67cc32c	1	648	#/texts/631		list_item
+4282ce77c2	1	649	#/texts/632	String values must use single quotes, e.g.,	text
+2189ba50ce	1	650	#/texts/633	'value'	code
+1dfa08e796	1	651	#/texts/634	Case sensitive	list_item
+0cdd3fc508	1	652	#/texts/635	All field names and values are case sensitive	list_item
+15c26f4491	1	653	#/texts/636	AND only	list_item
+c666c63be7	1	654	#/texts/637	OR operators are not supported (yes, you read that	list_item
+043406c3aa	1	655	#/texts/638	We recommend checking	text
+9b8ecec9e4	1	656	#/texts/639	the latest MLflow documentation	text
+0d4803a2f8	1	657	#/texts/640	for the most up-to-date search fields and syntax r	text
+a8b75d34eb	1	658	#/texts/641	We will not cover the specific syntax in detail, a	text
+fc9a0ec52d	1	659	#/texts/642	In	text
+105194b0a3	1	660	#/texts/643	Chapter 9	text
+4f92eaba12	1	661	#/texts/644	, we'll take things further and show how traces ar	text
+d5b3a572bf	1	662	#/texts/556	MLflow Experiment UI showing options for filtering	caption
+fa84509ca2	1	663	#/texts/645	Conclusion and Key Takeaways	title
+3571097159	1	664	#/texts/646	In this chapter, we demonstrated how to instrument	text
+a4d6c4f991	1	665	#/texts/647	MLflow offers native support for automated tracing	text
+eda99fac37	1	666	#/texts/648	Here are the key takeaways for this chapter:	text
+095c398229	1	667	#/texts/649	Standard logging is not enough for GenAI applicati	list_item
+fb70fa4041	1	668	#/texts/650		list_item
+050e5b1bf6	1	669	#/texts/651	MLflow Tracing consists of two main components:	text
+22111cf10c	1	670	#/texts/652	Trace	code
+c0f30ca8d0	1	671	#/texts/653	and	text
+97448896b2	1	672	#/texts/654	Span	code
+db4dc57b09	1	673	#/texts/655	. Additionally, each	text
+99d443cbb0	1	674	#/texts/656	Trace	code
+a6733e8f92	1	675	#/texts/657	object consists of:	text
+9ce0f46614	1	676	#/texts/658		list_item
+8e1cf5fa6f	1	677	#/texts/659	TraceInfo	code
+2383f06a25	1	678	#/texts/660	: Metadata information about the trace	text
+59ca7ee89b	1	679	#/texts/661		list_item
+aae4b1fa4b	1	680	#/texts/662	TraceData	code
+505f09b5ee	1	681	#/texts/663	: A list of	text
+c26b6353e3	1	682	#/texts/664	Span	code
+a8ab9db1dc	1	683	#/texts/665	objects containing detailed information about the 	text
+095c87e2f2	1	684	#/texts/666	Plan on what information is important to capture. 	list_item
+c90496fdff	1	685	#/texts/667	Start with automated tracing, then supplement with	list_item
+9661a1c93f	1	686	#/texts/668	Use MLflow Fluent APIs for manual tracing. They ar	list_item
+46cdcd0707	1	687	#/texts/669	Use tags to enrich your traces. Incorporating tags	list_item
+6de09d3a79	1	688	#/texts/670	Incorporating traces is a fundamental step in buil	text
+d154feb352	1	689	#/texts/671	Chapter 9	text
+d9aeb9060e	1	690	#/texts/672	, we will explore how the traces we have instrumen	text

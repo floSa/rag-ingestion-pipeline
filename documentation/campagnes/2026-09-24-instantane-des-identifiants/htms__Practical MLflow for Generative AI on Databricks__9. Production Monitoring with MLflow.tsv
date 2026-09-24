@@ -1,0 +1,370 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+e41f55d8ee	1	0	#/texts/0	Chapter 9. Production Monitoring with MLflow	title
+c1fb233225	1	1	#/texts/1	In	text
+2154b747b6	1	2	#/texts/2	Chapter 8	text
+d22054dfda	1	3	#/texts/3	, we successfully deployed our GenAI application a	text
+42694757a4	1	4	#/texts/4	From our experience, we found that many teams focu	text
+02b3598b2e	1	5	#/texts/5	The long-term success depends on strong production	text
+1f7af5f5dc	1	6	#/texts/6	In this chapter, we'll explore how to use MLflow t	text
+a5d48a94cf	1	7	#/texts/7	Types of Metrics to Monitor	title
+af12a3bb3f	1	8	#/texts/8	Before exploring how MLflow can enhance production	text
+0026fa510a	1	9	#/texts/9	Operational Metrics	section_header
+33ffee2a0f	1	10	#/texts/10	These measurements (	text
+6ee8251354	1	11	#/texts/11	Table 9-1	text
+140a49c1d5	1	12	#/texts/12	) track system-level performance, reliability, and	text
+900e5f3cc3	1	13	#/tables/0	| Metric type          | Description              	table
+6560fe9427	1	14	#/texts/13	End-to-end execution time of the application	list_item
+1a084749ed	1	15	#/texts/14	Detailed latency breakdown of the key components i	list_item
+58d50241ed	1	16	#/texts/15	Execution time of agent for each request	list_item
+d30f275e10	1	17	#/texts/16	Retrieval time from FAQ vector search	list_item
+eb6e1b5dae	1	18	#/texts/17	Number of requests processed by the application in	list_item
+81ceb6a740	1	19	#/texts/18	Number of failures returned by the application in 	list_item
+e4063f8adc	1	20	#/texts/19	Component failure in the application	list_item
+d5081cbe8d	1	21	#/texts/20	Number of requests in past seven days	list_item
+2931cd73d3	1	22	#/texts/21	Number of failures in the past seven days	list_item
+57f374e1e2	1	23	#/texts/22	Number of FAQ vector search retrieval failures	list_item
+4233a9a135	1	24	#/texts/23	Number of Databricks FMAPI call failures	list_item
+7cb3b1f161	1	25	#/texts/24	LLM input and output token consumption patterns	list_item
+152f310b96	1	26	#/texts/25	System resource utilization	list_item
+b6275118c7	1	27	#/texts/26	Number of LLM input and output tokens from Databri	list_item
+09a53321f6	1	28	#/texts/27	CPU utilization of model serving endpoint	list_item
+716eca0044	1	29	#/texts/28	Memory utilization of model serving endpoint	list_item
+8ef8f441a2	1	30	#/texts/29	These metrics are quantitative, structured, and ea	text
+16451fbd73	1	31	#/texts/30	Quality Metrics	section_header
+a53faf17fc	1	32	#/texts/31	These measurements (	text
+22b681c574	1	33	#/texts/32	Table 9-2	text
+ed55063064	1	34	#/texts/33	) track the overall quality of the GenAI applicati	text
+0e50891a03	1	35	#/tables/1	| Metric type           | Description             	table
+81f2e7c1da	1	36	#/texts/34	Factual accuracy of the response:	list_item
+692058b710	1	37	#/texts/35	Is the application able to understand domain-speci	list_item
+688d8a45ed	1	38	#/texts/36	Is the application referencing the right sources?	list_item
+51902d6ca6	1	39	#/texts/37	Tone of response:	list_item
+3f32356a28	1	40	#/texts/38	Is the response adhering to corporate guidelines?	list_item
+454a462321	1	41	#/texts/39	Is the response overly informal?	list_item
+147a819c00	1	42	#/texts/40	Is the application using the right FAQ information	text
+c3828b403a	1	43	#/texts/41	Bias content: does the response discriminate again	list_item
+241455c81e	1	44	#/texts/42	Harmful content: does the response contain any inf	list_item
+60dca5d15d	1	45	#/texts/43	Compliant with regulations: does the response cont	list_item
+55f34a8ff1	1	46	#/texts/44	How are the users rating the application?	list_item
+0012b33282	1	47	#/texts/45	What feedback are the users providing?	list_item
+f4321119ad	1	48	#/texts/46	These metrics are derived from unstructured text d	text
+21da3f8c3a	1	49	#/texts/47	Business Impact Metrics	section_header
+ae0457c322	1	50	#/texts/48	These measurements (	text
+94d7919507	1	51	#/texts/49	Table 9-3	text
+d49cab90cf	1	52	#/texts/50	) track whether the GenAI application is able to m	text
+dfa5e72196	1	53	#/tables/2	| Metric type          | Description              	table
+cd86ff3168	1	54	#/texts/51	How many users over the past week? How many of the	list_item
+6f34d1fa81	1	55	#/texts/52	What are the commonly asked topics?	list_item
+4bdab46b21	1	56	#/texts/53	What are some popular topics that the application 	list_item
+ccf5704b79	1	57	#/texts/54	Measures the improvement that the application brin	text
+e5220d407d	1	58	#/texts/55	How much time-savings versus the current process?	list_item
+b65a345ea9	1	59	#/texts/56	Did customer satisfaction score improve?	list_item
+4df27650b9	1	60	#/texts/57	Did it increase the overall task completion rate?	list_item
+8f62c578a4	1	61	#/texts/58	Number of customer support queries deflected by th	list_item
+751e76c641	1	62	#/texts/59	Customer satisfactory score over the past seven da	list_item
+9c70d4632d	1	63	#/texts/60	Again, traces captured by MLflow can help to gener	text
+67705b4921	1	64	#/texts/61	Online Monitoring Workflow	title
+e793195f71	1	65	#/texts/62	After you decide which metrics to monitor, the nex	text
+18bdd9fd74	1	66	#/texts/63	Instrumenting Traces	section_header
+8946c5a5ff	1	67	#/texts/64	The foundation of effective production observabili	text
+410d3effa7	1	68	#/texts/65	Chapter 5	text
+c66abf9bb9	1	69	#/texts/66	, we covered how to instrument an application usin	text
+ea6f1b180d	1	70	#/texts/67	Real-Time Capturing of Traces	section_header
+11ef75d253	1	71	#/texts/68	In	text
+d14973c5e0	1	72	#/texts/69	Chapter 8	text
+a88eac322c	1	73	#/texts/70	, we deployed our GenAI application as a Databrick	text
+673f5d6f37	1	74	#/texts/71	DATABRICKS_HOST=<databricks workspace URL>\nDATABRI	code
+dcf6ab6220	1	75	#/texts/72	If you have already deployed an endpoint (see	text
+d1ec9bc9b6	1	76	#/texts/73	Chapter 8	text
+6c18642fc0	1	77	#/texts/74	), go ahead and send a few requests to the endpoin	text
+c2538654a5	1	78	#/texts/75	sample_questions = [ \"Is airport check-in availabl	code
+b70e8fd1b7	1	79	#/texts/76		code
+372b28c5f1	1	80	#/texts/77	]	code
+6158962fb6	1	81	#/texts/78		code
+3c4f257c30	1	82	#/texts/79	def predict_endpoint ( question ): # Code for pred	code
+655c90a19a	1	83	#/texts/80		code
+833e30f1d8	1	84	#/texts/81	for question in sample_questions : predict_endpoin	code
+25be0dced3	1	85	#/texts/82	You will be able to see the traces captured in rea	text
+d265b1c39d	1	86	#/texts/83	Figure 9-1	text
+5e80fbe846	1	87	#/texts/84	).	text
+d11edf10e0	1	88	#/pictures/0	Screenshot of a logs interface displaying recent t	picture
+b8d5db3984	1	89	#/texts/86	Collecting End-User Feedback	section_header
+bc992a8f63	1	90	#/texts/87	Collecting a trace for a request is just one part 	text
+3bd77d1f9b	1	91	#/texts/88	MLflow simplified this process by allowing human f	text
+baa63800ab	1	92	#/texts/89	Figure 9-2	text
+13b0ff0294	1	93	#/texts/90	illustrates how MLflow collects both traces and fe	text
+5ced172266	1	94	#/pictures/1	Diagram illustrating the process of sending traces	picture
+b46ebc3303	1	95	#/texts/92	Note	section_header
+7bd60952d2	1	96	#/texts/93	As of this writing, traces are sent directly to a 	text
+05bf2ae723	1	97	#/texts/94	When the application from	text
+88bf81400b	1	98	#/texts/95	Chapter 8	text
+633d13730b	1	99	#/texts/96	is deployed on a Databricks model serving endpoint	text
+328bb1f9e5	1	100	#/texts/97	For the application to do this successfully, it fi	text
+bf4ae03c07	1	101	#/texts/98	# bash\nDATABRICKS_HOST=<databricks workspace URL>\n	code
+9dc6302776	1	102	#/texts/99	Most of these environment variables are self-expla	text
+077e93b238	1	103	#/texts/100	MLFLOW_EXPERIMENT_NAME	code
+6311ab67a1	1	104	#/texts/101	, which must match the MLflow Experiment that was 	text
+ae8fb0929d	1	105	#/texts/102	Note	section_header
+4aadf0f9ba	1	106	#/texts/103	When running the notebook provided with this chapt	text
+d7450e9704	1	107	#/texts/104	This is similar to what you saw in the previous su	text
+352fec2472	1	108	#/texts/105	import mlflow	code
+f56d2806df	1	109	#/texts/106		code
+a55a9cca15	1	110	#/texts/107	from typing import Optional	code
+71fb4c995a	1	111	#/texts/108		code
+79f927cbcb	1	112	#/texts/109	from mlflow.entities.assessment import AssessmentS	code
+d709b30c87	1	113	#/texts/110		code
+6f016f107f	1	114	#/texts/111	def log_end_user_feedback ( trace_id : str , satis	code
+9f9d117357	1	115	#/texts/112		code
+f940f20f87	1	116	#/texts/113	) -> dict : \"\"\"	code
+ecb9ebf9df	1	117	#/texts/114		code
+8abe10ddbd	1	118	#/texts/115	Record a thumbs-up or thumbs-down from the chat UI	code
+23c5031218	1	119	#/texts/116		code
+1e9d4ce3ca	1	120	#/texts/117	- trace_id: the MLflow trace identifier returned w	code
+49ace62dc1	1	121	#/texts/118		code
+63949bfcb3	1	122	#/texts/119	- satisfied: True for thumbs-up, False for thumbs-	code
+365bb7cb50	1	123	#/texts/120		code
+5f891a12f7	1	124	#/texts/121	- rationale: optional short comment or category la	code
+ddf86dde86	1	125	#/texts/122		code
+fcf50e06aa	1	126	#/texts/123	- user_id: optional application user identifier	code
+ca256261de	1	127	#/texts/124		code
+bacda2a359	1	128	#/texts/125	\"\"\" mlflow . log_feedback ( trace_id = trace_id , 	code
+7f8cf54b65	1	129	#/texts/126	To test this function, we can provide a	text
+57937fea95	1	130	#/texts/127	trace_id	code
+7f55ea1f4e	1	131	#/texts/128	from one of our production traces and provide feed	text
+3ec83a61ef	1	132	#/texts/129	# Change the variable values accordingly	code
+b3f8ac532d	1	133	#/texts/130		code
+d59bc29c0a	1	134	#/texts/131	trace_id = \"tr-43327f5eb8201db1ffaef99ee15540c1\"	code
+fa305c505f	1	135	#/texts/132		code
+a188867b40	1	136	#/texts/133	satisfied = False	code
+d38997560c	1	137	#/texts/134		code
+639fa694aa	1	138	#/texts/135	rationale = \"The answer should specify the fees ch	code
+189544f39d	1	139	#/texts/136		code
+b30180cdd8	1	140	#/texts/137	user_id = \"max.lim@example.com\"	code
+6ff98068b9	1	141	#/texts/138		code
+e4926639ff	1	142	#/texts/139	log_end_user_feedback ( trace_id , satisfied , rat	code
+cbd4b4e41e	1	143	#/texts/140	When we examine the trace now, we can see the user	text
+6f31b092ec	1	144	#/texts/141	Figure 9-3	text
+9fcd139862	1	145	#/texts/142	).	text
+7fc9fa8720	1	146	#/texts/143	Note	section_header
+f6876b93c6	1	147	#/texts/144	When collecting user feedback, be sure to handle a	text
+c6d8d2607c	1	148	#/pictures/2	Screenshot showing user feedback in a trace, inclu	picture
+3479ca793a	1	149	#/texts/146	The caveat here is that the application needs to k	text
+6fedb93afb	1	150	#/texts/147	trace_id	code
+b0796a8a57	1	151	#/texts/148	each piece of feedback belongs to. This means the 	text
+cb770fa50a	1	152	#/texts/149	trace_id	code
+22fda737dc	1	153	#/texts/150	so that human feedback can be correctly linked to 	text
+46193e6677	1	154	#/texts/151	Just a recap: we covered in	text
+455966371d	1	155	#/texts/152	Chapter 8	text
+4ea8c4fa13	1	156	#/texts/153	that when querying a Databricks model serving endp	text
+1374ad8587	1	157	#/texts/154	\"databricks_options\": {\"return_trace\": true}	code
+89e2395347	1	158	#/texts/155	to have the endpoint return trace information. Thi	text
+2229b85645	1	159	#/texts/156	trace_id	code
+f2310408d0	1	160	#/texts/157	, which can then be used to associate the feedback	text
+7dc1034cf8	1	161	#/texts/158	Register and Start Scorers for Online Monitoring	section_header
+565dda1724	1	162	#/texts/159	Once traces have been collected, the next step is 	text
+8a678ab7d2	1	163	#/texts/160	But what about unstructured data, such as the requ	text
+74e86c1362	1	164	#/texts/161	Chapter 6	text
+e4b8502ac1	1	165	#/texts/162	, we can reuse the same MLflow scorers that we use	text
+5f34de1a5f	1	166	#/texts/163	To recap, we can register our scorers to an MLflow	text
+c06884419f	1	167	#/texts/164	import mlflow from mlflow.genai.scorers import lis	code
+9695b42298	1	168	#/texts/165		code
+1ebda82b40	1	169	#/texts/166	from mlflow.genai.scorers import ( RelevanceToQuer	code
+ccd50d327f	1	170	#/texts/167		code
+03739cc6b0	1	171	#/texts/168	)	code
+e54c4ffb64	1	172	#/texts/169		code
+88eed29f6e	1	173	#/texts/170	# Set experiment path	code
+9607494c13	1	174	#/texts/171		code
+2b0a69b150	1	175	#/texts/172	experiment_path = < path to experiment >	code
+fca9201081	1	176	#/texts/173		code
+a70e5b7417	1	177	#/texts/174	mlflow . set_experiment ( experiment_path )	code
+838f82ee2a	1	178	#/texts/175		code
+6adc879673	1	179	#/texts/176	# Define the scorers	code
+73080ee687	1	180	#/texts/177		code
+dbd2dab69c	1	181	#/texts/178	eval_model = \"databricks:/databricks-gpt-oss-120b\"	code
+dd145c7397	1	182	#/texts/179		code
+6928b47d3c	1	183	#/texts/180	ua_relevancy_scorer = RelevanceToQuery ( model = e	code
+a7c75e5687	1	184	#/texts/181		code
+65e36e8d5a	1	185	#/texts/182	ua_safety_scorer = Safety ( model = eval_model )	code
+ffbc39a94a	1	186	#/texts/183		code
+8a656055ed	1	187	#/texts/184	ua_groundedness_scorer = RetrievalGroundedness ( m	code
+d54dcfda1a	1	188	#/texts/185		code
+a317999bbc	1	189	#/texts/186	scorer_list = [ ua_relevancy_scorer , ua_safety_sc	code
+8bc268fb1c	1	190	#/texts/187		code
+0ee6da0ad7	1	191	#/texts/188	]	code
+18e17f5f6f	1	192	#/texts/189		code
+37739eb11b	1	193	#/texts/190	# Register the scorers to MLflow	code
+8acff4a38e	1	194	#/texts/191		code
+424db0113c	1	195	#/texts/192	existing_scorers = [ i . name for i in list_scorer	code
+e9edce29bc	1	196	#/texts/193		code
+c425c30b7a	1	197	#/texts/194	for scorer in scorer_list : if scorer . name in ex	code
+477dcb55ec	1	198	#/texts/195	By default, registered scorers are not enabled for	text
+b4fb6e7d46	1	199	#/texts/196	from mlflow.genai.scorers import get_scorer , Scor	code
+4a69aa3276	1	200	#/texts/197		code
+345b562393	1	201	#/texts/198	# Load scorers	code
+808bc0e4a5	1	202	#/texts/199		code
+5827d10f73	1	203	#/texts/200	ua_relevancy_scorer = get_scorer ( name = \"relevan	code
+83eb354ba0	1	204	#/texts/201		code
+2d3939f645	1	205	#/texts/202	ua_safety_scorer = get_scorer ( name = \"safety\" )	code
+ad4cf224cd	1	206	#/texts/203		code
+7ef3967394	1	207	#/texts/204	ua_groundedness_scorer = get_scorer ( name = \"retr	code
+4180a2b223	1	208	#/texts/205		code
+81d816312f	1	209	#/texts/206	# Assemble scorers into a list	code
+78e8ce54b6	1	210	#/texts/207		code
+00226d771c	1	211	#/texts/208	unity_airways_scorers = [ ua_relevancy_scorer , ua	code
+ef1311020f	1	212	#/texts/209		code
+63a4b16634	1	213	#/texts/210	]	code
+8f77409c09	1	214	#/texts/211		code
+64a0ae7640	1	215	#/texts/212	for scorer in unity_airways_scorers : scorer . sta	code
+e27a201cde	1	216	#/texts/213	On the MLflow Experiment page, we can see that the	text
+2cc6aa93b5	1	217	#/texts/214	Figure 9-4	text
+96672be23e	1	218	#/texts/215	).	text
+ef7256fe43	1	219	#/pictures/3	Screenshot of an online monitoring configuration s	picture
+364d48f08b	1	220	#/texts/217	Let's break this down a bit. When we enable online	text
+b101bc62ed	1	221	#/texts/218	ScorerSamplingConfig	code
+86ce4ad463	1	222	#/texts/219	parameter. This setting controls how many of the c	text
+cab856dc4f	1	223	#/texts/220	Why do we need this? Running scorers on every prod	text
+23637a2f45	1	224	#/texts/221	Note	section_header
+ab72a48d01	1	225	#/texts/222	There is no universal rule for the optimal samplin	text
+d04700d611	1	226	#/texts/223	Enabling online monitoring automatically provision	text
+05617cb86d	1	227	#/texts/224	Figure 9-5	text
+2d6e3ca33d	1	228	#/texts/225	.	text
+3aa28393ad	1	229	#/pictures/4	Screenshot of Databricks Lakeflow Job interface sh	picture
+cd88b67f80	1	230	#/texts/227	At first, you might see that the collected traces 	text
+eb3d735bf6	1	231	#/texts/228	Figure 9-6	text
+653a34bdf2	1	232	#/texts/229	.	text
+190313d8e0	1	233	#/pictures/5	A dashboard displaying evaluation results for vari	picture
+31ac8632c5	1	234	#/texts/231	As of the time of writing, a default dashboard is 	text
+0738df26e5	1	235	#/texts/232	Figure 9-7	text
+5c324fbb78	1	236	#/texts/233	).	text
+91af6012d8	1	237	#/pictures/6	Dashboard displaying bar charts for operational me	picture
+e34e7b3ac5	1	238	#/texts/85	Screenshot of a logs interface displaying recent t	caption
+bb31ac3e82	1	239	#/texts/91	Diagram illustrating the process of sending traces	caption
+82db3c8702	1	240	#/texts/145	Screenshot showing user feedback in a trace, inclu	caption
+5d07d1a3aa	1	241	#/texts/216	Screenshot of an online monitoring configuration s	caption
+2324d186b4	1	242	#/texts/226	Screenshot of Databricks Lakeflow Job interface sh	caption
+031286ea9c	1	243	#/texts/230	A dashboard displaying evaluation results for vari	caption
+6e1b98465a	1	244	#/texts/234	Dashboard displaying bar charts for operational me	caption
+dc3acb9262	1	245	#/texts/235	Advanced Monitoring on Production Traces	title
+55869b9798	1	246	#/texts/236	Beyond the default metrics and running scorers on 	text
+11273cc98b	1	247	#/texts/237	Figure 9-8	text
+99102a6396	1	248	#/texts/238	).	text
+1f4d530c11	1	249	#/pictures/7	Screenshot of an MLflow UI showing a dialog for sy	picture
+6b737037dd	1	250	#/texts/240	Again, this will create a Databricks Lakeflow Job 	text
+18da8cc9b0	1	251	#/texts/241	Figure 9-9	text
+3cedfa1c09	1	252	#/texts/242	).	text
+27c8f6340a	1	253	#/pictures/8	Diagram of a Databricks Lakeflow Job setup for syn	picture
+23c361c464	1	254	#/texts/244	Note	section_header
+4b4d0a68a5	1	255	#/texts/245	At the time of writing, this feature is in private	text
+b4789665b3	1	256	#/texts/246	Natural Language Processing Analysis on Traces	section_header
+aa9cb1d2c6	1	257	#/texts/247	Trace data is even more valuable when further proc	text
+c4a7e02bce	1	258	#/texts/248	what are the most commonly asked question categori	text
+92dced8fd5	1	259	#/texts/249	Answering this requires applying natural language 	text
+78a8343476	1	260	#/texts/250	In Databricks, we can do this using the	text
+bf6e5ca309	1	261	#/texts/251	ai_query	code
+b4f6bf4c40	1	262	#/texts/252	function, which analyzes the data with LLMs.	text
+997bfcc1ba	1	263	#/texts/253	Figure 9-10	text
+da3f4456d4	1	264	#/texts/254	illustrates this.	text
+ef208b28b0	1	265	#/pictures/9	Diagram showing the workflow of using ai\\_query in	picture
+6c06d4dd84	1	266	#/texts/256	The	text
+33c4baf2d4	1	267	#/texts/257	ai_query	code
+99a2b4fa0c	1	268	#/texts/258	function is a SQL function that can be easily exec	text
+2090fba9ab	1	269	#/texts/259	SELECT \n  -- 1. Get the input content\n  get_json_o	code
+740d9c1f30	1	270	#/texts/260	The query performs intent classification on user q	text
+a525d29fbc	1	271	#/texts/261	Figure 9-11	text
+db4a47e201	1	272	#/texts/262	).	text
+0c406ddeaf	1	273	#/pictures/10	Table showing intent classification of user querie	picture
+09f9c39cb9	1	274	#/texts/264	Note	section_header
+3131404259	1	275	#/texts/265	This example goes beyond the built-in capabilities	text
+0062148790	1	276	#/texts/266	Custom Dashboard with Databricks AI/BI	section_header
+6f6bc625db	1	277	#/texts/267	The analysis we just described can be visualized i	text
+8439586483	1	278	#/texts/268	Figure 9-12	text
+c18c1cba73	1	279	#/texts/269	).	text
+4e5d60c770	1	280	#/texts/270	With the dataset, we can then create a dashboard t	text
+5926657084	1	281	#/texts/271	Figure 9-13	text
+19c881fb97	1	282	#/texts/272	).	text
+465d2db74b	1	283	#/pictures/11	Screenshot of the Databricks interface showing SQL	picture
+3c407b9113	1	284	#/pictures/12	A dashboard in Databricks visualizing question int	picture
+2d8ffafd63	1	285	#/texts/275	Creating Metrics Alerts	section_header
+f65091c87d	1	286	#/texts/276	In our analysis of the sample production traces, n	text
+b7d4803e00	1	287	#/texts/277	\"Others\"	code
+d67243ee17	1	288	#/texts/278	category. However, in the real world, this categor	text
+9e0cc059a0	1	289	#/texts/279	To do this, we can set up alerts in Databricks to 	text
+ef197b966d	1	290	#/texts/280	\"Others\"	code
+bd8646950d	1	291	#/texts/281	category (	text
+2647b2a41e	1	292	#/texts/282	Figure 9-14	text
+5bca4ae022	1	293	#/texts/283	).	text
+d8674e1a00	1	294	#/pictures/13	Screenshot of a Databricks interface showing a SQL	picture
+b465e8e042	1	295	#/texts/285	Interactively Gather Insights from Traces	section_header
+db98d74f05	1	296	#/texts/286	While visualization dashboards are essential for m	text
+4f72ae2366	1	297	#/texts/287	What if you could explore your traces just by aski	text
+1ed24f8959	1	298	#/texts/288	In Databricks workspace, you can do that with Geni	text
+ca5a899b2e	1	299	#/texts/289	\"Collecting End-User Feedback\"	text
+5d59fa1e63	1	300	#/texts/290	(see	text
+f6d08cc270	1	301	#/texts/291	Figure 9-15	text
+c5d158634d	1	302	#/texts/292	).	text
+0f63f3463a	1	303	#/pictures/14	Screenshot of Genie Code in Databricks identifying	picture
+8da5b5de3d	1	304	#/texts/294	Additionally, MLflow has its own Model Context Pro	text
+82367b4356	1	305	#/texts/295	Using Cursor as an example, we can simply add the 	text
+3552fc25a2	1	306	#/texts/296	{\n  \"mcpServers\": {\n    \"mlflow-mcp\": {\n      \"com	code
+8026cf3089	1	307	#/texts/297	Now, the MCP client can fetch trace data directly 	text
+1b34f5caff	1	308	#/texts/298	Figure 9-16	text
+72377159c2	1	309	#/texts/299	provides an overview on how this works.	text
+58228109a4	1	310	#/pictures/15	Diagram illustrating how the local MCP client quer	picture
+2c299a96a7	1	311	#/texts/301	For example, we could ask questions about negative	text
+99f9e50314	1	312	#/texts/302	Show me the traces in experiment id 34303492933895	code
+a8e9e049ae	1	313	#/texts/303	You should receive a response containing the trace	text
+19d6b3876b	1	314	#/texts/304	I found 1 trace where a human user provided negati	code
+83a0419f54	1	315	#/texts/305	This is just a simple example of interactive analy	text
+70ffa921ba	1	316	#/texts/306	By leveraging the data collected in MLflow along w	text
+cd9feceef4	1	317	#/texts/239	Screenshot of an MLflow UI showing a dialog for sy	caption
+50b40213b2	1	318	#/texts/243	Diagram of a Databricks Lakeflow Job setup for syn	caption
+428944675b	1	319	#/texts/255	Diagram showing the workflow of using ai_query in 	caption
+bebf34b194	1	320	#/texts/263	Table showing intent classification of user querie	caption
+76b11eb2e3	1	321	#/texts/273	Screenshot of the Databricks interface showing SQL	caption
+728db11e1a	1	322	#/texts/274	A dashboard in Databricks visualizing question int	caption
+2009288286	1	323	#/texts/284	Screenshot of a Databricks interface showing a SQL	caption
+8378d7b557	1	324	#/texts/293	Screenshot of Genie Code in Databricks identifying	caption
+80ff4b1041	1	325	#/texts/300	Diagram illustrating how the local MCP client quer	caption
+ccd4498618	1	326	#/texts/307	Expanding the Evaluation Dataset	title
+70d72147cc	1	327	#/texts/308	Remember the evaluation dataset we created in	text
+78eb75644a	1	328	#/texts/309	Chapter 6	text
+cb77091a44	1	329	#/texts/310	? That was the data we used during the development	text
+faa82753b8	1	330	#/texts/311	These real-world examples serve as valuable ground	text
+03db7cb2b3	1	331	#/texts/312	In MLflow, we can add selected traces to our evalu	text
+9e475fbe34	1	332	#/texts/313	# Retrieve dataset	code
+7604d5407f	1	333	#/texts/314		code
+a1ebb53a5d	1	334	#/texts/315	eval_dataset_new = mlflow . genai . datasets . get	code
+85646a2e8c	1	335	#/texts/316		code
+a5960cbfa0	1	336	#/texts/317	# Filter the traces	code
+b00e57d4ca	1	337	#/texts/318		code
+228c0728ba	1	338	#/texts/319	traces = mlflow . search_traces ( filter_string = 	code
+4952e95d05	1	339	#/texts/320		code
+9e1751f315	1	340	#/texts/321	)	code
+624001efc1	1	341	#/texts/322		code
+6ade84f146	1	342	#/texts/323	print ( f \"Found { len ( traces ) } successful tra	code
+d49043bc3a	1	343	#/texts/324		code
+ae85edb471	1	344	#/texts/325	# Add the traces to the evaluation dataset	code
+ad2042d9cb	1	345	#/texts/326		code
+c8f5587d51	1	346	#/texts/327	eval_dataset_new = eval_dataset_new . merge_record	code
+1224b18f8e	1	347	#/texts/328		code
+66d422b38c	1	348	#/texts/329	print ( f \"Added { len ( traces ) } records to eva	code
+537ded30ea	1	349	#/texts/330	What we've achieved here is a closed feedback loop	text
+d8df618ecf	1	350	#/texts/331	Chapter 6	text
+8c7ece6907	1	351	#/texts/332	, in this chapter, we've focused on the production	text
+caf7e11442	1	352	#/texts/333	Figure 9-17	text
+d5123be1c2	1	353	#/texts/334	).	text
+af5baa1e94	1	354	#/pictures/16	Diagram illustrating the evaluation-driven approac	picture
+7da3680fe0	1	355	#/texts/335	Diagram illustrating the evaluation-driven approac	caption
+a6db01a717	1	356	#/texts/336	Conclusion and Key Takeaways	title
+a0bacf564c	1	357	#/texts/337	In this chapter, we showed that launching a GenAI 	text
+c61c76ac70	1	358	#/texts/338	By collecting real-world production traces, we est	text
+a74bc4e864	1	359	#/texts/339	Chapter 3	text
+2c5f980bc7	1	360	#/texts/340	) to enhance quality, and expand our evaluation da	text
+e7c330d9bc	1	361	#/texts/341	Here are the key takeaways for this chapter:	text
+61c027785b	1	362	#/texts/342	Deployment is just the beginning. Launching a GenA	list_item
+45041cff74	1	363	#/texts/343	MLflow traces are the foundation for production ob	list_item
+b984b3bb2c	1	364	#/texts/344	User feedback is essential. Collecting feedback fr	list_item
+fdaf8eaeb5	1	365	#/texts/345	Ensure consistency in measurement. Use the same se	list_item
+536f755b56	1	366	#/texts/346	Use real-world data for the next iteration. Expand	list_item
+6aa8827e75	1	367	#/texts/347	From the earliest stages of development to the com	text
+849aad9775	1	368	#/texts/348	The monitoring workflow we built in this chapter d	text

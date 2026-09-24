@@ -1,0 +1,161 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+1b8ecc46bb	1	0	#/texts/0	Preface	title
+00b04b7b72	1	1	#/texts/1	I have been working in Data and AI for over a deca	text
+62e57b3dea	1	2	#/texts/2	In many teams I encounter today, there tends to be	text
+ae1de0268d	1	3	#/texts/3	Neither situation is inherently problematic, but b	text
+240662e3e3	1	4	#/texts/4	This book focuses on traditional ML. About a third	text
+6a85a1a5c1	1	5	#/texts/5	In that sense, MLOps provides the	text
+9746bbf3a1	1	6	#/texts/6	foundation	text
+7f5c2426cf	1	7	#/texts/7	: the principles and practices for building, deplo	text
+fcf950b94a	1	8	#/texts/8	While foundational models have unlocked powerful n	text
+c5335648ed	1	9	#/texts/9	My goal is to help to professionalize the field of	text
+77c0031f0d	1	10	#/texts/10	Why Databricks?	title
+4147fcde16	1	11	#/texts/11	I believe MLOps is not about tools but about princ	text
+b56b7d9e22	1	12	#/texts/12	When companies are designing their MLOps platform,	text
+1f51621648	1	13	#/texts/13	They can build the end-to-end planform from separa	list_item
+5623df5b11	1	14	#/texts/14	Alternatively, they can use an existing \"all-in-on	list_item
+804dfbc56f	1	15	#/texts/15	This is a tough choice, and which option is the ri	text
+668c4d1322	1	16	#/texts/16	Various \"all-in-one\" MLOps platforms exist. There'	text
+3f1afbc4ce	1	17	#/texts/17	Databricks was founded by the creators of Apache S	text
+1157298f32	1	18	#/texts/18	Apache Iceberg	text
+fa854f85c9	1	19	#/texts/19	, and the open sourcing of	text
+cc54aadbed	1	20	#/texts/20	Delta	text
+bcd9f198d4	1	21	#/texts/21	, Databricks has reinforced its commitment to open	text
+c881632aee	1	22	#/texts/22	Unity Catalog	text
+623d40284c	1	23	#/texts/23	, which it released as open-source software (OSS) 	text
+b2d86ee059	1	24	#/texts/24	As the ML field has evolved, Databricks has emerge	text
+5b292d1efd	1	25	#/texts/25	State of Production ML Survey from the Institute f	text
+b66907db67	1	26	#/texts/26	.	text
+bb12a8d6b2	1	27	#/texts/27	One flagship tool is	text
+1dfde442f7	1	28	#/texts/28	MLflow	text
+94510bbb25	1	29	#/texts/29	, which is well known and widely used. It was one 	text
+e1639e8cc4	1	30	#/texts/30	Finally, Databricks has also acquired Tecton,	text
+67fc82db44	1	31	#/texts/31	1	text
+0089aa00d8	1	32	#/texts/32	which is one of the leading players in feature sto	text
+fd1743efca	1	33	#/texts/33	Databricks' focus on open source and making these 	text
+0f3584d931	1	34	#/texts/34	So having worked across a range of tools and platf	text
+0b124bfebc	1	35	#/texts/35	Who and What This Book Is For	title
+21413d3d34	1	36	#/texts/36	This is a technical book. That means you should ha	text
+b08d5cd4b6	1	37	#/texts/37	This is also a book with a lot of code. To benefit	text
+774a965e99	1	38	#/texts/38	This book also covers architectures and offers dif	text
+d44781e119	1	39	#/texts/39	Writing a technical book covering different platfo	text
+e4d37ffbb9	1	40	#/texts/40	I have written this book as the handbook I wish I'	text
+8412b11d93	1	41	#/texts/41	How This Book Is Organized	title
+f3e655e784	1	42	#/texts/42	The book focuses on two main use cases: traditiona	text
+76958515db	1	43	#/texts/43	2	text
+0d8b529ac9	1	44	#/texts/44	through	text
+8b478bf5c0	1	45	#/texts/45	6	text
+2e927257ff	1	46	#/texts/46	) and an LLM-based application (which I cover in C	text
+ba353d4f90	1	47	#/texts/47	7	text
+a3a75a684a	1	48	#/texts/48	through	text
+24cd79af7a	1	49	#/texts/49	9	text
+443d1277e5	1	50	#/texts/50	). It also covers how to deploy these applications	text
+30b9600fb9	1	51	#/texts/51	In	text
+232fa89e8c	1	52	#/texts/52	Chapter 1	text
+c7bd004a4e	1	53	#/texts/53	, I start the book by breaking down the MLOps prin	text
+f20e17f8e5	1	54	#/texts/54	In	text
+d988d6cdd2	1	55	#/texts/55	Chapter 2	text
+6cbf8a68f2	1	56	#/texts/56	, I take you on a deep dive into different options	text
+c5e28782d9	1	57	#/texts/57	In	text
+6efc4a2872	1	58	#/texts/58	Chapter 3	text
+46c441f1a3	1	59	#/texts/59	, I go through the main components of MLflow for t	text
+8db4f14dd5	1	60	#/texts/60	In	text
+0aeb5c11a8	1	61	#/texts/61	Chapter 4	text
+106a70abd5	1	62	#/texts/62	, I discuss the different Model Serving architectu	text
+95e60f3264	1	63	#/texts/63	In	text
+47b8a8bde7	1	64	#/texts/64	Chapter 5	text
+5d5322c23f	1	65	#/texts/65	, I focus on the deployment of the whole ML pipeli	text
+3ed6ebde0d	1	66	#/texts/66	In	text
+03b392e128	1	67	#/texts/67	Chapter 6	text
+b98b98bf8f	1	68	#/texts/68	, I cover the Data Quality Monitoring functionalit	text
+2bd13e90b6	1	69	#/texts/69	Chapters	text
+021bab1239	1	70	#/texts/70	7	text
+ae24af46e6	1	71	#/texts/71	through	text
+370e95bc23	1	72	#/texts/72	9	text
+f25fb8d8a3	1	73	#/texts/73	form a special section in which I focus on the LLM	text
+93342be90c	1	74	#/texts/74	2	text
+1a22429d71	1	75	#/texts/75	through	text
+82d1e95c95	1	76	#/texts/76	6	text
+b8081c09cc	1	77	#/texts/77	, also applies to LLM-based applications.	text
+9bf3061629	1	78	#/texts/78	Chapter 7	text
+cc569a761c	1	79	#/texts/79	covers foundation models and context engineering.	text
+6bba68a1df	1	80	#/texts/80	Chapter 8	text
+3969a5aa65	1	81	#/texts/81	turns to MLflow for GenAI and how it supports eval	text
+735d5ee513	1	82	#/texts/82	Chapter 9	text
+14e52d13b5	1	83	#/texts/83	covers deploying and monitoring these systems in p	text
+b8abd83ea1	1	84	#/texts/84	In	text
+da27f08d02	1	85	#/texts/85	Chapter 10	text
+58f198a742	1	86	#/texts/86	, I explore how to navigate AI regulations, implem	text
+6761178cd0	1	87	#/texts/87	Conventions Used in This Book	title
+1b75258c9c	1	88	#/texts/88	The following typographical conventions are used i	text
+5b143bd4f5	1	89	#/texts/89	Italic	list_item
+351407f320	1	90	#/texts/90	Indicates new terms, URLs, email addresses, filena	list_item
+8bcb6653c8	1	91	#/texts/91	Constant width	list_item
+4eb83d0f41	1	92	#/texts/92	Used for program listings, as well as within parag	list_item
+5064cefaae	1	93	#/texts/93	Constant width bold	list_item
+521ab73b6a	1	94	#/texts/94	Shows commands or other text that should be typed 	list_item
+df14b830f6	1	95	#/texts/95	Constant width italic	list_item
+82a4416192	1	96	#/texts/96	Shows text that should be replaced with user-suppl	list_item
+5915ad05c5	1	97	#/texts/97	Tip	section_header
+79a0d6d1b4	1	98	#/texts/98	This element signifies a tip or suggestion.	text
+3881e11386	1	99	#/texts/99	Note	section_header
+c2b16d58c6	1	100	#/texts/100	This element signifies a general note.	text
+9be81e67c4	1	101	#/texts/101	Warning	section_header
+4b88470d65	1	102	#/texts/102	This element indicates a warning or caution.	text
+ffc95dc1f2	1	103	#/texts/103	Using Code Examples	title
+41677162c5	1	104	#/texts/104	Supplemental material (code examples, exercises, e	text
+f3bd131b01	1	105	#/texts/105	https://github.com/mvechtomova/oreilly-mlops-with-	text
+a1a8c28b0e	1	106	#/texts/106	.	text
+a6e22e7861	1	107	#/texts/107	If you have a technical question or a problem usin	text
+ee3c6aefc6	1	108	#/texts/108	support@oreilly.com	text
+94a76f57b9	1	109	#/texts/109	.	text
+4f328014d9	1	110	#/texts/110	This book is here to help you get your job done. I	text
+d256ca1f4f	1	111	#/texts/111	We appreciate, but generally do not require, attri	text
+0dd23a1a0d	1	112	#/texts/112	MLOps with Databricks	text
+7fc5825458	1	113	#/texts/113	by Maria Vechtomova (O'Reilly). Copyright 2026 Mar	text
+68718eb9e1	1	114	#/texts/114	If you feel your use of code examples falls outsid	text
+06e927a96f	1	115	#/texts/115	permissions@oreilly.com	text
+cca3784f46	1	116	#/texts/116	.	text
+a6c94bf526	1	117	#/texts/117	O'Reilly Online Learning	title
+2eb9257f9f	1	118	#/texts/118	Note	section_header
+0bc95975f3	1	119	#/texts/119	For more than 40 years,	text
+f63a5fa1ee	1	120	#/texts/120	O'Reilly Media	text
+e5c8c71c01	1	121	#/texts/121	has provided technology and business training, kno	text
+24ba8fba15	1	122	#/texts/122	Our unique network of experts and innovators share	text
+936acc499b	1	123	#/texts/123	https://oreilly.com	text
+a6b0ae37c2	1	124	#/texts/124	.	text
+115d26df72	1	125	#/texts/125	How to Contact Us	title
+28965c3fab	1	126	#/texts/126	Please address comments and questions concerning t	text
+f59f8e7ede	1	127	#/texts/127	O'Reilly Media, Inc.	list_item
+828fd8d6b6	1	128	#/texts/128	1005 Gravenstein Highway North	list_item
+81feef6b3d	1	129	#/texts/129	Sebastopol, CA 95472	list_item
+bfe3b2374d	1	130	#/texts/130	800-889-8969 (in the United States or Canada)	list_item
+95d81aa8c9	1	131	#/texts/131	707-827-7019 (international or local)	list_item
+f61f46ab3b	1	132	#/texts/132	707-829-0104 (fax)	list_item
+6ae7f389d1	1	133	#/texts/133	support@oreilly.com	list_item
+67739a2ae2	1	134	#/texts/134	https://oreilly.com/about/contact.html	list_item
+297d00f840	1	135	#/texts/135	We have a web page for this book, where we list er	text
+afe5cbee17	1	136	#/texts/136	https://oreil.ly/MLOps-with-Databricks	text
+07c6fa9622	1	137	#/texts/137	.	text
+131ba17ac9	1	138	#/texts/138	For news and information about our books and cours	text
+8a583e9f09	1	139	#/texts/139	https://oreilly.com	text
+db4a05fcd2	1	140	#/texts/140	.	text
+bb2bd6e126	1	141	#/texts/141	Find us on LinkedIn:	text
+29334dac59	1	142	#/texts/142	https://linkedin.com/company/oreilly	text
+7bd56941a4	1	143	#/texts/143	.	text
+a55c64c985	1	144	#/texts/144	Watch us on YouTube:	text
+6b3a84f29c	1	145	#/texts/145	https://youtube.com/oreillymedia	text
+d747764731	1	146	#/texts/146	.	text
+f56a605ea4	1	147	#/texts/147	Acknowledgments	title
+108a4695c4	1	148	#/texts/148	This book took a long time to write, and many peop	text
+a1ad6fadc2	1	149	#/texts/149	I am grateful to the reviewers who gave their time	text
+a1d47a35bc	1	150	#/texts/150	Some of the people who shaped this book did so wit	text
+cc57ee9f5f	1	151	#/texts/151	Thank you to Ba\u015fak Eskili, with whom I taught; to 	text
+9c2d9c20eb	1	152	#/texts/152	Thanks to the wonderful team at O'Reilly, especial	text
+5a244add80	1	153	#/texts/153	To my family, thank you for your patience while I 	text
+f06741d37d	1	154	#/texts/154	Finally, my cat Marx practically co-wrote this boo	text
+8d07b28bbe	1	155	#/texts/155	I have certainly left out people who should be her	text
+df0fc552fe	1	156	#/texts/156	1	text
+f445dedf3d	1	157	#/texts/157	For more information, check out	text
+3f9bac385d	1	158	#/texts/158	Databricks' announcement of its acquisition of Tec	text
+827dfd7aab	1	159	#/texts/159	.	text
