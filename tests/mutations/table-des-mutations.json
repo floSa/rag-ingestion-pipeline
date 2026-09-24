@@ -288,6 +288,22 @@
       "motif": "        attendue = empreinte_attendue(dossier) if arguments.action == \"comparer\" else \"\"",
       "remplacement": "        attendue = \"\"",
       "test": "test_comparer_un_instantane_non_inscrit_rend_un_verdict_avant_toute_connexion"
+    },
+    {
+      "id": "N3-a",
+      "constat": "la barriere remontee de la CLASSE aux seuls noms : les 8 chemins qui ne passent par aucun nom — sous-classe, dictionnaire, attribut de classe, argument par defaut, fermeture, partial, type(client), client.__class__ — reconstruisent un client",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "        setattr(original, INITIALISEUR, _leve_init)",
+      "remplacement": "        pass",
+      "test": "test_un_chemin_qui_ne_passe_par_aucun_nom_leve"
+    },
+    {
+      "id": "N3-b",
+      "constat": "la levee de classe posee sur TOUT, fabriques comprises : `_barrer_la_classe` cesse de rendre la raison, et ce qu'elle n'a pas pu prendre redevient tu",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "        return \"n'est pas une classe (fabrique ou fonction) — seul le rebondage des noms la prend\"",
+      "remplacement": "        return None",
+      "test": "test_une_fabrique_n_est_pas_prise_par_la_classe_et_la_raison_est_rendue"
     }
   ]
 }

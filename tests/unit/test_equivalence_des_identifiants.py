@@ -1184,6 +1184,188 @@ importlib.import_module("minio").Minio("h", access_key="a", secret_key="b")
 """,
 }
 
+# LES HUIT CHEMINS QUI NE PASSENT PAR AUCUN NOM, defaut N3 du quatrieme audit.
+#
+# Le rebondage des NOMS ne prend que les noms. `mesure` du 24 septembre 2026 sur
+# `minio` : sur 10 chemins de construction, **8 lui echappaient** — ceux-ci. Ils
+# passent tous par la CLASSE, et c'est pourquoi la barriere y descend : son
+# `__init__` leve (`_barrer_la_classe`).
+#
+# CHACUN CAPTURE LE CONSTRUCTEUR **AVANT** L'ARMEMENT, et c'est ce qui les rend
+# difficiles : au moment ou la barriere se pose, le nom `Minio` n'est plus le
+# seul chemin vers la classe. Une capture posterieure serait prise par le
+# rebondage, donc ne prouverait rien de neuf.
+_CAPTURES = """
+import functools
+
+from minio import Minio
+
+
+class SousClasse(Minio):
+    pass
+
+
+class Porteuse:
+    fabrique = Minio
+
+
+DICO = {"minio": Minio}
+
+
+def par_defaut(fabrique=Minio):
+    return fabrique("h", access_key="a", secret_key="b")
+
+
+def fermeture():
+    capture = Minio
+    return lambda: capture("h", access_key="a", secret_key="b")
+
+
+FERMETURE = fermeture()
+PARTIEL = functools.partial(Minio, "h", access_key="a", secret_key="b")
+LECTEUR = Minio("h", access_key="a", secret_key="b")
+"""
+
+CHEMINS_DE_CLASSE = {
+    "sous-classe capturee avant l'armement": _CAPTURES
+    + _ARMER
+    + '\nSousClasse("h", access_key="a", secret_key="b")\n',
+    "dictionnaire rempli avant l'armement": _CAPTURES
+    + _ARMER
+    + '\nDICO["minio"]("h", access_key="a", secret_key="b")\n',
+    "attribut de classe": _CAPTURES
+    + _ARMER
+    + '\nPorteuse.fabrique("h", access_key="a", secret_key="b")\n',
+    "argument par defaut": _CAPTURES + _ARMER + "\npar_defaut()\n",
+    "fermeture capturee avant l'armement": _CAPTURES + _ARMER + "\nFERMETURE()\n",
+    "partial capture avant l'armement": _CAPTURES + _ARMER + "\nPARTIEL()\n",
+    "type(client) d'un client construit avant": _CAPTURES
+    + _ARMER
+    + '\ntype(LECTEUR)("h", access_key="a", secret_key="b")\n',
+    "client.__class__ d'un client construit avant": _CAPTURES
+    + _ARMER
+    + '\nLECTEUR.__class__("h", access_key="a", secret_key="b")\n',
+}
+
+# LE CONTROLE NEGATIF DE N3, et il est indispensable : barrer la classe ne doit
+# PAS casser les clients de LECTURE du harnais, construits AVANT l'armement.
+# Leur `__init__` a deja tourne. Une barriere qui les casserait rendrait le
+# harnais inutilisable, et le rc du script ne dirait pas pourquoi.
+CLIENT_DE_LECTURE_SURVIT = (
+    _CAPTURES
+    + _ARMER
+    + """
+import json
+
+# Une methode de LECTURE sur le client construit avant l'armement. L'appel part
+# sur le reseau et echoue — il n'y a pas de MinIO en face — et c'est le verdict
+# recherche : la BARRIERE ne s'est pas interposee.
+from src.equivalence_des_identifiants import BarriereDEcritureError
+
+try:
+    LECTEUR.list_buckets()
+    verdict = "lit"
+except BarriereDEcritureError:
+    verdict = "CASSE PAR LA BARRIERE"
+except Exception as exc:
+    verdict = "lit" if "Barriere" not in type(exc).__name__ else "CASSE PAR LA BARRIERE"
+print(json.dumps(verdict))
+"""
+)
+
+
+class TestLaBarriereDescendALaClasse:
+    """N3 : les huit chemins qui ne passent par AUCUN nom levent desormais.
+
+    Ils portent sur `minio`, et c'est un choix de MESURE : c'est le seul des
+    trois SDK installe sur l'hote, donc le seul dont la porte qualite puisse
+    rougir sans conteneur. Les trois SDK sont mesures ensemble DANS L'IMAGE, et
+    le releve est au registre (§4.39.b).
+    """
+
+    def _lancer(self, code):
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=RACINE_DEPOT,
+            env={**os.environ, "PYTHONPATH": str(RACINE_DEPOT)},
+        )
+
+    @pytest.mark.parametrize("nom", sorted(CHEMINS_DE_CLASSE))
+    def test_un_chemin_qui_ne_passe_par_aucun_nom_leve(self, nom):
+        acheve = self._lancer(CHEMINS_DE_CLASSE[nom])
+
+        assert acheve.returncode != 0, f"{nom} : rc=0, le chemin a construit son client"
+        assert "BarriereDEcritureError" in acheve.stderr, (nom, acheve.stdout, acheve.stderr)
+
+    def test_le_client_de_lecture_construit_avant_l_armement_lit_toujours(self):
+        """LE CONTROLE NEGATIF : une barriere qui casse le harnais ne garde rien."""
+        assert _executer(CLIENT_DE_LECTURE_SURVIT) == "lit"
+
+    def test_l_armement_rend_ce_qu_il_a_pris_a_la_classe_et_ce_qu_il_n_a_pas_pu(self):
+        """Ce que la premiere couche n'a PAS pu prendre est RENDU, jamais tu."""
+        releve = _executer(
+            """
+import json
+from src.equivalence_des_identifiants import armer_les_barrieres
+
+armement = armer_les_barrieres()
+print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.sans_classe}))
+"""
+        )
+
+        assert releve["classes"] == ["minio.Minio", "minio.MinioAdmin"], releve
+        assert releve["sans_classe"] == {}, releve
+
+    def test_une_fabrique_n_est_pas_prise_par_la_classe_et_la_raison_est_rendue(self):
+        """LA BORNE DE LA PREMIERE COUCHE, et c'est le cas de `chromadb`.
+
+        Ses constructeurs sont des FONCTIONS, pas des classes : `HttpClient`,
+        `PersistentClient`, `EphemeralClient`… Il n'y a pas d'`__init__` a
+        barrer. Le rebondage des noms reste leur SEULE couche, et la raison
+        entre dans `sans_classe` pour que le script l'imprime au lieu de la
+        taire.
+
+        Ce cas ne se mesure pas sur l'hote par l'armement complet — `chromadb`
+        n'y est pas installe, et les deux constructeurs de `minio` sont des
+        classes. Il se mesure donc a la fonction, directement.
+        """
+        from src.equivalence_des_identifiants import _barrer_la_classe
+
+        def fabrique_de_client(*_a, **_k):  # pragma: no cover - jamais appelee
+            raise AssertionError("appelee")
+
+        journal: list[str] = []
+
+        raison = _barrer_la_classe(fabrique_de_client, "chromadb.HttpClient", journal)
+
+        assert raison is not None, "une fabrique n'a pas d'`__init__` : la raison est RENDUE"
+        assert "n'est pas une classe" in raison, raison
+        assert journal == []
+
+    def test_une_classe_est_prise_et_le_deja_construit_survit(self):
+        """L'autre sens, a la meme fonction : ce qui EST une classe est pris."""
+        from src.equivalence_des_identifiants import BarriereDEcritureError, _barrer_la_classe
+
+        class Client:
+            def __init__(self, hote):
+                self.hote = hote
+
+            def lire(self):
+                return f"lu sur {self.hote}"
+
+        deja_construit = Client("h")
+        journal: list[str] = []
+
+        assert _barrer_la_classe(Client, "faux.Client", journal) is None
+
+        with pytest.raises(BarriereDEcritureError):
+            Client("h")
+        assert journal == ["faux.Client.__init__"]
+        # LE CONTROLE NEGATIF : l'instance anterieure reste utilisable.
+        assert deja_construit.lire() == "lu sur h"
+
 
 class TestLesPortesNeuvesLevent:
     """LA PREUVE EST A L'EXECUTION, et elle ne depend d'aucune lecture du code.
@@ -1294,6 +1476,10 @@ class TestLEnumerationDesConstructeurs:
             "nebula3.gclient.net",
             "nebula3.gclient.net.SessionPool",
             "chromadb",
+            # `chromadb` EN DEUX SITES depuis N3 : ses noms publics sont des
+            # FABRIQUES, et les classes concretes qu'elles construisent vivent
+            # dans `chromadb.api.client`.
+            "chromadb.api.client",
         }, releve
 
     def test_toute_dependance_tierce_de_src_est_classee(self):

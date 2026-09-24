@@ -966,6 +966,29 @@ def _fabriques_de_client(module: Any) -> list[str]:
     )
 
 
+def _classes_de_client(module: Any) -> list[str]:
+    """Les CLASSES publiques dont le nom finit par `Client`.
+
+    **LA REGLE DE `chromadb.api.client`, et elle existe pour N3.** Les noms que
+    `chromadb` publie sont des FABRIQUES — des fonctions — donc sans `__init__`
+    a barrer : seul le rebondage des noms les prend, et il laisse passer les
+    huit chemins qui ne passent par aucun nom. Les classes CONCRETES qu'elles
+    construisent vivent dans `chromadb.api.client`, et ce sont elles qu'on barre.
+
+    **LA REGLE EST ETROITE, ET C'EST VOULU.** `_classes_hors_exception` prendrait
+    ici `Collection`, `Settings`, `System`, `GetResult` — tout ce dont la LECTURE
+    a besoin — et casserait le harnais au lieu de le garder. Le suffixe `Client`
+    ne retient que les trois classes de client : `Client`, `AdminClient` et leur
+    base `SharedSystemClient`. `mesure` dans l'image, 24 septembre 2026,
+    chromadb 0.6.3 : 3 classes retenues sur 20 noms publics du module.
+    """
+    return sorted(
+        nom
+        for nom, valeur in vars(module).items()
+        if not nom.startswith("_") and nom.endswith("Client") and inspect.isclass(valeur)
+    )
+
+
 # Par SDK : le module a barrer, et la regle qui ENUMERE ses constructeurs depuis
 # le SDK INSTALLE. Une liste de noms en dur se tromperait en silence le jour ou
 # le SDK en publie un de plus ; une regle, non.
@@ -976,6 +999,11 @@ CONSTRUCTEURS_DES_SDK: tuple[tuple[str, Callable[[Any], list[str]]], ...] = (
     ("nebula3.gclient.net", _pools_et_connexions),
     ("nebula3.gclient.net.SessionPool", _pools_et_connexions),
     ("chromadb", _fabriques_de_client),
+    # `chromadb` EN DEUX SITES, pour la meme raison que `nebula3` : ses noms
+    # publics sont des FABRIQUES, que seul le rebondage prend. Les classes
+    # concretes qu'elles construisent sont dans `chromadb.api.client`, et c'est
+    # a elles que la barriere descend (reparation N3).
+    ("chromadb.api.client", _classes_de_client),
 )
 
 
@@ -989,23 +1017,42 @@ class ArmementDesSdk:
             `from minio import Minio` deja execute est un site de plus.
         absents: Par module absent du processus, la raison. Un SDK qui ne s'importe
             pas n'y construit aucun client : c'est une constatation, pas un saut.
+        classes: Les noms qualifies dont la CLASSE elle-meme est barree — leur
+            `__init__` leve. C'est la couche qui prend les chemins que le
+            rebondage des noms ne voit pas.
+        sans_classe: Par nom qualifie que la classe n'a PAS pu prendre, la raison.
+            Une fabrique n'est pas une classe ; une classe d'extension C peut
+            refuser qu'on lui pose un attribut. Rendu, jamais tu.
     """
 
     barres: dict[str, list[str]]
     sites: dict[str, list[str]]
     absents: dict[str, str]
+    classes: list[str]
+    sans_classe: dict[str, str]
 
 
 def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
     """Fait LEVER tout constructeur de client de store, par quelque chemin que ce soit.
 
-    Deux gestes pour chaque constructeur, et il faut les deux :
+    DEUX COUCHES, et il faut les deux :
 
-    1. l'attribut du module du SDK est remplace — ce qui prend tout import
-       POSTERIEUR, tout `getattr(minio, "Minio")` et tout alias a venir ;
-    2. tout module DEJA charge qui porte l'objet d'origine est re-lie — ce qui
-       prend les `from minio import Minio` deja executes, alias compris, dans
-       n'importe quel paquet.
+    1. **la CLASSE**, dont l'`__init__` leve (:func:`_barrer_la_classe`). C'est
+       elle qui prend les chemins ne passant par AUCUN nom : une sous-classe,
+       un dictionnaire, un attribut de classe, un argument par defaut, une
+       fermeture ou un `partial` captures AVANT l'armement, `type(client)(…)`,
+       `client.__class__(…)`. `mesure` du 24 septembre 2026 sur `minio` :
+       **8 de ces 10 chemins echappaient** au seul rebondage des noms ;
+    2. **les NOMS**, re-lies partout (:func:`_barrer_le_constructeur`) : dans le
+       module du SDK — ce qui prend tout import POSTERIEUR et tout
+       `getattr(minio, "Minio")` — et dans tout module DEJA charge qui porte
+       l'objet d'origine, alias compris. C'est la seule couche pour les
+       constructeurs qui ne sont pas des classes, comme les fabriques
+       `chromadb`.
+
+    **CE QUE LA PREMIERE COUCHE NE CASSE PAS** : les clients de LECTURE du
+    harnais, construits AVANT l'armement. Leur `__init__` a deja tourne ; un
+    `__init__` qui leve n'empeche que les constructions a venir.
 
     Irreversible dans le processus, comme :func:`armer_les_barrieres`.
 
@@ -1016,6 +1063,8 @@ def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
     barres: dict[str, list[str]] = {}
     sites: dict[str, list[str]] = {}
     absents: dict[str, str] = {}
+    classes: list[str] = []
+    sans_classe: dict[str, str] = {}
     for chemin, enumerer in CONSTRUCTEURS_DES_SDK:
         try:
             module = importlib.import_module(chemin)
@@ -1030,12 +1079,83 @@ def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
         barres[chemin] = [f"{chemin}.{nom}" for nom in noms]
         for nom in noms:
             qualifie = f"{chemin}.{nom}"
+            # LA CLASSE D'ABORD : elle prend les chemins qui ne passent par
+            # aucun nom. Sur l'ORIGINAL, avant que le rebondage ne le remplace.
+            raison = _barrer_la_classe(getattr(module, nom), qualifie, journal)
+            if raison is None:
+                classes.append(qualifie)
+            else:
+                sans_classe[qualifie] = raison
             sites[qualifie] = _barrer_le_constructeur(module, nom, qualifie, journal)
-    return ArmementDesSdk(barres=barres, sites=sites, absents=absents)
+    return ArmementDesSdk(
+        barres=barres,
+        sites=sites,
+        absents=absents,
+        classes=sorted(classes),
+        sans_classe=sans_classe,
+    )
+
+
+# L'attribut ou la levee se pose, et le nommer n'est pas une coquetterie :
+# voir le commentaire de `_barrer_la_classe`.
+INITIALISEUR = "__init__"
+
+
+def _barrer_la_classe(original: Any, qualifie: str, journal: list[str]) -> str | None:
+    """Pose la levee sur l'`__init__` de la CLASSE. Rend la raison d'un echec, ou None.
+
+    **C'EST LA PREMIERE COUCHE, et c'est la reparation N3 du quatrieme audit.**
+    Le rebondage des NOMS ne prend que les noms : `mesure` du 24 septembre 2026
+    sur `minio`, 8 chemins de construction sur 10 lui echappaient — une
+    sous-classe, un dictionnaire, un attribut de classe, un argument par
+    defaut, une fermeture et un `partial` captures AVANT l'armement,
+    `type(client)(…)` et `client.__class__(…)`. Tous passent par la CLASSE,
+    aucun ne passe par le nom.
+
+    Poser la levee sur `__init__` les prend tous les huit, y compris les
+    captures anterieures a l'armement, parce qu'elles capturent la classe et
+    non ses methodes.
+
+    **ET LE CLIENT DE LECTURE SURVIT** : il est construit AVANT l'armement,
+    donc son `__init__` a deja tourne. Un `__init__` qui leve n'empeche que les
+    constructions A VENIR. `mesure` sur `minio` : le client de lecture LIT
+    encore apres l'armement.
+    """
+    if not inspect.isclass(original):
+        return "n'est pas une classe (fabrique ou fonction) — seul le rebondage des noms la prend"
+
+    def _leve_init(*_args: Any, **_kwargs: Any) -> None:
+        journal.append(f"{qualifie}.__init__")
+        raise BarriereDEcritureError(
+            f"{qualifie} construit : le harnais d'equivalence ne construit aucun client "
+            "de store apres armement. Ses clients de LECTURE sont construits avant."
+        )
+
+    try:
+        # LE GESTE PASSE PAR `setattr` ET PAR UNE CONSTANTE, et les deux sont
+        # contraints : `original.__init__ = …` est refuse par `mypy --strict`
+        # (`method-assign`), et `setattr(original, "__init__", …)` est refuse par
+        # `ruff` (B010, qui veut l'affectation). Aucune des deux ne se tait sans
+        # un `type: ignore` ou un `noqa`, que ce depot n'admet pas. Nommer
+        # l'attribut leve la contradiction sans rien desarmer : le geste pose est
+        # exactement le meme.
+        setattr(original, INITIALISEUR, _leve_init)
+    # UN `except TypeError` MOTIVE : une classe d'extension C refuse qu'on lui
+    # pose un attribut, et c'est un `TypeError`. La raison est RENDUE dans
+    # `sans_classe`, jamais tue — le rebondage des noms reste la seconde couche.
+    except TypeError as exc:
+        return f"{type(exc).__name__}: {exc}"
+    return None
 
 
 def _barrer_le_constructeur(module: Any, nom: str, qualifie: str, journal: list[str]) -> list[str]:
-    """Pose la levee sur `module.nom` ET sur tout module deja charge qui le porte."""
+    """Pose la levee sur `module.nom` ET sur tout module deja charge qui le porte.
+
+    **SECONDE COUCHE.** La premiere est :func:`_barrer_la_classe`, qui pose la
+    levee sur la CLASSE. Celle-ci reste, et elle est ce qui tient les
+    constructeurs qui ne sont PAS des classes — les fabriques de `chromadb` —
+    ainsi que les modules qui portent deja l'objet d'origine sous un autre nom.
+    """
     original = getattr(module, nom)
 
     def _leve(*_args: Any, **_kwargs: Any) -> Any:
