@@ -82,3 +82,118 @@ class TestLeComptageTourneSurLInstantaneDuDepot:
         )
 
         assert vide + moins_de_50 + tronques == total_elements, (vide, moins_de_50, tronques)
+
+
+# ─── Sur un JEU D'ESSAI, ou l'on connait les chiffres a l'avance ─────────────
+
+# **POURQUOI UN JEU D'ESSAI ET PAS SEULEMENT L'INSTANTANE DU DEPOT.** Aucun
+# chiffre par format ni par label n'etait tenu : le troisieme audit a fait
+# survivre deux mutants sur `compter-l-emiettement.py` — `lo == 0` devenu
+# `lo <= 1`, qui compte les elements d'UN caractere parmi les VIDES, et `rsplit`
+# devenu `split` sur l'extension, qui se trompe de format des qu'un dossier
+# porte un point. Les deux ne se voient que sur un jeu ou l'on sait d'avance ce
+# que chaque case doit valoir (registre 4.39.d).
+#
+# LA PROPRIETE QUE LE JEU PORTE : « aucun element vide ni d'un seul caractere
+# dans les PDF ». Elle rend la colonne PDF nulle sur deux lignes, et un
+# `lo <= 1` la casse. Et le PDF est range sous `livres/v1.2/`, un dossier a
+# POINT : un `split` y lirait le format « 2/UN LIVRE.PDF ».
+PDF_DU_JEU = "livres/v1.2/Un livre.pdf"
+HTML_DU_JEU = "htms/Un ouvrage/1. Un chapitre.html"
+
+
+def _ligne(cle, rang, texte, label="text"):
+    from src.equivalence_des_identifiants import identifiant_par_la_formule
+
+    ligne = {
+        "cle": cle,
+        "page_no": 1,
+        "position_in_page": rang,
+        "self_ref": f"#/texts/{rang}",
+        "text50": texte,
+        "label": label,
+    }
+    ligne["element_id"] = identifiant_par_la_formule(ligne)
+    return ligne
+
+
+def _jeu_d_essai(dossier):
+    """Un instantane a deux documents, dont un PDF sans vide ni caractere seul."""
+    from src.equivalence_des_identifiants import Emission, ecrire_l_instantane
+
+    pdf = Emission(
+        partition_key=PDF_DU_JEU,
+        cle="livres__Un livre",
+        lignes=[
+            _ligne("livres__Un livre", 0, "ab"),
+            _ligne("livres__Un livre", 1, "un texte de plus de vingt caracteres"),
+        ],
+    )
+    html = Emission(
+        partition_key=HTML_DU_JEU,
+        cle="htms__Un ouvrage__1. Un chapitre",
+        lignes=[
+            _ligne("htms__Un ouvrage__1. Un chapitre", 0, "", label="list_item"),
+            _ligne("htms__Un ouvrage__1. Un chapitre", 1, ")", label="list_item"),
+            _ligne("htms__Un ouvrage__1. Un chapitre", 2, "quatre mots ici encore"),
+        ],
+    )
+    ecrire_l_instantane(dossier, [pdf, html], {"date": "jeu d'essai"})
+    return dossier
+
+
+def _table_par_format(sortie):
+    """Rend `{tranche: {colonne: valeur}}` du PREMIER tableau, celui par format."""
+    lignes = sortie.split("=== TRANCHES DE LONGUEUR, PAR FORMAT")[1].splitlines()
+    entetes = lignes[1].split()
+    table = {}
+    for ligne in lignes[3:]:
+        if not ligne.strip():
+            break
+        champs = ligne.split()
+        # « < 50 (1-49) » et « 1 car. » portent des espaces : on recolle par la fin.
+        valeurs = champs[-len(entetes) + 1 :]
+        table[" ".join(champs[: len(champs) - len(valeurs)])] = dict(
+            zip(entetes[1:], valeurs, strict=True)
+        )
+    return table
+
+
+class TestLesChiffresParFormatSontTenus:
+    def test_aucun_element_vide_ni_d_un_caractere_dans_les_pdf(self, tmp_path):
+        """LA PROPRIETE DU JEU D'ESSAI, et elle tue `lo == 0` devenu `lo <= 1`.
+
+        Le HTML porte un vide ET un element d'un caractere ; le PDF n'a ni l'un
+        ni l'autre. Un `lo <= 1` ferait passer la case « vide » du HTML de 1 a 2.
+        """
+        acheve = subprocess.run(
+            [sys.executable, SCRIPT, str(_jeu_d_essai(tmp_path / "jeu"))],
+            capture_output=True,
+            text=True,
+            cwd=RACINE_DEPOT,
+            env={"PYTHONPATH": str(RACINE_DEPOT), "PATH": "/usr/bin:/bin"},
+        )
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+
+        table = _table_par_format(acheve.stdout)
+
+        assert table["vide"] == {"HTML": "1", "PDF": "0", "total": "1"}, table
+        assert table["1 car."] == {"HTML": "1", "PDF": "0", "total": "1"}, table
+        assert table["TOUS"] == {"HTML": "3", "PDF": "2", "total": "5"}, table
+
+    def test_le_format_se_lit_a_la_derniere_extension(self, tmp_path):
+        """Tue `rsplit` devenu `split` : `livres/v1.2/Un livre.pdf` est un PDF.
+
+        Un `split(".", 1)[-1]` y rendrait « 2/UN LIVRE.PDF ». Les deux colonnes
+        du tableau sont donc verifiees NOMMEMENT, pas seulement comptees.
+        """
+        acheve = subprocess.run(
+            [sys.executable, SCRIPT, str(_jeu_d_essai(tmp_path / "jeu"))],
+            capture_output=True,
+            text=True,
+            cwd=RACINE_DEPOT,
+            env={"PYTHONPATH": str(RACINE_DEPOT), "PATH": "/usr/bin:/bin"},
+        )
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+
+        assert sorted(_table_par_format(acheve.stdout)["TOUS"]) == ["HTML", "PDF", "total"]

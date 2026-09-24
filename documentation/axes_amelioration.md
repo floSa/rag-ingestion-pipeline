@@ -4309,7 +4309,7 @@ fenêtrage. Rien à faire de ce côté-ci : c'est la conséquence directe de l'o
 Aucune campagne d'évaluation n'a tourné sur une option simulée ; les colonnes
 disent ce que les stores porteraient, pas ce que l'agent en ferait.
 
-### 4.38 → la SECONDE reprise du lot 11 — le faux vert **bloquant** est fermé (**a** à **f** TRAITÉS), et l'émiettement est **COMPTÉ** (**g** : mesure, AUCUNE correction)
+### 4.38 → la SECONDE reprise du lot 11 — le faux vert **bloquant** est fermé (**a** à **f** TRAITÉS), et l'émiettement est **COMPTÉ** (**g** : mesure, AUCUNE correction). **Les **c**, **d** et **f** sont repris par le §4.39**
 
 Le second audit a déclaré le lot **non fusionnable** pour **un seul** motif
 bloquant, le **a** ci-dessous. Les deux faux verts du premier audit rougissent
@@ -4365,7 +4365,7 @@ par l'audit, son retrait dans `comparer` **seul** laissait 55 tests verts. Le
 pendant de `test_une_barriere_touchee_est_rouge_meme_avalee`, côté `comparer`,
 est écrit ; sous la mutation, il est le **seul** à rougir.
 
-#### 4.38.c → TRAITÉ — **l'empreinte de l'instantané devient une MESURE**, et `FileExistsError` devient un rc=1
+#### 4.38.c → TRAITÉ, puis **REPRIS par le §4.39.a** — l'empreinte devenait une MESURE, mais à un site que l'ARGUMENT désignait
 
 **Rien n'interdisait de re-tautologiser le harnais.** `mesuré` par l'audit :
 `figer` dans un dossier **neuf** après la campagne rend rc=0, puis `comparer`
@@ -4387,7 +4387,7 @@ c'est exactement le cas du second instantané qu'on viendrait d'écrire.
 où `FileExistsError` remontait nue — une trace d'appel n'est pas un verdict,
 dans un script dont le code de sortie **est** le comportement.
 
-#### 4.38.d → TRAITÉ — les origines des barrières sont **DÉRIVÉES du code**, à la place d'une seconde liste en dur
+#### 4.38.d → TRAITÉ, puis **RETIRÉ par le §4.39.b** — la dérivation AST a laissé passer quatre portes neuves sur cinq
 
 Le balayage des origines était borné à `MODULES = (nebula, vectors, storage,
 images)`, une seconde liste en dur, non défendue. `mesuré` par l'audit : une
@@ -4444,7 +4444,7 @@ imbriquée » est « avec une puce imbriquée **qui porte du texte** » — **21
 sinon ; et « C2 = 78, le texte de tous leurs **fragments** » est « de tous leurs
 **descendants porteurs** » — **79** si l'on compte sur les fragments.
 
-#### 4.38.f → TRAITÉ — **la table des mutations est versionnée**, et elle se rejoue
+#### 4.38.f → TRAITÉ, puis **REPRIS par le §4.39.c** — la table se rejouait, mais en écrivant dans l'arbre de travail
 
 Le défaut nommé au §4.35.e : les 33 mutations du premier passage n'étaient pas
 versionnées, et l'audit n'a **pas pu** les rejouer. Une mutation qu'on ne peut
@@ -4460,11 +4460,15 @@ fichier muté derrière soi, c'est livrer la mutation. Un motif qui n'apparaît 
 **exactement une fois** fait échouer le rejeu : une mutation qui ne mute rien
 ressemble à un garde qui ne voit rien.
 
-**Il entre dans la porte, et c'est une MESURE qui le décide**, `mesuré` le
-24 septembre 2026 : `make all` seul, **30,4 s** ; avec le rejeu, **34,2 s**,
-soit **+5,0 s** pour 14 mutations, ou **+16 %**. Le prix est tenu pour
-acceptable au regard de ce que le §4.35.e reprochait ; la cible `mutations` du
-`Makefile` est séparée, donc retirable d'une ligne si l'avis change.
+**Il entre dans la porte, et c'est une MESURE qui le décide.** Le chiffre écrit
+ici était **faux** — « 34,2 s » pour une somme qui en faisait **35,4** (30,4 +
+5,0), relevé par le troisième audit. Il a été **remesuré** après la réparation de
+la troisième reprise, et il ne vit plus qu'à **un seul site, le §4.39.e**, que
+le `Makefile` cite sans le répéter.
+
+Le prix est tenu pour acceptable au regard de ce que le §4.35.e reprochait ; la
+cible `mutations` du `Makefile` est séparée, donc retirable d'une ligne si
+l'avis change.
 
 #### 4.38.g → MESURÉ, lecture seule — **l'ÉMIETTEMENT compté sur l'instantané** : 742 éléments d'un seul caractère, dont 208 « . » et 121 « ) »
 
@@ -4567,6 +4571,284 @@ d'origine, et la reconstitution du paragraphe source : l'instantané ne porte ni
 la hiérarchie (`parent`, `children`) ni le texte complet au-delà de 50
 caractères. Les compter exigerait de **reconvertir** le corpus, donc de sortir de
 la lecture seule ; ce n'est pas fait, et ce n'est pas estimé.
+
+### 4.39 → la TROISIÈME reprise du lot 11 — les **deux** motifs bloquants sont fermés, et la preuve de non-écriture passe de la LECTURE DU CODE à l'EXÉCUTION
+
+Le troisième audit a déclaré le lot **non fusionnable** pour deux motifs
+bloquants : l'empreinte attendue se lisait à un site que l'**argument**
+désignait (**a**), et la dérivation AST des barrières laissait passer **quatre
+portes neuves sur cinq** (**b**). Ce qu'il a par ailleurs confirmé n'a pas
+bougé : A1 est fermé contre les vrais stores, l'ensemble déclaré tient, le
+chantier C est exact au dernier chiffre.
+
+**L'instantané n'a pas bougé.**
+`documentation/campagnes/2026-09-24-instantane-des-identifiants/` garde son
+empreinte `e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d`,
+octet pour octet — `mesuré` au début et à la fin de cette reprise par
+`sha256sum .../MANIFESTE.tsv`. **Aucun document du corpus ne porte un `mtime`
+du jour** : `find Datas \( -name '*.pdf' -o -name '*.html' \) -newermt
+"2026-09-24 00:00"` rend **0** sur **25** fichiers.
+
+**Porte qualité**, `mesuré` le 24 septembre 2026 : `make all`, rc=0, **1 053
+tests passés** (1 013 sur `f717565`), plus **27 mutations rejouées, 27 rouges**
+(14 sur `f717565`).
+
+#### 4.39.a → TRAITÉ, bloquant — **l'empreinte attendue ne dépend plus de l'argument**, et le répertoire de campagne est FIXE
+
+**Le faux vert, tel que l'audit l'a mesuré contre les vrais stores.**
+`empreinte_attendue` lisait `dossier.parent / EMPREINTES` — donc le fichier
+voisin du dossier qu'on lui **désignait**. Trois gestes suffisaient :
+`figer /sp/bis/2026-09-24-instantane-des-identifiants` (rc=0), un `sha256sum`
+et un `printf` dans `/sp/bis/empreintes-des-instantanes.tsv`, puis
+`comparer /sp/bis/…` → **rc=0, `OK`, 23 / 23**. Le harnais était de nouveau
+tautologique : il comparait le code du jour à un instantané écrit par le code du
+jour, authentifié par une table écrite par la même main. La réparation du
+§4.38.c avait déplacé le site sans le **fixer**.
+
+**Le choix, et pourquoi celui-là.** Les trois options ouvertes étaient une
+constante du module, un chemin résolu depuis le module, ou le refus de tout
+dossier hors d'un répertoire de campagne fixe. **Seule la troisième fait rendre
+1 aux trois gestes** — les deux premières ne ferment que le geste de
+comparaison, et laissent `figer` écrire n'importe où. Elle est retenue, et
+**combinée** à la première, parce qu'un montage en lecture seule est un choix
+d'exécution et non une garantie :
+
+1. `REPERTOIRE_DE_CAMPAGNE = Path(__file__).resolve().parents[1] /
+   "documentation/campagnes"`, résolu depuis l'emplacement du **module**.
+   `dossier_de_campagne` refuse tout dossier qui n'en est pas un **enfant
+   direct** — un `…/campagnes/bis/instantané` porterait sa propre table voisine ;
+2. `EMPREINTES_ATTENDUES`, un **dictionnaire du module**. Le fichier
+   `empreintes-des-instantanes.tsv` est **supprimé** : un site canonique, pas
+   deux.
+
+**La borne restante s'écrit ici, et elle est voulue** : modifier une empreinte
+ou inscrire un instantané exige un **commit sur `src/`**, revu comme du code.
+`src/` est monté en lecture seule dans l'image d'extraction, et c'est lui qui
+**est** le harnais.
+
+**Le montage change, et c'est la conséquence du choix.**
+`documentation/campagnes` était monté sur `/campagnes` ; il l'est désormais sur
+`/app/documentation/campagnes`, là où le module le résout. Le geste canonique du
+docstring de `verifier-l-equivalence-des-identifiants.py` est à jour.
+
+**Les trois gestes de l'audit, remesurés DANS L'IMAGE**, 24 septembre 2026, rc du
+processus :
+
+| geste | sur `f717565` | après réparation |
+|---|---|---|
+| `figer /sp/bis/2026-09-24-instantane-des-identifiants` | **rc=0**, instantané écrit | **rc=1**, « hors du repertoire de campagne /app/documentation/campagnes », **rien n'est écrit** |
+| `printf` dans `/sp/bis/empreintes-des-instantanes.tsv` | authentifiait | **la table voisine n'est plus lue du tout** |
+| `comparer /sp/bis/2026-09-24-instantane-des-identifiants` | **rc=0**, `OK`, 23 / 23 | **rc=1**, même refus, **avant tout armement et toute connexion** |
+
+**Et le geste légitime tient dans l'image**, même jour :
+`comparer documentation/campagnes/2026-09-24-instantane-des-identifiants`
+franchit le garde, lit la constante, arme **9 portes sur 11 sites** et **12
+constructeurs de SDK**, interroge le graphe et le corpus par ses clients de
+lecture, puis s'arrête sur `copie nettoyee manquante : /sp/cleaned/…` — la
+campagne les produit, ce lot ne les fabrique pas. **NON VÉRIFIÉ** : la
+comparaison complète des 23 documents contre les stores, faute des copies
+nettoyées ; ce lot ne touche pas à la logique de comparaison, seulement à la
+résolution du dossier.
+
+#### 4.39.b → TRAITÉ, bloquant — **la barrière descend aux CONSTRUCTEURS des SDK**, et la dérivation AST est RETIRÉE
+
+**Ce que la dérivation laissait passer**, `mesuré` par l'audit : quatre des cinq
+portes neuves — un alias d'import (`from minio import Minio as _M`), un
+`getattr(minio, "Minio")(…)`, un client construit **au niveau du module**, et une
+porte déposée dans `src/pipeline/`, hors du dossier balayé. Et ses quatre
+`HORS_PROCESSUS` ne reposaient que sur l'absence de `fastapi` **sur l'hôte** :
+dans l'image d'extraction, `src.docling_service.main` s'importe et les quatre
+ressortent **liés**.
+
+**Décision du pilote, 24 septembre 2026 : on ne rafistole pas l'analyse
+statique.** Aucune analyse statique du Python n'est complète — `getattr` suffit
+à la tromper — et chaque audit trouverait le trou suivant.
+
+**La barrière est posée sur les constructeurs eux-mêmes**
+(`barrer_les_sdk_de_store`). Deux gestes par constructeur, et il faut les deux…
+sauf que **la mesure en a rendu un inutile** : un `setattr` explicite sur le
+module du SDK figurait d'abord à côté du balayage de `sys.modules` ; le retirer
+ne rougissait **aucune** des sept portes neuves, parce que le module du SDK est
+lui-même dans `sys.modules`. Une ligne qu'aucune mutation ne tient est une ligne
+qui ne garde rien : elle est partie. Reste **le balayage de tout `sys.modules`**,
+qui re-lie l'objet d'origine partout où il est déjà nommé, alias compris, dans
+n'importe quel paquet.
+
+**Les constructeurs sont ÉNUMÉRÉS depuis le SDK installé, jamais de mémoire** —
+une liste en dur se trompe en silence. Une règle par SDK, écrite à son site :
+
+| module | règle | `mesuré` dans l'image, 24 septembre 2026 |
+|---|---|---|
+| `minio` | classes publiques qui **ne sont pas des exceptions** | `Minio`, `MinioAdmin` |
+| `nebula3.gclient.net` | classes publiques en `…Pool`, plus `Connection` | `Connection`, `ConnectionPool` |
+| `nebula3.gclient.net.SessionPool` | idem — `SessionPool` est une classe d'un **sous-module**, que le paquet n'expose pas | `SessionPool` |
+| `chromadb` | **fonctions** publiques en `…Client` (les noms en `Client` qui sont des **classes** sont les interfaces abstraites) | `AdminClient`, `AsyncHttpClient`, `Client`, `CloudClient`, `EphemeralClient`, `HttpClient`, `PersistentClient` |
+
+**12 constructeurs barrés** au total. Un SDK absent du processus est **nommé
+absent**, jamais sauté en silence : sur l'hôte, `nebula3` et `chromadb` ne
+s'importent pas, et le relevé le dit.
+
+**Les portes neuves, mesurées DANS L'IMAGE d'extraction**, là où le harnais
+tourne avec ses montages, rc du processus, 24 septembre 2026 : **0 / 12 lèvent
+sur `f717565`**, **12 / 12 après réparation**. Les cinq de l'audit, plus sept
+variantes de ce lot :
+
+| # | porte | `f717565` | après |
+|---|---|---|---|
+| 1 | alias d'import **après** armement | passe | **lève** |
+| 2 | alias d'import **avant** armement | passe | **lève** |
+| 3 | `getattr(minio, "Minio")(…)` | passe | **lève** |
+| 4 | client construit **au niveau du module**, importé après armement | passe | **lève** |
+| 5 | porte déposée dans `src/pipeline` (`MinioImageExporter._get_client`) | passe | **lève** |
+| 6 | `minio.MinioAdmin` | passe | **lève** |
+| 7 | `importlib.import_module("minio").Minio(…)` | passe | **lève** |
+| 8 | `nebula3` `ConnectionPool`, alias avant armement | passe | **lève** |
+| 9 | `nebula3` `SessionPool` par `getattr` | passe | **lève** |
+| 10 | `chromadb.HttpClient`, alias avant armement | passe | **lève** |
+| 11 | `chromadb.Client` par `getattr` | passe | **lève** |
+| 12 | `chromadb.PersistentClient`, que la production ne nomme nulle part | passe | **lève** |
+
+Sept d'entre elles entrent dans la porte qualité de l'hôte
+(`TestLesPortesNeuvesLevent`) : `minio` est le **seul** des trois SDK installé
+hors conteneur, et un test qui exige un conteneur n'est pas un test de la porte.
+
+**Les SEULS clients permis sont ceux de LECTURE, construits AVANT l'armement**,
+et ils portent leur propre borne, parce qu'ils survivent à la barrière :
+
+- la session Nebula est enveloppée dans `SessionEnLecture`, qui refuse toute
+  requête dont un fragment séparé par `;` ne commence pas par un verbe de
+  lecture (`USE`, `MATCH`, `GO`, `LOOKUP`, `FETCH`, `SHOW`, `DESCRIBE`, `DESC`,
+  `RETURN`, `YIELD`). **La borne est écrite au site** : un `;` à l'intérieur
+  d'une chaîne citée compterait comme un séparateur, donc le garde refuserait
+  **plus** que nécessaire, jamais moins ;
+- le client MinIO est enveloppé dans `LectureSeule`, qui ne laisse passer que
+  `list_objects` et journalise tout le reste avant de lever.
+
+**Les barrières par site restent**, comme seconde couche : 9 portes, 11 sites,
+`mesuré` dans l'image. Le test qui les tient ne **dérive** plus rien — il part de
+la liste **déclarée** `PORTES` — et **ne promet plus rien d'autre** que ce qu'il
+mesure : que les portes nommées sont déliées partout.
+
+**Ce que deviennent la dérivation, `NON_ECRIVAINS` et `HORS_PROCESSUS` :
+RETIRÉS**, avec les trois tests qui en dépendaient. Ils promettaient une
+exhaustivité (« aucun quatrième cas ») qu'ils ne tenaient pas, et **deux de
+leurs classements étaient faux sans que personne le voie** :
+`images.ensure_bucket` était donné pour un non-écrivain alors qu'il appelle
+`make_bucket` ; et les raisons d'`extraction.extract` et d'`extraction._extract_pdf`
+n'énuméraient que `persist`, `get_writer` et `crop_and_upload`, en **omettant
+`storage.forget_document`**. Les corriger aurait conservé un dispositif dont la
+décision du pilote dit qu'il ne peut pas être complété — ils sont nommés ici, et
+retirés là-bas. `SEMENCES` disparaît avec eux. `SDK_DE_STORE` **reste**, avec un
+rôle changé : il ne garde plus une dérivation, il nomme les SDK que la barrière
+d'exécution couvre, et rougit si la production en importe un autre.
+
+**La borne restante s'écrit ici** : un client construit dans un **sous-processus**,
+ou par une bibliothèque tierce qui parle à un store **hors de ces trois SDK** —
+un client S3 `boto3`, un driver HTTP écrit à la main — n'est pas atteint. La
+barrière tient sur ce qui est importé dans le processus du harnais.
+
+#### 4.39.c → TRAITÉ — **le rejeu ne touche plus JAMAIS l'arbre de travail**, et son verdict distingue un rouge d'un fichier cassé
+
+**Trois défauts, tous mesurés par l'audit.** Le rejeu mutait les fichiers de
+**production en place** : `extraction.py` restait muté **0,66 s** sur disque
+pendant `make all` ; après un `SIGKILL` le fichier restait muté, et le lancement
+suivant le prenait pour l'origine puis le « restaurait » **muté**. Le contrôle
+final par `git diff` comparait l'arbre à l'**index**, donc laissait passer un
+résidu **indexé** et rendait un faux « ECHEC » devant une modification légitime
+non commitée. Et une mutation qui **cassait la syntaxe** passait pour « ROUGE »,
+un rc non nul suffisant au verdict.
+
+**Le rejeu se fait sur une COPIE JETABLE**, dans un répertoire temporaire.
+`mesuré` le 24 septembre 2026 : **0,018 s** pour `src/`, `tests/`, `scripts/`,
+`documentation/campagnes/` et `pyproject.toml`, contre **0,335 s** pour un
+`git worktree add --detach`. La copie est retirée à la sortie ; **après un
+`SIGKILL` elle survit** dans le répertoire temporaire du système, et c'est sans
+conséquence : elle ne partage aucun fichier avec l'arbre, et le système la
+nettoie. C'est exactement la raison pour laquelle la copie est préférée au
+worktree, dont l'abandon laisserait une entrée dans `.git/worktrees` à purger.
+
+**Le même environnement Python, et aucun `uv run` dans la copie**, `mesuré` :
+le rejeu lance `sys.executable -m pytest` avec `cwd` sur la copie ; l'interpréte
+est `…/.claude/worktrees/lot-11-rag-reprise-be3271/.venv/bin/python3`, celui du
+parent, et la copie ne porte ni `.venv` ni `uv.lock` — rien à partir de quoi
+`uv` créerait un environnement neuf.
+
+**La sonde, mesurée de l'extérieur.** Un échantillonnage des `mtime` et des
+tailles de `src/` et `tests/` toutes les 5 ms, `__pycache__` exclu, pendant
+`make mutations` :
+
+| | `f717565` | après réparation |
+|---|---|---|
+| échantillons / durée | 475 en 4,8 s | 1 375 en 12,6 s |
+| fichiers touchés | **2** — `src/equivalence_des_identifiants.py` (465 événements), `src/docling_service/extraction.py` (272) | **aucun** |
+
+Le script porte en outre **sa propre** sonde : il relève les `mtime` avant et
+après, et rougit si l'un a bougé — **162 fichiers surveillés**. Elle remplace le
+`git diff`, et elle est elle-même tenue par une mutation (`A9-d`).
+
+**Le verdict exige les trois** : `rc == 1`, `failed` dans la dernière ligne, et
+**aucun** `error`. Chacune des trois clauses a son cas de test qui la tient
+seule — c'est ce qu'il a fallu pour que `A9-a`, `A9-b` et `A9-c` rougissent.
+Une entrée de table qui **casse la syntaxe** fait désormais échouer le rejeu,
+et c'est un test de bout en bout qui le montre.
+
+`mutations` est ajouté à `.PHONY`.
+
+#### 4.39.d → TRAITÉ — les quatre petits, et ce qu'ils ont coûté
+
+**4a — `scripts/` entre dans `lint` et dans `typecheck`.**
+`scripts/rejouer-les-mutations.py` était **exécuté** par `make all` sans être
+contrôlé par elle. `mesuré` le 24 septembre 2026 : mettre **tout** `scripts/`
+dans les deux cibles ne rougit **rien** — `ruff check src/ tests/ scripts/` :
+`All checks passed!`, 6 fichiers dans `scripts/` ; `mypy src/ scripts/` :
+`Success`, **40 → 42** fichiers. Les deux gardes cessent de diverger, comme pour
+`tests/` au lot 4.
+
+**4b — les deux mutants survivants de `compter-l-emiettement.py` meurent.**
+Aucun chiffre par format ni par label du §4.38.g n'était tenu. Un **jeu d'essai**
+à deux documents porte désormais la propriété **« aucun élément vide ni d'un
+caractère dans les PDF »** : le HTML en porte un de chaque, le PDF aucun. Le
+mutant `lo == 0` → `lo <= 1` fait passer la case « vide » du HTML de 1 à 2 et
+rougit. Le PDF du jeu est rangé sous `livres/v1.2/`, un dossier **à point** : le
+mutant `rsplit` → `split` y lit le format « 2/UN LIVRE.PDF », et le test vérifie
+les colonnes **nommément**. Les deux entrent dans la table (`A10-a`, `A10-b`).
+
+**4c — la clause `vu_du_graphe > 0` est TENUE, et non retirée.** Ce qu'elle
+garde : un graphe qui porterait **déjà** les identifiants mutés rendrait
+`emis_seul == 0`, et la mutation serait « vue » par le seul appariement, sans
+qu'aucune confrontation au graphe l'ait confirmée. Le test construit ce monde-là
+et exige la raison de la **mutation** ; son retrait la fait disparaître
+(mutation `A8`).
+
+**4e — la table versionnée passe de 14 à 27 mutations.** Chaque mutant survivant
+de l'audit et chaque porte neuve y entre. Une entrée peut nommer **son** fichier
+de test, parce que les gardes d'un script de campagne ne vivent pas dans le
+fichier de test du harnais. L'entrée `A4` — la porte neuve déposée dans
+`extraction.py` — **disparaît** avec la dérivation qu'elle tenait ; ce qu'elle
+mesurait est repris, plus largement, par `A6-a` et `A6-b`, qui rougissent les
+**sept** portes neuves d'un coup.
+
+#### 4.39.e → **le prix du rejeu sur la porte**, son SEUL site
+
+`mesuré` le 24 septembre 2026, deux exécutions consécutives chacune, sur le
+worktree de la reprise :
+
+| commande | durée |
+|---|---|
+| `make lint typecheck test format-check` (la porte **sans** le rejeu) | **33,5 s** puis **32,7 s** |
+| `make all` (la porte **avec** le rejeu) | **45,9 s** puis **45,9 s** |
+
+Soit **+13,2 s** pour **27** mutations, ou **+40 %**. Le chiffre du §4.38.f
+(« 34,2 s », faux — la somme annoncée en faisait 35,4) est remplacé ; le
+`Makefile` **cite ce paragraphe** au lieu de répéter le nombre, parce qu'un
+nombre à deux sites finit par mentir à l'un des deux.
+
+**Ce que le prix achète, et pourquoi il a triplé** : 13 mutations de plus, et
+surtout des mutations dont le test **lance des sous-processus** — `A6-a` et
+`A6-b` rejouent chacune les sept portes neuves dans sept processus neufs, soit
+2,0 s pièce. C'est le coût d'une preuve à l'exécution ; la mesurer par lecture du
+code coûtait moins et ne prouvait pas.
+
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 

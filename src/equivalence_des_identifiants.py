@@ -55,6 +55,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import inspect
 import json
 import re
 import sys
@@ -91,11 +92,41 @@ SITE_D_APPEL = "site d'appel"
 FORMAT = "instantane-des-identifiants/1"
 MANIFESTE = "MANIFESTE.tsv"
 CLES_D_OBJET = "cles-d-objet.tsv"
-# La table des empreintes ATTENDUES, rangee dans le PARENT du dossier de
-# l'instantane. Hors du dossier, et ce n'est pas un rangement : une empreinte
-# rangee a l'interieur se re-signerait elle-meme, puisqu'un second instantane
-# porte son propre manifeste. Voir :func:`empreinte_attendue`.
-EMPREINTES = "empreintes-des-instantanes.tsv"
+# ─── LE SITE DE L'EMPREINTE ATTENDUE, ET POURQUOI IL NE DEPEND PLUS DE L'ARGUMENT
+
+# LA VERSION PRECEDENTE LISAIT LA TABLE A COTE DU DOSSIER QU'ON LUI DESIGNAIT,
+# donc a un site que l'appelant choisissait. `mesure` du troisieme audit du lot
+# 11, contre les vrais stores : `figer /sp/bis/2026-09-24-instantane-des-identifiants`
+# (rc=0), un `sha256sum` et un `printf` dans `/sp/bis/empreintes-des-instantanes.tsv`,
+# puis `comparer /sp/bis/…` — rc=0, `OK`, 23 / 23. Le harnais etait de nouveau
+# TAUTOLOGIQUE : il comparait le code du jour a un instantane ecrit par le code
+# du jour, authentifie par une table ecrite par la meme main.
+#
+# DEUX SITES FIXES LE REMPLACENT, et aucun des deux ne se deduit de l'argument :
+#
+# 1. `REPERTOIRE_DE_CAMPAGNE`, resolu depuis L'EMPLACEMENT DE CE MODULE. Tout
+#    dossier hors de lui est REFUSE, pour `figer` comme pour `comparer` : les
+#    trois gestes de l'audit rendent desormais 1. `src/` est monte en LECTURE
+#    SEULE dans l'image d'extraction, et c'est lui qui EST le harnais ;
+# 2. `EMPREINTES_ATTENDUES`, une constante de ce module — plus un fichier voisin.
+#    LA BORNE RESTANTE S'ECRIT ICI, ET ELLE EST VOULUE : modifier une empreinte
+#    exige un commit sur `src/`, revu comme du code. Un instantane refige sans
+#    commit porte une autre empreinte, donc rougit.
+REPERTOIRE_DE_CAMPAGNE = Path(__file__).resolve().parents[1] / "documentation/campagnes"
+#
+# LE `pragma` CI-DESSOUS EST UN FAUX POSITIF MOTIVE, et il suit la doctrine du
+# depot (`.pre-commit-config.yaml`, hook `detect-secrets`) : un faux positif se
+# declare AU SITE, avec sa raison, jamais dans une baseline. Cette chaine est le
+# SHA-256 d'un manifeste VERSIONNE, recalculable par `sha256sum` sur un fichier
+# que tout le monde lit — c'est l'exact contraire d'un secret : sa valeur EST sa
+# publicite. Le hook ne voit qu'une chaine hexadecimale de haute entropie.
+EMPREINTES_ATTENDUES: dict[str, str] = {}
+# L'AFFECTATION EST SEPAREE POUR UNE SEULE RAISON : le `pragma` doit tenir sur la
+# ligne de la chaine, et cette ligne-ci fait exactement 100 caracteres. Dans le
+# dictionnaire, l'indentation en ajoutait quatre et `ruff` rougissait (E501).
+EMPREINTES_ATTENDUES["2026-09-24-instantane-des-identifiants"] = (
+    "e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d"  # pragma: allowlist secret
+)
 # `label` EN DERNIER, et ce n'est pas cosmetique : il n'est jamais vide, donc
 # aucune ligne ne finit par une espace que le hook `trailing-whitespace`
 # retirerait au commit en alterant l'instantane.
@@ -328,37 +359,57 @@ class EmpreinteInattendueError(ValueError):
     """L'instantane n'est pas celui que la table versionnee attend."""
 
 
-def empreinte_attendue(dossier: Path) -> str:
-    """L'empreinte que la table VERSIONNEE attend pour ce dossier d'instantane.
+class DossierHorsCampagneError(ValueError):
+    """Le dossier designe n'est pas dans le repertoire de campagne FIXE."""
 
-    Prise dans le PARENT du dossier, et c'est la mesure qui remplace la consigne
-    « ne refige pas ». `mesure` du second audit du lot 11 : rien n'interdisait de
-    refiger dans un dossier NEUF apres la campagne, puis de comparer contre lui
-    — rc=0 des deux cotes, et le harnais redevenait tautologique.
 
-    Un dossier ABSENT de la table est refuse : c'est exactement le cas du second
-    instantane qu'on vient d'ecrire.
+def dossier_de_campagne(dossier: Path, repertoire: Path = REPERTOIRE_DE_CAMPAGNE) -> Path:
+    """Rend le dossier RESOLU, et refuse tout ce qui est hors du repertoire fixe.
+
+    **C'EST LA REPARATION DU TROISIEME AUDIT**, et elle porte sur les DEUX
+    gestes : `figer` dans un scratchpad puis `comparer` contre lui y rendait
+    rc=0 des deux cotes. Le repertoire ne se deduit plus de l'argument : il est
+    resolu depuis l'emplacement de CE module.
+
+    Le parent doit etre le repertoire, et non un ancetre quelconque : un
+    `…/campagnes/bis/instantane` porterait sa propre table voisine, ce que la
+    version precedente acceptait.
 
     Raises:
-        EmpreinteInattendueError: Si la table manque, ou si ce dossier n'y est pas.
+        DossierHorsCampagneError: Si le dossier n'est pas un enfant direct du
+            repertoire de campagne.
     """
-    table = dossier.parent / EMPREINTES
-    if not table.exists():
-        raise EmpreinteInattendueError(
-            f"{table} manque : sans table versionnee, aucun instantane n'est authentifie"
+    resolu = Path(dossier).resolve()
+    if resolu.parent != repertoire.resolve():
+        raise DossierHorsCampagneError(
+            f"{resolu} est hors du repertoire de campagne {repertoire} : un instantane "
+            "ecrit ou compare ailleurs n'est authentifie par rien. Le harnais refuse."
         )
-    attendues: dict[str, str] = {}
-    for rang in table.read_text(encoding="utf-8").split("\n"):
-        if not rang or rang.startswith("#") or rang.startswith("dossier\t"):
-            continue
-        nom, _, empreinte = rang.partition("\t")
-        attendues[nom.strip()] = empreinte.strip()
-    if dossier.name not in attendues:
+    return resolu
+
+
+def empreinte_attendue(dossier: Path) -> str:
+    """L'empreinte que CE MODULE attend pour ce dossier d'instantane.
+
+    Prise dans :data:`EMPREINTES_ATTENDUES`, une constante de ce module, et non
+    plus dans un fichier voisin du dossier designe : l'argument ne peut plus
+    deplacer la table qui l'authentifie.
+
+    Un dossier ABSENT de la constante est refuse : c'est exactement le cas du
+    second instantane qu'on vient d'ecrire.
+
+    Raises:
+        DossierHorsCampagneError: Si le dossier est hors du repertoire fixe.
+        EmpreinteInattendueError: Si ce dossier n'est pas dans la constante.
+    """
+    resolu = dossier_de_campagne(dossier)
+    if resolu.name not in EMPREINTES_ATTENDUES:
         raise EmpreinteInattendueError(
-            f"{dossier.name} n'est pas dans {table} : un instantane non inscrit "
-            "n'est pas comparable — un second instantane porte sa propre empreinte."
+            f"{resolu.name} n'est pas dans EMPREINTES_ATTENDUES de "
+            f"{Path(__file__).name} : un instantane non inscrit n'est pas comparable "
+            "— un second instantane porte sa propre empreinte. L'inscrire exige un commit."
         )
-    return attendues[dossier.name]
+    return EMPREINTES_ATTENDUES[resolu.name]
 
 
 def lire_l_instantane(dossier: Path) -> Instantane:
@@ -771,6 +822,251 @@ def controle_negatif(partition_key: str, lignes: Sequence[Ligne]) -> list[Contro
     return resultats
 
 
+# ─── Les barrieres sur les SDK de store eux-memes ───────────────────────────
+
+# **POURQUOI LA BARRIERE DESCEND AU SDK, ET POURQUOI LA DERIVATION AST EST PARTIE.**
+#
+# Les barrieres par SITE (plus bas) remplacent des fonctions NOMMEES de
+# `src.docling_service`. Pour savoir lesquelles nommer, la version precedente
+# derivait les porteurs de client par lecture AST de `src/docling_service/*.py`.
+# Le troisieme audit du lot 11 lui a fait passer QUATRE portes neuves sur cinq :
+# un alias d'import (`from minio import Minio as _M`), un `getattr(minio,
+# "Minio")(...)`, un client construit au niveau du module, et une porte deposee
+# dans `src/pipeline/`. AUCUNE analyse statique du Python n'est complete —
+# `getattr` suffit a la tromper — et chaque audit trouverait le trou suivant.
+#
+# DECISION DU PILOTE, 24 septembre 2026 : on ne rafistole pas l'analyse
+# statique. La barriere se pose sur les CONSTRUCTEURS des SDK eux-memes. Une
+# fois armee, toute construction de client de store DANS CE PROCESSUS leve,
+# quel que soit le chemin qui y mene — alias, `getattr`, niveau de module,
+# n'importe quel paquet. Les barrieres par site restent, comme SECONDE COUCHE.
+#
+# LA BORNE RESTANTE S'ECRIT ICI : un client construit dans un SOUS-PROCESSUS,
+# ou par une bibliotheque tierce qui parle a un store hors de ces trois SDK
+# (un client S3 `boto3`, un driver HTTP ecrit a la main), n'est pas atteint.
+# La barriere tient sur ce qui est IMPORTE dans le processus du harnais.
+
+# Les SDK de store, et le module ou leurs constructeurs sont publies. Un SDK
+# absent du processus n'y construit rien : son absence est RENDUE, jamais tue.
+SDK_DE_STORE: tuple[str, ...] = ("minio", "nebula3", "chromadb")
+
+
+def _classes_hors_exception(module: Any) -> list[str]:
+    """Les classes publiques du module qui ne sont pas des exceptions.
+
+    La regle de `minio` : le module publie `Minio` et `MinioAdmin` a cote de ses
+    seules erreurs. Aucun nom en dur — un client de plus est pris tel quel.
+    """
+    return sorted(
+        nom
+        for nom, valeur in vars(module).items()
+        if not nom.startswith("_")
+        and inspect.isclass(valeur)
+        and not issubclass(valeur, BaseException)
+    )
+
+
+def _pools_et_connexions(module: Any) -> list[str]:
+    """Les classes publiques dont le nom finit par `Pool`, plus `Connection`.
+
+    La regle de `nebula3.gclient.net` : on n'entre dans le graphe que par un
+    pool — `ConnectionPool`, `SessionPool` — ou par la connexion nue. `Session`
+    n'est pas la : elle ne se construit pas, elle se demande a un pool barre.
+    """
+    return sorted(
+        nom
+        for nom, valeur in vars(module).items()
+        if not nom.startswith("_")
+        and inspect.isclass(valeur)
+        and (nom.endswith("Pool") or nom == "Connection")
+    )
+
+
+def _fabriques_de_client(module: Any) -> list[str]:
+    """Les FONCTIONS publiques dont le nom finit par `Client`.
+
+    La regle de `chromadb` : ses clients sont des fabriques (`HttpClient`,
+    `Client`, `PersistentClient`, `EphemeralClient`, `CloudClient`,
+    `AsyncHttpClient`, `AdminClient`), la ou les noms en `Client` qui sont des
+    CLASSES sont les interfaces abstraites (`ClientAPI`, `AsyncClientCreator`),
+    qu'on n'instancie pas. `mesure` le 24 septembre 2026, chromadb 0.6.3 :
+    7 fabriques, 4 interfaces.
+    """
+    return sorted(
+        nom
+        for nom, valeur in vars(module).items()
+        if not nom.startswith("_") and nom.endswith("Client") and inspect.isfunction(valeur)
+    )
+
+
+# Par SDK : le module a barrer, et la regle qui ENUMERE ses constructeurs depuis
+# le SDK INSTALLE. Une liste de noms en dur se tromperait en silence le jour ou
+# le SDK en publie un de plus ; une regle, non.
+# `nebula3` en DEUX sites : `SessionPool` est une classe d'un SOUS-MODULE, que
+# `nebula3.gclient.net` n'expose pas — l'y chercher ne rendrait que le module.
+CONSTRUCTEURS_DES_SDK: tuple[tuple[str, Callable[[Any], list[str]]], ...] = (
+    ("minio", _classes_hors_exception),
+    ("nebula3.gclient.net", _pools_et_connexions),
+    ("nebula3.gclient.net.SessionPool", _pools_et_connexions),
+    ("chromadb", _fabriques_de_client),
+)
+
+
+@dataclass
+class ArmementDesSdk:
+    """Ce que :func:`barrer_les_sdk_de_store` a pose.
+
+    Attributes:
+        barres: Par module de SDK, les noms qualifies des constructeurs barres.
+        sites: Par constructeur, les `module.attribut` re-lies — un
+            `from minio import Minio` deja execute est un site de plus.
+        absents: Par module absent du processus, la raison. Un SDK qui ne s'importe
+            pas n'y construit aucun client : c'est une constatation, pas un saut.
+    """
+
+    barres: dict[str, list[str]]
+    sites: dict[str, list[str]]
+    absents: dict[str, str]
+
+
+def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
+    """Fait LEVER tout constructeur de client de store, par quelque chemin que ce soit.
+
+    Deux gestes pour chaque constructeur, et il faut les deux :
+
+    1. l'attribut du module du SDK est remplace — ce qui prend tout import
+       POSTERIEUR, tout `getattr(minio, "Minio")` et tout alias a venir ;
+    2. tout module DEJA charge qui porte l'objet d'origine est re-lie — ce qui
+       prend les `from minio import Minio` deja executes, alias compris, dans
+       n'importe quel paquet.
+
+    Irreversible dans le processus, comme :func:`armer_les_barrieres`.
+
+    Args:
+        journal: Rempli a chaque constructeur touche, meme si la production
+            avale la levee. **Un journal non vide est un rouge.**
+    """
+    barres: dict[str, list[str]] = {}
+    sites: dict[str, list[str]] = {}
+    absents: dict[str, str] = {}
+    for chemin, enumerer in CONSTRUCTEURS_DES_SDK:
+        try:
+            module = importlib.import_module(chemin)
+        # UN `except Exception` LARGE, ET C'EST MOTIVE : l'absence d'un SDK se
+        # manifeste par un `ModuleNotFoundError`, mais aussi par tout ce que son
+        # import declenche chez un tiers. Elle est RENDUE dans `absents`, jamais
+        # tue — et un SDK absent du processus n'y construit aucun client.
+        except Exception as exc:
+            absents[chemin] = f"{type(exc).__name__}: {exc}"
+            continue
+        noms = enumerer(module)
+        barres[chemin] = [f"{chemin}.{nom}" for nom in noms]
+        for nom in noms:
+            qualifie = f"{chemin}.{nom}"
+            sites[qualifie] = _barrer_le_constructeur(module, nom, qualifie, journal)
+    return ArmementDesSdk(barres=barres, sites=sites, absents=absents)
+
+
+def _barrer_le_constructeur(module: Any, nom: str, qualifie: str, journal: list[str]) -> list[str]:
+    """Pose la levee sur `module.nom` ET sur tout module deja charge qui le porte."""
+    original = getattr(module, nom)
+
+    def _leve(*_args: Any, **_kwargs: Any) -> Any:
+        journal.append(qualifie)
+        raise BarriereDEcritureError(
+            f"{qualifie} construit : le harnais d'equivalence ne construit aucun client "
+            "de store apres armement. Ses clients de LECTURE sont construits avant."
+        )
+
+    _leve.__name__ = nom
+    # LE BALAYAGE SUFFIT, ET C'EST UNE MUTATION QUI L'A MONTRE. Un
+    # `setattr(module, nom, _leve)` explicite figurait ici ; le retirer ne
+    # rougissait AUCUNE des sept portes neuves, parce que le module du SDK est
+    # lui-meme dans `sys.modules` et que le balayage ci-dessous le re-lie comme
+    # les autres. Une ligne qu'aucune mutation ne tient est une ligne qui ne
+    # garde rien : elle est partie (registre 4.39.b).
+    sites: list[str] = []
+    for nom_du_module, charge in sorted(sys.modules.items()):
+        if charge is None:
+            continue
+        try:
+            attributs = list(vars(charge).items())
+        except TypeError:  # pragma: no cover - un module sans __dict__
+            continue
+        for nom_d_attribut, valeur in attributs:
+            if valeur is original:
+                setattr(charge, nom_d_attribut, _leve)
+                sites.append(f"{nom_du_module}.{nom_d_attribut}")
+    return sorted(set(sites) | {qualifie})
+
+
+# ─── Les clients de LECTURE, construits AVANT l'armement ────────────────────
+
+# Les verbes nGQL qui LISENT. Tout le reste — `INSERT`, `UPDATE`, `UPSERT`,
+# `DELETE`, `DROP`, `CREATE`, `REBUILD`, `SUBMIT` — est refuse.
+#
+# LA BORNE, ecrite au site : le controle porte sur le PREMIER MOT de chaque
+# fragment separe par `;`, et un `;` a l'interieur d'une chaine citee compterait
+# comme un separateur. Il refuserait alors plus que necessaire, JAMAIS moins :
+# c'est le sens sur lequel un garde peut se tromper.
+VERBES_DE_LECTURE: frozenset[str] = frozenset(
+    {"USE", "MATCH", "GO", "LOOKUP", "FETCH", "SHOW", "DESCRIBE", "DESC", "RETURN", "YIELD"}
+)
+
+
+class SessionEnLecture:
+    """Une session Nebula qui ne laisse passer que des requetes de LECTURE.
+
+    Une enveloppe par methodes nommees ne suffirait pas ici : `execute` est une
+    methode de lecture qui accepte n'importe quelle requete d'ecriture. Le
+    controle porte donc sur la REQUETE, verbe par verbe.
+    """
+
+    def __init__(self, session: Any, journal: list[str]) -> None:
+        self._session = session
+        self._journal = journal
+
+    def execute(self, requete: str) -> Any:
+        """Execute la requete si, et seulement si, chacun de ses fragments LIT."""
+        for fragment in requete.split(";"):
+            mots = fragment.strip().split(None, 1)
+            if mots and mots[0].upper() not in VERBES_DE_LECTURE:
+                self._journal.append(f"nebula.execute({mots[0]})")
+                raise BarriereDEcritureError(
+                    f"requete nGQL refusee, « {mots[0]} » n'est pas un verbe de lecture : "
+                    f"{sorted(VERBES_DE_LECTURE)}"
+                )
+        return self._session.execute(requete)
+
+    def release(self) -> None:
+        """Rend la session au pool. Ne lit ni n'ecrit."""
+        self._session.release()
+
+
+class LectureSeule:
+    """Une enveloppe qui ne laisse passer que des methodes de LECTURE NOMMEES.
+
+    Tout le reste leve et se journalise. C'est la preuve demandee pour les
+    clients que le harnais construit AVANT l'armement : ils survivent a la
+    barriere des SDK, donc ils doivent porter la leur.
+    """
+
+    def __init__(self, client: Any, methodes: Iterable[str], nom: str) -> None:
+        self._client = client
+        self._methodes = frozenset(methodes)
+        self._nom = nom
+        self._journal: list[str] = []
+
+    def __getattr__(self, nom: str) -> Any:
+        if nom not in self._methodes:
+            self._journal.append(f"{self._nom}.{nom}")
+            raise BarriereDEcritureError(
+                f"{self._nom}.{nom} appele : ce client est enveloppe en LECTURE SEULE, "
+                f"et ne laisse passer que {sorted(self._methodes)}"
+            )
+        return getattr(self._client, nom)
+
+
 # ─── Les barrieres ──────────────────────────────────────────────────────────
 
 # Les portes d'ecriture des trois stores, par nom qualifie sous
@@ -870,14 +1166,22 @@ class Armement:
     sites: dict[str, list[str]]
     temoin: TemoinMinio
     journal: list[str]
+    sdk: ArmementDesSdk
 
 
-def armer_les_barrieres() -> Armement:
-    """Remplace chaque porte d'ecriture des trois stores, a tous ses sites.
+def armer_les_barrieres(journal: list[str] | None = None) -> Armement:
+    """Barre les CONSTRUCTEURS des SDK, puis chaque porte d'ecriture a tous ses sites.
 
     **« Ce qui ecrirait leve », et c'est la seule forme de preuve qui tienne
-    ici.** Le harnais appelle les fonctions de production ; celles qui ecrivent
-    sont a portee.
+    ici.** DEUX COUCHES, et l'ordre compte :
+
+    1. :func:`barrer_les_sdk_de_store`, la couche qui PORTE la preuve : apres
+       elle, aucune construction de client de store ne passe dans ce processus,
+       quel que soit le chemin — alias d'import, `getattr`, niveau de module,
+       paquet quelconque. Elle est posee EN PREMIER, avant meme le chargement
+       d'`extraction`, pour qu'un client construit a l'import leve a l'import ;
+    2. les barrieres par SITE, seconde couche : elles nomment les portes de
+       `src.docling_service` et rendent leur levee lisible au journal.
 
     Irreversible dans le processus : desarmer serait offrir le moyen d'ecrire.
     **CONSEQUENCE, ecrite ici pour que personne ne la decouvre :** l'effet
@@ -885,13 +1189,20 @@ def armer_les_barrieres() -> Armement:
     tout ce qui suit — `mesure` par le lot 11 : arme dans le processus de pytest,
     six tests de `tests/unit/test_storage.py` tombent. Le harnais tourne dans un
     processus dedie, et la porte qualite arme en SOUS-PROCESSUS.
-    """
-    # Charger `extraction` AVANT de poser : c'est lui qui cree les sites par nom
-    # (`get_writer` dans `extraction` et `storage`). Un module charge apres lirait
-    # la porte deja remplacee dans son module d'origine.
-    importlib.import_module("src.docling_service.extraction")
 
-    journal: list[str] = []
+    Args:
+        journal: Le journal a remplir. Celui d'un appelant qui a deja enveloppe
+            ses clients de lecture, ou un neuf. **Un journal non vide est un
+            rouge**, quel que soit le reste.
+    """
+    journal = [] if journal is None else journal
+    sdk = barrer_les_sdk_de_store(journal)
+
+    # Charger `extraction` APRES la barriere des SDK et AVANT de poser les
+    # barrieres par site : c'est lui qui cree les sites par nom (`get_writer`
+    # dans `extraction` et `storage`). Un module charge apres lirait la porte
+    # deja remplacee dans son module d'origine.
+    importlib.import_module("src.docling_service.extraction")
 
     def barriere(nom: str) -> Callable[..., Any]:
         def _leve(*_args: Any, **_kwargs: Any) -> Any:
@@ -910,7 +1221,7 @@ def armer_les_barrieres() -> Armement:
 
     temoin = TemoinMinio(journal)
     sites[TEMOIN_MINIO] = remplacer_partout(TEMOIN_MINIO, lambda: temoin)
-    return Armement(barrieres=barrieres, sites=sites, temoin=temoin, journal=journal)
+    return Armement(barrieres=barrieres, sites=sites, temoin=temoin, journal=journal, sdk=sdk)
 
 
 def installer_la_capture() -> list[list[dict[str, Any]]]:

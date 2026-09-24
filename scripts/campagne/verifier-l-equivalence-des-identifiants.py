@@ -21,7 +21,7 @@ pas aux dependances du depot. Le `src` monte est celui de la branche MESUREE
 
     docker run --rm --network rag_network \\
       -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \\
-      -v "$PWD/documentation/campagnes":/campagnes:ro \\
+      -v "$PWD/documentation/campagnes":/app/documentation/campagnes:ro \\
       -v "<clone principal>/Datas":/corpus:ro \\
       -v "<un scratchpad>":/sp \\
       -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache:ro \\
@@ -29,14 +29,19 @@ pas aux dependances du depot. Le `src` monte est celui de la branche MESUREE
       -e HOME=/tmp -e PYTHONPATH=/app -w /app \\
       rag-ingestion-pipeline-docling-service \\
       python scripts/campagne/verifier-l-equivalence-des-identifiants.py \\
-        comparer /campagnes/<date>-instantane-des-identifiants
+        comparer documentation/campagnes/<date>-instantane-des-identifiants
 
-**L'INSTANTANE EST AUTHENTIFIE PAR UNE TABLE VERSIONNEE**,
-`documentation/campagnes/empreintes-des-instantanes.tsv`, montee avec lui sous
-`/campagnes`. `comparer` rougit si l'empreinte du dossier n'est pas celle que la
-table attend, et refuse un dossier qui n'y est pas inscrit : sans cette mesure,
-refiger dans un dossier neuf apres la campagne redonnait rc=0 des deux cotes, et
-le harnais redevenait tautologique (registre 4.38.c).
+**L'INSTANTANE EST AUTHENTIFIE PAR LE HARNAIS LUI-MEME**, et plus par un fichier
+voisin du dossier qu'on lui designe. `src.equivalence_des_identifiants` porte
+deux sites FIXES : `REPERTOIRE_DE_CAMPAGNE`, resolu depuis l'emplacement du
+module — d'ou le montage de `documentation/campagnes` SOUS `/app` ci-dessus —
+et `EMPREINTES_ATTENDUES`, la constante des empreintes. Les deux gestes refusent
+tout dossier hors de ce repertoire, et `comparer` rougit si l'empreinte n'est
+pas celle de la constante.
+
+Sans cette mesure, le harnais redevenait tautologique : `figer` dans un
+scratchpad, un `printf` dans la table voisine, `comparer` contre lui — rc=0 des
+deux cotes (registre 4.38.c, puis 4.39.a).
 
 **LES HTML VEULENT LEUR COPIE NETTOYEE**, attendue sous
 `<scratchpad>/cleaned/<chemin de partition>`, et produite avec un exportateur
@@ -45,11 +50,16 @@ d'images TEMOIN — jamais avec `image_exporter=None`, qui SUPPRIME l'attribut
 entree convertie : devant un rouge, il dit si c'est l'entree ou le code qui a
 change.
 
-**CE SCRIPT N'ECRIT DANS AUCUN STORE** : les portes d'ecriture sont barrees a
-tous leurs sites avant toute conversion
-(:func:`~src.equivalence_des_identifiants.armer_les_barrieres`). Ses propres
-lectures passent par des clients a lui — `MATCH`/`GO` dans le graphe, `list_objects`
-dans MinIO — et jamais par une porte de production.
+**CE SCRIPT N'ECRIT DANS AUCUN STORE, ET C'EST UNE BARRIERE A L'EXECUTION.**
+:func:`~src.equivalence_des_identifiants.armer_les_barrieres` barre d'abord les
+CONSTRUCTEURS des trois SDK — `minio.Minio`, les pools `nebula3`, les fabriques
+`chromadb` — de sorte que toute construction de client LEVE dans ce processus,
+par quelque chemin que ce soit. Les portes de `src.docling_service` sont barrees
+ensuite a tous leurs sites, comme seconde couche.
+
+Les SEULS clients du processus sont ceux de LECTURE, construits AVANT
+l'armement et enveloppes : la session Nebula ne laisse passer que des verbes de
+lecture, le client MinIO que `list_objects`.
 
 Le code de sortie EST le comportement : 0 si tout concorde, 1 sinon, 2 sur un
 usage faux.
@@ -66,9 +76,13 @@ from pathlib import Path
 from typing import Any
 
 from src.equivalence_des_identifiants import (
+    DossierHorsCampagneError,
+    LectureSeule,
     Monde,
+    SessionEnLecture,
     armer_les_barrieres,
     comparer,
+    dossier_de_campagne,
     empreinte_attendue,
     figer,
     installer_la_capture,
@@ -98,9 +112,16 @@ def documents_du_corpus() -> list[str]:
 
 
 class Graphe:
-    """Une session de LECTURE sur le graphe. Aucune requete d'ecriture n'y passe."""
+    """Une session de LECTURE sur le graphe, et CE N'EST PLUS UNE INTENTION.
 
-    def __init__(self) -> None:
+    **ELLE SE CONSTRUIT AVANT L'ARMEMENT**, parce qu'apres, `ConnectionPool`
+    leve. Elle doit donc porter sa propre preuve de non-ecriture : sa session
+    est enveloppee dans :class:`SessionEnLecture`, qui refuse toute requete dont
+    un fragment ne commence pas par un verbe de lecture. Le `release` et le
+    `close` sont les deux seuls autres gestes, et ils ne touchent pas au graphe.
+    """
+
+    def __init__(self, journal: list[str]) -> None:
         from nebula3.Config import Config
         from nebula3.gclient.net import ConnectionPool
 
@@ -110,8 +131,9 @@ class Graphe:
         self._pool.init(
             [(os.environ["NEBULA_HOST"], int(os.environ.get("NEBULA_PORT", "9669")))], Config()
         )
-        self._session = self._pool.get_session(
-            os.environ["NEBULA_USER"], os.environ["NEBULA_PASSWORD"]
+        self._session = SessionEnLecture(
+            self._pool.get_session(os.environ["NEBULA_USER"], os.environ["NEBULA_PASSWORD"]),
+            journal,
         )
         self._executer(f"USE {SPACE};")
 
@@ -155,7 +177,28 @@ class Graphe:
         self._pool.close()
 
 
-def objets_listes(partition_key: str) -> set[str] | None:
+def client_minio_en_lecture() -> LectureSeule:
+    """Le client MinIO du harnais, construit AVANT l'armement et enveloppe.
+
+    Apres l'armement, `minio.Minio` leve. Ce client-ci survit donc a la
+    barriere, et c'est pour cela qu'il est enveloppe : SEULE `list_objects`
+    passe, tout le reste leve et se journalise.
+    """
+    from minio import Minio
+
+    return LectureSeule(
+        Minio(
+            os.environ["MINIO_ENDPOINT"],
+            access_key=os.environ["MINIO_ROOT_USER"],
+            secret_key=os.environ["MINIO_ROOT_PASSWORD"],
+            secure=False,
+        ),
+        {"list_objects"},
+        "minio du harnais",
+    )
+
+
+def objets_listes(client: LectureSeule, partition_key: str) -> set[str] | None:
     """Les cles que MinIO LISTE sous le prefixe des crops d'un PDF. LECTURE SEULE.
 
     None pour un HTML : ses images sont envoyees par le NETTOYAGE, sous une cle
@@ -163,16 +206,8 @@ def objets_listes(partition_key: str) -> set[str] | None:
     """
     if not partition_key.lower().endswith(".pdf"):
         return None
-    from minio import Minio
-
     from src.docling_service.elements import document_identity
 
-    client = Minio(
-        os.environ["MINIO_ENDPOINT"],
-        access_key=os.environ["MINIO_ROOT_USER"],
-        secret_key=os.environ["MINIO_ROOT_PASSWORD"],
-        secure=False,
-    )
     prefixe = f"images/{document_identity(partition_key).filename}/"
     return {
         str(objet.object_name)
@@ -200,20 +235,42 @@ def main() -> int:
     a_comparer.add_argument("--deplacements-annonces", type=Path, default=None)
     arguments = analyseur.parse_args()
 
-    armement = armer_les_barrieres()
+    # LE GARDE EN PREMIER, avant tout armement et toute connexion : un dossier
+    # hors du repertoire de campagne fixe n'est ni fige ni compare. C'est le
+    # geste que le troisieme audit a retourne contre le harnais.
+    try:
+        dossier = dossier_de_campagne(arguments.dossier)
+    except DossierHorsCampagneError as exc:
+        print(f"ECHEC — {exc}")
+        return 1
+
+    # LES CLIENTS DE LECTURE SE CONSTRUISENT AVANT L'ARMEMENT, et pas autrement :
+    # apres, `minio.Minio` et `ConnectionPool` LEVENT. Ce sont les SEULS clients
+    # de store du processus, et chacun porte sa propre borne — verbes de lecture
+    # pour la session Nebula, `list_objects` seule pour MinIO.
+    journal: list[str] = []
+    graphe = Graphe(journal)
+    minio_en_lecture = client_minio_en_lecture()
+
+    armement = armer_les_barrieres(journal)
     sites = sum(len(s) for s in armement.sites.values())
     print(f"barrieres d'ecriture armees : {len(armement.sites)} portes, {sites} sites")
     for nom, liste in sorted(armement.sites.items()):
         print(f"    {nom:28s} {liste}")
+    constructeurs = sum(len(noms) for noms in armement.sdk.barres.values())
+    print(f"constructeurs de SDK barres : {constructeurs}")
+    for module, noms in sorted(armement.sdk.barres.items()):
+        print(f"    {module:32s} {noms}")
+    for module, raison in sorted(armement.sdk.absents.items()):
+        print(f"    {module:32s} ABSENT DU PROCESSUS — {raison}")
     lots = installer_la_capture()
 
-    graphe = Graphe()
     try:
         monde = Monde(
             documents_du_corpus=documents_du_corpus,
             documents_du_graphe=graphe.documents,
             ids_du_graphe=graphe.ids,
-            objets_listes=objets_listes,
+            objets_listes=lambda cle: objets_listes(minio_en_lecture, cle),
             reextraire=lambda cle: reextraire(
                 cle, CORPUS, SCRATCHPAD / "cleaned", lots, armement.temoin
             ),
@@ -224,9 +281,9 @@ def main() -> int:
                 "commit du code": _commit(),
                 "source des identifiants": "emission de la production, prouvee egale au graphe",
             }
-            return figer(monde, arguments.dossier, entete, armement.journal)
-        instantane = lire_l_instantane(arguments.dossier)
-        attendue = empreinte_attendue(arguments.dossier)
+            return figer(monde, dossier, entete, armement.journal)
+        instantane = lire_l_instantane(dossier)
+        attendue = empreinte_attendue(dossier)
         declares = lire_les_deplacements_annonces(arguments.deplacements_annonces)
         return comparer(monde, instantane, attendue, declares, armement.journal)
     finally:

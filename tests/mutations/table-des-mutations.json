@@ -7,12 +7,17 @@
     "qu'on ne peut pas rejouer n'est pas une mesure, c'est une affirmation.",
     "",
     "Chaque entree porte LE SITE (fichier + motif exact), LE REMPLACEMENT, et LE",
-    "TEST CENSE ROUGIR. `scripts/rejouer-les-mutations.py` les applique une a une,",
-    "lance le test vise, et exige un ROUGE ; puis restaure le fichier.",
+    "TEST CENSE ROUGIR \u2014 dans le fichier de test par defaut, ou dans celui que",
+    "l'entree nomme par `fichier_de_test`.",
+    "`scripts/rejouer-les-mutations.py` les applique une a une SUR UNE COPIE",
+    "JETABLE, lance le test vise, et exige un ECHEC DE TEST : `rc == 1`, `failed`",
+    "dans la derniere ligne, et aucun `error`. Il n'ecrit plus rien dans l'arbre",
+    "de travail, et il le mesure par les `mtime` de `src/` et `tests/`.",
     "",
     "Regle tenue ici : on mute LE PRODUCTEUR, jamais le consommateur. Un motif",
     "doit apparaitre EXACTEMENT UNE FOIS dans son fichier, sinon le rejeu refuse",
-    "— une mutation qui ne mute rien ressemble a un garde qui ne voit rien."
+    "\u2014 une mutation qui ne mute rien ressemble a un garde qui ne voit rien, et",
+    "une mutation qui casse la syntaxe ressemble a un garde qui voit."
   ],
   "mutations": [
     {
@@ -33,7 +38,7 @@
     },
     {
       "id": "A2",
-      "constat": "le garde « un journal de barrieres non vide est un rouge » n'etait tenu par aucun test cote comparer",
+      "constat": "le garde \u00ab un journal de barrieres non vide est un rouge \u00bb n'etait tenu par aucun test cote comparer",
       "fichier": "src/equivalence_des_identifiants.py",
       "motif": "    if journal:\n        raisons.append(f\"barrieres touchees : {journal}\")\n    if non_compares:",
       "remplacement": "    if False:\n        raisons.append(f\"barrieres touchees : {journal}\")\n    if non_compares:",
@@ -57,18 +62,11 @@
     },
     {
       "id": "A3-c",
-      "constat": "un dossier absent de la table versionnee etait tolere",
+      "constat": "un dossier absent de la table des empreintes etait tolere",
       "fichier": "src/equivalence_des_identifiants.py",
-      "motif": "    if dossier.name not in attendues:",
+      "motif": "    if resolu.name not in EMPREINTES_ATTENDUES:",
       "remplacement": "    if False:",
-      "test": "test_un_dossier_absent_de_la_table_est_refuse"
-    },
-    {
-      "id": "A4",
-      "constat": "une porte ecrivante neuve deposee hors des quatre modules en dur passait, rc=0",
-      "fichier": "src/docling_service/extraction.py",
-      "ajouter": "\n\ndef archiver_le_document(chemin, seau):\n    \"\"\"PORTE NEUVE : elle ECRIT dans MinIO, et aucune liste ne la connait.\"\"\"\n    from minio import Minio\n\n    client = Minio(\"minio:9000\", access_key=\"a\", secret_key=\"b\", secure=False)\n    client.put_object(seau, str(chemin), None, 0)\n",
-      "test": "test_les_porteurs_derives_sont_tous_barres_ou_classes"
+      "test": "test_un_dossier_absent_de_la_constante_est_refuse"
     },
     {
       "id": "M31",
@@ -80,7 +78,7 @@
     },
     {
       "id": "M22",
-      "constat": "une cle d'objet APPARUE inattendue ne rougissait plus ; seule la branche « disparue » etait tenue",
+      "constat": "une cle d'objet APPARUE inattendue ne rougissait plus ; seule la branche \u00ab disparue \u00bb etait tenue",
       "fichier": "src/equivalence_des_identifiants.py",
       "motif": "    inattendues = [c for c in apparues if identifiant(c) not in attendues]",
       "remplacement": "    inattendues = []",
@@ -125,6 +123,124 @@
       "motif": "        if avant.empreinte_de_l_entree != emission.empreinte_de_l_entree:",
       "remplacement": "        if False:",
       "test": "test_une_entree_convertie_qui_change_est_signalee"
+    },
+    {
+      "id": "A5-a",
+      "constat": "l'empreinte attendue se lisait a un site que l'ARGUMENT designait (3e audit)",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "    resolu = dossier_de_campagne(dossier)",
+      "remplacement": "    resolu = Path(dossier)",
+      "test": "test_l_empreinte_attendue_ne_depend_plus_de_l_argument"
+    },
+    {
+      "id": "A5-b",
+      "constat": "rien ne refusait un dossier hors du repertoire de campagne fixe",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "    if resolu.parent != repertoire.resolve():",
+      "remplacement": "    if False:",
+      "test": "test_un_enfant_indirect_du_repertoire_est_refuse or test_figer_hors_du_repertoire_de_campagne_rend_1"
+    },
+    {
+      "id": "A6-a",
+      "constat": "la barriere des SDK n'etait pas armee du tout",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "    sdk = barrer_les_sdk_de_store(journal)",
+      "remplacement": "    sdk = ArmementDesSdk(barres={}, sites={}, absents={})",
+      "test": "test_une_porte_neuve_leve_quel_que_soit_son_chemin"
+    },
+    {
+      "id": "A6-b",
+      "constat": "la barriere ne re-liait pas les modules DEJA charges : un alias survivait",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "            if valeur is original:",
+      "remplacement": "            if False:",
+      "test": "test_une_porte_neuve_leve_quel_que_soit_son_chemin"
+    },
+    {
+      "id": "A6-d",
+      "constat": "l'enumeration des constructeurs de minio rendait les erreurs et pas les clients",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "        and not issubclass(valeur, BaseException)",
+      "remplacement": "        and issubclass(valeur, BaseException)",
+      "test": "test_la_regle_de_minio_rend_les_clients_et_aucune_erreur"
+    },
+    {
+      "id": "A7-a",
+      "constat": "le client de lecture du harnais laissait passer toutes ses methodes",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "        if nom not in self._methodes:",
+      "remplacement": "        if False:",
+      "test": "test_l_enveloppe_ne_laisse_passer_que_les_methodes_nommees"
+    },
+    {
+      "id": "A7-b",
+      "constat": "la session Nebula du harnais acceptait n'importe quelle requete d'ecriture",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "            if mots and mots[0].upper() not in VERBES_DE_LECTURE:",
+      "remplacement": "            if False:",
+      "test": "test_la_session_refuse_toute_requete_qui_n_est_pas_une_lecture"
+    },
+    {
+      "id": "A8",
+      "constat": "la clause vu_du_graphe > 0 du controle negatif survivait a son retrait",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "        etat = \"vu\" if controle.ok and vu_du_graphe > 0 else \"NON VU\"",
+      "remplacement": "        etat = \"vu\" if controle.ok else \"NON VU\"",
+      "test": "test_un_graphe_qui_porte_deja_les_identifiants_mutes_est_rouge"
+    },
+    {
+      "id": "A9-a",
+      "constat": "une mutation qui CASSE LA SYNTAXE passait pour ROUGE",
+      "fichier": "scripts/rejouer-les-mutations.py",
+      "motif": "    if \"error\" in derniere.lower():",
+      "remplacement": "    if False:",
+      "test": "test_ce_qui_n_est_pas_un_echec_de_test_ne_passe_pas_pour_un_rouge",
+      "fichier_de_test": "tests/unit/test_rejouer_les_mutations.py"
+    },
+    {
+      "id": "A9-b",
+      "constat": "tout rc non nul valait ROUGE, et pas seulement le rc=1 d'un echec de test",
+      "fichier": "scripts/rejouer-les-mutations.py",
+      "motif": "    if code_de_retour != 1:",
+      "remplacement": "    if False:",
+      "test": "test_ce_qui_n_est_pas_un_echec_de_test_ne_passe_pas_pour_un_rouge",
+      "fichier_de_test": "tests/unit/test_rejouer_les_mutations.py"
+    },
+    {
+      "id": "A9-c",
+      "constat": "la derniere ligne n'avait pas besoin de porter `failed`",
+      "fichier": "scripts/rejouer-les-mutations.py",
+      "motif": "    if \"failed\" not in derniere:",
+      "remplacement": "    if False:",
+      "test": "test_ce_qui_n_est_pas_un_echec_de_test_ne_passe_pas_pour_un_rouge",
+      "fichier_de_test": "tests/unit/test_rejouer_les_mutations.py"
+    },
+    {
+      "id": "A9-d",
+      "constat": "la sonde des mtime ne voyait plus rien bouger",
+      "fichier": "scripts/rejouer-les-mutations.py",
+      "motif": "        [nom for nom, t in apres.items() if avant.get(nom) != t] + list(set(avant) - set(apres))",
+      "remplacement": "        []",
+      "test": "test_un_mtime_qui_bouge_est_vu",
+      "fichier_de_test": "tests/unit/test_rejouer_les_mutations.py"
+    },
+    {
+      "id": "A10-a",
+      "constat": "mutant survivant de l'audit : `lo == 0` devenu `lo <= 1` comptait les caracteres seuls parmi les vides",
+      "fichier": "scripts/campagne/compter-l-emiettement.py",
+      "motif": "if f == forme and lo == 0",
+      "remplacement": "if f == forme and lo <= 1",
+      "test": "test_aucun_element_vide_ni_d_un_caractere_dans_les_pdf",
+      "fichier_de_test": "tests/unit/test_compter_l_emiettement.py"
+    },
+    {
+      "id": "A10-b",
+      "constat": "mutant survivant de l'audit : `rsplit` devenu `split` se trompait de format",
+      "fichier": "scripts/campagne/compter-l-emiettement.py",
+      "motif": "partition_key.rsplit(\".\", 1)[-1].upper()",
+      "remplacement": "partition_key.split(\".\", 1)[-1].upper()",
+      "test": "test_le_format_se_lit_a_la_derniere_extension",
+      "fichier_de_test": "tests/unit/test_compter_l_emiettement.py"
     }
   ]
 }

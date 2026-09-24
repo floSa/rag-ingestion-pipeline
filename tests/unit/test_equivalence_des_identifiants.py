@@ -38,13 +38,14 @@ from pathlib import Path
 import pytest
 
 from src.equivalence_des_identifiants import (
-    EMPREINTES,
+    EMPREINTES_ATTENDUES,
     MUTATIONS,
     PORTES,
     SITE_D_APPEL,
     TEMOIN_MINIO,
     Bilan,
     Controle,
+    DossierHorsCampagneError,
     Emission,
     EmpreinteInattendueError,
     InstantaneCorrompuError,
@@ -57,6 +58,7 @@ from src.equivalence_des_identifiants import (
     comparer_les_releves,
     confronter_au_graphe,
     controle_negatif,
+    dossier_de_campagne,
     ecrire_l_instantane,
     empreinte_attendue,
     figer,
@@ -697,6 +699,33 @@ class TestFigerRefuseDEcrireUnInstantaneFaux:
             figer(_monde([_une_emission()]), tmp_path, {"date": "t"}, journal, lambda _: None) == 1
         )
 
+    def test_un_graphe_qui_porte_deja_les_identifiants_mutes_est_rouge(self, tmp_path):
+        """LE CONTROLE NEGATIF DU CONTROLE NEGATIF : la clause `vu_du_graphe > 0`.
+
+        Le troisieme audit l'a montree SANS TEST : elle survivait a son retrait.
+        Ce qu'elle garde : un graphe qui porterait DEJA les identifiants mutes
+        rendrait `emis_seul == 0`, et la mutation serait « vue » par le seul
+        appariement, sans qu'aucune confrontation au graphe l'ait confirmee.
+
+        Le monde est construit ainsi : le graphe porte l'emission ET tous les
+        identifiants qu'une mutation produirait. La raison attendue est celle
+        de la MUTATION ; sans la clause, elle disparait.
+        """
+        emission = _une_emission()
+        mutes = {
+            identifiant_par_la_formule(ligne)
+            for mutation in MUTATIONS.values()
+            for ligne in appliquer_la_mutation(mutation, emission.lignes)
+        }
+        graphe = {emission.cle: {ligne["element_id"] for ligne in emission.lignes} | mutes}
+        sortie = []
+
+        rc = figer(_monde([emission], graphe=graphe), tmp_path, {"date": "t"}, [], sortie.append)
+
+        assert rc == 1
+        assert any("0 hors graphe — NON VU" in ligne for ligne in sortie), sortie
+        assert any("mutation filename : NON VU" in ligne for ligne in sortie), sortie
+
 
 class TestComparerAlInstantane:
     def _fige(self, tmp_path, emissions):
@@ -826,22 +855,56 @@ class TestCeQuiSeDitDevantUnRouge:
 class TestLeHarnaisNeSeRetautologisePas:
     """A3 : refiger apres la campagne rendait rc=0 des deux cotes (`mesure` de l'audit).
 
-    La confrontation de l'empreinte est desormais une MESURE et non une
-    consigne : elle est prise a un site VERSIONNE, le parent du dossier, parce
-    qu'un second instantane porterait son propre manifeste — donc sa propre
-    empreinte — et se signerait lui-meme.
+    A3 posait l'empreinte attendue dans le PARENT du dossier — donc a un site
+    que l'appelant DESIGNAIT. Le troisieme audit l'a retourne : trois gestes, un
+    `printf` au milieu, et rc=0. Les deux sites sont desormais FIXES, resolus
+    depuis l'emplacement du module (§4.39.a).
     """
 
-    def _table(self, dossier, lignes):
-        (dossier.parent / EMPREINTES).write_text(
-            "# essai\ndossier\tempreinte\n" + "".join(lignes), encoding="utf-8"
+    def test_l_empreinte_attendue_ne_depend_plus_de_l_argument(self, tmp_path):
+        """LE GESTE DE L'AUDIT : une table voisine, ecrite a la main, n'authentifie plus rien."""
+        dossier = tmp_path / "2026-09-24-instantane-des-identifiants"
+        dossier.mkdir()
+        (tmp_path / "empreintes-des-instantanes.tsv").write_text(
+            "dossier\tempreinte\n2026-09-24-instantane-des-identifiants\tabc123\n",
+            encoding="utf-8",
         )
 
-    def test_l_empreinte_attendue_se_lit_dans_le_parent(self, tmp_path):
-        dossier = tmp_path / "2026-09-24-instantane"
-        self._table(dossier, [f"{dossier.name}\tabc123\n"])
+        with pytest.raises(DossierHorsCampagneError, match="hors du repertoire de campagne"):
+            empreinte_attendue(dossier)
 
-        assert empreinte_attendue(dossier) == "abc123"
+    def test_le_repertoire_de_campagne_est_resolu_depuis_le_module(self):
+        """Il ne vient ni de l'argument, ni du repertoire courant, ni d'une variable."""
+        from src import equivalence_des_identifiants as module
+
+        assert (
+            Path(module.__file__).resolve().parents[1] / "documentation/campagnes"
+        ) == module.REPERTOIRE_DE_CAMPAGNE
+        assert module.REPERTOIRE_DE_CAMPAGNE.is_dir()
+
+    def test_un_enfant_indirect_du_repertoire_est_refuse(self, tmp_path):
+        """`…/campagnes/bis/instantane` porterait sa propre table voisine."""
+        repertoire = tmp_path / "campagnes"
+        (repertoire / "bis" / "instantane").mkdir(parents=True)
+
+        with pytest.raises(DossierHorsCampagneError):
+            dossier_de_campagne(repertoire / "bis" / "instantane", repertoire)
+
+    def test_un_enfant_direct_du_repertoire_est_accepte_et_resolu(self, tmp_path):
+        repertoire = tmp_path / "campagnes"
+        (repertoire / "instantane").mkdir(parents=True)
+
+        assert (
+            dossier_de_campagne(repertoire / "." / "instantane", repertoire)
+            == (repertoire / "instantane").resolve()
+        )
+
+    def test_l_empreinte_de_l_instantane_du_depot_est_celle_de_la_constante(self):
+        """LE SITE CANONIQUE : la constante du module, contre l'instantane du depot."""
+        nom = "2026-09-24-instantane-des-identifiants"
+        dossier = RACINE_DEPOT / "documentation/campagnes" / nom
+
+        assert EMPREINTES_ATTENDUES[nom] == lire_l_instantane(dossier).empreinte
 
     def test_un_instantane_refige_porte_une_autre_empreinte_et_rougit(self, tmp_path):
         """LE SCENARIO DE L'AUDIT : on refige apres la campagne, on compare contre lui."""
@@ -864,17 +927,12 @@ class TestLeHarnaisNeSeRetautologisePas:
         assert rc == 1
         assert any("EMPREINTE INATTENDUE" in ligne for ligne in sortie), sortie
 
-    def test_un_dossier_absent_de_la_table_est_refuse(self, tmp_path):
-        """Le cas exact du second instantane : ecrit, mais inscrit nulle part."""
-        dossier = tmp_path / "refige-en-douce"
-        self._table(dossier, ["2026-09-24-instantane-des-identifiants\tabc123\n"])
+    def test_un_dossier_absent_de_la_constante_est_refuse(self):
+        """Le cas exact du second instantane : ecrit DANS le repertoire, inscrit nulle part."""
+        dossier = RACINE_DEPOT / "documentation/campagnes/refige-en-douce"
 
-        with pytest.raises(EmpreinteInattendueError, match="n'est pas dans"):
+        with pytest.raises(EmpreinteInattendueError, match="n'est pas dans EMPREINTES_ATTENDUES"):
             empreinte_attendue(dossier)
-
-    def test_une_table_absente_n_authentifie_rien(self, tmp_path):
-        with pytest.raises(EmpreinteInattendueError, match="manque"):
-            empreinte_attendue(tmp_path / "instantane")
 
     def test_refiger_dans_le_meme_dossier_rend_un_rc_1_et_non_une_trace(self, tmp_path):
         """`FileExistsError` remontait nue : une trace d'appel n'est pas un verdict."""
@@ -887,11 +945,53 @@ class TestLeHarnaisNeSeRetautologisePas:
         assert rc == 1
         assert any("ne s'ecrase pas" in ligne for ligne in sortie), sortie
 
-    def test_la_table_versionnee_du_depot_attend_l_instantane_de_la_campagne(self):
-        """LE SITE REEL : la table du depot, contre l'instantane du depot."""
+    def test_le_site_reel_du_depot_s_authentifie(self):
+        """LE SITE REEL : la constante du module, contre l'instantane du depot."""
         dossier = RACINE_DEPOT / "documentation/campagnes/2026-09-24-instantane-des-identifiants"
 
         assert empreinte_attendue(dossier) == lire_l_instantane(dossier).empreinte
+
+
+class TestLesTroisGestesDeLAudit:
+    """LE SCENARIO EXACT du troisieme audit, contre le SCRIPT, rc du PROCESSUS.
+
+    `figer <ailleurs>` ; un `printf` dans la table voisine ; `comparer
+    <ailleurs>`. Les deux gestes du script rendent desormais 1, avant tout
+    armement et toute connexion — donc mesurables sur l'hote, sans store.
+    """
+
+    SCRIPT = "scripts/campagne/verifier-l-equivalence-des-identifiants.py"
+
+    def _lancer(self, *arguments, cwd):
+        return subprocess.run(
+            [sys.executable, self.SCRIPT, *arguments],
+            capture_output=True,
+            text=True,
+            cwd=RACINE_DEPOT,
+            env={**os.environ, "PYTHONPATH": str(RACINE_DEPOT), "HOME": str(cwd)},
+        )
+
+    def test_figer_hors_du_repertoire_de_campagne_rend_1(self, tmp_path):
+        cible = tmp_path / "bis" / "2026-09-24-instantane-des-identifiants"
+
+        acheve = self._lancer("figer", str(cible), cwd=tmp_path)
+
+        assert acheve.returncode == 1, acheve.stdout + acheve.stderr
+        assert "hors du repertoire de campagne" in acheve.stdout, acheve.stdout
+        assert not cible.exists(), "rien n'a ete ecrit hors du repertoire"
+
+    def test_comparer_hors_du_repertoire_de_campagne_rend_1_malgre_la_table_voisine(self, tmp_path):
+        """LE `printf` DE L'AUDIT : la table voisine n'est meme plus lue."""
+        cible = tmp_path / "bis" / "2026-09-24-instantane-des-identifiants"
+        cible.mkdir(parents=True)
+        (cible.parent / "empreintes-des-instantanes.tsv").write_text(
+            f"dossier\tempreinte\n{cible.name}\tdeadbeef\n", encoding="utf-8"
+        )
+
+        acheve = self._lancer("comparer", str(cible), cwd=tmp_path)
+
+        assert acheve.returncode == 1, acheve.stdout + acheve.stderr
+        assert "hors du repertoire de campagne" in acheve.stdout, acheve.stdout
 
 
 # ─── En sous-processus : les barrieres, et les deux faux verts de l'audit ───
@@ -910,114 +1010,52 @@ def _executer(code, *arguments):
     return json.loads(acheve.stdout.strip().splitlines()[-1])
 
 
-# Les PORTEURS de client de store qui N'ECRIVENT PAS EUX-MEMES, chacun avec sa
-# raison. CE N'EST PAS LA LISTE DES PORTES DU PRODUCTEUR, et c'est tout
-# l'interet : tout porteur absent d'ici est TENU pour une porte, donc doit etre
-# barre a tous ses sites. Le test DERIVE les porteurs du code (voir
-# `PARCOURS_DES_SITES`) : une porte neuve deposee dans n'importe quel
-# `src/docling_service/*.py` rougit ce test tant que quelqu'un ne l'a pas classee.
-NON_ECRIVAINS = {
-    "src.docling_service.images.ensure_bucket": "ne parle a MinIO que par get_client, le temoin",
-    "src.docling_service.images.crop_and_upload": (
-        "la production tourne ; son envoi passe par get_client"
-    ),
-    "src.docling_service.extraction.extract": (
-        "l'orchestrateur : n'atteint les stores que par persist et get_writer, barres"
-    ),
-    "src.docling_service.extraction._extract_flat": (
-        "le chemin HTML que le harnais APPELLE ; ses ecritures passent par persist, barre"
-    ),
-    "src.docling_service.extraction._extract_pdf": (
-        "le chemin PDF que le harnais APPELLE ; idem, plus crop_and_upload sur le temoin"
-    ),
-    "src.docling_service.extraction._convert_batch": "convertit ; aucun client de store en propre",
-    "src.docling_service.extraction._prepared_source": (
-        "prepare l'entree sur disque ; n'atteint MinIO que par _upload_markdown_images"
-    ),
-    "src.docling_service.extraction._upload_markdown_images": (
-        "envoie par upload_file, qui est une porte barree"
-    ),
-    "src.docling_service.extraction._already_ingested": (
-        "LIT le graphe par get_writer().find_duplicate ; get_writer est barre, donc leve"
-    ),
-}
-
-# Les porteurs dont le module ne s'importe PAS sur l'hote, chacun avec sa raison.
-# Ils ne sont pas sautes en silence : le test exige qu'ils soient classes ici, et
-# qu'aucun d'eux ne soit charge dans le processus du harnais apres armement.
-HORS_PROCESSUS = {
-    "main._init_graph": "le service FastAPI, jamais importe par le harnais",
-    "main._init_objects": "le service FastAPI, jamais importe par le harnais",
-    "main._run_extraction": "le service FastAPI, jamais importe par le harnais",
-    "main.lifespan": "le service FastAPI, jamais importe par le harnais",
-}
-
-# Les constructeurs de clients de store, et eux seuls : le reste est DERIVE.
-# Cette liste-ci ne peut pas se tromper en silence comme une liste de modules,
-# parce qu'un client de store ne se construit pas autrement — et parce que
-# `test_les_semences_construisent_bien_un_client_de_store` la confronte au code.
-SEMENCES = ("Minio", "ConnectionPool", "HttpClient")
-# Les SDK de store que `src/docling_service` importe. Une semence protege contre une
-# porte neuve ; CECI protege contre un client neuf : un SDK de plus, ou une autre
-# classe de client du meme SDK, rougit tant que les semences ne le couvrent pas.
+# ─── CE QUI A REMPLACE LA DERIVATION AST, ET POURQUOI ELLE EST RETIREE ───────
+#
+# La version precedente DERIVAIT, par lecture AST de `src/docling_service/*.py`,
+# les fonctions porteuses d'un client de store, a partir de trois « semences »
+# (`Minio`, `ConnectionPool`, `HttpClient`) et d'un point fixe ; chaque porteur
+# devait ensuite etre une porte barree, un `NON_ECRIVAINS` motive ou un
+# `HORS_PROCESSUS` motive, « sans quatrieme cas ».
+#
+# LE TROISIEME AUDIT DU LOT 11 LUI A FAIT PASSER QUATRE PORTES NEUVES SUR CINQ :
+# un alias d'import (`from minio import Minio as _M`), un `getattr(minio,
+# "Minio")(...)`, un client construit au niveau du module, et une porte deposee
+# dans `src/pipeline/` — hors du dossier balaye. Et ses quatre `HORS_PROCESSUS`
+# ne reposaient que sur l'absence de `fastapi` SUR L'HOTE : dans l'image
+# d'extraction, `src.docling_service.main` s'importe et les quatre ressortaient
+# LIES. Deux de ses classements etaient en outre FAUX, et personne ne l'avait
+# vu : `images.ensure_bucket` appelle `make_bucket`, donc ecrit ; les raisons
+# d'`extract` et de `_extract_pdf` omettaient `storage.forget_document`.
+#
+# DECISION DU PILOTE, 24 septembre 2026 : on ne rafistole pas l'analyse
+# statique — `getattr` suffit a tromper n'importe laquelle, et chaque audit
+# trouverait le trou suivant. La derivation, `NON_ECRIVAINS` et `HORS_PROCESSUS`
+# sont RETIRES : ils promettaient une exhaustivite qu'ils ne tenaient pas, et
+# leurs classements faux n'etaient plus corriges par personne. La preuve est
+# passee a l'EXECUTION, sur les constructeurs des SDK
+# (:func:`~src.equivalence_des_identifiants.barrer_les_sdk_de_store`), et les
+# tests de `TestLesPortesNeuvesLevent` la mesurent porte par porte.
+#
+# CE QUI RESTE DE L'ANCIEN DISPOSITIF, et ce qu'il prouve exactement : les
+# barrieres par SITE, seconde couche, verifiees ci-dessous sur la liste
+# DECLAREE des portes — plus aucune derivation, donc plus aucune phrase
+# d'exhaustivite. Et `SDK_DE_STORE`, qui n'est plus un garde de la derivation
+# mais la liste meme des SDK que la barriere d'execution couvre : un SDK de
+# store de plus dans `src/docling_service` rougit tant qu'il n'y entre pas.
 SDK_DE_STORE = ("minio", "nebula3", "chromadb")
 
 PARCOURS_DES_SITES = """
-import ast, json, pathlib, sys
+import importlib, json, sys
 
-# ─── LA DERIVATION, et c'est le point : AUCUNE LISTE DE MODULES EN DUR. ──────
-# La version precedente bornait le balayage a `MODULES = (nebula, vectors,
-# storage, images)`, une seconde liste en dur, non defendue : `mesure` du second
-# audit du lot 11 — une porte ecrivante neuve deposee dans `extraction.py`
-# passait, rc=0, 5 tests verts. On derive ici, par le texte du code, TOUTE
-# fonction qui construit ou RECOIT un client de store, dans tout
-# `src/docling_service/*.py`, par point fixe : une fonction qui en appelle une
-# autre deja porteuse l'est a son tour.
-SEMENCES = set(json.loads(sys.argv[1]))
-
-def _noms_cites(noeud):
-    vus = set()
-    for n in ast.walk(noeud):
-        if isinstance(n, ast.Name):
-            vus.add(n.id)
-        elif isinstance(n, ast.Attribute):
-            vus.add(n.attr)
-    return vus
-
-corps = {}
-for fichier in sorted(pathlib.Path("src/docling_service").glob("*.py")):
-    for noeud in ast.parse(fichier.read_text(encoding="utf-8")).body:
-        if isinstance(noeud, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            corps[f"{fichier.stem}.{noeud.name}"] = _noms_cites(noeud)
-
-porteurs = set()
-change = True
-while change:
-    change = False
-    simples = {p.split(".")[1] for p in porteurs}
-    for qualifie, cites in corps.items():
-        if qualifie not in porteurs and cites & (SEMENCES | simples):
-            porteurs.add(qualifie)
-            change = True
-
-import importlib
+declarees = json.loads(sys.argv[1])
 originaux = {}
-hors_processus = []
-for qualifie in sorted(porteurs):
+for qualifie in declarees:
     module_court, attribut = qualifie.split(".")
-    try:
-        module = importlib.import_module(f"src.docling_service.{module_court}")
-    except Exception as exc:
-        # PAS UN SAUT SILENCIEUX : le module est rendu, et le test exige qu'il
-        # soit classe. `main` tire `fastapi`, qui n'est pas une dependance de
-        # l'hote — c'est aussi la preuve qu'il n'est pas dans le processus du
-        # harnais, donc qu'il n'y a aucun site a barrer.
-        hors_processus.append([qualifie, f"{type(exc).__name__}: {exc}"])
-        continue
+    module = importlib.import_module(f"src.docling_service.{module_court}")
     originaux[f"src.docling_service.{qualifie}"] = getattr(module, attribut)
 from src.equivalence_des_identifiants import armer_les_barrieres
 armement = armer_les_barrieres()
-charges_apres_armement = sorted(m for m in sys.modules if m.startswith("src.docling_service."))
 encore_lies = []
 for nom_mod, mod in sorted(sys.modules.items()):
     if mod is None or not nom_mod.startswith("src"):
@@ -1027,96 +1065,207 @@ for nom_mod, mod in sorted(sys.modules.items()):
             if valeur is original:
                 encore_lies.append([f"{nom_mod}.{attribut}", qualifie])
 print(json.dumps({"originaux": sorted(originaux), "encore_lies": encore_lies,
-                  "sites": armement.sites, "porteurs": sorted(porteurs),
-                  "hors_processus": sorted(hors_processus),
-                  "charges": charges_apres_armement}))
+                  "sites": armement.sites, "sdk_barres": armement.sdk.barres,
+                  "sdk_absents": armement.sdk.absents}))
 """
 
+DECLAREES = json.dumps([*PORTES, TEMOIN_MINIO])
 
-class TestLesBarrieres:
-    """« Ce qui ecrirait leve », a TOUS les sites ou la porte est liee."""
+# LES CINQ PORTES NEUVES DE L'AUDIT, plus les deux variantes de ce lot. Chacune
+# est un programme COMPLET : il arme, puis tente de construire un client par un
+# chemin different. Le verdict attendu est le meme partout — `BarriereDEcriture`.
+#
+# Elles portent sur `minio`, et c'est un choix de MESURE : c'est le seul des
+# trois SDK installe sur l'hote, donc le seul dont la porte qualite puisse
+# rougir sans conteneur. Les trois SDK sont mesures ensemble DANS L'IMAGE
+# d'extraction, et le releve est au registre (§4.39.b).
+_ARMER = """
+from src.equivalence_des_identifiants import armer_les_barrieres
 
-    def test_aucune_porte_d_origine_ne_reste_liee_dans_un_module_src(self):
-        """LE TEST QUE L'AUDIT A MONTRE MANQUANT : deux mutants lui survivaient.
+armement = armer_les_barrieres()
+"""
+PORTES_NEUVES = {
+    "alias d'import APRES armement": _ARMER
+    + """
+from minio import Minio as _M
 
-        Apres armement, il parcourt chaque module `src.*` charge et rougit si un
-        attribut y EST ENCORE une fonction d'origine des modules de stores, hors
-        de la liste `NON_ECRIVAINS` que ce test tient lui-meme. `storage` et
-        `extraction` importent `get_writer` PAR NOM : barrer `nebula.get_writer`
-        dans `nebula` seul le laisse vivant a deux sites. `mesure` : il rougit au
-        retrait de `nebula.get_writer` comme de `vectors.get_collection` de la
-        liste du producteur (registre 4.37.d).
-        """
-        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+_M("h", access_key="a", secret_key="b")
+""",
+    "alias d'import AVANT armement": """
+from minio import Minio as _M
+"""
+    + _ARMER
+    + """
+_M("h", access_key="a", secret_key="b")
+""",
+    "getattr sur le module du SDK": _ARMER
+    + """
+import minio
 
-        inconnus = sorted(set(NON_ECRIVAINS) - set(releve["originaux"]))
-        assert not inconnus, f"NON_ECRIVAINS nomme des fonctions qui n'existent plus : {inconnus}"
-        portes_vivantes = [
-            [site, qualifie]
-            for site, qualifie in releve["encore_lies"]
-            if qualifie not in NON_ECRIVAINS
+getattr(minio, "Minio")("h", access_key="a", secret_key="b")
+""",
+    "client construit au NIVEAU DU MODULE": _ARMER
+    + """
+import pathlib
+import sys
+import tempfile
+
+dossier = tempfile.mkdtemp()
+sys.path.insert(0, dossier)
+pathlib.Path(dossier, "porte_neuve.py").write_text(
+    chr(10).join(
+        [
+            "from minio import Minio",
+            "",
+            'CLIENT = Minio("h", access_key="a", secret_key="b")',
         ]
-        assert not portes_vivantes, (
-            "des portes d'ecriture restent liees a leur original apres armement : "
-            f"{portes_vivantes}"
+    )
+)
+import porte_neuve
+""",
+    "porte deposee dans src/pipeline": _ARMER
+    + """
+import os
+
+for nom, valeur in (
+    ("MINIO_ENDPOINT", "h"),
+    ("MINIO_ROOT_USER", "a"),
+    ("MINIO_ROOT_PASSWORD", "b"),
+    ("MINIO_BUCKET", "seau"),
+):
+    os.environ.setdefault(nom, valeur)
+from src.pipeline.media import MinioImageExporter
+
+MinioImageExporter("un-document")._get_client()
+""",
+    "client d'ADMINISTRATION MinIO": _ARMER
+    + """
+from minio import MinioAdmin
+
+MinioAdmin("h")
+""",
+    "import du SDK POSTERIEUR a l'armement": _ARMER
+    + """
+import importlib
+
+importlib.import_module("minio").Minio("h", access_key="a", secret_key="b")
+""",
+}
+
+
+class TestLesPortesNeuvesLevent:
+    """LA PREUVE EST A L'EXECUTION, et elle ne depend d'aucune lecture du code.
+
+    Les cinq portes que la derivation AST a laissees passer, plus deux
+    variantes de ce lot. Chacune tourne dans un processus NEUF — armer est
+    irreversible — et doit lever `BarriereDEcritureError`.
+    """
+
+    def _lancer(self, code):
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=RACINE_DEPOT,
+            env={**os.environ, "PYTHONPATH": str(RACINE_DEPOT)},
         )
 
-    def test_les_porteurs_derives_sont_tous_barres_ou_classes(self):
-        """A4 : plus de liste de MODULES en dur, et rien n'est saute en silence.
+    @pytest.mark.parametrize("nom", sorted(PORTES_NEUVES))
+    def test_une_porte_neuve_leve_quel_que_soit_son_chemin(self, nom):
+        acheve = self._lancer(PORTES_NEUVES[nom])
 
-        `mesure` du second audit du lot 11 : le balayage etait borne a
-        `MODULES = (nebula, vectors, storage, images)`, et une porte ecrivante
-        neuve deposee dans `extraction.py` passait, rc=0, 5 tests verts. Les
-        porteurs sont desormais DERIVES par point fixe sur tout
-        `src/docling_service/*.py` ; chacun est une porte barree, un
-        `NON_ECRIVAINS` motive, ou un `HORS_PROCESSUS` motive. Aucun quatrieme cas.
-        """
-        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+        assert acheve.returncode != 0, f"{nom} : rc=0, la porte a construit son client"
+        assert "BarriereDEcritureError" in acheve.stderr, (nom, acheve.stdout, acheve.stderr)
 
-        barres = {f"src.docling_service.{nom}" for nom in list(PORTES) + [TEMOIN_MINIO]}
-        classes = (
-            barres | set(NON_ECRIVAINS) | {f"src.docling_service.{nom}" for nom in HORS_PROCESSUS}
-        )
-        inclasses = sorted(f"src.docling_service.{p}" for p in releve["porteurs"])
-        assert not [p for p in inclasses if p not in classes], (
-            "des porteurs de client de store ne sont ni barres ni classes : "
-            f"{[p for p in inclasses if p not in classes]}"
-        )
+    def test_le_constructeur_touche_entre_au_journal(self):
+        """Une levee avalee par un `except Exception` laisse quand meme sa trace."""
+        releve = _executer(
+            """
+import json
+from src.equivalence_des_identifiants import armer_les_barrieres
 
-    def test_les_hors_processus_ne_sont_pas_dans_le_processus_du_harnais(self):
-        """Leur raison d'etre classes EST qu'ils n'y sont pas : on le mesure."""
-        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+armement = armer_les_barrieres()
+try:
+    from minio import Minio
 
-        assert sorted(nom for nom, _ in releve["hors_processus"]) == sorted(HORS_PROCESSUS)
-        modules = {nom.split(".")[0] for nom in HORS_PROCESSUS}
-        assert not [m for m in modules if f"src.docling_service.{m}" in releve["charges"]], releve[
-            "charges"
-        ]
-
-    def test_les_semences_construisent_bien_un_client_de_store(self):
-        """Une semence qui ne seme rien laisserait la derivation vide et MUETTE.
-
-        Le piege « une mutation qui ne mute rien » : on exige que chaque semence
-        soit citee par le code des stores, et que la derivation rende au moins
-        les portes deja declarees.
-        """
-        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
-        source = "".join(
-            chemin.read_text(encoding="utf-8")
-            for chemin in sorted((RACINE_DEPOT / "src/docling_service").glob("*.py"))
+    Minio("h", access_key="a", secret_key="b")
+except Exception:
+    pass
+print(json.dumps(armement.journal))
+"""
         )
 
-        muettes = [semence for semence in SEMENCES if f"{semence}(" not in source]
-        assert not muettes, f"des semences ne construisent aucun client : {muettes}"
-        assert set(releve["porteurs"]) >= set(PORTES) | {TEMOIN_MINIO}
+        assert releve == ["minio.Minio"], releve
 
-    def test_aucun_sdk_de_store_n_entre_sans_sa_semence(self):
-        """UNE SEMENCE PROTEGE D'UNE PORTE NEUVE ; ceci protege d'un CLIENT neuf.
 
-        Sans ce garde, passer `chromadb.HttpClient` a `chromadb.PersistentClient`
-        rendrait la derivation aveugle EN SILENCE — le piege « une liste en dur se
-        trompe en silence », a un cran de profondeur.
-        """
+class TestLEnumerationDesConstructeurs:
+    """LES CONSTRUCTEURS SONT ENUMERES DEPUIS LE SDK INSTALLE, jamais de memoire."""
+
+    def test_la_regle_de_minio_rend_les_clients_et_aucune_erreur(self):
+        import minio
+
+        from src.equivalence_des_identifiants import _classes_hors_exception
+
+        noms = _classes_hors_exception(minio)
+
+        assert "Minio" in noms and "MinioAdmin" in noms
+        assert not [n for n in noms if n.endswith("Error")], noms
+
+    def test_une_classe_publique_neuve_du_sdk_est_prise_sans_toucher_au_code(self):
+        """LE PIEGE « une liste en dur se trompe en silence », a un cran de profondeur."""
+        import types
+
+        from src.equivalence_des_identifiants import _classes_hors_exception
+
+        faux = types.ModuleType("faux_sdk")
+        faux.ClientNeuf = type("ClientNeuf", (), {})
+        faux.ErreurDuSdk = type("ErreurDuSdk", (Exception,), {})
+        faux._Prive = type("_Prive", (), {})
+
+        assert _classes_hors_exception(faux) == ["ClientNeuf"]
+
+    def test_la_regle_de_chromadb_ne_retient_que_les_fabriques(self):
+        """Les noms en `Client` qui sont des CLASSES sont les interfaces abstraites."""
+        import types
+
+        from src.equivalence_des_identifiants import _fabriques_de_client
+
+        faux = types.ModuleType("faux_chroma")
+        faux.HttpClient = lambda: None
+        faux.ClientAPI = type("ClientAPI", (), {})
+        faux.Collection = type("Collection", (), {})
+
+        assert _fabriques_de_client(faux) == ["HttpClient"]
+
+    def test_la_regle_de_nebula3_prend_les_pools_et_la_connexion(self):
+        import types
+
+        from src.equivalence_des_identifiants import _pools_et_connexions
+
+        faux = types.ModuleType("faux_nebula")
+        faux.ConnectionPool = type("ConnectionPool", (), {})
+        faux.SessionPool = type("SessionPool", (), {})
+        faux.Connection = type("Connection", (), {})
+        faux.Session = type("Session", (), {})
+
+        assert _pools_et_connexions(faux) == ["Connection", "ConnectionPool", "SessionPool"]
+
+    def test_minio_est_bien_barre_et_les_sdk_absents_sont_nommes(self):
+        """Un SDK absent du processus n'y construit rien : c'est RENDU, jamais tu."""
+        releve = _executer(PARCOURS_DES_SITES, DECLAREES)
+
+        assert releve["sdk_barres"]["minio"] == ["minio.Minio", "minio.MinioAdmin"]
+        # Sur l'hote, `nebula3` et `chromadb` ne s'importent pas : ils doivent
+        # etre NOMMES absents, et jamais sautes en silence.
+        assert set(releve["sdk_barres"]) | set(releve["sdk_absents"]) == {
+            "minio",
+            "nebula3.gclient.net",
+            "nebula3.gclient.net.SessionPool",
+            "chromadb",
+        }, releve
+
+    def test_sdk_de_store_decrit_les_sdk_reellement_importes(self):
+        """Un SDK de store nouveau ou disparu dans la production doit etre vu."""
         importe = set()
         for chemin in sorted((RACINE_DEPOT / "src/docling_service").glob("*.py")):
             arbre = ast.parse(chemin.read_text(encoding="utf-8"))
@@ -1129,12 +1278,101 @@ class TestLesBarrieres:
         inconnus = sorted(importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE))
         assert not inconnus, (
             f"SDK_DE_STORE ne decrit plus les imports reels : {inconnus}. "
-            "Un SDK de store nouveau ou disparu exige de revoir SEMENCES."
+            "Un SDK de store nouveau ou disparu exige de revoir CONSTRUCTEURS_DES_SDK."
+        )
+
+
+class TestLesClientsDeLectureDuHarnais:
+    """LES SEULS CLIENTS PERMIS SONT CEUX DE LECTURE, et ils portent leur borne."""
+
+    def test_l_enveloppe_ne_laisse_passer_que_les_methodes_nommees(self):
+        from src.equivalence_des_identifiants import BarriereDEcritureError, LectureSeule
+
+        class Faux:
+            def list_objects(self, *_a, **_k):
+                return ["vu"]
+
+            def remove_object(self, *_a, **_k):  # pragma: no cover - doit lever avant
+                raise AssertionError("appele")
+
+        enveloppe = LectureSeule(Faux(), {"list_objects"}, "minio du harnais")
+
+        assert enveloppe.list_objects("seau") == ["vu"]
+        with pytest.raises(BarriereDEcritureError, match="LECTURE SEULE"):
+            enveloppe.remove_object("seau", "cle")
+
+    @pytest.mark.parametrize(
+        "requete",
+        [
+            "INSERT VERTEX Document() VALUES 'x':();",
+            "USE rag_space; DELETE VERTEX 'x';",
+            "DROP SPACE rag_space;",
+            "UPDATE VERTEX ON Document 'x' SET a = 1;",
+            "SUBMIT JOB STATS;",
+        ],
+    )
+    def test_la_session_refuse_toute_requete_qui_n_est_pas_une_lecture(self, requete):
+        from src.equivalence_des_identifiants import BarriereDEcritureError, SessionEnLecture
+
+        class Fausse:
+            def execute(self, _requete):  # pragma: no cover - doit lever avant
+                raise AssertionError("la requete est passee")
+
+        journal = []
+        session = SessionEnLecture(Fausse(), journal)
+
+        with pytest.raises(BarriereDEcritureError, match="n'est pas un verbe de lecture"):
+            session.execute(requete)
+        assert journal, "une requete refusee entre au journal"
+
+    @pytest.mark.parametrize(
+        "requete",
+        [
+            "USE rag_space;",
+            "MATCH (d:Document) RETURN d.Document.source_path AS s;",
+            'GO FROM "x" OVER PARENT_OF YIELD dst(edge) AS d;',
+        ],
+    )
+    def test_les_requetes_du_harnais_passent(self, requete):
+        """Le controle negatif : un garde qui refuse tout ne garde rien."""
+        from src.equivalence_des_identifiants import SessionEnLecture
+
+        class Fausse:
+            def execute(self, requete):
+                return f"passe: {requete}"
+
+        assert SessionEnLecture(Fausse(), []).execute(requete).startswith("passe")
+
+
+class TestLesBarrieres:
+    """« Ce qui ecrirait leve », a TOUS les sites ou la porte est liee."""
+
+    def test_aucune_porte_declaree_ne_reste_liee_dans_un_module_src(self):
+        """LE TEST QUE L'AUDIT A MONTRE MANQUANT : deux mutants lui survivaient.
+
+        Apres armement, il parcourt chaque module `src.*` charge et rougit si un
+        attribut y EST ENCORE la fonction d'origine d'une porte DECLAREE.
+        `storage` et `extraction` importent `get_writer` PAR NOM : barrer
+        `nebula.get_writer` dans `nebula` seul le laisse vivant a deux sites.
+        `mesure` : il rougit au retrait de `nebula.get_writer` comme de
+        `vectors.get_collection` de la liste du producteur (registre 4.37.d).
+
+        **CE QU'IL PROUVE, ET RIEN DE PLUS** : que les portes NOMMEES dans
+        `PORTES` sont bien deliees partout. Il ne dit rien des portes qu'on
+        n'aurait pas nommees — c'est la barriere d'execution sur les SDK qui
+        tient celles-la (`TestLesPortesNeuvesLevent`).
+        """
+        releve = _executer(PARCOURS_DES_SITES, DECLAREES)
+
+        assert releve["originaux"], "aucune porte n'a ete relevee : le parcours ne parcourt rien"
+        assert not releve["encore_lies"], (
+            "des portes d'ecriture restent liees a leur original apres armement : "
+            f"{releve['encore_lies']}"
         )
 
     def test_get_writer_est_barre_a_ses_trois_sites(self):
         """Le site par nom de `storage` et d'`extraction`, en plus de `nebula`."""
-        releve = _executer(PARCOURS_DES_SITES, json.dumps(SEMENCES))
+        releve = _executer(PARCOURS_DES_SITES, DECLAREES)
 
         assert set(releve["sites"]["nebula.get_writer"]) >= {
             "src.docling_service.nebula.get_writer",
