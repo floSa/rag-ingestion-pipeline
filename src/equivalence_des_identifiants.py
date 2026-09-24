@@ -412,6 +412,7 @@ class Bilan:
     identiques: int
     deplaces: list[Deplacement]
     apparus_sans_contrepartie: list[Ligne]
+    reassignes: list[tuple[Ligne, Ligne]] = field(default_factory=list)
 
 
 def _cle_d_appariement(lignes: Sequence[Ligne]) -> list[tuple[str, int]]:
@@ -469,11 +470,29 @@ def comparer_les_releves(
         for ligne in apres
         if ligne["element_id"] not in ids_avant and id(ligne) not in contreparties
     ]
+    # UN IDENTIFIANT PRESENT DES DEUX COTES PEUT DESIGNER UN AUTRE ELEMENT, et
+    # une difference d'ensembles le compte comme identique. `mesure` au chantier
+    # B de la reprise du lot 11 : ne plus emettre les puces vides decale leurs
+    # voisins, et deux lignes de code VIDES tombent a la position de la puce
+    # retiree — meme cle, meme page, meme rang, meme `text50` "", donc MEME
+    # identifiant. Un ancrage sur cette puce designerait du code, sans un rouge.
+    par_id_apres = {str(ligne["element_id"]): ligne for ligne in apres}
+    reassignes = [
+        (ligne, par_id_apres[str(ligne["element_id"])])
+        for ligne in avant
+        if str(ligne["element_id"]) in par_id_apres
+        and (ligne["label"], ligne["self_ref"])
+        != (
+            par_id_apres[str(ligne["element_id"])]["label"],
+            par_id_apres[str(ligne["element_id"])]["self_ref"],
+        )
+    ]
     return Bilan(
         partition_key=partition_key,
-        identiques=len(ids_avant & ids_apres),
+        identiques=len(ids_avant & ids_apres) - len(reassignes),
         deplaces=deplaces,
         apparus_sans_contrepartie=apparus,
+        reassignes=reassignes,
     )
 
 
@@ -511,7 +530,7 @@ def trancher(
 ) -> Verdict:
     """Vert si et seulement si l'ensemble deplace EGALE l'ensemble declare.
 
-    Trois rouges, et aucun n'est tolerable :
+    Quatre rouges, et aucun n'est tolerable :
 
     - un deplacement NON declare : l'agent perd un ancrage sans que personne l'ait
       decide ;
@@ -520,7 +539,11 @@ def trancher(
     - un identifiant APPARU sans contrepartie deplacee : un element que
       l'instantane ne connait pas. La declaration ne porte que sur l'instantane,
       donc un element ajoute n'est pas declarable ; c'est une borne voulue, qui
-      force a refiger l'instantane plutot qu'a l'etendre en silence.
+      force a refiger l'instantane plutot qu'a l'etendre en silence ;
+    - un identifiant REASSIGNE : present des deux cotes, il designe apres un
+      autre element (autre label ou autre `self_ref`). Non declarable non plus :
+      un ancrage qui glisse en silence vers un autre passage est pire qu'un
+      ancrage mort.
     """
     deplaces = {str(d.avant["element_id"]) for bilan in bilans for d in bilan.deplaces}
     raisons = list(autres_raisons)
@@ -538,6 +561,12 @@ def trancher(
         )
     if apparus:
         raisons.append(f"{len(apparus)} apparu(s) sans contrepartie deplacee : {apparus[:12]}")
+    reassignes = sorted(str(a["element_id"]) for b in bilans for a, _ in b.reassignes)
+    if reassignes:
+        raisons.append(
+            f"{len(reassignes)} identifiant(s) REASSIGNE(S) a un autre element — "
+            f"meme identifiant, autre label ou autre self_ref : {reassignes[:12]}"
+        )
     return Verdict(deplaces=deplaces, declares=set(declares), raisons=raisons)
 
 
@@ -1140,6 +1169,7 @@ def comparer(
         dire(f"    identiques a l'instantane: {bilan.identiques}")
         dire(f"    deplaces                 : {len(bilan.deplaces)}")
         dire(f"    apparus sans contrepartie: {len(bilan.apparus_sans_contrepartie)}")
+        dire(f"    reassignes               : {len(bilan.reassignes)}")
         if avant.empreinte_de_l_entree != emission.empreinte_de_l_entree:
             dire("    L'ENTREE CONVERTIE A CHANGE depuis l'instantane (empreinte differente)")
         for d in bilan.deplaces:

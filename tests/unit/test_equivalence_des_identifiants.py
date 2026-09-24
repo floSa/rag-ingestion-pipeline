@@ -292,6 +292,31 @@ class TestLaComparaison:
             nouveau["element_id"]
         ]
 
+    def test_un_identifiant_repris_par_un_autre_element_est_reassigne(self):
+        """Le cas MESURE de l'option d : une ligne de code vide herite de l'id d'une puce.
+
+        Meme cle, meme page, meme rang, meme `text50` vide : meme identifiant.
+        Une difference d'ensembles le dit identique ; il designe pourtant du code.
+        """
+        textes = ["Titre", "", "", "Suite"]
+        avant = _lignes(nombre=4, textes=textes)
+        avant[1]["label"] = "list_item"
+        avant[2]["label"] = "code"
+        apres = [
+            dict(avant[0]),
+            dict(avant[2], position_in_page=1),
+            dict(avant[3], position_in_page=2),
+        ]
+        for ligne in apres:
+            ligne["element_id"] = identifiant_par_la_formule(ligne)
+
+        bilan = comparer_les_releves("p", avant, apres)
+
+        assert [a["element_id"] for a, _ in bilan.reassignes] == [avant[1]["element_id"]]
+        verdict = trancher([bilan], {d.avant["element_id"] for d in bilan.deplaces})
+        assert not verdict.ok
+        assert "REASSIGNE" in verdict.raisons[0]
+
     def test_la_confrontation_ne_rend_pas_zero_sur_un_graphe_vide(self):
         """Une sonde qui ne lit rien rendrait aussi « graphe seul = 0 »."""
         confrontation = confronter_au_graphe(_lignes(), set())
@@ -644,7 +669,7 @@ class TestLesBarrieres:
         `extraction` importent `get_writer` PAR NOM : barrer `nebula.get_writer`
         dans `nebula` seul le laisse vivant a deux sites. `mesure` : il rougit au
         retrait de `nebula.get_writer` comme de `vectors.get_collection` de la
-        liste du producteur (registre 4.37.e).
+        liste du producteur (registre 4.37.d).
         """
         releve = _executer(PARCOURS_DES_SITES)
 
