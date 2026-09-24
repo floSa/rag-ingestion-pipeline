@@ -4815,8 +4815,20 @@ tailles de `src/` et `tests/` toutes les 5 ms, `__pycache__` exclu, pendant
 | fichiers touchés | **2** — `src/equivalence_des_identifiants.py` (465 événements), `src/docling_service/extraction.py` (272) | **aucun** |
 
 Le script porte en outre **sa propre** sonde : il relève les `mtime` avant et
-après, et rougit si l'un a bougé — **162 fichiers surveillés**. Elle remplace le
+après, et rougit si l'un a bougé — **84 fichiers surveillés**, `mesuré` le
+24 septembre 2026 par `empreinte_des_mtime(RACINE)`. Elle remplace le
 `git diff`, et elle est elle-même tenue par une mutation (`A9-d`).
+
+**Elle ne surveille QUE les sources, et c'est la réparation B1 du quatrième
+audit.** Elle faisait un `rglob("*")` nu : **162** fichiers, dont **78** `.pyc`
+— que l'interpréteur réécrit de lui-même. `mesuré` par l'audit : un
+`python -c "import src.index_report"` lancé depuis l'arbre **pendant**
+`make mutations` faisait rendre **2** à `make`, le rejeu se déclarant « ECHEC :
+le rejeu a TOUCHE l'arbre de travail » alors qu'il n'avait touché que sa copie.
+`__pycache__` est exclu par une clause sur `chemin.parts`, et le compte tombe
+à **84** = 162 − 78. Un garde qui rougit sur ce qu'il ne garde pas finit par
+être désarmé ; les deux sens sont tenus par un test, le `.pyc` touché ne
+rougit plus et le `.py` touché rougit toujours.
 
 **Le verdict exige les trois** : `rc == 1`, `failed` dans la dernière ligne, et
 **aucun** `error`. Chacune des trois clauses a son cas de test qui la tient

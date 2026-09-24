@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -146,6 +147,43 @@ class TestLArbreDeTravailNeBougePas:
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
         assert "COPIE JETABLE" in acheve.stdout, acheve.stdout
         assert module.empreinte_des_mtime(RACINE_DEPOT) == avant
+
+    def test_la_sonde_ignore_les_pycache_et_voit_toujours_les_sources(self, tmp_path):
+        """LA SONDE NE SURVEILLE QUE LES SOURCES, et c'est le defaut B1 du quatrieme audit.
+
+        Elle faisait `rglob("*")` sans exclusion : elle surveillait les `.pyc`,
+        que l'interpreteur REECRIT tout seul. `mesure` de l'audit : un
+        `python -c "import src.index_report"` lance depuis l'arbre pendant
+        `make mutations` faisait rendre 2 a `make` — le rejeu etait declare
+        « ECHEC : le rejeu a TOUCHE l'arbre de travail » alors qu'il n'avait
+        rien touche. Un garde qui rougit sur ce qu'il ne garde pas finit par
+        etre desarme.
+
+        Les deux sens sont tenus ici : le `.pyc` ne rougit plus, le `.py` rougit
+        toujours. Le second est ce qui empeche de « reparer » le premier en
+        rendant la sonde aveugle.
+        """
+        module = _module()
+        (tmp_path / "src/__pycache__").mkdir(parents=True)
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "src/production.py").write_text("x = 1", encoding="utf-8")
+        (tmp_path / "tests/test_production.py").write_text("y = 2", encoding="utf-8")
+        cache = tmp_path / "src/__pycache__/production.cpython-311.pyc"
+        cache.write_bytes(b"compile")
+
+        avant = module.empreinte_des_mtime(tmp_path)
+
+        assert set(avant) == {"src/production.py", "tests/test_production.py"}, avant
+
+        # Le `.pyc` REECRIT ne rougit plus...
+        os.utime(cache, (1_000_000, 1_000_000))
+        assert module.ce_qui_a_bouge(avant, module.empreinte_des_mtime(tmp_path)) == []
+
+        # ...et la source touchee rougit toujours.
+        os.utime(tmp_path / "src/production.py", (1_000_000, 1_000_000))
+        assert module.ce_qui_a_bouge(avant, module.empreinte_des_mtime(tmp_path)) == [
+            "src/production.py"
+        ]
 
     def test_la_copie_porte_ce_dont_les_tests_ont_besoin(self, tmp_path):
         """`documentation/campagnes` en fait partie : le repertoire fixe s'y resout."""

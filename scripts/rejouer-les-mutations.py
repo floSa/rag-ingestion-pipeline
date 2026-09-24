@@ -71,11 +71,24 @@ class TableInvalideError(ValueError):
 
 
 def empreinte_des_mtime(racine: Path) -> dict[str, float]:
-    """Le `mtime` de chaque fichier des arbres surveilles. La sonde du script."""
+    """Le `mtime` de chaque fichier SOURCE des arbres surveilles. La sonde du script.
+
+    **`__pycache__` EN EST EXCLU, et c'est le defaut B1 du quatrieme audit.** La
+    sonde faisait un `rglob("*")` nu : sur 162 fichiers surveilles, 78 etaient
+    des `.pyc`, que l'interpreteur reecrit de lui-meme des qu'un module est
+    importe. `mesure` de l'audit : un `python -c "import src.index_report"`
+    lance depuis l'arbre PENDANT `make mutations` faisait rendre 2 a `make` —
+    le rejeu se declarait « ECHEC : le rejeu a TOUCHE l'arbre de travail »
+    alors qu'il n'avait touche que sa copie.
+
+    Un garde qui rougit sur ce qu'il ne garde pas finit par etre desarme, et
+    c'est ce qu'il aurait emporte avec lui : la sonde garde les SOURCES, les
+    seules que le rejeu pourrait muter.
+    """
     releve: dict[str, float] = {}
     for arbre in SURVEILLES:
         for chemin in sorted((racine / arbre).rglob("*")):
-            if chemin.is_file():
+            if chemin.is_file() and "__pycache__" not in chemin.parts:
                 releve[str(chemin.relative_to(racine))] = chemin.stat().st_mtime
     return releve
 
