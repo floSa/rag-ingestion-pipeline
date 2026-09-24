@@ -1369,6 +1369,65 @@ class TestLesClientsDeLectureDuHarnais:
             session.execute(requete)
         assert journal, "une requete refusee entre au journal"
 
+    # LES ECRITURES COMPOSEES QUI PASSAIENT, defaut B3 du quatrieme audit. Le
+    # controle ne decoupait que sur `;`, alors que nGQL compose aussi par le
+    # TUBE `|` — qui passe le resultat d'une lecture a une ECRITURE — et par le
+    # simple saut de ligne. Chacune de ces formes commence par un verbe de
+    # lecture et ECRIT. `mesure` sur une session factice, 24 septembre 2026 :
+    # les 12 passaient, dont les trois que l'audit nomme.
+    ECRITURES_COMPOSEES = [
+        'GO FROM "v" OVER PARENT_OF YIELD dst(edge) AS d | DELETE VERTEX $-.d;',
+        "SHOW SPACES | DROP SPACE $-.Name;",
+        'YIELD "x" AS d | DELETE VERTEX $-.d;',
+        "MATCH (d:Document) RETURN id(d) AS i | DELETE VERTEX $-.i;",
+        "LOOKUP ON Document YIELD id(vertex) AS i | DELETE VERTEX $-.i;",
+        'FETCH PROP ON Document "v" YIELD id(vertex) AS i | DELETE VERTEX $-.i;',
+        'GO FROM "v" OVER PARENT_OF YIELD dst(edge) AS d | DELETE EDGE PARENT_OF "a" -> $-.d;',
+        "USE rag_space | DROP SPACE rag_space;",
+        "SHOW TAGS | DROP TAG $-.Name;",
+        "DESCRIBE SPACE rag_space | DROP SPACE rag_space;",
+        # Les deux formes par SAUT DE LIGNE, mesurees ici et non par l'audit :
+        # elles passaient aussi, et c'est ce qui met le saut de ligne parmi les
+        # separateurs.
+        'GO FROM "v" OVER PARENT_OF YIELD dst(edge) AS d\nDELETE VERTEX $-.d;',
+        "MATCH (d:Document) RETURN d\nDROP SPACE rag_space;",
+    ]
+
+    @pytest.mark.parametrize("requete", ECRITURES_COMPOSEES)
+    def test_une_ecriture_composee_par_un_tube_ou_un_saut_de_ligne_est_refusee(self, requete):
+        """Le premier mot LIT, et la requete ECRIT. C'est tout le defaut B3."""
+        from src.equivalence_des_identifiants import BarriereDEcritureError, SessionEnLecture
+
+        class Fausse:
+            def execute(self, _requete):  # pragma: no cover - doit lever avant
+                raise AssertionError("la requete est passee")
+
+        journal: list[str] = []
+
+        with pytest.raises(BarriereDEcritureError, match="n'est pas un verbe de lecture"):
+            SessionEnLecture(Fausse(), journal).execute(requete)
+        assert journal, "une requete refusee entre au journal"
+
+    def test_un_separateur_cite_fait_refuser_plus_jamais_moins(self):
+        """LA BORNE DU SITE, et elle est MESUREE ici plutot qu'affirmee.
+
+        Un separateur a l'interieur d'une chaine citee compte pour un
+        separateur : la requete ci-dessous ne fait que LIRE, et elle est
+        pourtant refusee. C'est le sens acceptable. L'autre sens est tenu par
+        l'argument ecrit au site — decouper ne fait qu'ajouter des fragments,
+        donc des exigences — et par les 12 formes ci-dessus.
+        """
+        from src.equivalence_des_identifiants import BarriereDEcritureError, SessionEnLecture
+
+        class Fausse:
+            def execute(self, _requete):  # pragma: no cover - doit lever avant
+                raise AssertionError("la requete est passee")
+
+        with pytest.raises(BarriereDEcritureError, match="n'est pas un verbe de lecture"):
+            SessionEnLecture(Fausse(), []).execute(
+                'MATCH (d:Document) WHERE d.Document.source_path == "a|b" RETURN d;'
+            )
+
     @pytest.mark.parametrize(
         "requete",
         [
@@ -1386,6 +1445,34 @@ class TestLesClientsDeLectureDuHarnais:
                 return f"passe: {requete}"
 
         assert SessionEnLecture(Fausse(), []).execute(requete).startswith("passe")
+
+    def test_les_trois_requetes_reelles_de_la_classe_graphe_passent(self):
+        """Les requetes du harnais telles que `Graphe` les FORME, et non recopiees.
+
+        Le controle negatif precedent porte sur des requetes ecrites a la main
+        dans ce fichier : elles pourraient diverger de celles que le script
+        envoie. Celles-ci sont formees par les memes constantes et les memes
+        f-strings que `Graphe.__init__`, `Graphe.documents` et `Graphe.ids`, sur
+        des `element_id` REELS lus dans l'instantane versionne.
+        """
+        from src.docling_service.ngql import SPACE, document_vid
+        from src.equivalence_des_identifiants import SessionEnLecture
+
+        class Fausse:
+            def execute(self, requete):
+                return f"passe: {requete}"
+
+        session = SessionEnLecture(Fausse(), [])
+        versionne = RACINE_DEPOT / "documentation/campagnes/2026-09-24-instantane-des-identifiants"
+        lot = [document_vid(cle) for cle in sorted(lire_l_instantane(versionne).documents)]
+        liste = ", ".join('"' + vid.replace('"', '\\"') + '"' for vid in lot)
+
+        for requete in (
+            f"USE {SPACE};",
+            "MATCH (d:Document) RETURN d.Document.source_path AS s;",
+            f"GO FROM {liste} OVER PARENT_OF YIELD dst(edge) AS d;",
+        ):
+            assert session.execute(requete).startswith("passe"), requete
 
 
 class TestLesBarrieres:

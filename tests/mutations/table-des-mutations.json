@@ -264,6 +264,14 @@
       "motif": "SDK_DE_STORE: tuple[str, ...] = (\"minio\", \"nebula3\", \"chromadb\")",
       "remplacement": "SDK_DE_STORE: tuple[str, ...] = (\"minio\", \"nebula3\", \"chromadb\", \"boto3\")",
       "test": "test_toute_dependance_tierce_de_src_est_classee"
+    },
+    {
+      "id": "B3",
+      "constat": "le garde de la session ne decoupait que sur `;` : 12 ecritures composees par le tube `|` ou par un saut de ligne passaient, dont `GO … | DELETE VERTEX $-.d`",
+      "fichier": "src/equivalence_des_identifiants.py",
+      "motif": "SEPARATEURS: tuple[str, ...] = (\";\", \"|\", \"\\n\")",
+      "remplacement": "SEPARATEURS: tuple[str, ...] = (\";\",)",
+      "test": "test_une_ecriture_composee_par_un_tube_ou_un_saut_de_ligne_est_refusee"
     }
   ]
 }

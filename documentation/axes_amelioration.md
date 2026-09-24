@@ -4748,11 +4748,14 @@ hors conteneur, et un test qui exige un conteneur n'est pas un test de la porte.
 et ils portent leur propre borne, parce qu'ils survivent à la barrière :
 
 - la session Nebula est enveloppée dans `SessionEnLecture`, qui refuse toute
-  requête dont un fragment séparé par `;` ne commence pas par un verbe de
-  lecture (`USE`, `MATCH`, `GO`, `LOOKUP`, `FETCH`, `SHOW`, `DESCRIBE`, `DESC`,
-  `RETURN`, `YIELD`). **La borne est écrite au site** : un `;` à l'intérieur
-  d'une chaîne citée compterait comme un séparateur, donc le garde refuserait
-  **plus** que nécessaire, jamais moins ;
+  requête dont un fragment ne commence pas par un verbe de lecture (`USE`,
+  `MATCH`, `GO`, `LOOKUP`, `FETCH`, `SHOW`, `DESCRIBE`, `DESC`, `RETURN`,
+  `YIELD`). **Les séparateurs sont les trois de `SEPARATEURS` — `;`, le tube
+  `|` et le saut de ligne — et il en manquait DEUX** : c'est le défaut B3 du
+  quatrième audit, traité au §4.39.f. **La borne est écrite au site, et elle
+  est désormais VRAIE** : un séparateur à l'intérieur d'une chaîne citée compte
+  pour un séparateur, donc le garde refuse **plus** que nécessaire, jamais
+  moins — `mesuré` par un test, et non plus affirmé ;
 - le client MinIO est enveloppé dans `LectureSeule`, qui ne laisse passer que
   `list_objects` et journalise tout le reste avant de lever.
 

@@ -1072,13 +1072,36 @@ def _barrer_le_constructeur(module: Any, nom: str, qualifie: str, journal: list[
 # Les verbes nGQL qui LISENT. Tout le reste — `INSERT`, `UPDATE`, `UPSERT`,
 # `DELETE`, `DROP`, `CREATE`, `REBUILD`, `SUBMIT` — est refuse.
 #
-# LA BORNE, ecrite au site : le controle porte sur le PREMIER MOT de chaque
-# fragment separe par `;`, et un `;` a l'interieur d'une chaine citee compterait
-# comme un separateur. Il refuserait alors plus que necessaire, JAMAIS moins :
-# c'est le sens sur lequel un garde peut se tromper.
+# LES TROIS SEPARATEURS, et il en manquait DEUX — c'est le defaut B3 du
+# quatrieme audit. Le controle ne connaissait que `;`, alors que nGQL compose
+# aussi par le TUBE `|`, qui passe le resultat d'une lecture a une ecriture, et
+# par le simple SAUT DE LIGNE. `mesure` sur une session factice, 24 septembre
+# 2026 : 12 formes d'ecriture composee passaient, dont
+# `GO … | DELETE VERTEX $-.d`, `SHOW SPACES | DROP SPACE $-.Name` et
+# `YIELD "x" AS d | DELETE VERTEX $-.d`. Le commentaire qui tenait ici
+# affirmait que le garde « refuserait plus, JAMAIS moins » : il refusait moins.
+SEPARATEURS: tuple[str, ...] = (";", "|", "\n")
+
+# LA BORNE, ecrite au site, et elle est desormais VRAIE — `mesure` au test
+# `test_un_separateur_cite_fait_refuser_plus_jamais_moins`. Le controle porte sur
+# le PREMIER MOT de chaque fragment, et un separateur a l'interieur d'une chaine
+# citee compte comme un separateur : la requete est alors refusee alors qu'elle
+# lisait. C'est le sens sur lequel un garde peut se tromper sans danger, et
+# l'argument tient en une ligne — un separateur de plus ne fait qu'AJOUTER un
+# fragment, donc une exigence ; le premier fragment commence toujours a la
+# position 0, donc le premier mot de la requete est controle dans tous les cas.
+# Decouper ne peut jamais retirer une exigence.
 VERBES_DE_LECTURE: frozenset[str] = frozenset(
     {"USE", "MATCH", "GO", "LOOKUP", "FETCH", "SHOW", "DESCRIBE", "DESC", "RETURN", "YIELD"}
 )
+
+
+def fragments_de_la_requete(requete: str) -> list[str]:
+    """Decoupe la requete sur TOUS les separateurs de composition nGQL."""
+    fragments = [requete]
+    for separateur in SEPARATEURS:
+        fragments = [morceau for f in fragments for morceau in f.split(separateur)]
+    return fragments
 
 
 class SessionEnLecture:
@@ -1094,8 +1117,14 @@ class SessionEnLecture:
         self._journal = journal
 
     def execute(self, requete: str) -> Any:
-        """Execute la requete si, et seulement si, chacun de ses fragments LIT."""
-        for fragment in requete.split(";"):
+        """Execute la requete si, et seulement si, chacun de ses fragments LIT.
+
+        Les fragments sont ceux de :data:`SEPARATEURS` — `;`, le TUBE `|` et le
+        saut de ligne. Le tube manquait, et c'est par lui que passaient les
+        ecritures COMPOSEES : `GO … | DELETE VERTEX $-.d` est une ecriture dont
+        le premier mot lit.
+        """
+        for fragment in fragments_de_la_requete(requete):
             mots = fragment.strip().split(None, 1)
             if mots and mots[0].upper() not in VERBES_DE_LECTURE:
                 self._journal.append(f"nebula.execute({mots[0]})")
