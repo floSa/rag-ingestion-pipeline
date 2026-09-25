@@ -10,9 +10,9 @@ classes heritent desormais de celle-ci : l'accord n'est plus verifie, il est
 STRUCTUREL.
 
 **``S3_ENDPOINT`` N'A AUCUNE VALEUR PAR DEFAUT, ET C'EST LE POINT DU LOT.**
-Elle valait ``minio:9000``, a ces deux sites-la. Un poste dont le `.env` ne
-declarait pas la variable parlait donc au stockage nomme dans le code sans
-l'avoir choisi — y compris ``python -m src.wipe_stores``, qui VIDE le bucket
+Elle valait l'adresse du stockage d'alors, ecrite en dur a ces deux sites-la.
+Un poste dont le `.env` ne declarait pas la variable parlait donc au stockage
+nomme dans le code sans l'avoir choisi — y compris ``python -m src.wipe_stores``, qui VIDE le bucket
 qu'on lui designe. Tant que ce defaut a designe le stockage en service, il
 n'etait qu'un raccourci ; le 25 septembre 2026 il a cesse de l'etre, et un
 raccourci qui survit au lieu qu'il designait mene au MAUVAIS stockage.
@@ -34,8 +34,8 @@ from pydantic_settings import BaseSettings
 
 MESSAGE_ENDPOINT_MANQUANT = (
     "S3_ENDPOINT n'est pas defini. Le stockage objet n'a AUCUNE adresse par "
-    "defaut, et c'est delibere : celle qui existait (« minio:9000 ») a survecu "
-    "au stockage qu'elle designait, si bien qu'un outil lance sans `.env` "
+    "defaut, et c'est delibere : celle qui existait a survecu au stockage "
+    "qu'elle designait, si bien qu'un outil lance sans `.env` "
     "visait le mauvais serveur — dont « python -m src.wipe_stores », qui vide "
     "le bucket qu'on lui donne. Renseigne S3_ENDPOINT dans le `.env`, puis "
     "recree les services (« docker compose up -d --force-recreate » : un "

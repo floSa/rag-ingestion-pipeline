@@ -1,6 +1,6 @@
 """L'adresse d'un objet, sa CLE, et le seul site qui construit un client S3.
 
-Trois proprietes que le lot « sans-minio » installe, et qu'aucun test ne tenait :
+Trois proprietes que ce lot installe, et qu'aucun test ne tenait :
 
 - **`object_key` est l'inverse EXACT d'`object_url`.** Le contrat publie les
   deux, et ils doivent decrire le meme objet. Une derivation approximative

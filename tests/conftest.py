@@ -13,7 +13,7 @@ from src.pipeline.schemas import (
 
 # L'adresse du stockage objet n'a AUCUNE valeur par defaut : `S3_ENDPOINT`
 # manquante fait echouer la construction des reglages, et c'est tout l'objet du
-# lot « sans-minio » (`src/reglages_s3.py`). La suite se place donc dans un
+# lot de retrait (`src/reglages_s3.py`). La suite se place donc dans un
 # environnement CONFIGURE, comme la production, plutot que de compter sur un
 # defaut qui n'existe plus.
 #
