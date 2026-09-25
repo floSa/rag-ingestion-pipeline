@@ -236,11 +236,21 @@ for s in DagsterInstance.get().all_instigator_state():
 
 C'est le §4.42.a du registre.
 
-### 3.3 La purge, et le redémarrage qui la suit
+### 3.3 La purge, et les DEUX redémarrages qui la suivent
 
 `wipe_stores` **vide les trois stores et le HTML nettoyé**. Il vise ce que
-`MINIO_ENDPOINT` désigne, et rien d'autre — **donc SeaweedFS aujourd'hui**, et
-aucun endpoint n'est écrit en dur dans ce chemin.
+`MINIO_ENDPOINT` désigne, et rien d'autre — **donc SeaweedFS aujourd'hui**.
+
+> **Mais ce réglage a une valeur par défaut, et cette valeur est MinIO.**
+> `mesuré le 25 septembre 2026` sur le code : `minio_endpoint: str =
+> "minio:9000"` (`src/docling_service/settings.py:18`, et la même à
+> `src/pipeline/settings.py:32`). `wipe_stores` lit ce réglage par
+> `get_settings()`. **Donc un `.env` absent, ou un `.env` qui aurait perdu sa
+> ligne `MINIO_ENDPOINT`, ferait purger MinIO** — c'est-à-dire le retour
+> arrière — **sans une erreur et sans un avertissement.** C'est le même défaut
+> de conception qu'au [§6.2](#62-les-variables-minio_-configurent-deux-choses-à-la-fois),
+> vu par son autre bout, et le [§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_)
+> le ferme. En attendant, le garde-fou est le compte annoncé, juste en dessous.
 
 ```bash
 docker run --rm --network rag_network \
@@ -268,6 +278,23 @@ INFO [src.docling_service.nebula] Schema semantique NebulaGraph pret.
 *(« MinIO » est le nom de la bibliothèque `minio-py`, pas celui du serveur. Le
 serveur est SeaweedFS. C'est cosmétique, et c'est le lot de renommage du
 [§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_).)*
+
+**Puis, tout aussi obligatoirement, le conteneur `agent-api` de
+`rag-agent-chat`** — il vit dans l'autre dépôt, et c'est là qu'on le redémarre :
+
+```bash
+docker compose restart agent-api    # dans le depot rag-agent-chat
+```
+
+**Sans lui, l'agent est cassé en silence.** Sa session NebulaGraph est ouverte
+depuis son démarrage ; la purge a joué `DROP SPACE` puis recréé le schéma, et
+cette session-là répond alors `SemanticError: Unknown tag`. **Son proxy
+`/media` rend 404 sur TOUTES les images, pendant que son `/health` reste
+VERT** — c'est-à-dire que rien ne signale la panne. C'est un **défaut de
+`rag-agent-chat`**, rapporté par son pilote le 25 septembre 2026 ; un lot le
+corrige chez eux. **Jusque-là, le redémarrage est obligatoire**, et il fait
+partie de la purge au même titre que celui de `docling-service`
+([§6.6](#66-après-chaque-purge-redémarrer-aussi-lagent)).
 
 **Le compte que la purge annonce est un signal d'arrêt.** Sur la pile en
 service, elle doit annoncer **212 objets supprimés** — ce sont ceux de
@@ -322,7 +349,24 @@ Le compte de sommets se fait par `MATCH … RETURN count(n)`, **tag par tag**, e
 | arêtes `PARENT_OF` | 15 173 | **15 173** |
 | chunks ChromaDB | 4 367 | **4 367** |
 | objets dans le bucket `documents` | 212 | **212** |
-| **empreinte des 212 clés** | `c91f5be6…0994` | **`c91f5be6…0994`** |
+| **empreinte des 212 clés** | `c91f5be6…b994` | **`c91f5be6…b994`** (en entier ci-dessous) |
+
+L'empreinte **en entier**, parce que ce § est le site de sa recette :
+
+```
+c91f5be6e24fbcba5f4a744119bf8da65fed44b7ecac79cce0ae1b027ed0b994
+```
+
+> **Et une coquille à connaître, parce qu'elle est partout ailleurs.** Le reste
+> de la documentation l'abrège en **`c91f5be6…0994`** — registre §4.43.b et
+> §4.43.d, comptes rendus des deux campagnes du 25 septembre,
+> [`etat_des_lieux.md`](etat_des_lieux.md). **`0994` n'est pas la fin de ce
+> condensé** : il finit par `…7ed0b994`. L'abrègement juste est `c91f5be6…b994`.
+> C'est une coquille d'écriture, **pas un désaccord de mesure** : la valeur
+> entière est écrite au long aux deux comptes rendus, et elle est bien celle
+> ci-dessus, remesurée ce jour. Les sites fautifs ne sont pas corrigés par cette
+> branche — ils appartiennent au registre et aux comptes rendus, qui sont des
+> pièces datées et closes.
 
 **La recette de l'empreinte, parce qu'une empreinte sans sa recette n'est pas un
 témoin mais un chiffre** (§4.43.b du registre) :
@@ -519,6 +563,35 @@ reranker, ni l'abstention : tout cela vit dans `rag-agent-chat`. Et 30 questions
 ne suffisent pas à arbitrer un réglage — **un écart de deux points est du
 bruit**.
 
+### 4.8 L'agent sert ses images depuis SeaweedFS — mesuré chez lui
+
+**Ce paragraphe ne rapporte pas une mesure de ce dépôt.** Il rapporte celle du
+**pilote de `rag-agent-chat`**, faite dans son dépôt, le **25 septembre 2026
+entre 09:00 et 09:02 UTC**. Elle est citée ici parce qu'elle ferme le point qui
+était, jusqu'à ce matin, le premier du [§10](#10-non-vérifié) — mais elle se
+vérifie là-bas, pas ici.
+
+| Ce qui a été mesuré | Résultat |
+|---|---|
+| le `.env` de l'agent | pointe `seaweedfs:8333`, avec le jeu **LECTURE SEULE** |
+| le témoin `temoin-bascule/bascule-2026-09-25.txt` | **lu** par le client de l'agent, SHA-256 `39e06d1d6e344080d078ef44f086452726def1cd0daf93feac07922a29e75ae0` |
+| son journal | « MinIO connecté : seaweedfs:8333 » et « Proxy média : 212 objets autorisés » |
+| `GET /media/…/086f1173cb_picture.png` | **200**, octets **identiques** à ceux d'avant la bascule |
+| les ancrages | **267**, **0 désaccord** |
+| l'empreinte des 212 clés, vue de l'agent | `c91f5be6…` |
+| le graphe, vu de l'agent | **23** `Document`, **15 173** arêtes |
+| `POST /reindex` | **4 367** chunks |
+
+**Son retour arrière est son ancien `.env`, copié hors de son dépôt.** Il est
+symétrique du nôtre ([§5](#5-revenir-sur-minio)) et il est à lui : ce dépôt ne
+le tient pas.
+
+**Ce que cela ne dit toujours pas** : la qualité des réponses de l'agent n'est
+pas mesurée ici, et les 267 ancrages sont les siens, pas les 44 du jeu de
+questions de ce dépôt ([§4.7](#47-le-jeu-de-questions-et-le-rappel-vectoriel)).
+
+---
+
 ---
 
 ## 5. Revenir sur MinIO
@@ -544,7 +617,7 @@ qui en est le site canonique :
    `docker compose up -d --force-recreate dagster-daemon dagster-webserver`,
    puis `docker compose up -d --force-recreate docling-service`.
    **`--force-recreate` et non `restart`** : un `restart` ne relit pas le `.env`.
-3. **Purger** ([§3.3](#33-la-purge-et-le-redémarrage-qui-la-suit)). Elle visera
+3. **Purger** ([§3.3](#33-la-purge-et-les-deux-redémarrages-qui-la-suivent)). Elle visera
    de nouveau MinIO et doit annoncer **212 objets supprimés**.
 4. **Redémarrer `docling-service`**, puis **réingérer par le marqueur**
    ([§3.2](#32-réingérer--le-marqueur-sur-le-curseur)) avec une **autre**
@@ -567,7 +640,7 @@ clés, elles, ne changent pas** — c'est ce que le critère 8 établit.
 
 ## 6. À SAVOIR AVANT DE TOUCHER
 
-Cinq choses. Aucune ne fait de bruit, et chacune a déjà coûté quelque chose.
+**Six** choses. Aucune ne fait de bruit, et chacune a déjà coûté quelque chose.
 
 ### 6.1 Les capteurs sont passés de `DECLARED_IN_CODE` à `RUNNING`
 
@@ -583,6 +656,18 @@ et il l'emporte ». **Le comportement observable est le même — les capteurs
 tournent dans les deux cas.** Ce qui change est que **le code ne décide plus** :
 changer `default_status` en `DefaultSensorStatus.STOPPED` n'aurait désormais
 **aucun effet**, et rien ne le dirait.
+
+**Ce que ça change concrètement AUJOURD'HUI : rien, et c'est justement le
+piège.** Les deux valeurs **coïncident** — le code déclare `RUNNING`
+(`factory.py:670` pour les trois capteurs de fichiers, `reindex_job.py:320` pour
+`agent_reindex_sensor` ; `mesuré le 25 septembre 2026` sur le code, ce sont les
+**deux seules** occurrences de `default_status` du dépôt), et la base porte
+`RUNNING` pour les quatre. Tant que personne ne touche à `default_status`, **il
+n'existe aucun écart observable**, et aucun test ne peut en montrer un. Le coût
+est **entièrement futur** : il se paiera le jour où quelqu'un changera cette
+ligne du code, relira le code pour savoir ce que font les capteurs, et **aura
+tort** — sans que rien ne rougisse. C'est pourquoi la seule chose à retenir
+tient en une phrase : **l'état en base l'emporte sur le code.**
 
 C'est le `dagster sensor stop` / `start` de la procédure de bascule (§4.3 du
 compte rendu) qui a écrit ces états — le geste « ceinture et bretelles » qui
@@ -638,7 +723,7 @@ environnement**. Après toute modification du `.env`, c'est
 docker compose exec <service> printenv <VARIABLE>
 ```
 
-La seule exception est le `restart` **après une purge** ([§3.3](#33-la-purge-et-le-redémarrage-qui-la-suit)),
+La seule exception est le `restart` **après une purge** ([§3.3](#33-la-purge-et-les-deux-redémarrages-qui-la-suivent)),
 où ce qu'on veut est justement de rejouer `init_schema()` sans changer
 l'environnement.
 
@@ -660,6 +745,32 @@ doit **écarter `.cleaned`**, faute de quoi elle rend 47 au lieu de 25 :
 ```bash
 find Datas -path 'Datas/.cleaned' -prune -o \( -name '*.pdf' -o -name '*.html' \) -print
 ```
+
+### 6.6 Après CHAQUE purge, redémarrer aussi l'agent
+
+La purge impose **deux** redémarrages, pas un. Celui de `docling-service` est
+dans ce dépôt ([§3.3](#33-la-purge-et-les-deux-redémarrages-qui-la-suivent)) ; **le second
+est dans l'autre** :
+
+```bash
+docker compose restart agent-api    # dans le depot rag-agent-chat
+```
+
+`agent-api` ouvre sa session NebulaGraph **à son démarrage** et la garde. Après
+un `DROP SPACE` suivi d'une recréation du schéma, cette session répond
+`SemanticError: Unknown tag`, et **son proxy `/media` rend 404 sur toutes les
+images**.
+
+**Ce qui rend ce défaut coûteux, c'est son silence** : `/health` reste **VERT**.
+Rien ne dit que l'agent est cassé. L'écran montre un corpus sans ses figures, ce
+qui est exactement l'apparence d'un 403 mal posé
+([§4.4](#44-la-passerelle-s3-et-ses-huit-critères)) — **deux causes très
+différentes, une seule apparence.** Avant de soupçonner les droits S3 après une
+purge, redémarrez `agent-api`.
+
+C'est un **défaut de `rag-agent-chat`**, pas de ce dépôt, rapporté par son
+pilote le **25 septembre 2026** ; un lot le corrige chez eux. Ce dépôt ne peut
+ni le corriger ni le vérifier — il peut seulement ne pas l'oublier.
 
 ---
 
@@ -724,7 +835,11 @@ mono-nœud, **choisis et non éprouvés**.
 **Qui est touché** : ce dépôt. **Retirer MinIO retire le retour arrière** : à ne
 faire qu'après le [§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_),
 et après que l'agent sert effectivement ses images depuis SeaweedFS — ce qui,
-au 25 septembre 2026, **n'a pas été vu** ([§10](#10-non-vérifié)).
+**depuis le 25 septembre 2026 à 09:02 UTC, a été vu** et mesuré chez lui
+([§4.8](#48-lagent-sert-ses-images-depuis-seaweedfs--mesuré-chez-lui)). **Cette
+condition-là est donc levée ; l'autre ne l'est pas** : la durée d'observation
+reste à décider, et rien n'a été mesuré sur le débit, la latence ni la
+durabilité.
 
 ### 8.3 Regrouper le code S3 sur un seul site
 
@@ -804,6 +919,28 @@ aujourd'hui fortuite.
 | la lecture des quatre curseurs | 3.2 | 09:02 | les quatre capteurs à **`RUNNING`**, marqueurs consommés |
 | `ls ~/.env.avant-seaweedfs-2026-09-25` | 5 | 09:06 | **présent**, `0600` — contenu **jamais lu ni cité** |
 
+**Rejouées une seconde fois au moment de la fusion**, en lecture seule, le
+25 septembre 2026 **entre 09:33 et 09:40 UTC**, pour vérifier que ce document
+dit encore vrai après les corrections de la journée :
+
+| Commande rejouée | § | Concorde ? |
+|---|---|---|
+| `docker compose ps` | 2.4 | **oui** — 11 services, `seaweedfs` et `docling-service` `healthy` |
+| `make all` (précédé d'`uv sync`) | 4.1 | **oui** — `rc=0`, **1 084** tests, mypy **43** fichiers, **35** mutations rejouées **35 rouges**, « arbre de travail intact », **85** fichiers déjà formatés. **Rejoué APRÈS les corrections de ce document** : les trois gardes qui lisent le `README` et `orchestration.md` passent |
+| les huit comptes + empreinte | 4.2 | **oui** — 15 196 / 23 / 7 251 / 1 748 / 4 963 / 15 173 / 4 367 / 212, empreinte identique |
+| les `minio_url` par tag | 4.2 | **oui** — 209 `Picture` + 3 `Table` sous `seaweedfs:8333`, **0** sous `minio:9000` |
+| `comparer` contre l'instantané | 4.3 | **oui** — `rc=0`, même `INSTANTANE e945893b…`, 23 / 23, `DEPLACES 0` |
+| `python -m src.verify_contract` | 4.5 | **oui** — `rc=1`, sortie identique **ligne pour ligne**, 52/264 |
+| `python -m src.index_report` | 4.6 | **oui** — `rc=0`, 4 367 / 23, médiane 299, 137 tronqués (3,1 %), labels identiques |
+| la lecture des quatre curseurs | 3.2, 6.1 | **oui** — les quatre à `RUNNING`, aucun marqueur `reingerer:` résiduel |
+| `ls ~/.env.avant-seaweedfs-2026-09-25` | 5 | **oui** — présent, `0600`, contenu **jamais lu** |
+
+**Une seule section exécutée le matin n'a pas été rejouée ici** : le jeu de
+questions et le rappel vectoriel ([§4.7](#47-le-jeu-de-questions-et-le-rappel-vectoriel)).
+Ils chargent le modèle d'embedding et coûtent plusieurs minutes ; leurs chiffres
+restent ceux de 09:01 UTC, et `index_report` — qui, lui, a été rejoué — tient le
+même index à la même taille.
+
 **NON exécutées, et pourquoi :**
 
 | Commande | § | Raison |
@@ -816,6 +953,8 @@ aujourd'hui fortuite.
 | toute la procédure du **§5** | 5 | **c'est le retour arrière : il purge et réingère.** Sa validité tient de sa symétrie avec la bascule, qui, elle, a été exécutée et mesurée |
 | `find Datas … -print` | 6.5 | non rejouée ici ; le chiffre cité (**25**, et 0 `mtime` récent) est du 25 septembre 2026, registre §4.41 |
 | `docker compose exec <service> printenv` | 6.4 | non jouée : elle lirait une **valeur du `.env`**, et ce document n'en cite aucune |
+| tout le [§4.8](#48-lagent-sert-ses-images-depuis-seaweedfs--mesuré-chez-lui) | 4.8 | **hors de ce dépôt** : la mesure est celle du pilote de `rag-agent-chat`, faite chez lui. Ce dépôt n'a ni son `.env` ni son conteneur |
+| `docker compose restart agent-api` | 3.3, 6.6 | **redémarre un service, et dans l'AUTRE dépôt** |
 
 ---
 
@@ -824,13 +963,19 @@ aujourd'hui fortuite.
 Ce que cette livraison **n'établit pas**, nommé pour que personne ne le croie
 fait.
 
-1. **`rag-agent-chat` n'a pas été essayé contre SeaweedFS.** Que le jeu lecture
-   seule serve les quatre appels dont l'agent a besoin est établi par appel
-   direct ; que **l'agent lui-même** serve une image depuis SeaweedFS n'a pas
-   été vu, et cela appartient à son pilote. **Tant qu'il vise `minio:9000`, il
-   sert un store figé — et il le fait sans une erreur**, un 403 remontant en 404
-   silencieux.
-2. **Aucune requête n'a été posée à l'agent** contre le nouveau store.
+1. **La qualité des réponses de l'agent n'est pas mesurée.** Que
+   `rag-agent-chat` serve ses images depuis SeaweedFS **a été vu** ce matin, et
+   c'est au [§4.8](#48-lagent-sert-ses-images-depuis-seaweedfs--mesuré-chez-lui) —
+   *ce point ne dit donc plus « l'agent n'a pas été essayé », et c'est le
+   changement du jour.* Ce qui reste ouvert est autre chose : **aucune question
+   n'a été posée à l'agent pour juger de ses réponses**, ni ici ni là-bas. Le
+   rappel du [§4.7](#47-le-jeu-de-questions-et-le-rappel-vectoriel) mesure la
+   recherche **dense seule**, celle de ce dépôt.
+2. **La mesure du §4.8 est rapportée, pas reproduite ici.** Elle a été faite
+   dans l'autre dépôt, par son pilote ; ce dépôt n'a pas rejoué ses commandes et
+   **ne peut pas** les rejouer — il n'a ni son `.env`, ni son conteneur. Ce qui
+   est vérifiable d'ici, et qui l'a été, est que la passerelle **sert** le jeu
+   lecture seule ([§4.4](#44-la-passerelle-s3-et-ses-huit-critères)).
 3. **Aucune mesure de performance sur SeaweedFS** : ni débit, ni latence, ni
    tenue en charge, ni comportement à volume croissant.
 4. **La durabilité de SeaweedFS n'est pas éprouvée** : une recréation de

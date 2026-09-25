@@ -10,6 +10,31 @@
 > les chiffres qu'il porte sont ceux de leur date, pas d'aujourd'hui — les
 > chiffres datés et remesurés sont à [`etat_des_lieux.md`](etat_des_lieux.md)
 > et à [`livraison.md`](livraison.md).
+>
+> **Ce que la relecture du 25 septembre 2026 a trouvé, et ce qu'elle a fait.**
+> Les commandes de ce document ont été relues une à une — **quatorze blocs**.
+> Le dépouillement :
+>
+> - **aucune adresse `minio:9000`**, **aucune console MinIO**, **aucun
+>   identifiant MinIO**, **aucune commande `mc`** : ce document n'en a jamais
+>   porté. `mesuré le 25 septembre 2026` par `grep` sur les motifs
+>   `minio:9000`, `localhost:900`, `minioadmin`, `MINIO_ROOT_*` et `mc <verbe>`.
+> - **une phrase était factuellement fausse** — « il s'adresse à `chromadb`,
+>   `graphd` et `minio` par leur nom de service » — et elle est **corrigée**
+>   sur place, plus bas.
+> - **deux commandes ne sont pas vérifiables depuis ce document** parce
+>   qu'elles **écrivent** ; elles portent désormais la marque **« antérieur à la
+>   bascule, non vérifié »**, avec le renvoi vers le geste qui, lui, a été
+>   exécuté.
+> - les **douze** autres blocs ne touchent pas au stockage d'objets — `git`,
+>   `make`, `uv run ruff`, `pre-commit`, `detect-secrets`, `docker compose
+>   logs`, `docker compose restart docling-service` — et la bascule ne les
+>   atteint pas. **Un des douze a été rejoué** pour ne pas se payer de mots :
+>   `docker compose exec docling-service python -m src.verify_data`,
+>   `mesuré le 25 septembre 2026 à 09:38 UTC`, **`rc=0`** — 4 367 chunks,
+>   **212** objets, 15 196 nœuds, 23 documents. *(Son titre de section dit
+>   encore `--- MinIO ---` : c'est le nom de la bibliothèque, le serveur
+>   interrogé est bien SeaweedFS — §8.1 de [`livraison.md`](livraison.md).)*
 
 ---
 
@@ -199,11 +224,25 @@ docker compose logs -f docling-service
 | `Service Docling toujours pas prêt` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
 | `nGQL rejeté ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
 
-**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et `minio` par leur nom de service) :
+**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et **`seaweedfs`** par leur nom de service) :
 
 ```bash
 docker compose exec docling-service python -m src.wipe_stores
 ```
+
+> **Corrigé le 25 septembre 2026.** Cette phrase écrivait « `chromadb`, `graphd`
+> et **`minio`** ». C'est faux depuis la bascule : `wipe_stores` vise ce que
+> `MINIO_ENDPOINT` désigne, et cette variable **vaut `seaweedfs:8333`**. Le nom
+> de la variable, lui, n'a pas changé — c'est le défaut de conception du §6.2 de
+> [`livraison.md`](livraison.md), et le renommage est un lot à part.
+>
+> **Et la commande ci-dessus est marquée « antérieur à la bascule, non
+> vérifié ».** Elle n'a pas été rejouée : **elle écrit**, elle vide les trois
+> stores. La forme qui **a** été jouée le 25 septembre 2026, avec son montage
+> complet, est au **§3.3 de [`livraison.md`](livraison.md)** — préférez-la.
+> Retenez surtout ce que celle-ci ne dit pas : **la purge impose deux
+> redémarrages**, `docling-service` **et** le conteneur `agent-api` de
+> `rag-agent-chat` (§3.3 et §6.6 de [`livraison.md`](livraison.md)).
 
 > **LA PURGE NE DÉCLENCHE RIEN, ET CETTE SECTION NE LE DISAIT PAS.** Elle donnait
 > la purge, puis « redémarrer, puis réingérer », sans une ligne sur ce qui
@@ -233,6 +272,15 @@ ou en ligne de commande, dans le conteneur qui porte déjà le workspace du daem
 ```bash
 docker compose exec dagster-daemon dagster sensor cursor -w /opt/dagster/app/src/workspace.yaml --set 'reingerer:2026-09-22-apres-purge' livres_html_sensor
 ```
+
+> **Antérieur à la bascule, non vérifié.** Cette forme **écrit un curseur et
+> déclenche 23 runs** : elle n'a pas été rejouée. Elle vise `dagster-daemon` ;
+> la forme **exécutée** le 25 septembre 2026 vise `dagster-webserver` et se lit
+> au **§3.2 de [`livraison.md`](livraison.md)**. Les deux gestes sont le même,
+> mais seul le second a été mesuré. L'étiquette ci-dessus est un **exemple daté
+> du 22 septembre 2026** : **ne la recopiez pas telle quelle** — une étiquette
+> déjà employée est une clé de run déjà consommée, donc **zéro run et aucun
+> message**.
 
 | | |
 |---|---|
@@ -694,7 +742,9 @@ La fermeture honnête est un hook `pre-push` ; elle est ouverte au registre.
 
 #### Ce que `detect-secrets` protège, et ce qu'il ne protège pas
 
-À ne pas survendre. `.env` porte les mots de passe MinIO et PostgreSQL, mais
+À ne pas survendre. `.env` porte les identifiants du stockage d'objets et de
+PostgreSQL — *depuis la bascule, les variables nommées `MINIO_*` portent les
+clés **SeaweedFS**, §6.2 de [`livraison.md`](livraison.md)* — mais
 **un hook `pre-commit` ne voit que les fichiers indexés, et `.env` est dans
 `.gitignore` : il n'est donc jamais indexé, et installer ce hook ne le fera
 jamais scanner.** Le gain est ailleurs, et il est réel : empêcher qu'un secret

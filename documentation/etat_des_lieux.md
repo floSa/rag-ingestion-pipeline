@@ -83,7 +83,7 @@ Leur site canonique est le §0 de
 | **2** | `element_id` déterministe, dérivé du contenu, 10 caractères hexadécimaux | ✅ **tenue** — 0 identifiant hors format sur 4 367, et 0 désaccord entre l'index et le graphe |
 | **3** | `source_path` est l'identité d'un document, jamais `filename` seul | ✅ **tenue** — `Index.html` et `Preface.html` existent dans les deux ouvrages, et les 23 documents ont 23 identifiants distincts |
 | **4** | `sequence` porte l'ordre de lecture, et il est monotone | ✅ **tenue** — 0 arête sans `sequence` sur 15 173, et 0 inversion de page |
-| **5** | `POST /reindex` sur l'agent en fin de chaîne | ✅ **tenue depuis le 25 septembre 2026** — le service de l'agent tourne désormais sur ce poste, `agent_reindex_sensor` est parti **seul** 24 s après le dernier run d'ingestion, et son run rend `ok — 4367 chunks indexes` (§4.42 du registre). **Réserve** : ce qui est éprouvé est que l'appel part, aboutit et réussit. Que l'index BM25 d'en face serve ces 4 367 chunks est une propriété de l'AUTRE dépôt, et **aucune requête n'a été posée à l'agent** |
+| **5** | `POST /reindex` sur l'agent en fin de chaîne | ✅ **tenue depuis le 25 septembre 2026** — le service de l'agent tourne désormais sur ce poste, `agent_reindex_sensor` est parti **seul** 24 s après le dernier run d'ingestion, et son run rend `ok — 4367 chunks indexes` (§4.42 du registre). **Réserve, réduite le 25 septembre 2026 à 09:02 UTC** : le pilote de l'agent a mesuré chez lui un `POST /reindex` rendant **4 367 chunks**, et **267 ancrages avec 0 désaccord** (§7 ter). Ce qui reste non éprouvé est la **qualité des réponses** : aucune question n'a été posée à l'agent pour la juger |
 
 **L'exigence 1 mérite un mot, parce que c'est la panne la plus coûteuse du
 système et qu'elle est parfaitement silencieuse.** Les deux modèles candidats
@@ -243,6 +243,31 @@ en service depuis le 25.
    reconstruit l'URL à partir de la clé, il n'a que l'endpoint à changer ; s'il
    lit `minio_url` telle quelle, il n'a rien à faire d'autre que basculer son
    `.env`.
+
+**Ces trois choses ont été faites, et mesurées chez l'agent le 25 septembre
+2026 entre 09:00 et 09:02 UTC.** La mesure est celle de **son pilote**, dans son
+dépôt ; elle est reprise ici parce qu'elle clôt le point, et le détail est au
+**§4.8 de [`livraison.md`](livraison.md)** :
+
+| | |
+|---|---|
+| son `.env` | pointe `seaweedfs:8333`, jeu **lecture seule** |
+| le témoin `bascule-2026-09-25.txt` | **lu**, SHA-256 `39e06d1d…5ae0` |
+| son journal | « MinIO connecté : seaweedfs:8333 », « Proxy média : 212 objets autorisés » |
+| `GET /media/…/086f1173cb_picture.png` | **200**, octets identiques à avant la bascule |
+| ancrages / graphe / index | **267** ancrages **0 désaccord** ; **23** `Document`, **15 173** arêtes ; `POST /reindex` → **4 367** chunks |
+
+**Son retour arrière est son ancien `.env`, copié hors de son dépôt** — le
+symétrique du nôtre, et il lui appartient.
+
+**Et un défaut d'exploitation est sorti de cette bascule, qui n'est pas dans ce
+dépôt mais qui contraint son exploitation** : après **chaque** purge, le
+conteneur `agent-api` doit être **redémarré**. Sa session NebulaGraph, ouverte à
+son démarrage, répond `SemanticError: Unknown tag` une fois le schéma recréé, et
+**son proxy `/media` rend alors 404 sur toutes les images pendant que
+`/health` reste VERT**. Un lot le corrige chez eux ; jusque-là c'est un geste
+obligatoire de la procédure de purge (§3.3 et §6.6 de
+[`livraison.md`](livraison.md)).
 
 **Et la chose à savoir, parce qu'elle ne fait pas de bruit** : un refus de droit
 est un **403 `AccessDenied`**, et il remonte chez l'agent en **404 silencieux**.
