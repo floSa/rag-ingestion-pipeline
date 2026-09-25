@@ -1,0 +1,651 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+2b100f9ecd	1	0	#/texts/0	Chapter 6. Evaluating GenAI Applications with MLfl	title
+6e4a6e93ff	1	1	#/texts/1	By this point, you have a tool-calling agent that 	text
+1902a82627	1	2	#/texts/2	For classical machine learning, that question is o	text
+43641415bc	1	3	#/texts/3	This is where evaluation becomes a first-class par	text
+e3febfa26b	1	4	#/texts/4	The MLflow Evaluation Framework	title
+41807a6d78	1	5	#/texts/5	The evaluation framework in MLflow 3.x provides a 	text
+6bb724f5dc	1	6	#/texts/6	Datasets	list_item
+f47979bc2c	1	7	#/texts/7	These are the base of every evaluation. Each datas	list_item
+79816e9120	1	8	#/texts/8	Scorers	list_item
+df5773212f	1	9	#/texts/9	These are evaluation functions that assess the qua	list_item
+db5f57691e	1	10	#/texts/10	Evaluation run	list_item
+5271b65310	1	11	#/texts/11	This is the execution phase that brings datasets a	list_item
+0dd91f52af	1	12	#/texts/12	Feedback	list_item
+e88371ae5e	1	13	#/texts/13	This records quality assessments of GenAI applicat	list_item
+825fd185de	1	14	#/texts/14	These components work together as a continuous sys	text
+713ff53c58	1	15	#/texts/15	Evaluation Harness	section_header
+eaddb07f9d	1	16	#/texts/16	In MLflow, the evaluation harness provides a repea	text
+3339a5e1a4	1	17	#/texts/17	Because the harness is integrated with MLflow trac	text
+4a9e8ec3ba	1	18	#/texts/18	Figure 6-1	text
+2e78703f72	1	19	#/texts/19	shows this evaluation loop at a high level. Evalua	text
+d892bb77a7	1	20	#/pictures/0	Diagram illustrating a high-level evaluation loop 	picture
+74c06daee6	1	21	#/texts/21	The	text
+d926a1bb1d	1	22	#/texts/22	mlflow.genai.evaluate()	code
+d0da5820e7	1	23	#/texts/23	function is the entry point for this workflow. It 	text
+a254760563	1	24	#/texts/24	Complete application outputs, such as an agent's f	list_item
+1429dd368f	1	25	#/texts/25	Intermediate components, such as retrievers, reran	list_item
+fdbecf8ca3	1	26	#/texts/26	Static datasets or deterministic functions, when p	list_item
+764c035e24	1	27	#/texts/27	Streaming responses can be consolidated into a sin	text
+5755411124	1	28	#/texts/28	Evaluation Modes	section_header
+94f9c56cd0	1	29	#/texts/29	MLflow supports two evaluation modes, direct evalu	text
+c669c7e2c9	1	30	#/texts/30	Direct evaluation	section_header
+eacfb832a2	1	31	#/texts/31	In this mode, MLflow directly calls your GenAI app	text
+3d3d9d745f	1	32	#/texts/32	predict_fn()	code
+74c04e4273	1	33	#/texts/33	; or, if your app is deployed as a Databricks mode	text
+f9e960a40b	1	34	#/texts/34	to_predict_fn()	code
+51dcf3bac5	1	35	#/texts/35	.	text
+367ba030c1	1	36	#/texts/36	By directly invoking your application, this method	text
+4ae2efc631	1	37	#/texts/37	predict_fn	code
+8f02d72b6c	1	38	#/texts/38	), and selected scorers are provided as inputs to	text
+214b655b69	1	39	#/texts/39	mlflow.genai.evaluate()	code
+de8922fc9b	1	40	#/texts/40	, as seen in	text
+8f2aa0079f	1	41	#/texts/41	Figure 6-2	text
+592fae5810	1	42	#/texts/42	. This function runs the application and scorers c	text
+7b5abb5857	1	43	#/pictures/1	Diagram illustrating the flow of an MLflow direct 	picture
+912a0e4824	1	44	#/texts/44	Answer-sheet evaluation	section_header
+ea7d4cf6c0	1	45	#/texts/45	In this mode, the GenAI application is not invoked	text
+f264e644ca	1	46	#/texts/46	For instance, if you already have generated output	text
+f42836bcd2	1	47	#/texts/47	As	text
+f6cf8ba753	1	48	#/texts/48	Figure 6-3	text
+64d2c33446	1	49	#/texts/49	shows, you provide evaluation data and selected sc	text
+419036bac4	1	50	#/texts/50	mlflow.genai.evaluate()	code
+8d59c277e2	1	51	#/texts/51	. The evaluation data can include either existing 	text
+86e3441f41	1	52	#/texts/52	mlflow.genai.evaluate()	code
+6fc502c257	1	53	#/texts/53	automatically constructs traces from them. In both	text
+1cbb8b05e5	1	54	#/pictures/2	Diagram illustrating the flow of an MLflow evaluat	picture
+e18cddd2c2	1	55	#/texts/20	Diagram illustrating a high-level evaluation loop 	caption
+dab0da4365	1	56	#/texts/43	Diagram illustrating the flow of an MLflow direct 	caption
+a5d5785a9b	1	57	#/texts/54	Diagram illustrating the flow of an MLflow evaluat	caption
+4a35f436ae	1	58	#/texts/55	Creating and Managing Evaluation Datasets	title
+b83e549855	1	59	#/texts/56	Let's begin by creating a reliable evaluation data	text
+749abf1dde	1	60	#/texts/57	You can build this dataset from three practical so	text
+0f6966ba55	1	61	#/texts/58	What a GenAI Evaluation Dataset Looks Like	section_header
+890c168677	1	62	#/texts/59	An evaluation dataset should reflect the kinds of 	text
+e8da551476	1	63	#/texts/60	For direct evaluation, the dataset schema is simpl	text
+90bfdff5df	1	64	#/texts/61	inputs	code
+13d408d5d8	1	65	#/texts/62	dictionary and, optionally, an	text
+b55a80bb52	1	66	#/texts/63	expectations	code
+5bd6461fb3	1	67	#/texts/64	dictionary. The inputs field holds the data passed	text
+d496cf4747	1	68	#/texts/65	predict_fn()	code
+5624cc5c5a	1	69	#/texts/66	. The expectations field holds ground truth labels	text
+a763507afc	1	70	#/texts/67	Table 6-1	text
+e54717c863	1	71	#/texts/68	summarizes the core fields.	text
+d71f8b0cd6	1	72	#/tables/0	| Column         | Data type        | Description 	table
+a6a1407417	1	73	#/texts/69	inputs	code
+1cdb1d51e6	1	74	#/texts/70	dict[Any, Any]	code
+148a03972a	1	75	#/texts/71	expectations	code
+6f00b7b60e	1	76	#/texts/72	dict[Str, Any]	code
+3eee56be11	1	77	#/texts/73	When you move to answer-sheet evaluation, the sche	text
+2ff0df4039	1	78	#/texts/74	inputs	code
+f1e73310f4	1	79	#/texts/75	,	text
+b7bfc66d53	1	80	#/texts/76	outputs	code
+6780cd1461	1	81	#/texts/77	, and optional	text
+3539adf151	1	82	#/texts/78	expectations	code
+a7bb378532	1	83	#/texts/79	.	text
+b74068a245	1	84	#/texts/80	Table 6-2	text
+c284d65d5c	1	85	#/texts/81	shows some examples.	text
+f5f716ecfd	1	86	#/tables/1	| Column         | Data type        | Description 	table
+5154fcf1ef	1	87	#/texts/82	inputs	code
+5e68fa11db	1	88	#/texts/83	dict[Any, Any]	code
+9e797086f0	1	89	#/texts/84	outputs	code
+d901eb83ec	1	90	#/texts/85	dict[Any, Any]	code
+d65f5ac7c7	1	91	#/texts/86	expectations	code
+d1fad03122	1	92	#/texts/87	dict[Str, Any]	code
+245c2a2a9e	1	93	#/texts/88	Another option is to pass existing MLflow traces d	text
+9da2723518	1	94	#/texts/89	Trace	code
+9382cac876	1	95	#/texts/90	object and optional	text
+ea70313c38	1	96	#/texts/91	expectations	code
+424a3e9b4c	1	97	#/texts/92	.	text
+638ae5bcc1	1	98	#/texts/93	Table 6-3	text
+1d023ecb76	1	99	#/texts/94	shows some examples.	text
+2b3c878194	1	100	#/tables/2	| Column         | Data type               | Descr	table
+0a96003e5e	1	101	#/texts/95	trace	code
+f3e6dc01b6	1	102	#/texts/96	mlflow.entities.Trace	code
+203096c54d	1	103	#/texts/97	MLflow	text
+c649d2aed8	1	104	#/texts/98	Trace	code
+f91e5b1764	1	105	#/texts/99	objects\nwith inputs/outputs	text
+e0c01ad7f4	1	106	#/texts/100	Pointer to a stored trace, e.g.	text
+787c2b9ad9	1	107	#/texts/101	trace_id=\"c1f9...\"	code
+6ea8ba988b	1	108	#/texts/102	containing:	text
+1c9e9081d8	1	109	#/texts/103	inputs={\"question\":\"What's the \nsurfboard fee from	code
+e856c19231	1	110	#/texts/104	and	text
+26ade8bce7	1	111	#/texts/105	outputs={\"response\":\"Sports \nequipment fee is \nIDR	code
+d91771ceca	1	112	#/texts/106	expectations	code
+feacc0cf48	1	113	#/texts/107	dict[Str, Any]	code
+4135a1a17a	1	114	#/texts/108	The	text
+44046dc683	1	115	#/texts/109	expectations	code
+627f74a5c1	1	116	#/texts/110	field deserves special attention. It is optional, 	text
+397b019c3b	1	117	#/texts/111	expectations	code
+5397e6261f	1	118	#/texts/112	field can hold a reference answer, a list of requi	text
+fb25c08774	1	119	#/texts/113	Table 6-4	text
+c2eb834d3f	1	120	#/texts/114	summarizes the most important ones.	text
+4cf5fcefd3	1	121	#/tables/3	| Field                         | Used by         	table
+76aeca4957	1	122	#/texts/115	expected_facts	code
+d4ff8f43d7	1	123	#/texts/116	Correctness	code
+7ee259dfcf	1	124	#/texts/117	judge	text
+09605631de	1	125	#/texts/118	expected_response	code
+5b2ccd6b0a	1	126	#/texts/119	Correctness	code
+0790b008d7	1	127	#/texts/120	judge	text
+5523c3a0c2	1	128	#/texts/121	guidelines	code
+1368926604	1	129	#/texts/122	Guidelines	code
+996d72cf12	1	130	#/texts/123	judge	text
+914ea31196	1	131	#/texts/124	expected_retrieved_\ncontext	code
+e95867ae92	1	132	#/texts/125	document_\nrecall	code
+839c0f3275	1	133	#/texts/126	scorer	text
+c115ec8962	1	134	#/texts/127	In practice, this means you do not need a single r	text
+7b9d6d7d51	1	135	#/texts/128	MLflow also stores system fields such as creation 	text
+77a9e2e567	1	136	#/texts/129	In the next section, we will build an evaluation d	text
+25262470f0	1	137	#/texts/130	How to Build an Evaluation Dataset	section_header
+44a3030f7c	1	138	#/texts/131	A good evaluation	text
+6923e3b613	1	139	#/texts/132	expectations	code
+4d8bf53e65	1	140	#/texts/133	field dataset captures how users actually interact	text
+207cfc0b37	1	141	#/texts/134	Existing traces	list_item
+60bfbef148	1	142	#/texts/135	Use production or development traces already captu	list_item
+66a2caf7d0	1	143	#/texts/136	Domain expert labels	list_item
+a3a752de6d	1	144	#/texts/137	Import annotations or feedback collected through M	list_item
+6b5df864a1	1	145	#/texts/138	Curated examples	list_item
+7c1083da3c	1	146	#/texts/139	Create a diverse set of test cases manually. These	list_item
+d8e0f5ac06	1	147	#/texts/140	Together, these sources produce a balanced, realis	text
+9f28b6c59f	1	148	#/texts/141	To make this process easier, MLflow 3.x includes a	text
+2938469b2d	1	149	#/texts/142	mlflow.genai.datasets	code
+e2b3d4f293	1	150	#/texts/143	. This SDK allows you to create, manage, and versi	text
+be6c91d554	1	151	#/texts/144	create_dataset()	list_item
+c3c0cd989e	1	152	#/texts/145	Creates a new evaluation dataset and stores it und	list_item
+c4a7aadf2f	1	153	#/texts/146	get_dataset()	list_item
+66c1f584d6	1	154	#/texts/147	Retrieves an existing dataset for reading, updatin	list_item
+fab72fbb3f	1	155	#/texts/148	delete_dataset()	list_item
+c62ba4d380	1	156	#/texts/149	Deletes a dataset that is no longer needed while p	list_item
+05892ed9fa	1	157	#/texts/150	With these methods, evaluation datasets become fir	text
+f68e90295e	1	158	#/texts/151	Create a dataset	section_header
+d37d220c39	1	159	#/texts/152	The first step is to create an MLflow-managed eval	text
+dc5980826e	1	160	#/texts/153	get_dataset()	code
+205c56345a	1	161	#/texts/154	; update with	text
+1dae87bd6b	1	162	#/texts/155	merge_records()	code
+57557bc696	1	163	#/texts/156	; and tag, search, and populate directly from trac	text
+c75e0971b2	1	164	#/texts/157	import mlflow\nfrom mlflow.genai.datasets import cr	code
+1642150f14	1	165	#/texts/158	Once created, the dataset becomes the container fo	text
+475382e00a	1	166	#/texts/159	Add records to the dataset	section_header
+0abb32aa80	1	167	#/texts/160	There are several approaches we can follow to add 	text
+fac55aa37b	1	168	#/texts/161	Approach 1: Using existing traces	section_header
+e7ccb7f9cb	1	169	#/texts/162	One of the best ways to create a realistic dataset	text
+8727e10ecf	1	170	#/texts/163	mlflow.search_traces()	code
+862c940bed	1	171	#/texts/164	to retrieve recent production traces and add them 	text
+3c6218a1f4	1	172	#/texts/165	# Retrieve traces from previous experiment\ntraces 	code
+bd7cedc317	1	173	#/texts/166	This method builds a dataset rooted in actual user	text
+8935b2ba2e	1	174	#/texts/167	Approach 2: Using domain expert labels	section_header
+08c159fdd3	1	175	#/texts/168	You can also incorporate expert feedback collected	text
+f397bbad59	1	176	#/texts/169	get_labeling_sessions()	code
+7951fedc06	1	177	#/texts/170	. These labels can be synced directly into an eval	text
+9a00b5280f	1	178	#/texts/171	# Using domain expert labels\nimport mlflow.genai.l	code
+0935c3098a	1	179	#/texts/172	This approach combines expert-validated ground tru	text
+83595a17a2	1	180	#/texts/173	Approach 3: Using curated examples	section_header
+ee88b3fdcb	1	181	#/texts/174	Curated data can help broaden coverage and explore	text
+73f1a4657d	1	182	#/texts/175	inputs	code
+58ae5b2e72	1	183	#/texts/176	and optional	text
+cf1e65ce1e	1	184	#/texts/177	expectations	code
+5dd028f4f5	1	185	#/texts/178	and other metadata fields, like so:	text
+09f2921c9f	1	186	#/texts/179	# Using curated examples\ncurated_examples = [\n    	code
+d6a65b1a88	1	187	#/texts/180	You can also import existing datasets, either as a	text
+b588c2b5e5	1	188	#/texts/181	DataFrame	code
+fcb393be10	1	189	#/texts/182	. These can then be merged with an existing MLflow	text
+bd97bd6258	1	190	#/texts/183	# Read 50 samples from Unity Airways QA dataset in	code
+33887c60cf	1	191	#/texts/184	Executing this code segment will display the	text
+0db53c0681	1	192	#/texts/185	eval_data_df	code
+9292459db6	1	193	#/texts/186	, as	text
+83ad536b6d	1	194	#/texts/187	Figure 6-4	text
+bc060f09bf	1	195	#/texts/188	shows.	text
+ee2a9df4d1	1	196	#/pictures/3	A table displayed on Databricks presents a dataset	picture
+bc92192a73	1	197	#/texts/190	Now we can use the imported dataset to create a ne	text
+134845eb3d	1	198	#/texts/191	# Create an evaluation dataset\neval_dataset_new = 	code
+e131bbce0f	1	199	#/texts/192	This code segment shows how to create a new datase	text
+55e24c6581	1	200	#/texts/193	merge_records()	code
+611669cc7f	1	201	#/texts/194	function, like so:	text
+5289e056ed	1	202	#/texts/195	first_dataset = first_dataset.merge_records(import	code
+a81d399cfb	1	203	#/texts/196	Update or extend existing datasets	section_header
+e902808d28	1	204	#/texts/197	Evaluation datasets are versioned automatically. W	text
+1d26751fee	1	205	#/texts/198	get_dataset()	code
+f5d7a4d4cc	1	206	#/texts/199	and	text
+c978b4ff73	1	207	#/texts/200	merge_records()	code
+addde49d19	1	208	#/texts/201	:	text
+bfa0f75078	1	209	#/texts/202	from mlflow.genai.datasets import get_dataset\n\n# L	code
+e0d6700013	1	210	#/texts/203	Delete older datasets	section_header
+3115a3cbe6	1	211	#/texts/204	You can remove outdated datasets while MLflow keep	text
+d497ab870a	1	212	#/texts/205	...@v7	code
+cdbdf45275	1	213	#/texts/206	) and remain reproducible from their logged artifa	text
+2b9369ee16	1	214	#/texts/207	from mlflow.genai.datasets import delete_dataset\n#	code
+4866da5019	1	215	#/texts/208	Warning	section_header
+dd61e230a7	1	216	#/texts/209	The evaluation dataset SDK, while simplifying data	text
+9f6326e788	1	217	#/texts/210	expectation	code
+41b73ff27a	1	218	#/texts/211	fields. Particularly large datasets may necessitat	text
+c4d9049941	1	219	#/texts/212	The dataset that we created in this section will b	text
+1a668844f0	1	220	#/texts/189	A table displayed on Databricks presents a dataset	caption
+6ab6c3afd7	1	221	#/texts/213	Designing and Managing Scorers	title
+e870a0f3f3	1	222	#/texts/214	A scorer is a specialized function or component th	text
+c35a2093bd	1	223	#/texts/215	What Makes a Good Scorer	section_header
+0d39dea701	1	224	#/texts/216	A good scorer is boring in the best possible way: 	text
+9a2a811337	1	225	#/texts/217	Let's review some principles to use when you desig	text
+bc399d8b6f	1	226	#/texts/218	Single point of truth	section_header
+f3aba0a680	1	227	#/texts/219	A scorer should measure one thing at a time. \"Cont	text
+28e93e009d	1	228	#/texts/220	contact_info_present	code
+6708b021c4	1	229	#/texts/221	, nobody needs a meeting to guess what went wrong.	text
+a8aa38f3c3	1	230	#/texts/222	Stable interface	section_header
+2e925249a4	1	231	#/texts/223	Similar inputs should yield similar scores today a	text
+edf2c6e924	1	232	#/texts/224	Determinism	list_item
+b015c5234a	1	233	#/texts/225	For code-based scorers, avoid randomness. For LLM 	list_item
+8a4d3c3870	1	234	#/texts/226	Resilience	list_item
+2eae3a9edf	1	235	#/texts/227	Normalize text before testing. Treat \"1-800-UNITY-	list_item
+70d76e57d9	1	236	#/texts/228	Thresholds	list_item
+7a75bcdc2c	1	237	#/texts/229	Calibrate decision thresholds with labeled data so	list_item
+9d531d5e2f	1	238	#/texts/230	Interpretable scale	section_header
+4487f3ab0d	1	239	#/texts/231	Map results to a common scale, such as 0.0 to 1.0.	text
+15dfa993a5	1	240	#/texts/232	Deterministic first, judgment second	section_header
+64e0ebf302	1	241	#/texts/233	If something can be checked with code, do it. Save	text
+6695b593f1	1	242	#/texts/234	Grounded in the use case	section_header
+5b19654a41	1	243	#/texts/235	Tie every scorer to a real outcome. If customers n	text
+ea5492ac97	1	244	#/texts/236	Economical at scale	section_header
+906c62f6d5	1	245	#/texts/237	Design with latency and cost in mind. Code-based s	text
+89149cc809	1	246	#/texts/238	Version and register	section_header
+e7842bba4d	1	247	#/texts/239	Treat scorers like code artifacts. Name them, vers	text
+d89ca41ea8	1	248	#/texts/240	response_coherence	code
+35c16d41ca	1	249	#/texts/241	scorer version 3.\"	text
+9d478aeb30	1	250	#/texts/242	Portable and reusable	section_header
+a6c9b6d192	1	251	#/texts/243	Ensure the same scorer definition works in develop	text
+52ba1a52f6	1	252	#/texts/244	Ask three questions before you design any scorer: 	text
+d1e827d4f2	1	253	#/texts/245	Now that the principles are clear, we will move fr	text
+a5fa22148e	1	254	#/texts/246	Code-Based Scorers	section_header
+5bdad90f29	1	255	#/texts/247	Code-based scorers are lightweight Python function	text
+d52fd11f8c	1	256	#/texts/248	@scorer	code
+d83979a399	1	257	#/texts/249	that return a	text
+3b9786c983	1	258	#/texts/250	Feedback	code
+ff9050df1f	1	259	#/texts/251	value, giving you full control to inspect any part	text
+66bba742d8	1	260	#/texts/252	Let's now implement a simple but useful code-based	text
+28f38ed436	1	261	#/texts/253	from mlflow.genai.scorers import scorer\nfrom mlflo	code
+f4f4eebd41	1	262	#/texts/254	This returns a numeric score and a text rationale 	text
+1169a85821	1	263	#/texts/255	Input: {\"response\": \"Yes.\"} Feedback: value=0.0, r	list_item
+344c37c0ea	1	264	#/texts/256	Input: {\"response\": \"You can change within 24 hour	list_item
+f2ea555b9e	1	265	#/texts/257	The exact response length cutoffs are based on you	text
+52cb626802	1	266	#/texts/258	LLM Judges	section_header
+a1ea0db53c	1	267	#/texts/259	LLM judges, also known as LLM-as-a-judge or LLM-ba	text
+7cae0f2305	1	268	#/texts/260	Feedback	code
+65bc1899bd	1	269	#/texts/261	entries to traces so teams can trend and investiga	text
+e67803db3e	1	270	#/texts/262	An LLM judge becomes appropriate when evaluation r	text
+f4694b7c50	1	271	#/texts/263	Managed MLflow on Databricks supports two broad ca	text
+0bffe6b453	1	272	#/texts/264	Built-in LLM judges	section_header
+c47cb94c6a	1	273	#/texts/265	Built-in judges provide preconfigured evaluations 	text
+f770031f91	1	274	#/texts/266	Feedback	code
+58150e0aa5	1	275	#/texts/267	object that can be logged, charted, and alerted on	text
+a3644e8d9d	1	276	#/texts/268	RelevanceToQuery	list_item
+1be954581f	1	277	#/texts/269	This judge evaluates whether the assistant's reply	list_item
+1dc42f27e2	1	278	#/texts/270	Safety	list_item
+b569d05170	1	279	#/texts/271	This judge checks that the response avoids toxic o	list_item
+cb1f6b396f	1	280	#/texts/272	Correctness	list_item
+138ea97721	1	281	#/texts/273	This judge compares the response against ground tr	list_item
+d9be04abd8	1	282	#/texts/274	RetrievalGroundedness	list_item
+3cfd349714	1	283	#/texts/275	This judge assesses whether the answer is supporte	list_item
+3b92c2f942	1	284	#/texts/276	RetrievalRelevance	list_item
+de4ac9ae64	1	285	#/texts/277	This judge evaluates whether the retrieved documen	list_item
+46cee12ff8	1	286	#/texts/278	RetrievalSufficiency	list_item
+aab1b5cb2b	1	287	#/texts/279	This judge determines whether the retrieved set co	list_item
+25f27e1e5a	1	288	#/texts/280	The following snippet shows how multiple built-in 	text
+6dee0dcbca	1	289	#/texts/281	from mlflow.genai.scorers import (\n    RelevanceTo	code
+6d9c6c3593	1	290	#/texts/282	By default, the judges use Databricks-hosted LLMs 	text
+cadbc17cbc	1	291	#/texts/283	model	code
+287320c644	1	292	#/texts/284	argument that references a supported provider and 	text
+e095217d99	1	293	#/texts/285	eval_model = \"databricks:/databricks-gpt-oss-120b\"	code
+14f719e8c9	1	294	#/texts/286	Custom LLM judges	section_header
+057d3f210b	1	295	#/texts/287	Custom LLM judges address needs that go beyond the	text
+2c06895762	1	296	#/texts/288	Guidelines judges	section_header
+24916266b2	1	297	#/texts/289	Guidelines judges let domain experts express rules	text
+567eaf659e	1	298	#/texts/290	Guidelines	list_item
+6da45f1f47	1	299	#/texts/291	This judge tests the response against global \"pass	list_item
+6fcba32a11	1	300	#/texts/292	ExpectationsGuidelines	list_item
+6543ca0afb	1	301	#/texts/293		list_item
+26d5697911	1	302	#/texts/294	This judge applies per-example rules supplied as	text
+7d3798bf12	1	303	#/texts/295	Expectations	code
+a830fa20bc	1	304	#/texts/296	in the dataset to judge compliance for that specif	text
+58947c3aa4	1	305	#/texts/297	Guidelines-based judges use a fine-tuned LLM to de	text
+8687316a29	1	306	#/texts/298	request	code
+6053e1cd50	1	307	#/texts/299	,	text
+c79357ab9c	1	308	#/texts/300	response	code
+0127803f55	1	309	#/texts/301	,	text
+507a122cd9	1	310	#/texts/302	user_preferences	code
+c59dd99c3b	1	311	#/texts/303	, or	text
+7a6657e890	1	312	#/texts/304	retrieved_documents	code
+8ca325ef51	1	313	#/texts/305	, and you can reference these keys directly in you	text
+a120d5dc5e	1	314	#/texts/306	model	code
+e170af5aca	1	315	#/texts/307	argument in the judge definition, similarly to bui	text
+60d927c30d	1	316	#/texts/308	Figure 6-5	text
+7abf84dd89	1	317	#/texts/309	illustrates this process.	text
+168094d6e7	1	318	#/pictures/4	A flowchart illustrating the process of guidelines	picture
+0cbf980b00	1	319	#/texts/311	Let's return to our Unity Airways assistant. Assum	text
+acf123ed4e	1	320	#/texts/312	Guidelines	code
+2db7255adf	1	321	#/texts/313	class judges:	text
+1c8ace57e4	1	322	#/texts/314	from mlflow.genai.scorers import Guidelines\n\nua_pr	code
+8bf77fafca	1	323	#/texts/315	Custom judges	section_header
+8adf013e1b	1	324	#/texts/316	Some situations call for full control over the jud	text
+6dfd541dc5	1	325	#/texts/317	from mlflow.genai.judges import make_judge\nfrom ty	code
+856e7e0197	1	326	#/texts/318	This pattern separates concerns in a way that rema	text
+7b7f56f470	1	327	#/texts/319	coherence	code
+55830cd44c	1	328	#/texts/320	judge, the scorer reads both the question and the 	text
+0807a128e2	1	329	#/texts/321	Input: {\"question\": \"My flight was downgraded from	list_item
+a5736b28a4	1	330	#/texts/322	This pattern turns subjective qualities into measu	text
+0a3dd432df	1	331	#/texts/323	Warning	section_header
+a4d20997b2	1	332	#/texts/324	The	text
+7360982d48	1	333	#/texts/325	make_judge	code
+d1902b8945	1	334	#/texts/326	API requires MLflow >= 3.4.0. For earlier versions	text
+1451a74608	1	335	#/texts/327	custom_prompt_judge	code
+20f758b2fa	1	336	#/texts/328	instead.	text
+55356e612c	1	337	#/texts/329	Scorer Lifecycle Management	section_header
+8ced4f5669	1	338	#/texts/330	You can reuse the same scorer in development noteb	text
+b7bd456291	1	339	#/texts/331	Scorer lifecycle management API	section_header
+53ac9f79b1	1	340	#/texts/332	To reuse the very same logic in different stages, 	text
+7e234d491e	1	341	#/texts/333	MLflow scorers support a set of instance methods e	text
+91927b8761	1	342	#/texts/334	register()	list_item
+2832540c56	1	343	#/texts/335	This method publishes the scorer in the registry a	list_item
+398fa834a4	1	344	#/texts/336	start()	list_item
+150a3c91a8	1	345	#/texts/337		list_item
+4e61c99d26	1	346	#/texts/338	This method enables online scoring with an optiona	text
+e727ec3cb4	1	347	#/texts/339	sample_rate	code
+18f3e126e7	1	348	#/texts/340	so expensive judges can run on a fraction of traff	text
+1dd4fb8ff0	1	349	#/texts/341	update()	list_item
+e953dd6f6f	1	350	#/texts/342	This method modifies the configuration over time, 	list_item
+937e14f621	1	351	#/texts/343	stop()	list_item
+3a2c585782	1	352	#/texts/344	This method disables online scoring for that score	list_item
+428d2ad3c7	1	353	#/texts/345	delete()	list_item
+8ef0537af2	1	354	#/texts/346	This removes the scorer from the registry when it 	list_item
+e2fbe40041	1	355	#/texts/347	For example, we can register our scorers for later	text
+a38bf815a0	1	356	#/texts/348	# Register built-in LLM judges\nua_relevancy_scorer	code
+dfef34aeea	1	357	#/texts/349	MLflow also exposes a set of registry functions un	text
+172de93562	1	358	#/texts/350	mlflow.genai.scorers	code
+9ec6ffe08b	1	359	#/texts/351	to discover and manage scorers centrally. You can 	text
+c49ed9e811	1	360	#/texts/352	list_scorers()	code
+c1e44b813c	1	361	#/texts/353	,	text
+3fcfe202e8	1	362	#/texts/354	get_scorer()	code
+2d7a4ee0cf	1	363	#/texts/355	, and	text
+a99b8540e7	1	364	#/texts/356	delete_scorer()	code
+f75a13e626	1	365	#/texts/357	, respectively.	text
+65873655ea	1	366	#/texts/358	In practice, teams register all production-relevan	text
+cd24b37fe3	1	367	#/texts/359	Documentation and operator playbook	section_header
+5b5111d0f6	1	368	#/texts/360	It is important to treat each scorer as a reusable	text
+b398a16732	1	369	#/texts/361	ua_response_length_scorer	list_item
+bf33ab606b	1	370	#/texts/362	This verifies that answers fall within a practical	list_item
+e5d0298f66	1	371	#/texts/363		list_item
+7baaf98445	1	372	#/texts/364	Action	text
+6972a7eb61	1	373	#/texts/365	: When this score trends down, operators should sa	text
+ec4d2a765a	1	374	#/texts/366	ua_professional_tone_scorer	list_item
+d049614373	1	375	#/texts/367	This evaluates whether the assistant's reply uses 	list_item
+03a382aa91	1	376	#/texts/368		list_item
+bc31507692	1	377	#/texts/369	Action	text
+903cd08579	1	378	#/texts/370	: When this score declines, operators should revie	text
+931db7503b	1	379	#/texts/371	With a concise playbook in place for what each sco	text
+4a2251b77e	1	380	#/texts/310	A flowchart illustrating the process of guidelines	caption
+33c3ce211b	1	381	#/texts/372	Running and Comparing Evaluations in MLflow	title
+b4d7bf6f85	1	382	#/texts/373	An evaluation run is an MLflow run that organizes 	text
+c805421ba8	1	383	#/texts/374	Traces	list_item
+30d9bee7ed	1	384	#/texts/375	One trace for each input example in your evaluatio	list_item
+1b824bacbc	1	385	#/texts/376	Feedback	list_item
+38baee3987	1	386	#/texts/377	Quality assessments generated by your scorers. The	list_item
+6bb526f68f	1	387	#/texts/378	Metrics	list_item
+3368c42676	1	388	#/texts/379	Aggregate statistics computed from per-trace feedb	list_item
+8a12ae913b	1	389	#/texts/380	Metadata	list_item
+667fb36cc4	1	390	#/texts/381	Configuration that explains exactly how the evalua	list_item
+cb32c033f3	1	391	#/texts/382	MLflow 3.x provides a unified API for running thes	text
+7c8f65b10b	1	392	#/texts/383	mlflow.genai.evaluate()	code
+729e6fe143	1	393	#/texts/384	. It logs results with lineage that links back to 	text
+9f948cc98f	1	394	#/texts/385	Evaluation Run Structure	section_header
+007b017b28	1	395	#/texts/386	It helps to picture the run as a directory tree. T	text
+521eb57f4a	1	396	#/texts/387	Figure 6-6	text
+f4e7023f31	1	397	#/texts/388	captures the spirit of what you will find.	text
+4f77e0937a	1	398	#/pictures/5	Diagram illustrating the structured layout of an e	picture
+e1a4b394c2	1	399	#/texts/390	This structured layout ensures that all necessary 	text
+3b7803fcd4	1	400	#/texts/391	Note	section_header
+0f1a92044d	1	401	#/texts/392	In MLflow 3.x,	text
+95e8103523	1	402	#/texts/393	mlflow.genai.evaluate()	code
+3cc1db7b18	1	403	#/texts/394	scores the trace, which includes the request, retr	text
+9e9f46909c	1	404	#/texts/395	predict_fn	code
+f04be979fb	1	405	#/texts/396	. In answer-sheet mode, you provide existing trace	text
+a9fafe8f2e	1	406	#/texts/397	Evaluating the Unity Airways Assistant	section_header
+106090d517	1	407	#/texts/398	Let's evaluate the Unity Airways tool-calling agen	text
+a058aa3ba1	1	408	#/texts/399	Chapter 4	text
+e5177cc96d	1	409	#/texts/400	, we registered this agent into Unity Catalog. Tha	text
+0f5f5905cd	1	410	#/texts/401	Load the registered model, dataset, and scorers	section_header
+faa7ee6658	1	411	#/texts/402	Before running a full evaluation, we can perform a	text
+d3d8827e6f	1	412	#/texts/403	mlflow.langchain.load_model()	code
+f6e924d0c5	1	413	#/texts/404	and	text
+1d5c1a5059	1	414	#/texts/405	ModelConfig	code
+ef3c5fed82	1	415	#/texts/406	to supply a development configuration.	text
+8fc76495b4	1	416	#/texts/407	ModelConfig	code
+1db2a5930f	1	417	#/texts/408	reads a YAML configuration file or a dictionary th	text
+2291715666	1	418	#/texts/409	import mlflow\n\n# Define version and model location	code
+aced2d6c2b	1	419	#/texts/410	In this case, we retrieve an input example, which 	text
+1a243edcbe	1	420	#/texts/411	ModelConfig	code
+d53d50912f	1	421	#/texts/412	, and then invoke the agent using this example.	text
+58bceb8cdd	1	422	#/texts/413	Figure 6-7	text
+5e19d036e1	1	423	#/texts/414	illustrates the MLflow Trace UI, which displays th	text
+90a142c7fa	1	424	#/pictures/6	MLflow Trace UI showing the execution trace of an 	picture
+cece30392a	1	425	#/texts/416	This quick check ensures that the agent is correct	text
+32b8614c30	1	426	#/texts/417	Next, we can load our evaluation dataset prepared 	text
+6281421bcf	1	427	#/texts/418	from mlflow.genai.datasets import get_dataset\n\n# L	code
+3617f2ee59	1	428	#/texts/419	Finally, we can fetch our predefined scorers from 	text
+8d56d460e7	1	429	#/texts/420	from mlflow.genai.scorers import get_scorer\n\n# Loa	code
+5e24c4fe87	1	430	#/texts/421	Now we have our agent, evaluation dataset, and sco	text
+9c34259b4b	1	431	#/texts/422	Prepare the predict_fn() function	section_header
+ec7558e89f	1	432	#/texts/423	MLflow's GenAI evaluation entry point expects a	text
+ac3efc456c	1	433	#/texts/424	predict_fn()	code
+a8fce571e1	1	434	#/texts/425	when using direct evaluation mode or answer-sheet 	text
+b4abdb4088	1	435	#/texts/426	predict_fn()	code
+b344705ce7	1	436	#/texts/427	here to test the live agent. A minimal	text
+b2d6399150	1	437	#/texts/428	predict_fn()	code
+6fda69ad6a	1	438	#/texts/429	for the Unity Airways assistant could be as follow	text
+e36a2b008e	1	439	#/texts/430	from typing import Dict\n\n# Wraps the Unity Airways	code
+547f877a0c	1	440	#/texts/431	If your agent expects a richer input dictionary, a	text
+1e84e8f42c	1	441	#/texts/432	Running an evaluation	section_header
+04dc9c83ea	1	442	#/texts/433	By now, we have successfully loaded all the requir	text
+6ddb2f50e0	1	443	#/texts/434	import mlflow\n# Run evaluation with predefined sco	code
+32604c8f24	1	444	#/texts/435	When the cell finishes, MLflow has produced a new 	text
+37c758fdb5	1	445	#/texts/436	Figure 6-8	text
+d38e5d7685	1	446	#/texts/437	), examine a specific row's trace, and download ar	text
+27c36e3f20	1	447	#/pictures/7	Screenshot of the MLflow UI displaying evaluation 	picture
+efaf9c926f	1	448	#/texts/439	By clicking on any selected trace, you can view mo	text
+ad1d0c3ea0	1	449	#/texts/440	Figure 6-9	text
+e5e4334390	1	450	#/texts/441	).	text
+aad6c224ed	1	451	#/pictures/8	Screenshot of the MLflow UI showing a detailed tra	picture
+94e8e30bb8	1	452	#/texts/443	Comparing Evaluation Runs	section_header
+0c9d813bf0	1	453	#/texts/444	Running one evaluation is helpful. Running several	text
+827c324c84	1	454	#/texts/445	Naming and tagging runs for comparison	section_header
+294e2237e8	1	455	#/texts/446	When naming and tagging runs, ensure they reflect 	text
+29472f3c83	1	456	#/texts/447	# Create a variant predict function that uses lowe	code
+490fda0279	1	457	#/texts/448	In the MLflow UI, filter by the	text
+d5d627f3ba	1	458	#/texts/449	model_version	code
+67dfc48345	1	459	#/texts/450	tag and select both runs. Look at the headline met	text
+1e40ac5b73	1	460	#/texts/451	In the MLflow UI, here's what you do: filter your 	text
+40fe86f7fb	1	461	#/texts/452	model_version	code
+05c8b4eff8	1	462	#/texts/453	tag and select the runs you want to examine. Now, 	text
+c2cc425d22	1	463	#/texts/454	response_completeness	code
+14bf44954e	1	464	#/texts/455	or	text
+6ac90dda17	1	465	#/texts/456	RetrievalGroundedness	code
+b62a1499cd	1	466	#/texts/457	(	text
+050de29d80	1	467	#/texts/458	Figure 6-10	text
+f0a9505a75	1	468	#/texts/459	). If you notice that the pass rates for these met	text
+4e19d13f0e	1	469	#/pictures/9	MLflow UI screenshot showing a comparison of two e	picture
+30e3c0b963	1	470	#/texts/461	By clicking on any selected request in the view in	text
+f25d100217	1	471	#/texts/462	Figure 6-10	text
+1f5b97212e	1	472	#/texts/463	, you can view more details about aspects like the	text
+8ab96e4731	1	473	#/texts/464	Figure 6-11	text
+73cbe8791f	1	474	#/texts/465	).	text
+02343b7ecc	1	475	#/pictures/10	Side-by-side comparison of two detailed assessment	picture
+c81105d907	1	476	#/texts/467	Beyond side-by-side comparison	section_header
+6001a72225	1	477	#/texts/468	After you are comfortable with the comparison tech	text
+b8bdaad136	1	478	#/texts/469	First, introduce difficulty bands by labeling exam	list_item
+c6b0670ff4	1	479	#/texts/470	Next, add confidence intervals for scalar scorers 	list_item
+c0ede179b3	1	480	#/texts/471	Finally, maintain a small table of failure example	list_item
+bd2bd015d4	1	481	#/texts/472	Diagnosing Regressions and Troubleshooting with Tr	section_header
+00f7d2342e	1	482	#/texts/473	While aggregated numbers reveal when something is 	text
+4d36e1ae85	1	483	#/texts/474	Check whether responses lost courteous greetings o	list_item
+1ee9493727	1	484	#/texts/475	Verify that citations still point to the correct p	list_item
+71fc7538ac	1	485	#/texts/476	Confirm that formatting did not shorten replies be	list_item
+bd8344057a	1	486	#/texts/477	Because each feedback record attaches to a specifi	text
+13f8b9c29d	1	487	#/texts/478	Traces also make routine troubleshooting faster:	text
+ccb482e7ab	1	488	#/texts/479		list_item
+e119d4fa19	1	489	#/texts/480	If a run finishes with zero traces, check that the	text
+fba814dbc6	1	490	#/texts/481	predict_fn()	code
+048bc4070d	1	491	#/texts/482	expects, confirm column names and types, and valid	text
+c5e5571d43	1	492	#/texts/483	If a scorer crashes for a subset of rows, wrap its	list_item
+d0c1905293	1	493	#/texts/484	If outputs are inconsistent from one call to the n	list_item
+d9b548cb8b	1	494	#/texts/485	If performance is slow, inspect timing inside trac	list_item
+e26e6c2ba8	1	495	#/texts/486	When retrieval dominates, review index health and 	list_item
+b09b0ef804	1	496	#/texts/487	When judge calls dominate, try a smaller judge for	list_item
+07df366d5d	1	497	#/texts/488	In all cases, let the traces guide you. They captu	text
+6b7a164c2e	1	498	#/texts/489	Table 6-5	text
+5013744627	1	499	#/texts/490	as a guide when troubleshooting your GenAI applica	text
+8a973e14fe	1	500	#/tables/4	| Symptom                       | What to check   	table
+ca8db1fdd0	1	501	#/texts/491	data schema versus	text
+4f081c988f	1	502	#/texts/492	predict_fn	code
+99790c8538	1	503	#/texts/493	expectations, column names, input types	text
+c3f1894a26	1	504	#/texts/494	Even the best scorer suite does not capture every 	text
+40dda1788e	1	505	#/texts/495	Multiturn Evaluation	section_header
+f1dc8da7e2	1	506	#/texts/496	In the earlier sections, evaluation focused primar	text
+9483c9be86	1	507	#/texts/497	In MLflow 3.10, multiturn evaluation was introduce	text
+6ab41acb99	1	508	#/texts/498	Preparing data for multiturn evaluation	section_header
+f065a61e1b	1	509	#/texts/499	To enable multiturn evaluation, we can group trace	text
+e562f331d5	1	510	#/texts/500	The way to do this is to add the session identifie	text
+6ca66395c6	1	511	#/texts/501	mlflow.update_current_trace(metadata={\"mlflow.trac	code
+45ff2ffc35	1	512	#/texts/502	MLflow also supports conversation simulation (	text
+f7bab9c667	1	513	#/texts/503	ConversationSimulator	code
+4bd1b96e0f	1	514	#/texts/504	), which is useful when real conversation data is 	text
+e5ea19cadc	1	515	#/texts/505	ConversationSimulator	code
+0676bf0d89	1	516	#/texts/506	, you define the conversation goals, personas, or 	text
+b41a0f6e78	1	517	#/texts/507	import mlflow\nfrom mlflow.genai.simulators import 	code
+79d6813201	1	518	#/texts/508	Multiturn judges and scorers	section_header
+60ec083f12	1	519	#/texts/509	Once conversation traces are prepared, evaluation 	text
+65e7c29f0b	1	520	#/texts/510	Table 6-6	text
+0bde6540f3	1	521	#/texts/511	shows some examples of multiturn judges.	text
+f501a5ef65	1	522	#/tables/5	| Judge name                         | What it mea	table
+493bf44e98	1	523	#/texts/512	ConversationCompleteness	code
+2bf4ff61d7	1	524	#/texts/513	ConversationalGuidelines	code
+8302bee3d9	1	525	#/texts/514	ConversationalRoleAdherence	code
+50545cbea8	1	526	#/texts/515	ConversationalSafety	code
+dff4ad6a51	1	527	#/texts/516	ConversationalToolCallEfficiency	code
+868b08349e	1	528	#/texts/517	KnowledgeRetention	code
+ab09c0bd79	1	529	#/texts/518	UserFrustration	code
+e209000431	1	530	#/texts/519	Besides built-in multiturn judges, we can also cre	text
+9b2c86450c	1	531	#/texts/520	from mlflow.genai.judges import make_judge\nfrom ty	code
+95b1d701c7	1	532	#/texts/521	The	text
+531e303c20	1	533	#/texts/522	{{ conversation }}	code
+31bb1d6394	1	534	#/texts/523	variable injects the complete conversation history	text
+1987f48125	1	535	#/texts/524	We can then evaluate using both multiturn and sing	text
+51623c9b87	1	536	#/texts/525	results = mlflow.genai.evaluate(\n    data=simulato	code
+251a43b41d	1	537	#/texts/526	After running the evaluation, we can examine the r	text
+35c2a2fd6a	1	538	#/texts/527	Figure 6-12	text
+410a3ce0eb	1	539	#/texts/528	.	text
+845e191502	1	540	#/pictures/11	Session evaluation interface displaying feedback o	picture
+409ec2b9ce	1	541	#/texts/530	We can also look into individual turns to inspect 	text
+f30bcf57fa	1	542	#/texts/531	Figure 6-13	text
+e1bb30303d	1	543	#/texts/532	).	text
+bb644a1642	1	544	#/pictures/12	Screenshot of a user interface showing the results	picture
+ba60d07ffd	1	545	#/texts/534	At first glance, it may seem that multiturn evalua	text
+eddaa8d0a4	1	546	#/texts/535	As a rule of thumb, use single-turn evaluation for	text
+ccf80975c5	1	547	#/texts/389	Diagram illustrating the structured layout of an e	caption
+1f70cbb1ac	1	548	#/texts/415	MLflow Trace UI showing the execution trace of an 	caption
+3b95447e0e	1	549	#/texts/438	Screenshot of the MLflow UI displaying evaluation 	caption
+cf52741c3a	1	550	#/texts/442	Screenshot of the MLflow UI showing a detailed tra	caption
+5731bd80f1	1	551	#/texts/460	MLflow UI screenshot showing a comparison of two e	caption
+5a3201ae19	1	552	#/texts/466	Side-by-side comparison of two detailed assessment	caption
+f580510843	1	553	#/texts/529	Session evaluation interface displaying feedback o	caption
+30f48f7136	1	554	#/texts/533	Screenshot of a user interface showing the results	caption
+ff6e735ab4	1	555	#/texts/536	Capturing Human Feedback	title
+a550f0b6ba	1	556	#/texts/537	A healthy GenAI application depends on human feedb	text
+88b8bebebd	1	557	#/texts/538	Data Model Overview	section_header
+270db08eeb	1	558	#/texts/539	MLflow keeps human judgment close to the execution	text
+28b170bb33	1	559	#/texts/540	Assessment	code
+442e13e46b	1	560	#/texts/541	object attached to an MLflow trace. A trace is the	text
+2c6bf44d98	1	561	#/texts/542	For human-in-the-loop workflows, two assessment ty	text
+28ee1f18d8	1	562	#/texts/543	Feedback	code
+efaad8d11e	1	563	#/texts/544	and	text
+cd04b09a0c	1	564	#/texts/545	Expectations	code
+4197ff6a4d	1	565	#/texts/546	:	text
+80819fa164	1	566	#/texts/547	Feedback	list_item
+3606822551	1	567	#/texts/548	Records how the application actually behaved. It c	list_item
+bc33d19b26	1	568	#/texts/549	Expectations	list_item
+94eeacece8	1	569	#/texts/550	Record what the application should have produced f	list_item
+d6aacc3e5b	1	570	#/texts/551	As	text
+7c628e3563	1	571	#/texts/552	Figure 6-14	text
+d465848268	1	572	#/texts/553	shows, MLflow also records the source of an	text
+c516df6671	1	573	#/texts/554	Assessment	code
+9bce35b6bd	1	574	#/texts/555	. For	text
+5ec680678d	1	575	#/texts/556	Feedback	code
+b07613bbcb	1	576	#/texts/557	, the source can identify a human reviewer, an LLM	text
+41cab97e26	1	577	#/texts/558	Expectations	code
+128437133d	1	578	#/texts/559	are human-authored ground truth and carry source m	text
+b0e423fd2d	1	579	#/pictures/13	Diagram showing the relationship between Trace, Sp	picture
+cb237ecf93	1	580	#/texts/561	This model is especially useful for RAG and agent 	text
+42bddb5ebd	1	581	#/texts/562	Collecting Human Feedback	section_header
+f2ab1d4935	1	582	#/texts/563	Human feedback can be grouped according to the pro	text
+4af4e94fac	1	583	#/texts/564	Adding developer annotations	section_header
+4456f9836f	1	584	#/texts/565	During development and staging, your team should r	text
+d2e0f2bf89	1	585	#/texts/566	Span	code
+28a3b9ecd5	1	586	#/texts/567	or a child	text
+e611c662ed	1	587	#/texts/568	Span	code
+877cbcd2ff	1	588	#/texts/569	, and add an	text
+f7233ffa60	1	589	#/texts/570	Assessment	code
+69aa65f33c	1	590	#/texts/571	(	text
+6cc179eb51	1	591	#/texts/572	Figure 6-15	text
+8544bdb28b	1	592	#/texts/573	). Use a consistent naming scheme such as	text
+d5fc7154fd	1	593	#/texts/574	dev_accuracy_score	code
+b1c4fe39ee	1	594	#/texts/575	or	text
+69f6138745	1	595	#/texts/576	dev_needs_disclosure	code
+7d3c1a6ee8	1	596	#/texts/577	, and write specific rationales. After you add the	text
+96f04a4924	1	597	#/texts/578	Assessment	code
+c3f4f86d0e	1	598	#/texts/579	with a new name, a column with that name appears i	text
+9389cd5f71	1	599	#/pictures/14	Screenshot of the MLflow UI showing the process of	picture
+630c5f4401	1	600	#/texts/581	For quick scoring experiments you can also log dev	text
+4bc8a842ee	1	601	#/texts/582	Trace	code
+276f1098af	1	602	#/texts/583	objects in one pass after a notebook review sessio	text
+27e7671898	1	603	#/texts/584	import mlflow\nfrom typing import Optional\nfrom mlf	code
+6f94771540	1	604	#/texts/585	Developer feedback is often opinionated. Therefore	text
+cea83d78a2	1	605	#/texts/586	Sending traces for domain-expert feedback	section_header
+3b7c70d07f	1	606	#/texts/587	Some answers require expert judgment. For example,	text
+25f8e538f3	1	607	#/texts/588	Trace	code
+8494852847	1	608	#/texts/589	objects to review using predefined label schemas. 	text
+6c6006b96c	1	609	#/texts/590	We can start by defining exactly what we want expe	text
+a85f64e040	1	610	#/texts/591	import mlflow\nfrom mlflow.genai.label_schemas impo	code
+014e67815a	1	611	#/texts/592	When experts open the Review App link, they can vi	text
+6be04f55cc	1	612	#/texts/593	Assessments	code
+d31d67942c	1	613	#/texts/594	on the underlying traces, which preserves full con	text
+6162fb8752	1	614	#/texts/595	Note	section_header
+0a7edfb32c	1	615	#/texts/596	The Review App Chat UI requires an agent deployed 	text
+179930ec67	1	616	#/texts/597	Chapter 8	text
+a4729d0319	1	617	#/texts/598	.	text
+735f6da236	1	618	#/texts/599	Figure 8-7	text
+42517fccfe	1	619	#/texts/600	shows a Databricks Review App Chat UI.	text
+411e89dd95	1	620	#/texts/601	Collecting end-user feedback	section_header
+80c7ee54db	1	621	#/texts/602	In production, you should collect signals with as 	text
+dbc0004941	1	622	#/texts/603	Chapter 9	text
+fbf21ba595	1	623	#/texts/604	within the context of online monitoring.	text
+554e155a59	1	624	#/texts/605	Aligning LLM Judges with Human Feedback	section_header
+721867b89f	1	625	#/texts/606	We explored how to use LLM judges as a fast, scala	text
+3ed222b043	1	626	#/texts/607	This misalignment can lead to misleading evaluatio	text
+f0dad702a9	1	627	#/texts/608	MLflow addresses this by enabling the alignment of	text
+8c01793181	1	628	#/texts/609	With the feedback collected, we can use MLflow bui	text
+469717eb73	1	629	#/texts/610	Once the optimization is completed, we need a way 	text
+136605c63e	1	630	#/texts/611	Figure 6-16	text
+c680520fa3	1	631	#/texts/612	summarizes the overall process.	text
+a474bfa3e0	1	632	#/pictures/15	Diagram outlining the process to align LLM judges 	picture
+6f0ea658c4	1	633	#/texts/560	Diagram showing the relationship between Trace, Sp	caption
+d246470e8f	1	634	#/texts/580	Screenshot of the MLflow UI showing the process of	caption
+5dbb7bc1dd	1	635	#/texts/613	Diagram outlining the process to align LLM judges 	caption
+595b48ab09	1	636	#/texts/614	Conclusion and Key Takeaways	title
+cb7f66f0b8	1	637	#/texts/615	Evaluation for GenAI is an operating discipline. I	text
+4f6ef1c5e1	1	638	#/texts/616	To keep this workflow useful over time, focus on t	text
+e2b51380d9	1	639	#/texts/617		list_item
+b86b087e0f	1	640	#/texts/618	Govern the assets.	text
+8789424c1d	1	641	#/texts/619	Treat datasets, scorers, and evaluation runs as pr	text
+cf4669056f	1	642	#/texts/620		list_item
+c5052ddb0b	1	643	#/texts/621	Keep scorers focused.	text
+d6e441ecab	1	644	#/texts/622	The best scorers do one job well. They measure a s	text
+83d7b3a308	1	645	#/texts/623		list_item
+b722e63374	1	646	#/texts/624	Turn feedback into data.	text
+eb1ac1d1f2	1	647	#/texts/625	User signals, developer review, and expert labelin	text
+40d9201ba1	1	648	#/texts/626	When results regress, start with the trace. Check 	text
+cd16164de4	1	649	#/texts/627	The larger lesson is simple: offline evaluation an	text

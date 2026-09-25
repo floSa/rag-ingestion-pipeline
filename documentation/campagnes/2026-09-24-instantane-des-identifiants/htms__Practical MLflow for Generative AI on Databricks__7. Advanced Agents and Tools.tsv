@@ -1,0 +1,564 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+ba34ec082b	1	0	#/texts/0	Chapter 7. Advanced Agents and Tools	title
+c01ca99ecd	1	1	#/texts/1	In the previous chapters, we worked with a simple 	text
+3014927c31	1	2	#/texts/2	AI agents	text
+53bffca1a8	1	3	#/texts/3	, represent a major shift in GenAI application dev	text
+7d9ddbe5e1	1	4	#/texts/4	The rapid adoption of agents has made it one of th	text
+097d272bcd	1	5	#/texts/5	This chapter delves further into agents to help ou	text
+1f7b211c8d	1	6	#/texts/6	Developing Agents with MLflow	title
+80ba9b7fb9	1	7	#/texts/7	As we've covered throughout the book, MLflow 3.x i	text
+4479516e33	1	8	#/texts/8	What Are Agents, AI Agents, and Agentic AI?	section_header
+246bb95f16	1	9	#/texts/9	An	text
+8322fc7348	1	10	#/texts/10	agent	text
+47bba19790	1	11	#/texts/11	is usually referred to as a system that can choose	text
+cd239792c3	1	12	#/texts/12	Today,	text
+1370897221	1	13	#/texts/13	AI agents	text
+4c9fb91215	1	14	#/texts/14	infused with an LLM are more advanced systems that	text
+3ae4c109d8	1	15	#/texts/15	In a step further, these systems can be evolved in	text
+1b6e06ea78	1	16	#/texts/16	agentic AI	text
+7efa60552c	1	17	#/texts/17	systems, where the supervisor can choose between m	text
+f260623876	1	18	#/texts/18	Figure 7-1	text
+ff13e1bc94	1	19	#/texts/19	illustrates some examples of these three types of 	text
+8164e4064c	1	20	#/pictures/0	Diagram showing how traditional agents, AI agents,	picture
+a0e67a3af9	1	21	#/texts/21	As we progress in this example, we can see that th	text
+c339513add	1	22	#/texts/22	Warning	section_header
+303533891e	1	23	#/texts/23	AI agents and agentic AI systems are more flexible	text
+60587ea7ae	1	24	#/texts/24	It's important to consider your needs for a specif	text
+089f94cfec	1	25	#/texts/25	Table 7-1	text
+747329c0e8	1	26	#/texts/26	for more details on how to determine what is the b	text
+0d5e8808ae	1	27	#/tables/0	| Features                | Agents                	table
+9c4c151a5a	1	28	#/texts/27	Integration on MLflow	section_header
+c155de7f2f	1	29	#/texts/28	GenAI development relies on libraries and framewor	text
+061a2796eb	1	30	#/texts/29	MLflow 3.x integrates with many popular libraries 	text
+c22e8bad4c	1	31	#/texts/30	MLflow documentation	text
+8fa3b313e8	1	32	#/texts/31	.	text
+051d238ef8	1	33	#/texts/32	On top of that, most of these orchestration packag	text
+09483c50c8	1	34	#/texts/33	databricks-langchain	code
+baa58d31c8	1	35	#/texts/34	package to use a large language model provided by 	text
+29552b3f03	1	36	#/texts/35	These packages are great tools that are used widel	text
+08ef0abc50	1	37	#/texts/36	For debugging and iterating on agent prompts	list_item
+ff501673be	1	38	#/texts/37		list_item
+18bdb335bc	1	39	#/texts/38	Whether you build LangGraph agents or DSPy models,	text
+27e2309986	1	40	#/texts/39	Chapter 5	text
+50fd49a1b7	1	41	#/texts/40	, is an asset in speeding up development and ident	text
+7a89b2cb6a	1	42	#/texts/41	For scaling agent evaluation	list_item
+4a34d718c0	1	43	#/texts/42	MLflow helps evaluate the different layers of agen	list_item
+8af6eeef05	1	44	#/texts/43	MLflow AI Gateway Interface for LLM Integration	section_header
+fef6b4e72d	1	45	#/texts/44	As the number of available LLMs increases by the d	text
+9423dc4958	1	46	#/texts/45	When using these different providers, another capa	text
+9ebbb4892b	1	47	#/texts/46	MLflow AI Gateway is a centralized service that pr	text
+5e8813f375	1	48	#/texts/47	Figure 7-2	text
+1a03c9759a	1	49	#/texts/48	illustrates this. This simplifies secrets manageme	text
+9ed2797715	1	50	#/texts/49	Following the same concept, Databricks offers Unit	text
+0cbd48bade	1	51	#/pictures/1	Diagram showing how an AI Gateway connects a user 	picture
+5df3694b2c	1	52	#/texts/51	On top of the developers benefits of swapping mode	text
+dbd99427ba	1	53	#/texts/52	Now that we've discussed agents and MLflow integra	text
+26766edb22	1	54	#/texts/53	For example, our unity Airways AI agent should be 	text
+eb99d6f1dc	1	55	#/texts/54		list_item
+65fecf47bd	1	56	#/texts/55	Answer frequently asked questions (as the example 	text
+000c8f5ea0	1	57	#/texts/56	Chapter 4	text
+78463e68b9	1	58	#/texts/57	).	text
+647d1ce4a7	1	59	#/texts/58	Check user information and latest booking records 	list_item
+0eda96c7ac	1	60	#/texts/59	Retrieve real-time weather forecasts to alert on p	list_item
+a1de44f47b	1	61	#/texts/20	Diagram showing how traditional agents, AI agents,	caption
+1e33c5d230	1	62	#/texts/50	Diagram showing how an AI Gateway connects a user 	caption
+2697e15fcd	1	63	#/texts/60	Creating Tools	title
+ba340edf28	1	64	#/texts/61	Tools let our agent do more than just respond to a	text
+76b15bde13	1	65	#/texts/62	Knowledge and database tools	list_item
+9b9ed4b346	1	66	#/texts/63	These tools include connectors to query knowledge 	list_item
+ac55a72501	1	67	#/texts/64	API-based tools	list_item
+b93286b1d3	1	68	#/texts/65	These tools facilitate web searches, weather forec	list_item
+ffb770f951	1	69	#/texts/66	Code execution tools	list_item
+3c5903ccd9	1	70	#/texts/67	These tools enable dynamic code execution in vario	list_item
+b17fdb5749	1	71	#/texts/68	Skills	list_item
+fbc756d4ff	1	72	#/texts/69	While not technically tools themselves, skills hel	list_item
+154601c12d	1	73	#/texts/70	MCP servers for platform integration	list_item
+5c4e9662a4	1	74	#/texts/71	Often designed and offered by the platform itself,	list_item
+ee46b9825b	1	75	#/texts/72	These tools can be developed in many ways, by simp	text
+a0e4f1a2dd	1	76	#/texts/73	While both approaches allow agents to interact wit	text
+53bafd7318	1	77	#/texts/74	Table 7-2	text
+da78039122	1	78	#/texts/75	compares MCP servers and framework-specific Python	text
+834324edc5	1	79	#/tables/1	| Tool type                  | MCP server         	table
+3b4bc68cf9	1	80	#/texts/76	MCP server	text
+489cd2edf3	1	81	#/texts/77	Other Python package Tool\n(e.g., LangChain)	text
+330066d31b	1	82	#/texts/78	Code directly in the application.	text
+7ea7f7078b	1	83	#/texts/79	Directly in-process with your agent, which makes f	text
+6e3cb52e2c	1	84	#/texts/80	Essentially, we recommend using an MCP server when	text
+3934329d1f	1	85	#/texts/81	Now that we've seen the difference between MCP-bas	text
+0c7fe15ed9	1	86	#/texts/82	Vector Retriever Tool	section_header
+73efe5b8ac	1	87	#/texts/83	As we've seen in earlier chapters, vector database	text
+15b2a50f29	1	88	#/texts/84	To do that, we're using the class	text
+74bef81d14	1	89	#/texts/85	VectorSearchRetrieverTool	code
+480492bd87	1	90	#/texts/86	from the package	text
+2d40e490f1	1	91	#/texts/87	databricks_langchain	code
+de631d30a7	1	92	#/texts/88	. This package contains various integrations to co	text
+5ae9edcd8d	1	93	#/texts/89	from databricks_langchain import VectorSearchRetri	code
+7b21561afa	1	94	#/texts/90	This code creates a search tool that connects to o	text
+272736f121	1	95	#/texts/91	index_name	code
+f762693847	1	96	#/texts/92	points to our FAQ data index name, deployed on Dat	text
+eb635e4e7c	1	97	#/texts/93	num_results=5	code
+b489de1d3b	1	98	#/texts/94	means it will return the top five most similar ans	text
+2b6ce4ccf1	1	99	#/texts/95	tool_description	code
+b89b798f58	1	100	#/texts/96	tells our agent what this tool is good for.	text
+ed33dec504	1	101	#/texts/97	tool_description	code
+c52db7bfaf	1	102	#/texts/98	must be as clear as possible, by describing what t	text
+a2191305ff	1	103	#/texts/99	This is where clear naming and descriptions matter	text
+4d11a0b908	1	104	#/texts/100	Now, let's call our tool with a query:	text
+42a7cabe09	1	105	#/texts/101	results = vector_retriever_tool.invoke({\n   \"query	code
+7bb700989f	1	106	#/texts/102	As queried, this returns the five most relevant do	text
+b3fe929698	1	107	#/texts/103	Figure 7-3	text
+63b2ac28d6	1	108	#/texts/104	illustrates.	text
+6e3d3489b8	1	109	#/pictures/2	MLflow Trace UI showing a query about battery pack	picture
+6647b969d5	1	110	#/texts/106	Structured Data Lookup Tool	section_header
+e3db87e49b	1	111	#/texts/107	For querying structured data like customer booking	text
+6022e86b82	1	112	#/texts/108	Let's create a function to query specific customer	text
+d508f3945c	1	113	#/texts/109	CREATE OR REPLACE FUNCTION workspace.unity_airways	code
+d8d86652d3	1	114	#/texts/110	We can see that	text
+e2303bfd8f	1	115	#/texts/111	user_email	code
+f92f6704c6	1	116	#/texts/112	is the input of the function. Again, it's importan	text
+cd00006cbb	1	117	#/texts/113	import pandas as pd\nfrom unitycatalog.ai.core.data	code
+3bd06b3474	1	118	#/texts/114	Testing this function code calls our lookup functi	text
+d2c992ebf4	1	119	#/texts/115	Table 7-3	text
+a8d99a7709	1	120	#/texts/116	demonstrates this.	text
+0f1e893576	1	121	#/tables/2	| primary_contact_email   |   primary\\_contact\\_ p	table
+2ae931516e	1	122	#/texts/117	primary_contact_\nphone_e164	text
+5fd4a3b0b8	1	123	#/texts/118	destination_\niata	text
+d6fe593c07	1	124	#/texts/119	alex.lim@example.com	text
+cdf0da73f9	1	125	#/texts/120	alex.lim@example.com	text
+b3ede89d0d	1	126	#/texts/121	alex.lim@example.com	text
+c8735816c9	1	127	#/texts/122	alex.lim@example.com	text
+e4c19c98ae	1	128	#/texts/123	alex.lim@example.com	text
+fb01808034	1	129	#/texts/124	Now, let's wrap this function into a tool. To do t	text
+48c046ed45	1	130	#/texts/125	UCFunctionToolkit	code
+111c55f838	1	131	#/texts/126	from	text
+e837d8b3e8	1	132	#/texts/127	databricks_langchain	code
+b19b0155f3	1	133	#/texts/128	. This will integrate the Unity Catalog functions 	text
+0bbb264918	1	134	#/texts/129	UCFunctionToolkit	code
+bbbee2cf1a	1	135	#/texts/130	actually creates a list of tools (toolkit) by pass	text
+5a89cbbd66	1	136	#/texts/131	function_names	code
+407fa601d4	1	137	#/texts/132	. This toolkit has multiple tools inside that can 	text
+90ab52b8b4	1	138	#/texts/133	from databricks_langchain import UCFunctionToolkit	code
+b4d3074572	1	139	#/texts/134	When we invoke the tool, it returns our data rows 	text
+1d3dc4e6e5	1	140	#/texts/135	Table 7-3	text
+4611c2b0b8	1	141	#/texts/136	) about our customer flights, as expected.	text
+aca0e51525	1	142	#/texts/137	Note	section_header
+8521e23985	1	143	#/texts/138	Databricks provides managed MCP servers for interf	text
+bf05d9ae5b	1	144	#/texts/139	API-Calling Tool	section_header
+5a868de95d	1	145	#/texts/140	API-based tools are another type of popular tool, 	text
+69e436cee8	1	146	#/texts/141	Open-Meteo	text
+27b2c94fec	1	147	#/texts/142	. It will help our AI agent check for weather cons	text
+3321d366ab	1	148	#/texts/143	First, we create a	text
+a90c1d79d7	1	149	#/texts/144	BaseModel	code
+d15c80e900	1	150	#/texts/145	class to formalize our inputs. This helps make the	text
+685e564cc9	1	151	#/texts/146	from pydantic import BaseModel\n\nclass Localization	code
+9ff71832f1	1	152	#/texts/147	Our next function,	text
+fc8812be7d	1	153	#/texts/148	get_weather_forecast	code
+e0590c0465	1	154	#/texts/149	, will call the Open-Meteo API with an http reques	text
+26001c23c4	1	155	#/texts/150	import openmeteo_requests\n\ndef get_weather_forecas	code
+6bfa61670d	1	156	#/texts/151	The code inside the function is quite customizable	text
+2340d1026f	1	157	#/texts/152	Tip	section_header
+d7dc4ed553	1	158	#/texts/153	While it is not shown in the preceding code exampl	text
+6d77884de2	1	159	#/texts/154	In the next step, we wrap this function into a Lan	text
+b63c9f070d	1	160	#/texts/155	StructuredTool	code
+f711b6d4f8	1	161	#/texts/156	as we've formalized our previous input format in t	text
+7100836fbc	1	162	#/texts/157	Localization	code
+1cd77c80b8	1	163	#/texts/158	class:	text
+b361d002a6	1	164	#/texts/159	from langchain_core.tools import StructuredTool\n\nw	code
+ee3a5fc66f	1	165	#/texts/160	As usual, it's important to clarify the desired us	text
+90eecef46e	1	166	#/texts/161	args_schema	code
+130c717e41	1	167	#/texts/162	is the name of our structured input class. Technic	text
+c891ef90d7	1	168	#/texts/163	Tool	code
+4ee4758f36	1	169	#/texts/164	class instead of	text
+1f370243ea	1	170	#/texts/165	StructuredTool	code
+1074c24cca	1	171	#/texts/166	, but knowing how to secure the input type of our 	text
+4bb67d3359	1	172	#/texts/167	Now, let's try our tool by invoking it with the la	text
+4b16e8449e	1	173	#/texts/168	# Call the tool by passing an instance of the inpu	code
+43b12f25de	1	174	#/texts/169	All good! It returns our weather forecast data for	text
+25d5ccb834	1	175	#/texts/170	Table 7-4	text
+21c2eeb443	1	176	#/texts/171	shows.	text
+70d4c26e80	1	177	#/tables/3	| date                          |     temperature_	table
+d5a9b19b90	1	178	#/texts/172	Finally, let's group all of our created tools into	text
+516a001fe1	1	179	#/texts/173	tools = []\ntools.extend([uc_tool])\ntools.extend([v	code
+9d3f991e10	1	180	#/texts/174	Extending the Unity Airways Chatbot with Tools	section_header
+7decf09ebb	1	181	#/texts/175	Now that we've created our tools, let's integrate 	text
+353e5ab6a7	1	182	#/texts/176	To integrate our various tools, we will be using t	text
+2067e176c1	1	183	#/texts/177	Note	section_header
+87b2280f26	1	184	#/texts/178	As this book focuses on MLflow, we will keep our e	text
+ea72bac2be	1	185	#/texts/179	official documentation of the LangChain package.	text
+662906e167	1	186	#/texts/180	At its core, LangGraph models agent workflows as g	text
+c3d0679872	1	187	#/texts/181	State	list_item
+11796165f5	1	188	#/texts/182	A shared data structure that represents the curren	list_item
+1590eb057c	1	189	#/texts/183	Nodes	list_item
+d8b38a5d4f	1	190	#/texts/184	Functions that encode the logic of your agents. Th	list_item
+fb2df11502	1	191	#/texts/185	Edges	list_item
+1689c5a3cf	1	192	#/texts/186		list_item
+9d5c1264bd	1	193	#/texts/187	Functions that determine which	text
+08f0e865f5	1	194	#/texts/188	Node	code
+2ba17eedf1	1	195	#/texts/189	to execute next based on the current state. They c	text
+b9170e9eb3	1	196	#/texts/190	Used together, these three components can form a w	text
+624ea123bc	1	197	#/texts/191	Figure 7-4	text
+716ffc8a98	1	198	#/texts/192	illustrates.	text
+1c2efe2e74	1	199	#/pictures/3	Diagram illustrating a LangGraph workflow with com	picture
+21e17f7ebd	1	200	#/texts/194	First, we start by defining our agent state. Here,	text
+73bf804037	1	201	#/texts/195	messages	code
+c4f16a6b2a	1	202	#/texts/196	field will contain the various message turns in th	text
+a58a2b856b	1	203	#/texts/197	custom_inputs	code
+158126a743	1	204	#/texts/198	and	text
+121ef1b7c3	1	205	#/texts/199	custom_outputs	code
+15fe227a08	1	206	#/texts/200	, in case we want to pass some information that is	text
+d5b4d0764d	1	207	#/texts/201	from typing import TypedDict, Annotated, Sequence,	code
+29074dde32	1	208	#/texts/202	This	text
+9db2823b1f	1	209	#/texts/203	AgentState	code
+094148bfb1	1	210	#/texts/204	will then be used throughout our tool-calling agen	text
+5b48721d4f	1	211	#/texts/205	Next, let's create our agent. For that, we create 	text
+3034ee2e77	1	212	#/texts/206		list_item
+c3bb69c424	1	213	#/texts/207	Use a model that is wrapped with the LangChain cla	text
+55ba03536d	1	214	#/texts/208	LanguageModelLike	code
+1283ba775e	1	215	#/texts/209	.	text
+30629c7950	1	216	#/texts/210		list_item
+1d5c194350	1	217	#/texts/211	Bind our recently created tools to our selected LL	text
+af0bf2e87f	1	218	#/texts/212	bind_tools()	code
+d13172d76c	1	219	#/texts/213	.	text
+18e52d50f9	1	220	#/texts/214		list_item
+5e3e1d22ca	1	221	#/texts/215	Concatenate our prompt with the conversation messa	text
+85d0102070	1	222	#/texts/216	preprocessor	code
+73f366242e	1	223	#/texts/217	and pass this to our model in	text
+e0694f7987	1	224	#/texts/218	model_runnable	code
+285a96510a	1	225	#/texts/219	.	text
+13d48eadd4	1	226	#/texts/220		list_item
+ccb12f97d1	1	227	#/texts/221	Finally, create the	text
+ca365b0d5d	1	228	#/texts/222	StateGraph	code
+62ce66eb9f	1	229	#/texts/223	that will orchestrate the various nodes together.	text
+ca7d46931a	1	230	#/texts/224	The following code illustrates this procedure:	text
+fa77179072	1	231	#/texts/225	from langchain_core.language_models import Languag	code
+7fb6e448f0	1	232	#/texts/226	The creation of the	text
+f346fdc210	1	233	#/texts/227	StateGraph	code
+76e2ab3c59	1	234	#/texts/228	workflow has two principal nodes, the	text
+f79505c0be	1	235	#/texts/229	agent	code
+74a5cd38d3	1	236	#/texts/230	and the	text
+ea304bc131	1	237	#/texts/231	tools	code
+a479b3a7da	1	238	#/texts/232	. The agent will call the model through the functi	text
+adb23090b0	1	239	#/texts/233	call_model	code
+1cec87b9ca	1	240	#/texts/234	, while tools will use the	text
+bf16ac4bf7	1	241	#/texts/235	ToolNode	code
+c71f521463	1	242	#/texts/236	implementation.	text
+a2902ca344	1	243	#/texts/237	You'll notice that we've created two internal func	text
+eff179496f	1	244	#/texts/238	should_continue	code
+f37545f6ba	1	245	#/texts/239	and	text
+209c30c881	1	246	#/texts/240	call_model	code
+040522849b	1	247	#/texts/241	, that are being called in our nodes and edges def	text
+20173a132f	1	248	#/texts/242	The	text
+f15358a8f8	1	249	#/texts/243	should_continue	code
+359f19cdfe	1	250	#/texts/244	function in the LangGraph workflow is a routing fu	text
+85d6e8e5d8	1	251	#/texts/245	agent	code
+155de8cefe	1	252	#/texts/246	node, specifically used to determine the next step	text
+87c0d36d3e	1	253	#/texts/247	# Define the function that determines which node t	code
+37989a22ab	1	254	#/texts/248	Every time the	text
+2ce9c0e371	1	255	#/texts/249	agent	code
+f3234b033d	1	256	#/texts/250	node finishes running (after the LLM produces its 	text
+5a421188d6	1	257	#/texts/251	should_continue	code
+b153e635cd	1	258	#/texts/252	to decide if the workflow should continue to the	text
+86b0054cd1	1	259	#/texts/253	tools	code
+53998519e0	1	260	#/texts/254	node or go to the	text
+920ad18ea0	1	261	#/texts/255	END	code
+f604b8abbc	1	262	#/texts/256	state.	text
+88f9fdd49e	1	263	#/texts/257	The	text
+aa2e58d9c3	1	264	#/texts/258	call_model	code
+81665986f1	1	265	#/texts/259	function uses the configured LLM by passing the cu	text
+6c48ddf934	1	266	#/texts/260	def call_model(\n       state: AgentState,\n       c	code
+d301b276a1	1	267	#/texts/261	Figure 7-5	text
+180cbaf422	1	268	#/texts/262	illustrates the final workflow steps:	text
+6ef3fd5925	1	269	#/texts/263		list_item
+faca0531eb	1	270	#/texts/264	The graph starts at the node agent, which calls th	text
+8cac6f03af	1	271	#/texts/265	call_model	code
+e9aad2ee80	1	272	#/texts/266	.	text
+c36e4138d8	1	273	#/texts/267		list_item
+2461a25887	1	274	#/texts/268	After the node agent completes, we go into an edge	text
+0b9eb37172	1	275	#/texts/269	should_continue	code
+feb72fd956	1	276	#/texts/270	is called.	text
+25c07379d7	1	277	#/texts/271	If tool calls exist in the agent's output passing 	list_item
+45f2322ea0	1	278	#/texts/272	After the node tools run, the state returns to the	list_item
+e26b6dd460	1	279	#/texts/273	If the graph ends, the final state of the graph is	list_item
+290ff0949d	1	280	#/pictures/4	Diagram illustrating the workflow of the Unity Air	picture
+c1803144d3	1	281	#/texts/275	To create our agent, we can use our developed func	text
+4c732caf1c	1	282	#/texts/276	model.bind_tools(	code
+8e23b17e4b	1	283	#/texts/277	tools	code
+7631510c1d	1	284	#/texts/278	)	code
+a2475fc054	1	285	#/texts/279	:	text
+bb195fc910	1	286	#/texts/280	from databricks_langchain import ChatDatabricks\n\nl	code
+46f6cf3635	1	287	#/texts/281	Finally, we can try our agent. Let's ask about a s	text
+4d1b12f91c	1	288	#/texts/282	agent.invoke({\"messages\": [{\"role\": \"user\", \n   \"c	code
+febb39f4ab	1	289	#/texts/283	We can see from the trace breakdown (	text
+cdde85da35	1	290	#/texts/284	Figure 7-6	text
+fc5609a7b4	1	291	#/texts/285	) the different steps that are taken. The query st	text
+6d0783b964	1	292	#/texts/286	The details about each input, output, and intermed	text
+a3985f2408	1	293	#/texts/287	Figure 7-7	text
+e0b3a08438	1	294	#/texts/288	.	text
+3c9619b13b	1	295	#/texts/289	This provides you end-to-end visibility on the pro	text
+b0cab2e899	1	296	#/pictures/5	Diagram illustrating the MLflow trace breakdown fo	picture
+76623c8ef5	1	297	#/pictures/6	MLflow Traces UI displaying a detailed process flo	picture
+996b57abb2	1	298	#/texts/292	Testing Tools	section_header
+4b6e912499	1	299	#/texts/293	It's important to test your tools when you're deve	text
+d42d04d8a4	1	300	#/texts/294	Unit testing is a core principle for robust softwa	text
+afcbb73fd7	1	301	#/texts/295	A second approach is to leverage LLM judges, as we	text
+5894e872ed	1	302	#/texts/296	Chapter 6	text
+f3a92b0597	1	303	#/texts/297	. To use LLM to judge our tools' performance, we n	text
+15e1a5d2e9	1	304	#/texts/298	The list of documents expected to answer to this q	list_item
+85c06ff6f7	1	305	#/texts/299	The correct latitude/longitude inputs for Singapor	list_item
+39315ae412	1	306	#/texts/300	The correct date inputs for the flights retrieval 	list_item
+cf922fe9da	1	307	#/texts/301	The correct set of tools that must be used for thi	list_item
+3688c9ece4	1	308	#/texts/302	Having these different sets of information in the 	text
+63a025fd11	1	309	#/texts/303	For reference, here's a practical custom scorer to	text
+f3c4016c37	1	310	#/texts/304	from mlflow.genai.scorers import scorer\nfrom mlflo	code
+e857aea087	1	311	#/texts/305	This process of evaluating each component of the A	text
+eb7e90dd24	1	312	#/texts/105	MLflow Trace UI showing a query about battery pack	caption
+7091d78007	1	313	#/texts/193	Diagram illustrating a LangGraph workflow with com	caption
+48ef473e8f	1	314	#/texts/274	Diagram illustrating the workflow of the Unity Air	caption
+829ec6ed25	1	315	#/texts/290	Diagram illustrating the MLflow trace breakdown fo	caption
+82e6acf9ed	1	316	#/texts/291	MLflow Traces UI displaying a detailed process flo	caption
+dcd3f19cd8	1	317	#/texts/306	Packaging and Deploying Advanced GenAI Application	title
+acca7c08c4	1	318	#/texts/307	After building and evaluating the agent and its to	text
+9c04456aec	1	319	#/texts/308	ResponsesAgent	code
+35dd570182	1	320	#/texts/309	class, a specialized interface for serving generat	text
+f79a5d7f8e	1	321	#/texts/310	Why and When to Use ResponsesAgent	section_header
+4d1974fad9	1	322	#/texts/311	Using MLflow's	text
+f9c385ac4b	1	323	#/texts/312	ResponsesAgent	code
+6851fd9736	1	324	#/texts/313	is quite beneficial when you need a reliable way t	text
+12f4fa06a6	1	325	#/texts/314	Note	section_header
+e9a3018ec9	1	326	#/texts/315	Even though we've developed our agent with LangGra	text
+384dd56b60	1	327	#/texts/316	mlflow.langchain	code
+99c5fb3f97	1	328	#/texts/317	to log our model, logging with the MLflow	text
+01f5b8adab	1	329	#/texts/318	ResponsesAgent	code
+4eef4c620e	1	330	#/texts/319	class is preferred for deployment purposes due to 	text
+eec4a9199c	1	331	#/texts/320	mlflow.langchain	code
+f466cfc215	1	332	#/texts/321	flavor would need a lot of input/output custom fun	text
+e3e3216dbb	1	333	#/texts/322	ResponsesAgent	code
+cc3eb9efc5	1	334	#/texts/323	organizes inputs and outputs using structured mess	text
+cc761a2d9e	1	335	#/texts/324	The main advantage of	text
+50e17da35c	1	336	#/texts/325	ResponsesAgent	code
+4386cf4b9e	1	337	#/texts/326	is its compatibility with any framework the agent 	text
+a21710820a	1	338	#/texts/327	ResponseAgent	code
+ae71e097b6	1	339	#/texts/328	does is wrap the agent code to use OpenAI API spec	text
+920e3ea4d2	1	340	#/texts/329	Packaging the Agent with the MLflow ResponsesAgent	section_header
+f8499a9323	1	341	#/texts/330	To use and customize the MLflow	text
+e3a6e8c84c	1	342	#/texts/331	ResponsesAgent	code
+aa8b846f2e	1	343	#/texts/332	class, we start by creating a class for our agent 	text
+071572a11a	1	344	#/texts/333	from mlflow.types.responses import ResponsesAgentR	code
+ea73242a76	1	345	#/texts/334	Here are the input and output types of the	text
+df5254691e	1	346	#/texts/335	predict	code
+cbccf53416	1	347	#/texts/336	function of the MLflow class	text
+dbc66f3826	1	348	#/texts/337	ResponsesAgent	code
+f228061fe1	1	349	#/texts/338	previously defined:	text
+18d4b49a8b	1	350	#/texts/339	ResponsesAgentRequest (input)	list_item
+51140b2a2d	1	351	#/texts/340		list_item
+dd4e6cb022	1	352	#/texts/341	This is a response type provided by MLflow, repres	text
+9932708147	1	353	#/texts/342	input	code
+202f656f14	1	354	#/texts/343	(e.g., chat history, system, user, assistant roles	text
+9f931b90bf	1	355	#/texts/344	custom_inputs	code
+12cae07f3c	1	356	#/texts/345	for advanced control and	text
+3d787a42e8	1	357	#/texts/346	context	code
+d3ed52a5ad	1	358	#/texts/347	to be used by the endpoint, which optionally inclu	text
+d1b361b1d1	1	359	#/texts/348	conversation_id	code
+fe6a5955b9	1	360	#/texts/349	and	text
+dba465cd2d	1	361	#/texts/350	user_id	code
+d249be61b4	1	362	#/texts/351	.	text
+b456a1a897	1	363	#/texts/352	ResponsesAgentResponse (output)	list_item
+48dbced42c	1	364	#/texts/353		list_item
+5627592940	1	365	#/texts/354	It contains a list of output items (such as genera	text
+46462abe6f	1	366	#/texts/355	custom_outputs	code
+fddd4c36d1	1	367	#/texts/356	that can be used to pass along any additional meta	text
+2f27ca92ec	1	368	#/texts/357	We can also see that the	text
+9081cf045f	1	369	#/texts/358	predict	code
+72c0349190	1	370	#/texts/359	function uses a	text
+ddc6ba0878	1	371	#/texts/360	predict_stream	code
+0bde7a61e0	1	372	#/texts/361	function, which streams agent-generated outputs as	text
+61dc225322	1	373	#/texts/362	event.type == \"response.output_item.done\"	code
+fd86574210	1	374	#/texts/363	, finding the events that are completed responses 	text
+216fd24e3d	1	375	#/texts/364	ResponsesAgentResponse	code
+ed609fc864	1	376	#/texts/365	object to return, passing the collected outputs an	text
+2893fc2e9d	1	377	#/texts/366	As for the	text
+459ff6bb04	1	378	#/texts/367	predict_stream	code
+39e6e1aa18	1	379	#/texts/368	method that is in the	text
+c49fb6f1fb	1	380	#/texts/369	LangGraphResponsesAgent	code
+fb15440cc5	1	381	#/texts/370	class, it also takes as input a	text
+2c08b4b070	1	382	#/texts/371	ResponsesAgentRequest	code
+00c27c9e31	1	383	#/texts/372	but this time outputs a	text
+876eb6876d	1	384	#/texts/373	Generator	code
+dfa6a04643	1	385	#/texts/374	of	text
+72ec9b1a8b	1	386	#/texts/375	ResponsesAgentStreamEvent	code
+8e2763883b	1	387	#/texts/376	, as it will yield the response as streaming event	text
+fce6e6f3e4	1	388	#/texts/377	The main function here that will call the LangGrap	text
+f9c5fe94f8	1	389	#/texts/378	self.agent.stream()	code
+d49a37be07	1	390	#/texts/379	. Other functions such as	text
+035132f738	1	391	#/texts/380	_responses_to_cc()	code
+21b2380fd2	1	392	#/texts/381	and	text
+c598ef5a97	1	393	#/texts/382	_langchain_to_responses()	code
+f7231ffa6c	1	394	#/texts/383	are functions to help format input and outputs fro	text
+ef98abce07	1	395	#/texts/384	def predict_stream(self, request: ResponsesAgentRe	code
+a11a00da6e	1	396	#/texts/385	Before we can wrap our LangGraph	text
+6d6dc8aa46	1	397	#/texts/386	agent	code
+626b601b2e	1	398	#/texts/387	developed earlier into the	text
+af7f7d4f92	1	399	#/texts/388	LangGraphResponsesAgent	code
+a2bc2656af	1	400	#/texts/389	class, we use	text
+9938126c7e	1	401	#/texts/390	mlflow.langchain.autolog()	code
+20a191b914	1	402	#/texts/391	to enable automatic tracing for LangChain and Lang	text
+1e5c0318f6	1	403	#/texts/392	After we wrap our agent into	text
+9fa060b771	1	404	#/texts/393	LangGraphResponsesAgent	code
+ce92aec0bf	1	405	#/texts/394	, we register the	text
+a264c9b40a	1	406	#/texts/395	responses_agent	code
+4442fcade5	1	407	#/texts/396	as the active model within MLflow with	text
+e0d5b10297	1	408	#/texts/397	mlflow.models.set_model(responses_agent)	code
+b099984ea4	1	409	#/texts/398	, preparing it for tracking and deployment. By set	text
+7c5721be89	1	410	#/texts/399	mlflow.langchain.autolog()\nresponses_agent = LangG	code
+b31705edfa	1	411	#/texts/400	Let's now use the	text
+4546991f9e	1	412	#/texts/401	ResponsesAgent	code
+0317ee1271	1	413	#/texts/402	wrapped agent (for which you'll see the response c	text
+3228ec4a79	1	414	#/texts/403	Figure 7-8	text
+9f9d9d70a4	1	415	#/texts/404	):	text
+61d4de467d	1	416	#/texts/405	result = responses_agent.predict({\"input\": [{\"role	code
+0e6d241d50	1	417	#/pictures/7	MLflow Traces UI displaying the execution trace of	picture
+28de209864	1	418	#/texts/407	Now that our agent is wrapped for deployment, let'	text
+d8f12a2ac0	1	419	#/texts/408	Logging the ResponsesAgent with MLflow	section_header
+f02bf43284	1	420	#/texts/409	To log our agent for deployment, we first need to 	text
+2d579b418c	1	421	#/texts/410	mlflow.models.resources	code
+a34df05d47	1	422	#/texts/411	, where we wrap our functions in	text
+1e1c4d0bfb	1	423	#/texts/412	DatabricksFunction	code
+78e1eec61b	1	424	#/texts/413	when we want to use tools registered as user-defin	text
+3391b6240e	1	425	#/texts/414	from mlflow.models.resources import DatabricksFunc	code
+23d0c085d2	1	426	#/texts/415	After that, we can specify these resources in the 	text
+ab68ce0c7a	1	427	#/texts/416	resources	code
+9108493ba4	1	428	#/texts/417	parameter in	text
+eec5d44354	1	429	#/texts/418	mlflow.pyfunc.log_model	code
+2d1a728080	1	430	#/texts/419	. This ensures that Databricks automatically confi	text
+fa0f33466d	1	431	#/texts/420	Along with logging the agent artifacts, we give ou	text
+8ba20a3fad	1	432	#/texts/421	python_model	code
+ac9a7c714a	1	433	#/texts/422	to our agent code that is in the	text
+7ea0e0a3ca	1	434	#/texts/423	agent.py	code
+1be60ad287	1	435	#/texts/424	script and add the pip requirements needed for the	text
+27c7d4e05a	1	436	#/texts/425	pip_requirements	code
+ef48283430	1	437	#/texts/426	:	text
+4d6e83739c	1	438	#/texts/427	import mlflow\nfrom importlib.metadata import versi	code
+a669d7fd3d	1	439	#/texts/428	Before registering the model to Unity Catalog and 	text
+4568c3a1bf	1	440	#/texts/429	mlflow.models.predict()	code
+7f0a41e83b	1	441	#/texts/430	. This basically simulates the environment buildin	text
+615dcee959	1	442	#/texts/431	mlflow.models.predict(\n    model_uri=f\"runs:/{logg	code
+49b9911a60	1	443	#/texts/432	This usually takes a few minutes, but once it succ	text
+9f4c773ecb	1	444	#/texts/433	Register the ResponsesAgent with MLflow in Unity C	section_header
+37ea42ceac	1	445	#/texts/434	Once a model run has created a satisfactory model,	text
+4a01414bcb	1	446	#/texts/435	mlflow.register_model	code
+b2ec8b0b01	1	447	#/texts/436	with the agent we just logged earlier. For example	text
+ae28442afa	1	448	#/texts/437	mlflow.set_registry_uri(\"databricks-uc\")\n\ncatalog 	code
+3aff8948f2	1	449	#/texts/438	The registered model will appear in the targeted c	text
+30785d1063	1	450	#/texts/439	workspace	code
+150d095e26	1	451	#/texts/440	and schema	text
+43544cefac	1	452	#/texts/441	unity_airways	code
+7a44ae267a	1	453	#/texts/442	, as you can see in	text
+11756f264e	1	454	#/texts/443	Figure 7-9	text
+56267b9d15	1	455	#/texts/444	.	text
+3c1925b937	1	456	#/pictures/8	Unity Catalog interface displaying registered mode	picture
+e9d04caf4a	1	457	#/texts/406	MLflow Traces UI displaying the execution trace of	caption
+546dd86432	1	458	#/texts/445	Unity Catalog interface displaying registered mode	caption
+be7465e35d	1	459	#/texts/446	Integrating Advanced Capabilities	title
+ad7852e761	1	460	#/texts/447	As you've seen, agents are powerful and versatile 	text
+378422000a	1	461	#/texts/448	Context Engineering	section_header
+2ebcda8c40	1	462	#/texts/449	Managing context for your GenAI agent can be trick	text
+136d12c4c4	1	463	#/texts/450	User query and system prompts	list_item
+328442f24b	1	464	#/texts/451	Conversation history for multiturn conversations	list_item
+70ea088495	1	465	#/texts/452	Knowledge from other data sources	list_item
+e0b4b14ac0	1	466	#/texts/453	User metadata and preferences	list_item
+1716188550	1	467	#/texts/454	In this section, let's focus on managing conversat	text
+a9834a717f	1	468	#/texts/455	We can witness a multiturn conversation of two tur	text
+dfc8275821	1	469	#/texts/456	[\n {\n   \"content\": \"Can the booking c3dd03uvulemx1	code
+57d9ef6341	1	470	#/texts/457	This constitutes a conversation history, which wou	text
+b61ecd1c18	1	471	#/texts/458	As AI agent endpoints are preferred to remain stat	text
+85fc0fd8e4	1	472	#/texts/459	LangGraph maintains conversation in the state and 	text
+b05cc42b51	1	473	#/texts/460	The conversation history can be manipulated by ope	text
+6814837027	1	474	#/texts/461	state	code
+90bdce2817	1	475	#/texts/462	being passed across the graph. For instance, in th	text
+a8ae4b86a7	1	476	#/texts/463	call_model()	code
+ebe53007f1	1	477	#/texts/464	we used earlier for calling our LLM, we could modi	text
+e1fe64fe18	1	478	#/texts/465	state	code
+27a0727763	1	479	#/texts/466	instead of the full	text
+e53f1d1336	1	480	#/texts/467	state	code
+73f6b8f50e	1	481	#/texts/468	, like so:	text
+1071bafee0	1	482	#/texts/469	def call_model(\n       state: AgentState,\n       c	code
+3c578b5bd5	1	483	#/texts/470	A best practice would be to select only the most r	text
+7b01cba2e6	1	484	#/texts/471	Some optimal ways you can pass context to tools in	text
+3c9a8da451	1	485	#/texts/472	Passing just the last user query to the tool. This	list_item
+07177ad420	1	486	#/texts/473	Periodically summarizing earlier interactions and 	list_item
+684bcfccd0	1	487	#/texts/474	Or even more advanced is to use an LLM to rephrase	list_item
+1e8a4e2b47	1	488	#/texts/475	There are many possible techniques here that can b	text
+26a11c11aa	1	489	#/texts/476	Note	section_header
+db0eb8f821	1	490	#/texts/477	Databricks also provides agent memory capabilities	text
+23fbb5ce21	1	491	#/texts/478	Learning LangChain	text
+18d2d1df6f	1	492	#/texts/479	by Mayo Oshin and Nuno Campos (O'Reilly, 2025).	text
+0cd080b4a2	1	493	#/texts/480	MCP Servers As Tools	section_header
+9ee3da12ed	1	494	#/texts/481	Model Context Protocol (MCP) is an open standard, 	text
+0083364b85	1	495	#/texts/482	Figure 7-10	text
+bf86dd1a2f	1	496	#/texts/483	illustrates.	text
+59e27cfcb6	1	497	#/pictures/9	Diagram showing MCP servers connecting a user's cu	picture
+bf5fe46e9c	1	498	#/texts/485	As for the offering of MCP servers integration, a 	text
+4e154b6b64	1	499	#/texts/486	Managed MCP servers are typically hosted and maint	list_item
+43705685be	1	500	#/texts/487	In contrast, external MCP servers refer to those h	list_item
+d32298ceb4	1	501	#/texts/488	The choice between managed and external MCP server	text
+f6df9b597a	1	502	#/texts/489	from databricks.sdk import WorkspaceClient\n\nworksp	code
+e9ae69029f	1	503	#/texts/490	First, we configure our workspace client for authe	text
+a582cbcdb4	1	504	#/texts/491	workspace/unity_airways	code
+4bcc3bc643	1	505	#/texts/492	at the end of the URL as documented, to point to t	text
+8e22ad8720	1	506	#/texts/493	Next, we can start building our MCP server tool in	text
+d279a214e1	1	507	#/texts/494	MCPTool	code
+fda7ba842b	1	508	#/texts/495	that inherits the	text
+e57a278bc3	1	509	#/texts/496	BaseTool	code
+823992aaa9	1	510	#/texts/497	class of LangChain. This class is mainly to add au	text
+3cc4c58d11	1	511	#/texts/498	run	code
+e05a5e1821	1	512	#/texts/499	function:	text
+bf5f53f89b	1	513	#/texts/500	from databricks_mcp import DatabricksMCPClient\nfro	code
+a3282a9a4e	1	514	#/texts/501	Then, we need a function to instantiate the LangCh	text
+fc04705acd	1	515	#/texts/502	BaseTool	code
+4035a4038b	1	516	#/texts/503	class we've just created. This function mainly rea	text
+f807b2848c	1	517	#/texts/504	MCPTool	code
+ec55e9877c	1	518	#/texts/505	. It also creates a type mapping using the expecte	text
+a94492d320	1	519	#/texts/506	MCPTool	code
+aa2d52c0b8	1	520	#/texts/507	through the	text
+836c00cd38	1	521	#/texts/508	pydantic	code
+b8801f0bdd	1	522	#/texts/509	function	text
+14c9a645ac	1	523	#/texts/510	create_model()	code
+65d92f818e	1	524	#/texts/511	:	text
+d677157b42	1	525	#/texts/512	from pydantic import create_model\n\n# Convert an MC	code
+66537aa700	1	526	#/texts/513	Finally, we can create our Databricks MCP server t	text
+4941c222a5	1	527	#/texts/514	mcp_tools	code
+5b6d08e3cc	1	528	#/texts/515	and pass them to our function to transform it into	text
+5b8f58c638	1	529	#/texts/516	MCPTool	code
+62921ae73c	1	530	#/texts/517	object	text
+0af24003c9	1	531	#/texts/518	mcp_langchain_tool	code
+21ae2eef47	1	532	#/texts/519	:	text
+f910b3f3c3	1	533	#/texts/520	mcp_tools = DatabricksMCPClient(server_url=MANAGED	code
+0220e959bb	1	534	#/texts/521	Now, let's try it:	text
+41707dedb5	1	535	#/texts/522	mcp_langchain_tool.run(tool_input={\"query\": \"What 	code
+20b62c8dcf	1	536	#/texts/523	This will start the execution of the tool with res	text
+62b7cbc763	1	537	#/texts/524	Figure 7-11	text
+84b397d259	1	538	#/texts/525	.	text
+72e1e590a2	1	539	#/pictures/10	MLflow Trace UI displaying tool execution output w	picture
+7f11df1a3e	1	540	#/texts/527	After that, we can integrate this tool directly, a	text
+9ee6f9a9f9	1	541	#/texts/528	Multiagents Orchestration and Agents As Tools	section_header
+f653d1f934	1	542	#/texts/529	Let's imagine our user, who is now aware of their 	text
+37363cc37c	1	543	#/texts/530	from databricks_langchain import ChatDatabricks\nFL	code
+d745c49e86	1	544	#/texts/531	We then use the	text
+8ca130188d	1	545	#/texts/532	Tool	code
+336855f998	1	546	#/texts/533	class to create the tool. And we can then integrat	text
+327c855829	1	547	#/texts/534	from langchain.tools import Tool\n\nflight_recommend	code
+9be9972389	1	548	#/texts/535	With these building blocks in place, you can exten	text
+1524da5af8	1	549	#/texts/484	Diagram showing MCP servers connecting a user's cu	caption
+e105505475	1	550	#/texts/526	MLflow Trace UI displaying tool execution output w	caption
+9033b0c25b	1	551	#/texts/536	Conclusion and Key Takeaways	title
+80d4472ab0	1	552	#/texts/537	In this chapter, we explored the fundamental chall	text
+ce7dd2a76a	1	553	#/texts/538	The case study example showed you:	text
+f239e05de2	1	554	#/texts/539	How to use LangChain and LangGraph frameworks alon	list_item
+b5e7085603	1	555	#/texts/540		list_item
+995c54ea43	1	556	#/texts/541	How to integrate tools with an agent with LangGrap	text
+48ee7cc1a0	1	557	#/texts/542	ResponsesAgent	code
+3bbfde8930	1	558	#/texts/543	.	text
+033085949a	1	559	#/texts/544	How to leverage MLflow evaluation to validate prop	list_item
+a7279bfde4	1	560	#/texts/545	More advanced topics and best practices around con	list_item
+59e6a59330	1	561	#/texts/546	Together, these approaches enable you to build pro	text
+b20edebd13	1	562	#/texts/547	This chapter walked through building, testing, and	text

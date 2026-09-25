@@ -1,0 +1,974 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+6ca493f5b0	1	0	#/texts/0	Chapter 9. Deploying in Monitoring LLM-Based Syste	title
+a6dee9efa2	1	1	#/texts/1	In this chapter, we explore how to deploy an agent	text
+bbbdd79e80	1	2	#/texts/2	Many agent use cases are naturally batch oriented.	text
+58e97057e0	1	3	#/texts/3	Another pattern is embedding the agent directly in	text
+5c23da410b	1	4	#/texts/4	A more robust, production-ready approach is to dep	text
+356734fd69	1	5	#/texts/5	In this chapter, we follow this approach and deplo	text
+a5f51660d6	1	6	#/texts/6	Deploying a Databricks Model Serving Endpoint	title
+2372c0d902	1	7	#/texts/7	In	text
+1380a185a6	1	8	#/texts/8	Chapter 4	text
+1790979992	1	9	#/texts/9	, we deployed several Model Serving endpoints usin	text
+dabf86e8c4	1	10	#/texts/10	additional setup	text
+5632355ec3	1	11	#/texts/11	, such as provisioning a service principal with ac	text
+72b949921d	1	12	#/texts/12	DATABRICKS_CLIENT_ID	code
+6b06f699cd	1	13	#/texts/13	,	text
+49d5b7041c	1	14	#/texts/14	DATABRICKS_CLIENT_SECRET	code
+1de1fee2f8	1	15	#/texts/15	, and	text
+e46df1382b	1	16	#/texts/16	DATABRICKS_HOST	code
+7ddeb19c27	1	17	#/texts/17	) for authentication. This can conflict with the r	text
+c6deb1f664	1	18	#/texts/18	To avoid this, we'll use the	text
+8def9e62c9	1	19	#/texts/19	Databricks agent framework	text
+0a375e8e92	1	20	#/texts/20	. It handles deployment, tracing, and authenticati	text
+52095623c2	1	21	#/texts/21	Unity AI Gateway and Guardrails	section_header
+26f69d8c87	1	22	#/texts/22	The agent framework enables the inference table as	text
+eb1818873a	1	23	#/texts/23	Databricks documentation	text
+c9a87a9442	1	24	#/texts/24	for the latest updates.	text
+39180c72f5	1	25	#/texts/25	Table 9-1	text
+5144396226	1	26	#/texts/26	summarizes the AI gateway features that are curren	text
+dbc20df7be	1	27	#/tables/0	| Feature                          | External mode	table
+9d3d92fb95	1	28	#/texts/27	Custom model endpoint:	text
+2b61fa3e31	1	29	#/texts/28	mlflow.pyfunc. PythonModel	text
+00be0ed7cc	1	30	#/texts/29	AI agent endpoint:	text
+b3f009f20d	1	31	#/texts/30	mlflow.pyfunc. ResponsesAgent	text
+16f716a986	1	32	#/texts/31	Permission and rate limiting	text
+707a30bb7a	1	33	#/texts/32	Not supported	text
+aa2e6cf9fe	1	34	#/texts/33	Payload logging	text
+23002445c3	1	35	#/texts/34	Usage tracking	text
+7a612c3ff8	1	36	#/texts/35	Not supported	text
+0880732ede	1	37	#/texts/36	AI Guardrails	text
+78385c3a80	1	38	#/texts/37	Not supported	text
+6eee91187b	1	39	#/texts/38	Not supported	text
+15c822b11b	1	40	#/texts/39	Fallbacks	text
+40aecbf892	1	41	#/texts/40	Not supported	text
+ba85aa2d94	1	42	#/texts/41	Not supported	text
+8d56a2c558	1	43	#/texts/42	Not supported	text
+d74f6d53b6	1	44	#/texts/43	Not supported	text
+1951f807e5	1	45	#/texts/44	Traffic splitting	text
+a40e16d18d	1	46	#/texts/45	Not supported	text
+51f7b5fffc	1	47	#/texts/46	Not supported	text
+745f52a969	1	48	#/texts/47	Guardrails on the LLM level	section_header
+d37dfa6268	1	49	#/texts/48	It is worth noting that when we're deploying an AI	text
+f249055244	1	50	#/texts/49	In our case, we use the Databricks-hosted	text
+8e826608da	1	51	#/texts/50	gpt-oss-120b	code
+347d6a025e	1	52	#/texts/51	model. On top of it, we can enable guardrails for 	text
+86c291737c	1	53	#/texts/52	Figure 9-1	text
+0bc0532ef5	1	54	#/texts/53	).	text
+2c8fa2ec93	1	55	#/texts/54	1	text
+b8ca32c221	1	56	#/pictures/0	Settings interface for creating custom guardrails 	picture
+a9759b904b	1	57	#/texts/56	Each guardrail can run in enforce or log mode. In	text
+70e22684e3	1	58	#/texts/57	enforce mode,	text
+be9012b39f	1	59	#/texts/58	the guardrail acts on a violation: it blocks the r	text
+d57578e32d	1	60	#/texts/59	log mode	text
+fd9f8fa574	1	61	#/texts/60	, it takes no action and only records that the vio	text
+91681e0fa9	1	62	#/texts/61	While these guardrails operate at the model level 	text
+1b806b5fcf	1	63	#/texts/62	Guardrails as part of the agent logic	section_header
+de25e00d48	1	64	#/texts/63	It's also worth noting that guardrails can (and sh	text
+0eb1bc0d12	1	65	#/texts/64	mlflow.genai.evaluate()	code
+c77f6de7a8	1	66	#/texts/65	to enforce domain constraints.	text
+6fe120f081	1	67	#/texts/66	MLflow also supports	text
+62422750fe	1	68	#/texts/67	Guardrails AI scorers	text
+f6cf14abdf	1	69	#/texts/68	.	text
+9195f652db	1	70	#/texts/69	Guardrails AI	text
+8f02c945dd	1	71	#/texts/70	provides a wide range of validators for safety, PI	text
+709cba08ff	1	72	#/texts/71	not always LLM-based	text
+0a2bba919d	1	73	#/texts/72	-many rely on rule-based approaches such as regex 	text
+8108733b7e	1	74	#/texts/73	MLflow includes the following built-in validators:	text
+50bea78f5c	1	75	#/texts/74	2	text
+19b936d5a5	1	76	#/texts/75	ToxicLanguage	list_item
+2dfab9ddbe	1	77	#/texts/76	This detects whether the output contains toxic or 	list_item
+7e7a49ab0a	1	78	#/texts/77	NSFWText	list_item
+ab8967a333	1	79	#/texts/78	This flags explicit or not-safe-for-work content.	list_item
+1cbc65ac9c	1	80	#/texts/79	DetectJailbreak	list_item
+c7fd504979	1	81	#/texts/80	This identifies jailbreak or prompt injection atte	list_item
+1af741cefa	1	82	#/texts/81	DetectPII	list_item
+1717eee79b	1	83	#/texts/82	This checks for personally identifiable informatio	list_item
+8c5928c5a6	1	84	#/texts/83	SecretsPresent	list_item
+b7e5f9f54c	1	85	#/texts/84	This detects API keys, tokens, and other sensitive	list_item
+0f48ab4963	1	86	#/texts/85	GibberishText	list_item
+8f8ca172e3	1	87	#/texts/86	This identifies nonsensical and low-quality text.	list_item
+b45db53426	1	88	#/texts/87	Here, for example, is how you can apply some of th	text
+1b64f35a39	1	89	#/texts/88	import mlflow	code
+73dd193c2c	1	90	#/texts/89		code
+beeafcd02b	1	91	#/texts/90	from mlflow.genai.scorers.guardrails import ToxicL	code
+766444d4b0	1	92	#/texts/91		code
+b8624a06dc	1	93	#/texts/92	eval_dataset = [ { \"inputs\" : { \"query\" : \"How do 	code
+3852960dbf	1	94	#/texts/93		code
+6ed1a274d7	1	95	#/texts/94	]	code
+0d6ec994a4	1	96	#/texts/95		code
+17784ff6b0	1	97	#/texts/96	results = mlflow . genai . evaluate ( data = eval_	code
+8954543aea	1	98	#/texts/97		code
+7237c41877	1	99	#/texts/98	)	code
+a855648bbb	1	100	#/texts/99	Implementing deployment	section_header
+67b7003a64	1	101	#/texts/100	The	text
+0341b053b9	1	102	#/texts/101	chapter9_2.deploy_agent.py	text
+c8af73658e	1	103	#/texts/102	notebook demonstrates how to deploy the agent usin	text
+7406b81674	1	104	#/texts/103	latest-model	code
+e273807564	1	105	#/texts/104	alias from MLflow. We then pass this version to th	text
+b62b7e251b	1	106	#/texts/105	agents.deploy	code
+3420d4cf4e	1	107	#/texts/106	function, along with the endpoint configuration an	text
+40f24b3b18	1	108	#/texts/107	These environment variables include	text
+8e6851241c	1	109	#/texts/108	git_sha	code
+f85671bf07	1	110	#/texts/109	,	text
+a8c7cace2e	1	111	#/texts/110	model_version	code
+83ebffbcc5	1	112	#/texts/111	, and	text
+ff441aac26	1	113	#/texts/112	endpoint_name	code
+b0ac46176f	1	114	#/texts/113	, which are attached to MLflow traces for observab	text
+594ca3b3d2	1	115	#/texts/114	git_sha	code
+6d744a2390	1	116	#/texts/115	is hard-coded, but in practice, it would be inject	text
+1e6899ea31	1	117	#/texts/116	from databricks import agents	code
+6711f4f068	1	118	#/texts/117		code
+130b3f8ad5	1	119	#/texts/118	from databricks.sdk import WorkspaceClient	code
+17a272203e	1	120	#/texts/119		code
+0a552ea32c	1	121	#/texts/120	from mlflow import MlflowClient	code
+2fef6ee5bc	1	122	#/texts/121		code
+f1c2103a85	1	123	#/texts/122	from arxiv_curator.config import ProjectConfig	code
+529bc61df5	1	124	#/texts/123		code
+b4817b6872	1	125	#/texts/124	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+c179f53766	1	126	#/texts/125		code
+d816ef76f1	1	127	#/texts/126	model_name = f \" { cfg . catalog } . { cfg . schem	code
+c8ce546858	1	128	#/texts/127		code
+ee7bf2f45e	1	129	#/texts/128	endpoint_name = \"arxiv-agent-endpoint\"	code
+a2e8c181be	1	130	#/texts/129		code
+4884ce7cc6	1	131	#/texts/130	secret_scope = \"arxiv-agent-scope\"	code
+42ea071c54	1	132	#/texts/131		code
+ff6c3b04ff	1	133	#/texts/132	model_version = MlflowClient () . get_model_versio	code
+2252da62b5	1	134	#/texts/133		code
+45a8a84e57	1	135	#/texts/134	workspace = WorkspaceClient ()	code
+745b7fd49b	1	136	#/texts/135		code
+0991a70412	1	137	#/texts/136	experiment = MlflowClient () . get_experiment_by_n	code
+2698438547	1	138	#/texts/137		code
+1751ca0870	1	139	#/texts/138	git_sha = \"local\"	code
+166f137d96	1	140	#/texts/139		code
+eb52c4ec8f	1	141	#/texts/140	agents . deploy ( model_name = model_name , model_	code
+ff821294b9	1	142	#/texts/141		code
+541963de4b	1	143	#/texts/142	)	code
+07be0f6642	1	144	#/texts/143	You may notice that we've provided a Databricks cl	text
+a29a5ba3ed	1	145	#/texts/144	Let's walk through how to set this up step by step	text
+425714d09e	1	146	#/texts/145	chapter9_1.create_spn.py	text
+1caf1234fa	1	147	#/texts/146	notebook.	text
+1de8f8bd8e	1	148	#/texts/147	Setting up service principal authentication	section_header
+1f0d0edc5e	1	149	#/texts/148	Before we can proceed, we need to create a Databri	text
+1d42e7baa2	1	150	#/texts/149	from databricks.sdk import WorkspaceClient	code
+c4918d09b9	1	151	#/texts/150		code
+df421ea0f0	1	152	#/texts/151	from requests.auth import HTTPBasicAuth	code
+061df2dd10	1	153	#/texts/152		code
+25a6e7551e	1	154	#/texts/153	w = WorkspaceClient ()	code
+7a48e9fffe	1	155	#/texts/154		code
+e1aa70a370	1	156	#/texts/155	client_id = \"your client id\"	code
+00a7cd03a9	1	157	#/texts/156		code
+dc0bff6738	1	158	#/texts/157	client_secret = \"your client secret\"	code
+d7e1f96fa4	1	159	#/texts/158		code
+2aa02354b4	1	160	#/texts/159	account_id = \"your account id\"	code
+26773cab62	1	161	#/texts/160		code
+bfb55133bf	1	162	#/texts/161	w . secrets . create_scope ( scope = \"admin\" )	code
+6e415c25ec	1	163	#/texts/162		code
+3338f1a897	1	164	#/texts/163	w . secrets . put_secret ( scope = \"admin\" , key =	code
+a9676aab35	1	165	#/texts/164		code
+fa4abb1903	1	166	#/texts/165	w . secrets . put_secret ( scope = \"admin\" , key =	code
+adda821278	1	167	#/texts/166		code
+2ef67f86bf	1	168	#/texts/167	w . secrets . put_secret ( scope = \"admin\" , key =	code
+c548f00a05	1	169	#/texts/168	Let's generate an account-level token:	text
+29a31925dd	1	170	#/texts/169	import requests	code
+37dd6f9758	1	171	#/texts/170		code
+6d9af313e2	1	172	#/texts/171	from requests.auth import HTTPBasicAuth	code
+52cd989a4b	1	173	#/texts/172		code
+e002920fbe	1	174	#/texts/173	admin_client_id = dbutils . secrets . get ( \"admin	code
+737fc20083	1	175	#/texts/174		code
+5cf4c849eb	1	176	#/texts/175	admin_client_secret = dbutils . secrets . get ( \"a	code
+46065a8a2b	1	177	#/texts/176		code
+f091ca9b0b	1	178	#/texts/177	account_id = dbutils . secrets . get ( \"admin\" , \"	code
+d6a8328f09	1	179	#/texts/178		code
+4c8e02dadb	1	180	#/texts/179	account_host = \"https://accounts.cloud.databricks.	code
+9228eca43f	1	181	#/texts/180		code
+025d6793e2	1	182	#/texts/181	token = requests . post ( f \" { account_host } /oi	code
+fc7a2e2f78	1	183	#/texts/182		code
+e6d78be455	1	184	#/texts/183	) . json ()[ \"access_token\" ]	code
+61184ca1cb	1	185	#/texts/184	We can now create an OAuth secret for the service 	text
+a7c9b19797	1	186	#/texts/185	sp = w . service_principals . create ( display_nam	code
+40cbc0f298	1	187	#/texts/186		code
+4e397a84fc	1	188	#/texts/187	secret_resp = requests . post ( f \" { account_host	code
+76d8dc92f4	1	189	#/texts/188		code
+295dc309c0	1	190	#/texts/189	{ sp . id } /credentials/secrets\" , headers = { \"A	code
+497bbad21f	1	191	#/texts/190		code
+ac428b8d28	1	192	#/texts/191	)	code
+de0668c761	1	193	#/texts/192		code
+3bc70fc46f	1	194	#/texts/193	secret_resp . raise_for_status ()	code
+772c0f1afe	1	195	#/texts/194		code
+6a7d34dcf1	1	196	#/texts/195	client_id = sp . application_id	code
+96fa2fd25d	1	197	#/texts/196		code
+7c543ac289	1	198	#/texts/197	client_secret = secret_resp . json ()[ \"secret\" ]	code
+9666dc8105	1	199	#/texts/198	We can now store the secrets in the secret scope:	text
+bd9b410b7a	1	200	#/texts/199	scope_name = \"arxiv-agent-scope\"	code
+a7c0e00af1	1	201	#/texts/200		code
+27ae02b551	1	202	#/texts/201	try : w . secrets . create_scope ( scope = scope_n	code
+34b8830433	1	203	#/texts/202		code
+7b5eca39b2	1	204	#/texts/203	except Exception : pass # scope already exists	code
+37593ad70e	1	205	#/texts/204		code
+484e9ce4c0	1	206	#/texts/205	w . secrets . put_secret ( scope = scope_name , ke	code
+0c90d85ab1	1	207	#/texts/206		code
+c4684c9717	1	208	#/texts/207	w . secrets . put_secret ( scope = scope_name , ke	code
+dd8b429f34	1	209	#/texts/208	We must also add the service principal to the Lake	text
+7aaa93614f	1	210	#/texts/209	from databricks.sdk.service.postgres import ( Post	code
+4d25003ef3	1	211	#/texts/210		code
+59fbbcd31c	1	212	#/texts/211	)	code
+a556ace521	1	213	#/texts/212		code
+acffd69f43	1	214	#/texts/213	import psycopg	code
+7f6ff34715	1	215	#/texts/214		code
+ed448c709a	1	216	#/texts/215	project_id = \"arxiv-agent-lakebase\"	code
+f1181e0480	1	217	#/texts/216		code
+a8b6a26f6b	1	218	#/texts/217	w = WorkspaceClient ()	code
+b4170c0be5	1	219	#/texts/218		code
+3f9fc7813e	1	220	#/texts/219	pg_api = PostgresAPI ( w . api_client )	code
+307ade16f4	1	221	#/texts/220		code
+eda94f3ba7	1	222	#/texts/221	project = pg_api . get_project ( name = f \"project	code
+919eda3b73	1	223	#/texts/222		code
+03882031c2	1	224	#/texts/223	default_branch = next ( iter ( pg_api . list_branc	code
+8dce15d272	1	225	#/texts/224		code
+009ec68b5a	1	226	#/texts/225	branch_parent = default_branch . name	code
+8a753df241	1	227	#/texts/226		code
+be18900f6e	1	228	#/texts/227	pg_api . create_role ( parent = branch_parent , ro	code
+b47958e277	1	229	#/texts/228		code
+8e5ba954dd	1	230	#/texts/229	) . wait ()	code
+a16c53bdb8	1	231	#/texts/230	Finally, we need to assign Postgres permissions to	text
+09dc1d418c	1	232	#/texts/231	endpoint = next ( iter ( pg_api . list_endpoints (	code
+c415b5c393	1	233	#/texts/232		code
+63f1b5b2eb	1	234	#/texts/233	host = endpoint . status . hosts . host	code
+bccf6426f0	1	235	#/texts/234		code
+34361f7ded	1	236	#/texts/235	pg_credential = pg_api . generate_database_credent	code
+cc1d44e663	1	237	#/texts/236		code
+ab8662c3ef	1	238	#/texts/237	user = w . current_user . me ()	code
+d3600b6495	1	239	#/texts/238		code
+e41b4dc75a	1	240	#/texts/239	username = urllib . parse . quote_plus ( user . us	code
+ed91efb918	1	241	#/texts/240		code
+bc13d49024	1	242	#/texts/241	conn_string = ( f \"postgresql:// { username } : { 	code
+a2fd09d101	1	243	#/texts/242		code
+755492d2a2	1	244	#/texts/243	)	code
+c00b7e2e4c	1	245	#/texts/244		code
+aabc85d46b	1	246	#/texts/245	with psycopg . connect ( conn_string ) as conn : c	code
+3987a0ec61	1	247	#/texts/246		code
+ea113c63d0	1	248	#/texts/247	GRANT USAGE ON SCHEMA public TO \" { client_id } \";	code
+929dc737c5	1	249	#/texts/248		code
+ebede801bb	1	250	#/texts/249	\"\"\" ) conn . execute ( f \"\"\"	code
+73e9c4b872	1	251	#/texts/250		code
+07465cf42d	1	252	#/texts/251	GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE sess	code
+d797803d77	1	253	#/texts/252		code
+235e05875e	1	254	#/texts/253	\"\"\" ) conn . execute ( f \"\"\"	code
+6f2ef38a9b	1	255	#/texts/254		code
+11f5b7947f	1	256	#/texts/255	GRANT USAGE, SELECT ON SEQUENCE session_messages_i	code
+173a430a8c	1	257	#/texts/256		code
+05cdb63f83	1	258	#/texts/257	\"\"\" )	code
+78b1881157	1	259	#/texts/258	Now that we've figured out the authentication, we 	text
+3e47424050	1	260	#/texts/259	Chapter 4	text
+f146a5fea2	1	261	#/texts/260	, we cannot invoke this endpoint in the same way. 	text
+3c502a8f7b	1	262	#/texts/261	Chapter 4	text
+c25ddaedc0	1	263	#/texts/262	.	text
+cea6944478	1	264	#/texts/263	Authentication considerations	section_header
+eada1b5415	1	265	#/texts/264	When using service principal credentials, the reas	text
+971f433e71	1	266	#/texts/265	mlflow.models.resources	code
+ed0ed67820	1	267	#/texts/266	during model (or agent) logging.	text
+d5125aefc3	1	268	#/texts/267	MLflow resources support an	text
+688e369dfa	1	269	#/texts/268	on-behalf-of-user	text
+91f257d0b5	1	270	#/texts/269	authentication mode. For example, a Databricks ser	text
+d8e4c32ebe	1	271	#/texts/270	DatabricksServingEndpoint ( endpoint_name = cfg . 	code
+796194c9ad	1	272	#/texts/271	In earlier examples, we did not enable this option	text
+51e65322b3	1	273	#/texts/272	Enabling on-behalf-of-user mode changes this behav	text
+ff66b2236a	1	274	#/texts/273	calling user	text
+d1e21d14c2	1	275	#/texts/274	. This provides us with several important advantag	text
+ae742945a1	1	276	#/texts/275	Fine-grained access control	list_item
+1a29b090f6	1	277	#/texts/276	Each user can only access data and resources they 	list_item
+d3bca63141	1	278	#/texts/277	Improved security posture	list_item
+f151891028	1	279	#/texts/278	It prevents over-permissioned service principals f	list_item
+44a9d8b2c8	1	280	#/texts/279	Better auditability	list_item
+b1a15f3760	1	281	#/texts/280	We can trace action back to individual users, rath	list_item
+449637a964	1	282	#/texts/281	Multi-user application support	list_item
+e59f74c27a	1	283	#/texts/282	This is especially important for shared apps (for 	list_item
+fe84c78f36	1	284	#/texts/283	In practice, this mode is particularly useful in e	text
+de610785ef	1	285	#/texts/284	In contrast, relying on the model owner's identity	text
+a0da2d247b	1	286	#/texts/285	Calling the Model Serving endpoint	section_header
+13402356a3	1	287	#/texts/286	Since we've logged the agent by using	text
+08f1513b0b	1	288	#/texts/287	mlflow.pyfunc.ResponsesAgent	code
+609ff2f339	1	289	#/texts/288	and it's compatible with the OpenAI Responses API,	text
+05608ec162	1	290	#/texts/289	chapter9_3.call_agent.py	text
+b34e0aef1b	1	291	#/texts/290	notebook, we can generate our own session and requ	text
+584a9cd3c6	1	292	#/texts/291	import random	code
+804cee7d06	1	293	#/texts/292		code
+7214308da9	1	294	#/texts/293	from datetime import datetime	code
+10152978ea	1	295	#/texts/294		code
+d57387b900	1	296	#/texts/295	from databricks.sdk import WorkspaceClient	code
+f275e52f58	1	297	#/texts/296		code
+52bebc57dd	1	298	#/texts/297	from openai import OpenAI	code
+8baea64fa1	1	299	#/texts/298		code
+3d74da050f	1	300	#/texts/299	workspace = WorkspaceClient ()	code
+a55b8dd5a0	1	301	#/texts/300		code
+7d035fc653	1	302	#/texts/301	host = workspace . config . host	code
+a03c178d7c	1	303	#/texts/302		code
+758a81d0f4	1	304	#/texts/303	token = workspace . tokens . create ( lifetime_sec	code
+f430db7ab1	1	305	#/texts/304		code
+9f1c33cdf1	1	306	#/texts/305	endpoint_name = \"arxiv-agent-endpoint\"	code
+6cd54fd3a0	1	307	#/texts/306		code
+80960b9696	1	308	#/texts/307	client = OpenAI ( api_key = token , base_url = f \"	code
+f5bd6776ae	1	309	#/texts/308		code
+0ce189f078	1	310	#/texts/309	)	code
+f4400a8507	1	311	#/texts/310		code
+d84b56cecc	1	312	#/texts/311	timestamp = datetime . now () . strftime ( \" %Y%m%	code
+473c3d2f8e	1	313	#/texts/312		code
+4eec08a615	1	314	#/texts/313	session_id = f \"s- { timestamp } - { random . rand	code
+76730bf5e3	1	315	#/texts/314		code
+b383a5618f	1	316	#/texts/315	request_id = f \"req- { timestamp } - { random . ra	code
+a460d3f351	1	317	#/texts/316		code
+1c566ded1b	1	318	#/texts/317	response = client . responses . create ( model = e	code
+67869b5390	1	319	#/texts/318		code
+4a7d37f634	1	320	#/texts/319	)	code
+52890a3021	1	321	#/texts/320	So far, we've walked through a series of notebooks	text
+3896ad4c9a	1	322	#/texts/321	However, as we established in the MLOps-focused ch	text
+a928ff20d5	1	323	#/texts/322	Deployment Jobs	section_header
+66b6d07e48	1	324	#/texts/323	Earlier in this chapter, we discussed several core	text
+8dbeca8d9a	1	325	#/texts/324	Chapter 5	text
+9b3bb302ff	1	326	#/texts/325	, DABs provide the robust framework we need to man	text
+9406897ee1	1	327	#/texts/326	In this chapter, we'll cover the following Lakeflo	text
+05651e6cb6	1	328	#/texts/327	The data preprocessing pipeline	list_item
+3becf9d839	1	329	#/texts/328	This pipeline runs on a schedule to process newly 	list_item
+fdae2e2796	1	330	#/texts/329	The deployment pipeline	list_item
+b9c3f0d39d	1	331	#/texts/330	This pipeline runs on demand and is responsible fo	list_item
+22ca6b9319	1	332	#/texts/331	The monitoring pipeline	list_item
+69ac788dde	1	333	#/texts/332	This pipeline fetches MLflow traces, runs evaluati	list_item
+ef60a3201c	1	334	#/texts/333	Beyond the pipelines, we must also deploy the moni	text
+6054ae463b	1	335	#/texts/334	Let's now examine each of these Lakeflow jobs one 	text
+7edfbfcc6d	1	336	#/texts/335	Data preprocessing job	section_header
+6e4ded2328	1	337	#/texts/336	So far, we have defined the end-to-end process for	text
+f33629fcdb	1	338	#/texts/337	daily schedule	text
+238b09bcd5	1	339	#/texts/338	.	text
+764ec9f8e0	1	340	#/texts/339	Although Lakeflow Jobs are not new to us, there ar	text
+24e895a01e	1	341	#/texts/340	That said, Databricks continues to invest heavily 	text
+f06ffe2767	1	342	#/texts/341	Another difference is that instead of defining a	text
+819fa3606b	1	343	#/texts/342	spark_python_task	code
+d8f2f9bed2	1	344	#/texts/343	, we are using a notebook task. We do this partly 	text
+259756f229	1	345	#/texts/344	The data preprocessing job is defined under	text
+abe56ba66b	1	346	#/texts/345	resources/process_data.yml	text
+5bfa45f476	1	347	#/texts/346	. Here, we set the schedule, specify serverless en	text
+da424900fa	1	348	#/texts/347	process_data.py	text
+32e36afa00	1	349	#/texts/348	notebook under the	text
+c10ec21006	1	350	#/texts/349	deployment_notebooks	text
+7e327935ed	1	351	#/texts/350	folder:	text
+609fbeaf26	1	352	#/texts/351	resources : jobs : data - pipeline : name : arxiv 	code
+6fda91004c	1	353	#/texts/352	The	text
+73e42a430e	1	354	#/texts/353	process_data.py	text
+924b23d4c7	1	355	#/texts/354	notebook contains the same code we walked through 	text
+701af2e065	1	356	#/texts/355	DataProcessor	code
+763588036c	1	357	#/texts/356	class is defined in the	text
+4ba59869ad	1	358	#/texts/357	data_processor	code
+14c97e9608	1	359	#/texts/358	module, while the	text
+0e2968f492	1	360	#/texts/359	VectorSearchManager	code
+af410c004f	1	361	#/texts/360	class lives in the	text
+64d2cec2d6	1	362	#/texts/361	vector_search	code
+5aff4d9edd	1	363	#/texts/362	module:	text
+02bd4ad8bf	1	364	#/texts/363	import yaml	code
+a929fc823e	1	365	#/texts/364		code
+2e11c94301	1	366	#/texts/365	from loguru import logger	code
+91f18868b9	1	367	#/texts/366		code
+3232863f6a	1	368	#/texts/367	from pyspark.sql import SparkSession	code
+3359beab94	1	369	#/texts/368		code
+3ff2903924	1	370	#/texts/369	from arxiv_curator.config import ProjectConfig	code
+47a9eb71cb	1	371	#/texts/370		code
+3221b3b498	1	372	#/texts/371	from arxiv_curator.data_processor import DataProce	code
+615da33e46	1	373	#/texts/372		code
+f6d5931def	1	374	#/texts/373	from arxiv_curator.utils.common import get_widget	code
+2e2871649f	1	375	#/texts/374		code
+3142f7ca0c	1	376	#/texts/375	from arxiv_curator.vector_search import VectorSear	code
+38b0429676	1	377	#/texts/376		code
+29c172dfc4	1	378	#/texts/377	env = get_widget ( \"env\" , \"dev\" )	code
+cde383f273	1	379	#/texts/378		code
+5a8d854b8b	1	380	#/texts/379	project_config = ProjectConfig . from_yaml ( \"../.	code
+dbfd0812df	1	381	#/texts/380		code
+b35d5ba180	1	382	#/texts/381	logger . info ( \"Configuration loaded:\" )	code
+7f9100dcf0	1	383	#/texts/382		code
+6dc497e57a	1	384	#/texts/383	logger . info ( yaml . dump ( project_config , def	code
+7abf0abb16	1	385	#/texts/384		code
+9c5cea5b96	1	386	#/texts/385	spark = SparkSession . builder . getOrCreate ()	code
+0ed403c8e3	1	387	#/texts/386		code
+42e74e8bd7	1	388	#/texts/387	# Process data	code
+67e7152651	1	389	#/texts/388		code
+49b7ae31cf	1	390	#/texts/389	data_processor = DataProcessor ( config = project_	code
+21bd57902d	1	391	#/texts/390		code
+5aa8f1f759	1	392	#/texts/391	records = data_processor . download_and_store_pape	code
+e89d1954af	1	393	#/texts/392		code
+e44fe22851	1	394	#/texts/393	if records is None : logger . info ( \"No new paper	code
+4a756c14ff	1	395	#/texts/394		code
+454261314a	1	396	#/texts/395	else : data_processor . parse_pdfs_with_ai () logg	code
+0bfb4af3b6	1	397	#/texts/396		code
+900783f317	1	398	#/texts/397	# Sync vector search index	code
+2e9db365e9	1	399	#/texts/398		code
+57bf7fd916	1	400	#/texts/399	vector_search_manager = VectorSearchManager ( conf	code
+e320c1cf70	1	401	#/texts/400		code
+2d74d62391	1	402	#/texts/401	vector_search_manager . sync_index ()	code
+19fc9a7bc4	1	403	#/texts/402	Notice that we use the	text
+00979aba83	1	404	#/texts/403	get_widget	code
+0a068c43ef	1	405	#/texts/404	function defined in the	text
+a16bb5293b	1	406	#/texts/405	utils.common	code
+5e086ba71b	1	407	#/texts/406	module. This helper is designed to retrieve parame	text
+74655a8ebb	1	408	#/texts/407	from databricks.sdk.runtime import dbutils	code
+749a804adf	1	409	#/texts/408		code
+308251e60f	1	410	#/texts/409	def get_widget ( name : str , default : str | None	code
+69a01ea81b	1	411	#/texts/410		code
+229a268ad2	1	412	#/texts/411	:param name: Widget name.	code
+a9a878bc07	1	413	#/texts/412		code
+d95ecf7a53	1	414	#/texts/413	:param default: Default value if widget is not set	code
+d68e92f342	1	415	#/texts/414		code
+6eb88f4f32	1	416	#/texts/415	:return: Widget value or default.	code
+c898fd9929	1	417	#/texts/416		code
+c5ac62ad73	1	418	#/texts/417	\"\"\" try : return dbutils . widgets . get ( name ) 	code
+fdaf5115e0	1	419	#/texts/418	We use this function across all our notebooks to e	text
+6cd0d8ca66	1	420	#/texts/419	Agent deployment job	section_header
+baf62758d9	1	421	#/texts/420	The agent deployment workflow consists of two stag	text
+2dec66678a	1	422	#/texts/421	An interesting design choice we make here is to im	text
+28655d96b9	1	423	#/texts/422	The trade-off is that, at the time of writing, tas	text
+394d004259	1	424	#/texts/423	latest-model	code
+db0853ca7f	1	425	#/texts/424	stage as a handoff mechanism.	text
+05abbb3354	1	426	#/texts/425	In development environments, this approach can int	text
+61abc807ce	1	427	#/texts/426	resources : jobs : log_register_agent_job : name :	code
+2ef7a7ddb7	1	428	#/texts/427	Let's walk through the	text
+b202a1a224	1	429	#/texts/428	log_register_agent.py	text
+8084dabe9f	1	430	#/texts/429	notebook. Parameters such as	text
+a1c92a0a61	1	431	#/texts/430	env	code
+2a0b9b2fa0	1	432	#/texts/431	,	text
+d67310955a	1	433	#/texts/432	git_sha	code
+65cda18b73	1	434	#/texts/433	, and	text
+46795ef7e0	1	435	#/texts/434	run_id	code
+3897cf9275	1	436	#/texts/435	are passed to the task. The notebook first runs th	text
+ff034be25f	1	437	#/texts/436	# Databricks notebook source	code
+aacaec66ea	1	438	#/texts/437		code
+7d6693d9af	1	439	#/texts/438	from databricks.sdk.runtime import dbutils	code
+f667a4c469	1	440	#/texts/439		code
+01bf494515	1	441	#/texts/440	from arxiv_curator.agent import log_register_agent	code
+91db258a0f	1	442	#/texts/441		code
+f4f26ece80	1	443	#/texts/442	from arxiv_curator.config import ProjectConfig	code
+4948d29b00	1	444	#/texts/443		code
+73fa0afc5d	1	445	#/texts/444	from arxiv_curator.evaluation import evaluate_agen	code
+41f6c66ff4	1	446	#/texts/445		code
+1bf89a350a	1	447	#/texts/446	from arxiv_curator.utils.common import get_widget	code
+84e21646a7	1	448	#/texts/447		code
+11aba7b247	1	449	#/texts/448	env = get_widget ( \"env\" , \"dev\" )	code
+91fccb4f10	1	450	#/texts/449		code
+807c57b6a6	1	451	#/texts/450	git_sha = get_widget ( \"git_sha\" , \"local\" )	code
+73b4f5ef24	1	452	#/texts/451		code
+01e91958f8	1	453	#/texts/452	run_id = get_widget ( \"run_id\" , \"local\" )	code
+c6f64945c8	1	454	#/texts/453		code
+8cba6a7ea0	1	455	#/texts/454	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+c2bc512823	1	456	#/texts/455		code
+8fa4e6f6be	1	457	#/texts/456	mlflow . set_experiment ( cfg . experiment_path )	code
+28eaf37812	1	458	#/texts/457		code
+64e96999c7	1	459	#/texts/458	model_name = f \" { cfg . catalog } . { cfg . schem	code
+68a661dd3b	1	460	#/texts/459		code
+0392c92219	1	461	#/texts/460	# COMMAND ----------	code
+920463bdd1	1	462	#/texts/461		code
+2252ff9c7b	1	463	#/texts/462	# Run evaluation	code
+1625155224	1	464	#/texts/463		code
+be7bb202dd	1	465	#/texts/464	results = evaluate_agent ( cfg , eval_inputs_path 	code
+78ed07f55a	1	466	#/texts/465		code
+67ce91d0f5	1	467	#/texts/466	# COMMAND ----------	code
+e3ce939368	1	468	#/texts/467		code
+a6aed15288	1	469	#/texts/468	# Log and register model	code
+7d52627767	1	470	#/texts/469		code
+7a86cbcd4c	1	471	#/texts/470	registered_model = log_register_agent ( cfg = cfg 	code
+7d4c18059f	1	472	#/texts/471		code
+f5cf160169	1	473	#/texts/472	)	code
+b064749050	1	474	#/texts/473	The	text
+e98ff654e9	1	475	#/texts/474	deploy_agent.py	text
+45a83f6d11	1	476	#/texts/475	notebook follows the same logic as the one we disc	text
+747719ba50	1	477	#/texts/476	latest-model	code
+19be4dc3e3	1	478	#/texts/477	alias, which acts as the handoff point between the	text
+8a51e1f4b0	1	479	#/texts/478	env	code
+5b6e3bde53	1	480	#/texts/479	and	text
+26ff7b4f41	1	481	#/texts/480	git_sha	code
+017ed3075f	1	482	#/texts/481	values are passed dynamically via parameters:	text
+7edd6478ee	1	483	#/texts/482	from arxiv_curator.utils.common import get_widget	code
+0bccfaf269	1	484	#/texts/483		code
+245b43b724	1	485	#/texts/484	git_sha = get_widget ( \"git_sha\" , \"local\" )	code
+b286d3a480	1	486	#/texts/485		code
+4c6b23cb36	1	487	#/texts/486	env = get_widget ( \"env\" , \"dev\" )	code
+f0559af65b	1	488	#/texts/487	Now, we can run the	text
+cc9dedcd48	1	489	#/texts/488	databricks bundle deploy	code
+ff5d4f0cb2	1	490	#/texts/489	command from VS code, and the pipelines will get d	text
+f6d2438c78	1	491	#/texts/490	databricks.yml	text
+e1c7020dca	1	492	#/texts/491	file will look exactly like we defined it earlier 	text
+63a6408f1c	1	493	#/texts/492	Chapter 5	text
+c0c1624d69	1	494	#/texts/493	.	text
+f57fcca4e7	1	495	#/texts/494	We can then trigger the pipeline run by executing 	text
+afe001f90c	1	496	#/texts/495	databricks bundle run <	code
+3a1b0f025a	1	497	#/texts/496	job name	code
+79cd9a9156	1	498	#/texts/497	>	code
+e54a93913c	1	499	#/texts/498	command and get our agent with all necessary resou	text
+cb44eb20c2	1	500	#/texts/499	Deployment Considerations	section_header
+0e73774034	1	501	#/texts/500	In	text
+a067a1565c	1	502	#/texts/501	Chapter 5	text
+9378fbce1e	1	503	#/texts/502	, we discussed three environments-	text
+fcc8d193a8	1	504	#/texts/503	dev	code
+5245c77386	1	505	#/texts/504	,	text
+a6db7d4c03	1	506	#/texts/505	acc	code
+f76680b620	1	507	#/texts/506	, and	text
+b48dd464da	1	508	#/texts/507	prd	code
+9af8ee97aa	1	509	#/texts/508	-and how code promotion works across them. We foll	text
+dbb15f1678	1	510	#/texts/509	acc	code
+fc472f7351	1	511	#/texts/510	environment using databricks bundle deploy, and af	text
+6311b8d818	1	512	#/texts/511	prd	code
+0e63ece7bb	1	513	#/texts/512	.	text
+a2cddeb091	1	514	#/texts/513	In the context of traditional ML, we assumed that 	text
+15e10d52cb	1	515	#/texts/514	Agents, however, change this dynamic. The debate b	text
+60e1355ae1	1	516	#/texts/515	model promotion	text
+c6ed88c6c6	1	517	#/texts/516	and	text
+fbf88f0660	1	518	#/texts/517	code promotion	text
+bad52d747d	1	519	#/texts/518	is central in MLOps, but it is far less relevant i	text
+ef8e63e35a	1	520	#/texts/519	For AI applications, this pattern usually does not	text
+c68d9c51b3	1	521	#/texts/520	Prompts and orchestration logic are generally envi	text
+9e45d11cbe	1	522	#/texts/521	The agent deployment pipeline therefore runs on de	text
+43c61b2150	1	523	#/texts/522	acc	code
+7fdbcd4ac5	1	524	#/texts/523	and	text
+d6bdff9a1f	1	525	#/texts/524	prd	code
+0b3ff37377	1	526	#/texts/525	. In practice, the CD pipeline should always inclu	text
+fca5b1504a	1	527	#/texts/526	databricks bundle run	code
+1bc123f9ec	1	528	#/texts/527	command to execute the deployment job in the targe	text
+59983ed973	1	529	#/texts/528	As you may have noticed, this LLMOps chapter follo	text
+d75697990a	1	530	#/texts/55	Settings interface for creating custom guardrails 	caption
+048757b458	1	531	#/texts/529	LLM System Monitoring	title
+1adf0ed3c9	1	532	#/texts/530	So far, we've focused on evaluation. Monitoring is	text
+206d99f9d8	1	533	#/texts/531	Chapter 6	text
+2284554749	1	534	#/texts/532	covered monitoring in the context of traditional M	text
+a7da4d662a	1	535	#/texts/533	In traditional ML use cases, evaluation is typical	text
+00cba32b59	1	536	#/texts/534	Evaluation of an AI agent, however, can be signifi	text
+477cc96df9	1	537	#/texts/535	A more scalable approach is a	text
+82b1993ed2	1	538	#/texts/536	tiered evaluation strategy	text
+004ef134f0	1	539	#/texts/537	: you apply inexpensive, code-based checks to all 	text
+262b51f82d	1	540	#/texts/538	What to Monitor in LLM Systems	section_header
+9e9f043fd8	1	541	#/texts/539	For every inference (and its corresponding trace),	text
+7ca9815a09	1	542	#/texts/540	Latency and token counts	list_item
+d02fde3d1f	1	543	#/texts/541	These are the core operational metrics.	list_item
+587fbf08b4	1	544	#/texts/542	Tool usage	list_item
+9cbaecbb64	1	545	#/texts/543	This is which tools were invoked and how often.	list_item
+528fad3d21	1	546	#/texts/544	Format validation	list_item
+e9d2e27354	1	547	#/texts/545	This is whether the output matches the expected st	list_item
+5b6ac2f36d	1	548	#/texts/546	Guardrail violations	list_item
+f4f5f86885	1	549	#/texts/547	This is whether safety filters were triggered.	list_item
+c5f0869da6	1	550	#/texts/548	Error rates	list_item
+21324b1fe1	1	551	#/texts/549	This is whether and how often the agent failed to 	list_item
+c5f73580ae	1	552	#/texts/550	Simple heuristics	list_item
+04745ddacb	1	553	#/texts/551	These include length checks, regex validation, and	list_item
+497b233202	1	554	#/texts/552	MLflow code-based scorers can be used for format v	text
+d2ef45f3e4	1	555	#/texts/553	Tier 1 metrics	text
+3f468c7922	1	556	#/texts/554	, which are inexpensive to compute and suitable fo	text
+8d74f3ee46	1	557	#/texts/555	Tier 2 metrics	text
+e01dd5025d	1	558	#/texts/556	include LLM-based scorers such as relevance, corre	text
+0b879d9083	1	559	#/texts/557	3	text
+329f4eea47	1	560	#/texts/558	When designing your sampling strategy, you should 	text
+08b839a66b	1	561	#/texts/559	This practical architecture separates trace collec	text
+7fc8f2f5f9	1	562	#/texts/560	MLflow traces are synchronized to Delta tables. Th	list_item
+132a5fb4af	1	563	#/texts/561	A scheduled processing job reads non-evaluated tra	list_item
+f1c4251a69	1	564	#/texts/562	The evaluation results are logged to MLflow and be	list_item
+1f68b3b21b	1	565	#/texts/563	Both tiers can run within a single job or in separ	text
+eacec5621f	1	566	#/texts/564	Let's now proceed with implementing this logic.	text
+d936a9a5aa	1	567	#/texts/565	Monitoring Implementation	section_header
+9a2f0f3f45	1	568	#/texts/566	Before going into depth, we should note that MLflo	text
+04db49ecd0	1	569	#/texts/567	agents.deploy()	code
+c98753f250	1	570	#/texts/568	function).	text
+dcdc4e0350	1	571	#/texts/569	Table 9-2	text
+282b65b839	1	572	#/texts/570	outlines the structure of the Delta table.	text
+12619574d4	1	573	#/tables/1	| Column                  | Type                  	table
+c85abec9ea	1	574	#/texts/571	trace_id	code
+b93f5b3fdf	1	575	#/texts/572	string	code
+5a4d2d44b3	1	576	#/texts/573	client_request_id	code
+774dcfe33e	1	577	#/texts/574	string	code
+cae379c7a6	1	578	#/texts/575	request_time	code
+13c8f6f63c	1	579	#/texts/576	timestamp	code
+8c85d3c706	1	580	#/texts/577	state	code
+c654e38f6a	1	581	#/texts/578	string	code
+685ab42895	1	582	#/texts/579	execution_duration_ms	code
+96ca558d0e	1	583	#/texts/580	bigint	code
+20c1b9a2e3	1	584	#/texts/581	request	code
+8e9d8c633e	1	585	#/texts/582	string	code
+94e599205c	1	586	#/texts/583	response	code
+f57e17b431	1	587	#/texts/584	string	code
+a0467b0bcb	1	588	#/texts/585	request_preview	code
+dd96430105	1	589	#/texts/586	string	code
+c913fce0e9	1	590	#/texts/587	response_preview	code
+31b253fc53	1	591	#/texts/588	string	code
+53f8d24727	1	592	#/texts/589	trace_metadata	code
+4f6631f7dc	1	593	#/texts/590	map<string, string>	code
+84668a391b	1	594	#/texts/591	tags	code
+619bd3c79e	1	595	#/texts/592	map<string, string>	code
+38a3e1fbec	1	596	#/texts/593	trace_location	code
+8bf7124e31	1	597	#/texts/594	struct	code
+f63b9abc20	1	598	#/texts/595	assessments	code
+4d1d9232ab	1	599	#/texts/596	array<struct>	code
+a127bc27d8	1	600	#/texts/597	spans	code
+3e94671803	1	601	#/texts/598	array<struct>	code
+d2f7b67beb	1	602	#/texts/599	For monitoring purposes, we are interested in the 	text
+e114e1f6bf	1	603	#/texts/600	As with the other jobs we discussed earlier, the d	text
+cecbc88221	1	604	#/texts/601	Deployment notebook	section_header
+0a97ac5685	1	605	#/texts/602	The	text
+9bbc4f49e7	1	606	#/texts/603	production_monitoring.py	text
+82e1a3e0c4	1	607	#/texts/604	notebook is available in the	text
+bb8f0a6260	1	608	#/texts/605	resources/deployment_notebooks	text
+343f092a24	1	609	#/texts/606	folder. For readability, we'll omit the import sta	text
+ee3b64b33a	1	610	#/texts/607	The	text
+1979d33fe3	1	611	#/texts/608	traces_table	code
+0cd31b2275	1	612	#/texts/609	is located in the same catalog and schema where th	text
+f88b4852cf	1	613	#/texts/610	trace_logs_{experiment_id}	code
+1923ab5403	1	614	#/texts/611	convention. This table contains the raw MLflow tra	text
+dc4e173aae	1	615	#/texts/612	catalog = cfg . catalog	code
+1d73fd4eeb	1	616	#/texts/613		code
+8db0e7d365	1	617	#/texts/614	schema = cfg . schema	code
+9e89ed9f7b	1	618	#/texts/615		code
+91d6097bc0	1	619	#/texts/616	experiment = MlflowClient () . get_experiment_by_n	code
+5e351bad6c	1	620	#/texts/617		code
+a6576ef99b	1	621	#/texts/618	traces_table = f \" { catalog } . { schema } .trace	code
+e9341c1cbf	1	622	#/texts/619	We first retrieve all traces that have not yet bee	text
+ec3c8bf0ba	1	623	#/texts/620	mlflow.genai.evaluate()	code
+953e1d2bf5	1	624	#/texts/621	function operates on Pandas DataFrames that follow	text
+8b4b49dc68	1	625	#/texts/622	new_traces_df = spark . sql ( f \"\"\"	code
+6efe7d10ce	1	626	#/texts/623		code
+9fb0d93b35	1	627	#/texts/624	SELECT * FROM (	code
+96b42df5a5	1	628	#/texts/625		code
+8ce37a0173	1	629	#/texts/626	SELECT	code
+a8c340161e	1	630	#/texts/627		code
+c8d9ed9ad3	1	631	#/texts/628	t.trace_id,	code
+7b4a5fd743	1	632	#/texts/629		code
+f27d1f6a55	1	633	#/texts/630	t.request_preview,	code
+dead218dc2	1	634	#/texts/631		code
+46802c43e9	1	635	#/texts/632	element_at(	code
+0f2379e730	1	636	#/texts/633		code
+5afb5a300a	1	637	#/texts/634	filter(	code
+5faa8b3748	1	638	#/texts/635		code
+830ae3b2b0	1	639	#/texts/636	from_json(	code
+fda7334125	1	640	#/texts/637		code
+a2ce9e5346	1	641	#/texts/638	get_json_object(t.response, '$.output'),	code
+d33626b4b1	1	642	#/texts/639		code
+729593f484	1	643	#/texts/640	'ARRAY<STRUCT<type:STRING, content:ARRAY<STRUCT<te	code
+c0463bffda	1	644	#/texts/641		code
+c30b8a2f1f	1	645	#/texts/642	),	code
+4cb3daecee	1	646	#/texts/643		code
+3d9f696580	1	647	#/texts/644	x -> x.type = 'message'	code
+7ffd3a37f1	1	648	#/texts/645		code
+6bd56a81ad	1	649	#/texts/646	),	code
+cb00426e92	1	650	#/texts/647		code
+1911a35ca5	1	651	#/texts/648	1	code
+0f1baa8b6c	1	652	#/texts/649		code
+3207a4a3f2	1	653	#/texts/650	).content[0].text AS response_text	code
+64b4be5ffa	1	654	#/texts/651		code
+2655744601	1	655	#/texts/652	FROM { traces_table } t	code
+e9b8fe5ba1	1	656	#/texts/653		code
+8c4de3243c	1	657	#/texts/654	WHERE tags['model_serving_endpoint_name']	code
+bb5fc73be7	1	658	#/texts/655		code
+ce0f508c69	1	659	#/texts/656	= 'arxiv-agent-endpoint'	code
+55e4477dd9	1	660	#/texts/657		code
+c9b4ff377a	1	661	#/texts/658	AND (t.assessments IS NULL OR size(t.assessments) 	code
+b203ae99f3	1	662	#/texts/659		code
+3abc634245	1	663	#/texts/660	) WHERE response_text IS NOT NULL	code
+04354e0af7	1	664	#/texts/661		code
+dede3cbb65	1	665	#/texts/662	\"\"\" )	code
+c81c8d2e77	1	666	#/texts/663		code
+3da62f62cf	1	667	#/texts/664	traces_pdf = new_traces_df . toPandas ()	code
+f2ad31e4ec	1	668	#/texts/665		code
+13d79b2775	1	669	#/texts/666	eval_pdf = pd . DataFrame ({ \"trace_id\" : traces_p	code
+ed1804c7ed	1	670	#/texts/667		code
+b2e87b5965	1	671	#/texts/668	})	code
+e52b5bb617	1	672	#/texts/669	For all traces in the resulting DataFrame, we run 	text
+30cdd03bfb	1	673	#/texts/670	Tier 1 evaluation	text
+4ac65f8f3c	1	674	#/texts/671	(in this case, a word count check) and log the fee	text
+9cc80b7bfa	1	675	#/texts/672	wc_result = mlflow . genai . evaluate ( data = eva	code
+c9429821c6	1	676	#/texts/673		code
+3c70098c75	1	677	#/texts/674	)	code
+61c932c643	1	678	#/texts/675		code
+81e586236c	1	679	#/texts/676	for trace_id , assessments in zip ( eval_pdf [ \"tr	code
+46e67e894f	1	680	#/texts/677		code
+1d4b1a5c74	1	681	#/texts/678	): val = assessments [ 0 ][ \"feedback\" ][ \"value\" 	code
+fae9d03818	1	682	#/texts/679	Next, we take a 10% sample of the traces and perfo	text
+6b7a114e9f	1	683	#/texts/680	Tier 2 evaluation	text
+497dc404e1	1	684	#/texts/681	, which includes more advanced, LLM-based checks s	text
+337ed70fee	1	685	#/texts/682	sample_size = max ( 1 , int ( len ( eval_pdf ) * 0	code
+ae61cb3213	1	686	#/texts/683		code
+eb3e8496dc	1	687	#/texts/684	sampled_pdf = eval_pdf . sample ( n = sample_size 	code
+ba62659522	1	688	#/texts/685		code
+8b0d011d95	1	689	#/texts/686	logger . info ( f \"Sampled { len ( sampled_pdf ) }	code
+67afb9ebd8	1	690	#/texts/687		code
+b8c427b745	1	691	#/texts/688	)	code
+3d4e769b6f	1	692	#/texts/689		code
+4bbbb39495	1	693	#/texts/690	llm_result = mlflow . genai . evaluate ( data = sa	code
+9a752f653c	1	694	#/texts/691		code
+8fadab4c0c	1	695	#/texts/692	)	code
+c74ebb5d09	1	696	#/texts/693		code
+6897488fab	1	697	#/texts/694	for trace_id , assessments in zip ( sampled_pdf [ 	code
+9dc7779da2	1	698	#/texts/695		code
+dda002ba37	1	699	#/texts/696	): for a in assessments : name = a [ \"assessment_n	code
+ad045a83f3	1	700	#/texts/697	Lakeflow job	section_header
+f6025e94d0	1	701	#/texts/698	Finally, we execute the notebook as part of a Lake	text
+68fa1b5b55	1	702	#/texts/699	production_monitoring.yml	text
+084bed5f2a	1	703	#/texts/700	. The environment configuration follows the same p	text
+1e7ea14a0c	1	704	#/texts/701	In this example, the job is scheduled to run daily	text
+2d6bed60c4	1	705	#/texts/702	resources : jobs : update - and - evaluate - trace	code
+3cfffecb32	1	706	#/texts/703	Once the traces table	text
+3778a373a7	1	707	#/texts/704	{catalog}.{schema}.trace_logs_{experiment_id}	code
+b974a365e5	1	708	#/texts/705	refreshes, the logged feedback becomes available a	text
+dd603153a0	1	709	#/texts/706	In practice, we create a view on top of the trace 	text
+27df95a525	1	710	#/texts/707	Monitoring dashboard	section_header
+2769e869db	1	711	#/texts/708	Databricks dashboard is great for monitoring AI ap	text
+f4c8df810e	1	712	#/texts/709	Genie Code	text
+34c30c3783	1	713	#/texts/710	simplifies dashboard creation by acting as an AI-p	text
+09a92a8e14	1	714	#/texts/711	Using this approach, I created a dashboard to visu	text
+5b7123d088	1	715	#/texts/712	Figure 9-2	text
+fe4d755cd2	1	716	#/texts/713	).	text
+e556b74167	1	717	#/pictures/1	A dashboard displaying metrics for the ArXiv Agent	picture
+6eaeed4efc	1	718	#/texts/715	Once you create a dashboard, you can export it as 	text
+b4063a07f1	1	719	#/texts/716	.lvdash.json	text
+0ad66fd798	1	720	#/texts/717	file that you can use to deploy using DABs (see th	text
+4bf687386e	1	721	#/texts/718	dashboard/agent_monitoring_dashboard.yml	text
+bf190cf359	1	722	#/texts/719	file under the	text
+802af0b7f0	1	723	#/texts/720	resources	code
+7e7f02bc27	1	724	#/texts/721	folder):	text
+a3f6e3ef6a	1	725	#/texts/722	4	text
+e280d454db	1	726	#/texts/723	resources : sql_warehouses : arxiv_monitoring_ware	code
+bc4cbc23df	1	727	#/texts/724	Monitoring considerations	section_header
+4bdb649899	1	728	#/texts/725	We've walked through a simple setup for monitoring	text
+66b0b39714	1	729	#/texts/726	A dashboard on its own is not sufficient: you also	text
+b150fa2e15	1	730	#/texts/727	Chapter 6	text
+612f75ff33	1	731	#/texts/728	, so we won't repeat the implementation here.	text
+1ae358489d	1	732	#/texts/729	In our evaluation pipeline, we relied on guideline	text
+29f4a48393	1	733	#/texts/730	This enables alignment between human and LLM judgm	text
+123cd6904e	1	734	#/texts/731	Cost Monitoring	section_header
+0d1e184dc4	1	735	#/texts/732	The metrics we have collected so far describe how 	text
+dcc9214eb8	1	736	#/texts/733	Every unit of serverless consumption that either p	text
+e776c87590	1	737	#/texts/734	This section covers only what you need to monitor 	text
+9fe0295a42	1	738	#/texts/735	\"The FinOps Guide to Databricks\" blog post	text
+855611ee4a	1	739	#/texts/736	by Casper Lubbers. This section of the book was la	text
+02a356d3fe	1	740	#/texts/737	Databricks costs consist of two components: what D	text
+5feeb0f184	1	741	#/texts/738	This split applies to classic compute, in which Da	text
+61b248e895	1	742	#/texts/739	How Databricks billing works	section_header
+3f19428dee	1	743	#/texts/740	Databricks tracks usage in	text
+bfd220c6ba	1	744	#/texts/741	Databricks Units	text
+73f48ef92d	1	745	#/texts/742	(DBUs). A DBU is a measure of processing capabilit	text
+db3090998c	1	746	#/texts/743	Most Databricks services bill in DBUs, and for mos	text
+f33c663b44	1	747	#/texts/744	5	text
+f230d3a832	1	748	#/texts/745	The non-DBU units are easy to overlook. Storage an	text
+ab5157f845	1	749	#/texts/746	Every stock-keeping unit (SKU) has a list price th	text
+377c6a8d23	1	750	#/texts/747	system.billing.list_prices	code
+79e0f4d381	1	751	#/texts/748	. The table exposes the	text
+24effd2e7b	1	752	#/texts/749	default	code
+dc7a77f0c6	1	753	#/texts/750	and the	text
+e77dba508c	1	754	#/texts/751	effective_list	code
+fb6b5f8670	1	755	#/texts/752	price, which reflects promotions. Neither one is y	text
+0b8d829533	1	756	#/texts/753	6	text
+8f861d1879	1	757	#/texts/754	Databricks services and associated costs	section_header
+70ebdd02fa	1	758	#/texts/755	Every	text
+912e376a76	1	759	#/texts/756	system.billing.usage	code
+6adf17a8b1	1	760	#/texts/757	record includes a	text
+78879bbe93	1	761	#/texts/758	billing_origin_product	code
+748a099331	1	762	#/texts/759	and a	text
+70162c0cdc	1	763	#/texts/760	sku_name	code
+9da03270f4	1	764	#/texts/761	:	text
+f8e655dc87	1	765	#/texts/762	billing_origin_product	list_item
+b1e3887f12	1	766	#/texts/763	This is the service that generated the cost, such 	list_item
+96efc258d7	1	767	#/texts/764	sku_name	list_item
+290760bc43	1	768	#/texts/765		list_item
+46ade99276	1	769	#/texts/766	This is how that usage is priced, and it maps to a	text
+3f2df15c33	1	770	#/texts/767	system.billing.list_prices	code
+58578da4bb	1	771	#/texts/768	.	text
+75dbec37f1	1	772	#/texts/769	The mapping between them is not one-to-one. As	text
+b953bef30e	1	773	#/texts/770	Table 9-3	text
+b5e89cba2a	1	774	#/texts/771	shows, one service can bill under several SKUs (ev	text
+1cb10bf149	1	775	#/tables/2	| billing\\_origin\\_ product   | sku_name          	table
+c5bec478de	1	776	#/texts/772	billing_origin_\nproduct	text
+568796dd12	1	777	#/texts/773	usage_\nunit	text
+56aafa2094	1	778	#/texts/774	AI_FUNCTIONS	code
+e15ad02b04	1	779	#/texts/775	PREMIUM_SERVERLESS_REAL_TIME_INFERENCE	code
+1141ae42bb	1	780	#/texts/776	AI_GATEWAY	code
+e7063a5aec	1	781	#/texts/777	PREMIUM_SERVERLESS_REAL_TIME_INFERENCE	code
+e427183570	1	782	#/texts/778	LAKEBASE	code
+2ef526c8c3	1	783	#/texts/779	PREMIUM_DATABASE_SERVERLESS_COMPUTE	code
+fc9b1cd8f2	1	784	#/texts/780	LAKEBASE	code
+6494d34398	1	785	#/texts/781	PREMIUM_DATABRICKS_STORAGE	code
+44318d6375	1	786	#/texts/782	MODEL_SERVING	code
+51f75cf624	1	787	#/texts/783	PREMIUM_ANTHROPIC_MODEL_SERVING	code
+06355e6885	1	788	#/texts/784	MODEL_SERVING	code
+5c23874061	1	789	#/texts/785	PREMIUM_SERVERLESS_REAL_TIME_INFERENCE	code
+43fd17d351	1	790	#/texts/786	VECTOR_SEARCH	code
+b467a21458	1	791	#/texts/787	PREMIUM_JOBS_SERVERLESS_COMPUTE	code
+d27987d03f	1	792	#/texts/788	VECTOR_SEARCH	code
+1fed2eb518	1	793	#/texts/789	PREMIUM_SERVERLESS_REAL_TIME_INFERENCE	code
+d88d75e980	1	794	#/texts/790	VECTOR_SEARCH	code
+7c929cb757	1	795	#/texts/791	PREMIUM_SERVERLESS_REAL_TIME_INFERENCE	code
+d32bb4eb22	1	796	#/texts/792	Table 9-3	text
+49583a0c66	1	797	#/texts/793	was produced by the following query, which strips 	text
+2561cad8b8	1	798	#/texts/794	sku_name	code
+39b4ee7749	1	799	#/texts/795	with	text
+46a49bc845	1	800	#/texts/796	regexp_replace	code
+99ec8ffebf	1	801	#/texts/797	. Each SKU name ends in its region, such as	text
+a0290b63a3	1	802	#/texts/798	_EU_WEST	code
+f42b6f205f	1	803	#/texts/799	, so that SKU appears once per region:	text
+c446ad39f9	1	804	#/texts/800	from pyspark.sql import SparkSession	code
+8e62ece092	1	805	#/texts/801		code
+d54835faa7	1	806	#/texts/802	spark = SparkSession . builder . getOrCreate ()	code
+4b5bae4301	1	807	#/texts/803		code
+ae2ceed511	1	808	#/texts/804	spark . sql ( \"\"\"	code
+d0db43ac49	1	809	#/texts/805		code
+e41153b720	1	810	#/texts/806	SELECT DISTINCT	code
+afe1770daa	1	811	#/texts/807		code
+43a147a7be	1	812	#/texts/808	billing_origin_product,	code
+b45c65ea59	1	813	#/texts/809		code
+8714c89266	1	814	#/texts/810	regexp_replace(	code
+59c75d8ed7	1	815	#/texts/811		code
+6c8e4d3120	1	816	#/texts/812	sku_name, '_(US_EAST|EU_WEST|US_EAST_2|US_WEST|US_	code
+b96c3020e0	1	817	#/texts/813		code
+bf13643971	1	818	#/texts/814	) AS sku_name,	code
+4dc9e3842f	1	819	#/texts/815		code
+5793cf7ede	1	820	#/texts/816	usage_unit	code
+574407c6c4	1	821	#/texts/817		code
+9b7459e96b	1	822	#/texts/818	FROM system.billing.usage	code
+a4fc805ba7	1	823	#/texts/819		code
+cc3c8efa8c	1	824	#/texts/820	WHERE billing_origin_product IN (	code
+af888baaf7	1	825	#/texts/821		code
+2fab9e7e72	1	826	#/texts/822	'VECTOR_SEARCH', 'AI_FUNCTIONS', 'MODEL_SERVING',	code
+d1eacfdd14	1	827	#/texts/823		code
+fa4420bc8e	1	828	#/texts/824	'FOUNDATION_MODEL_APIS', 'AI_GATEWAY', 'LAKEBASE'	code
+cd068bdf60	1	829	#/texts/825		code
+9027e660f9	1	830	#/texts/826	)	code
+03dc006302	1	831	#/texts/827		code
+b743955ea1	1	832	#/texts/828	ORDER BY billing_origin_product, sku_name	code
+8eb95ef483	1	833	#/texts/829		code
+1342d4750b	1	834	#/texts/830	\"\"\" ) . display ()	code
+fbac49a4fa	1	835	#/texts/831	You should group usage by both	text
+e7a3f2c636	1	836	#/texts/832	billing_origin_product	code
+556a57d751	1	837	#/texts/833	and	text
+6d167db464	1	838	#/texts/834	sku_name	code
+2b21093df7	1	839	#/texts/835	, rather than by either one alone. Together, they 	text
+59c060bfcf	1	840	#/texts/836	What matters most here is the cost per project, an	text
+33364c8af3	1	841	#/texts/837	Tag-based cost attribution	section_header
+f7d739904f	1	842	#/texts/838	Cost attribution in Databricks comes down to one t	text
+cea9ab0194	1	843	#/texts/839	system.billing.usage.custom_tags	code
+288467dfb8	1	844	#/texts/840	.	text
+16f232f34b	1	845	#/texts/841	For serverless resources, you should attribute cos	text
+54b65b14f5	1	846	#/texts/842	usage policy	text
+385286c87a	1	847	#/texts/843	is an account-level object that holds a set of tag	text
+a2bc810194	1	848	#/texts/844	7	text
+bb6f96fe3c	1	849	#/texts/845	You can grant it to users and groups, and the reso	text
+052a72ba3b	1	850	#/texts/846	A usage policy covers serverless notebooks, jobs, 	text
+565dc2ac8a	1	851	#/texts/847	On serverless, the two can collide, and the policy	text
+72fee6f25c	1	852	#/texts/848	llmops_usage_policy	code
+31a46c1f16	1	853	#/texts/849	, which sets	text
+9bb7323181	1	854	#/texts/850	project: arxiv_curator	code
+e8e50eca0f	1	855	#/texts/851	. Because policy tags override a direct tag with t	text
+18f0756a43	1	856	#/texts/852	project: hotel_booking	code
+3a3b17408f	1	857	#/texts/853	is still billed as	text
+47218f199e	1	858	#/texts/854	project: arxiv_curator	code
+b1cf5bfbf7	1	859	#/texts/855	.	text
+6831f70351	1	860	#/texts/856	Make sure to assign the right usage policy explici	text
+0c3aa786ea	1	861	#/texts/857	Table 9-4	text
+d7e9413f02	1	862	#/texts/858	lists all the resources we used in the book and ho	text
+af7ab67949	1	863	#/tables/3	| Resources                                       	table
+e526d689fa	1	864	#/texts/859	Notice that two resources cannot take a usage poli	text
+ac20a0e74a	1	865	#/texts/860	To keep the policy ID in one place rather than sca	text
+9ca7c5d7fd	1	866	#/texts/861	databricks.yml	text
+1dea46ba7c	1	867	#/texts/862	. The SDK-created resources could take the same bu	text
+3eb1c81776	1	868	#/texts/863	project_config.yml	text
+8987d38458	1	869	#/texts/864	, which they load at runtime. That leaves two copi	text
+11d3269c1f	1	870	#/texts/865	Tag values need the same discipline. Policy-covere	text
+a0eaf1346e	1	871	#/texts/866	Cost-monitoring dashboard	section_header
+547eac69f5	1	872	#/texts/867	With the tags aligned, costs are grouped cleanly b	text
+75ce694a8f	1	873	#/texts/868	8	text
+4541427062	1	874	#/texts/869	Building a custom dashboard is an option if you ne	text
+d42612dc0d	1	875	#/texts/870	The dashboard's Usage Analysis-Tag Matching tab sh	text
+b4bf5f68d2	1	876	#/texts/871	Figure 9-3	text
+400f5b42b0	1	877	#/texts/872	shows usage for	text
+6ea74746fe	1	878	#/texts/873	project=hotel_booking	code
+2623537b60	1	879	#/texts/874	, and	text
+fed2c44e6e	1	880	#/texts/875	Figure 9-4	text
+33987c8e1e	1	881	#/texts/876	shows usage by product for	text
+2dd54bbb51	1	882	#/texts/877	project=arxiv_curator	code
+ed5ad13bcb	1	883	#/texts/878	. These numbers do not represent real project cost	text
+bbdd9c05dd	1	884	#/texts/879	What they do show is which resources cost little w	text
+bbdc61a64f	1	885	#/texts/880	VECTOR_SEARCH	code
+f08dd3ca69	1	886	#/texts/881	) does not: an endpoint keeps billing until you de	text
+b365b5dc30	1	887	#/pictures/2	Workspace Usage Dashboard V2 displays a bar chart 	picture
+7f8ab57c7d	1	888	#/pictures/3	Bar chart showing usage costs by product for the \"	picture
+f0f9cb7af9	1	889	#/texts/884	The matching tag analysis does not capture foundat	text
+0273116950	1	890	#/texts/885	Attribution is easier when an endpoint serves a si	text
+c5f6c6aac1	1	891	#/texts/886	External endpoints split the bill. When you call a	text
+5fbcd22f01	1	892	#/texts/887	system.billing.usage	code
+6640810d50	1	893	#/texts/888	entirely.	text
+031cdc08b9	1	894	#/texts/889	The dashboard depicted in	text
+b7ceb31ae2	1	895	#/texts/890	Figure 9-5	text
+af8ae45980	1	896	#/texts/891	shows the top endpoints by spend, but it does not 	text
+63cb47aba7	1	897	#/texts/892	9	text
+dc1da1d2ad	1	898	#/texts/893	Joining the two is not straightforward because eac	text
+a263166524	1	899	#/pictures/4	Dashboard showing a summary of Model Serving cost 	picture
+b0bc0be8e7	1	900	#/texts/895	Cost attribution on Databricks requires you to per	text
+8d0fde6cb5	1	901	#/texts/896	FinOps is a hard discipline, and this section has 	text
+3e3099550b	1	902	#/texts/714	A dashboard displaying metrics for the ArXiv Agent	caption
+be8abb1dc3	1	903	#/texts/882	Workspace Usage Dashboard V2 displays a bar chart 	caption
+df6663eaf6	1	904	#/texts/883	Bar chart showing usage costs by product for the \"	caption
+15fabd4d28	1	905	#/texts/894	Dashboard showing a summary of Model Serving cost 	caption
+53fe861ab1	1	906	#/texts/897	Conclusion	title
+b7f70dfda8	1	907	#/texts/898	Congratulations on finishing the LLMOps part of th	text
+821baa38d2	1	908	#/texts/899	It's worth emphasizing that this chapter focused p	text
+1d79e534f6	1	909	#/texts/900	operational side	text
+b4dd2b4d60	1	910	#/texts/901	of LLM-powered systems. Building truly great agent	text
+e1d4aa71f2	1	911	#/texts/902	If you'd like to go further, consulting the follow	text
+98bf717c97	1	912	#/texts/903		list_item
+150707dc86	1	913	#/texts/904	Building LLMs for Production	text
+41096f05a8	1	914	#/texts/905	by Louis-Fran\u00e7ois Bouchard and Louie Peters (O'Rei	text
+87f43d6c13	1	915	#/texts/906		list_item
+d2125cdc8c	1	916	#/texts/907	LLMs in Production	text
+0e58807cb0	1	917	#/texts/908	by Matthew Sharp and Christopher Brousseau (Mannin	text
+869c52bb07	1	918	#/texts/909		list_item
+a737c62c60	1	919	#/texts/910	LLM Engineer's Handbook	text
+de257927e6	1	920	#/texts/911	by Paul Iusztin and Maxime Labonne (Packt). This i	text
+97c41ebfe9	1	921	#/texts/912		list_item
+b64a80e934	1	922	#/texts/913	AI Engineering	text
+77553fa928	1	923	#/texts/914	by Chip Huyen (O'Reilly). This is one of the most 	text
+689cf4ed70	1	924	#/texts/915		list_item
+4ec2221655	1	925	#/texts/916	Hands-On Large Language Models	text
+3287ae9417	1	926	#/texts/917	by Jay Alammar and Maarten Grootendorst (O'Reilly)	text
+aa3d91b6db	1	927	#/texts/918	The space of LLMOps is evolving rapidly. The tools	text
+555dc88b2e	1	928	#/texts/919	In the next chapter, we'll take a deep dive into A	text
+3763144a75	1	929	#/texts/920	1	text
+a34e8120e2	1	930	#/texts/921	You can consult	text
+7b988a90a8	1	931	#/texts/922	the documentation on trust in and the safety of Da	text
+2bffad12ab	1	932	#/texts/923	.	text
+7af34bc42e	1	933	#/texts/924	2	text
+5dc90b6a37	1	934	#/texts/925	For more details, check out	text
+49e99ffa82	1	935	#/texts/926	the MLflow documentation	text
+11ee9da326	1	936	#/texts/927	.	text
+9835879241	1	937	#/texts/928	3	text
+55eee34def	1	938	#/texts/929	Check out	text
+ee8f85d518	1	939	#/texts/930	the Databricks documentation on production monitor	text
+780451a90c	1	940	#/texts/931	.	text
+707c62e66a	1	941	#/texts/932	4	text
+6956412f13	1	942	#/texts/933	For more details, consult	text
+934844e8e1	1	943	#/texts/934	the Databricks documentation	text
+5939fc148f	1	944	#/texts/935	.	text
+e1c946aebf	1	945	#/texts/936	5	text
+8b131dac0f	1	946	#/texts/937	The	text
+4103d79d64	1	947	#/texts/938	usage_unit	code
+9a7b2fe9c9	1	948	#/texts/939	column in	text
+47fa09ae6e	1	949	#/texts/940	system.billing.list_prices	code
+f92456ecf1	1	950	#/texts/941	records the unit for every priced item, so selecti	text
+2e8b8b3fdd	1	951	#/texts/942	6	text
+7bf540c8f8	1	952	#/texts/943	Your negotiated rate, which is set in a private co	text
+1324f2cc3f	1	953	#/texts/944	system.billing.list_prices	code
+b247025808	1	954	#/texts/945	or any other system table.	text
+5dd34e22c3	1	955	#/texts/946	7	text
+3276f7132f	1	956	#/texts/947	A	text
+9ca7bd2539	1	957	#/texts/948	usage policy	text
+2e4fc924e6	1	958	#/texts/949	was previously known as a	text
+d59f4328eb	1	959	#/texts/950	budget policy	text
+dd6a9e126f	1	960	#/texts/951	. You can find the term	text
+35bd23ad4c	1	961	#/texts/952	budget policy	text
+141f1564c8	1	962	#/texts/953	in some documentation and API/ SDK implementations	text
+fdbd9954bd	1	963	#/texts/954	8	text
+1bb4c5ec6c	1	964	#/texts/955	Check out	text
+9d46aa97d4	1	965	#/texts/956	the Databricks SDK documentation	text
+a4bef6adcd	1	966	#/texts/957	. You can also download the dashboard from	text
+98babe7a2f	1	967	#/texts/958	the Databricks Labs GitHub	text
+d9ee260912	1	968	#/texts/959	.	text
+ee9b19f2f7	1	969	#/texts/960	9	text
+03965ddeb0	1	970	#/texts/961	This	text
+8a24309046	1	971	#/texts/962	dashboard	text
+7ab55bcc8c	1	972	#/texts/963	was created by Databricks solution architects.	text

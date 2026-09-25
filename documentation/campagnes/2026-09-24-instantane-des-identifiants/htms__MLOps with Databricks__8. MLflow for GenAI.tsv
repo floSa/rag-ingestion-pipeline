@@ -1,0 +1,816 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+adf8536c2d	1	0	#/texts/0	Chapter 8. MLflow for GenAI	title
+cd5dfcebb4	1	1	#/texts/1	MLflow for GenAI	text
+003588a2c7	1	2	#/texts/2	can be thought of as a	text
+3734771258	1	3	#/texts/3	distinct layer	text
+3beceec027	1	4	#/texts/4	on top of the MLflow concepts we've seen so far. W	text
+0b6e7d6382	1	5	#/texts/5	In GenAI workflows, we still log and register mode	text
+87bb2d3362	1	6	#/texts/6	PythonModel	text
+003298ba83	1	7	#/texts/7	, GenAI applications typically use classes such as	text
+00fca77945	1	8	#/texts/8	ResponsesAgent	text
+3154110a4e	1	9	#/texts/9	, which are designed to represent agents rather th	text
+cbe9512d6d	1	10	#/texts/10	Evaluation is also fundamentally different. Rather	text
+cb7b213f3c	1	11	#/texts/11	traces	text
+2f0b081cb5	1	12	#/texts/12	to provide fine-grained observability into everyth	text
+d293d3f60c	1	13	#/texts/13	In the following sections, we'll explore MLflow's 	text
+6c49c5f9a2	1	14	#/texts/14	MLflow Flavors	title
+29420d5aff	1	15	#/texts/15	In	text
+a28af7d562	1	16	#/texts/16	Chapter 3	text
+857a947021	1	17	#/texts/17	, we explored logging and registering ML models us	text
+e36171fbfe	1	18	#/texts/18	For even greater control, you can define your own 	text
+9683aa57fc	1	19	#/texts/19	mlflow.pyfunc.ResponsesAgent	code
+df60283063	1	20	#/texts/20	, which follows OpenAI Responses API. This approac	text
+a7406e435a	1	21	#/texts/21	Figure 8-1	text
+663f507114	1	22	#/texts/22	summarizes these various flavors and illustrates t	text
+42d80d76a9	1	23	#/pictures/0	Diagram showing different model flavors including 	picture
+c032a815cd	1	24	#/texts/24	In this chapter, we'll focus on building a custom 	text
+eff945edac	1	25	#/texts/25	@mlflow.trace	text
+834ca9e2ac	1	26	#/texts/26	decorator when building the agent.	text
+af0aa6a995	1	27	#/texts/23	Diagram showing different model flavors including 	caption
+63eea80fee	1	28	#/texts/27	MLflow Tracing	title
+5e16433da6	1	29	#/texts/28	MLflow tracing	text
+6844480184	1	30	#/texts/29	gives you visibility into what your LLM applicatio	text
+9f96b530e1	1	31	#/texts/30	With tracing enabled, you're no longer flying blin	text
+eb4c90a877	1	32	#/texts/31	Let's examine the specific components that make up	text
+1b38be1b49	1	33	#/texts/32	Anatomy of a Trace	section_header
+1ae6d458fa	1	34	#/texts/33	At a high level, a trace is conceptually similar t	text
+9667374751	1	35	#/texts/34	Chapter 3	text
+e4334fc857	1	36	#/texts/35	). Both belong to an MLflow experiment. The differ	text
+b4045a7d49	1	37	#/texts/36	Each trace consists of two main parts: trace info 	text
+c92430f842	1	38	#/texts/37	Figure 8-2	text
+68f26ccf6b	1	39	#/texts/38	).	text
+4fb9952f03	1	40	#/pictures/1	Diagram showing the structure of a trace, divided 	picture
+a1be235edd	1	41	#/texts/40	Trace info	text
+b5ee9566a2	1	42	#/texts/41	contains high-level metadata about an execution. T	text
+7c7f42f69d	1	43	#/texts/42	tags	text
+da46a9b53e	1	44	#/texts/43	, which add contextual information such as the use	text
+9294ef8edb	1	45	#/texts/44	Trace data	text
+25bceea82c	1	46	#/texts/45	stores the actual execution payload. It contains t	text
+f65509687f	1	47	#/texts/46	span objects	text
+179ca8a118	1	48	#/texts/47	that capture the step-by-step behavior of your app	text
+e576f2c83b	1	49	#/texts/48	MLflow's span object is designed to be fully compa	text
+d8c45a3246	1	50	#/texts/49	MLflow supports a rich set of span types that reco	text
+bd277a3641	1	51	#/texts/50	LLM	list_item
+3d23d956b1	1	52	#/texts/51	This records language model inference.	list_item
+092b174bab	1	53	#/texts/52	TOOL	list_item
+6711fceb73	1	54	#/texts/53	This records the execution of external tools, func	list_item
+a9e1433a37	1	55	#/texts/54	RETRIEVER	list_item
+2b8ecb9cc7	1	56	#/texts/55	This records the retrieval of relevant context, fo	list_item
+a9daec4ba7	1	57	#/texts/56	MEMORY	list_item
+6b7170b91e	1	58	#/texts/57	This records instances of reading from or writing 	list_item
+3c4dc2e642	1	59	#/texts/58	EMBEDDING	list_item
+4f36d1718b	1	60	#/texts/59	This records the generation of vector embeddings f	list_item
+0ddaf02b9d	1	61	#/texts/60	RERANKER	list_item
+d3cae3c933	1	62	#/texts/61	This records the reranking of retrieved results ba	list_item
+cd9afcb495	1	63	#/texts/62	As with traditional ML experiment tracking, MLflow	text
+c29f217892	1	64	#/texts/63	MLflow Tracing APIs	section_header
+72045fbfdf	1	65	#/texts/64	The simplest way to trace a function is by using t	text
+7fcf1dd659	1	66	#/texts/65	@mlflow.trace()	code
+7eda3f1652	1	67	#/texts/66	decorator. When we apply it, it creates a span for	text
+b382fd22d1	1	68	#/texts/67	my_func	code
+189ce55c39	1	69	#/texts/68	that records input arguments	text
+386cddaa81	1	70	#/texts/69	x	code
+ce7747f495	1	71	#/texts/70	and	text
+a91e23438a	1	72	#/texts/71	y	code
+683894318e	1	73	#/texts/72	, along with the function's return value. Note tha	text
+bc0ef5baa2	1	74	#/texts/73	Chapter 3	text
+0ee4c68a2d	1	75	#/texts/74	:	text
+ac04bf27e3	1	76	#/texts/75	import mlflow	code
+5bc62f77a6	1	77	#/texts/76		code
+5b0788b90b	1	78	#/texts/77	from arxiv_curator.utils.common import set_mlflow_	code
+0ace0ae79f	1	79	#/texts/78		code
+91e5f2e7c4	1	80	#/texts/79	set_mlflow_tracking_uri ()	code
+9ca736faf2	1	81	#/texts/80		code
+711c312bc3	1	82	#/texts/81	mlflow . set_experiment ( '/Shared/tracing-demo' )	code
+bc72610f5c	1	83	#/texts/82		code
+92a03778f1	1	84	#/texts/83	@mlflow . trace	code
+2279b326cc	1	85	#/texts/84		code
+aa151d4cb8	1	86	#/texts/85	def my_func ( x , y ): return x + y	code
+fd109bc758	1	87	#/texts/86	We can do the same with the	text
+27ee215954	1	88	#/texts/87	mlflow.start_span()	code
+a38f3f3fc0	1	89	#/texts/88	function, which manually defines the span and its 	text
+0aca62b132	1	90	#/texts/89	def my_func ( x , y ): return x + y	code
+93d4d028e1	1	91	#/texts/90		code
+96cef32a90	1	92	#/texts/91	with mlflow . start_span ( \"my_func\" ) as span : x	code
+9b49f6edba	1	93	#/texts/92	We can also add more context to a trace, even when	text
+85c4742adc	1	94	#/texts/93	@mlflow.trace()	code
+a959eb7724	1	95	#/texts/94	decorator. For example, we may want to attach a se	text
+42f47a7b82	1	96	#/texts/95	mlflow.update_current_trace()	code
+cbe734def6	1	97	#/texts/96	function. The following example shows how to add a	text
+4913717bf7	1	98	#/texts/97	import random	code
+8166ed2dc7	1	99	#/texts/98		code
+c3e71b86f2	1	100	#/texts/99	from datetime import datetime	code
+14f5825efc	1	101	#/texts/100		code
+994f682ea0	1	102	#/texts/101	timestamp = datetime . now () . strftime ( \" %Y%m%	code
+8de3a77ad8	1	103	#/texts/102		code
+97e3525b67	1	104	#/texts/103	session_id = f \"s- { timestamp } - { random . rand	code
+e252790fb5	1	105	#/texts/104		code
+2618b61e42	1	106	#/texts/105	request_id = f \"req- { timestamp } - { random . ra	code
+365c7eda23	1	107	#/texts/106		code
+f1c778ddee	1	108	#/texts/107	git_sha = \"abcd\"	code
+431e1f12df	1	109	#/texts/108		code
+7c7c1077a9	1	110	#/texts/109	@mlflow . trace	code
+cbb44c15f2	1	111	#/texts/110		code
+a0ce3ab6af	1	112	#/texts/111	def my_func ( x , y ): mlflow . update_current_tra	code
+0f1e2cce1b	1	113	#/texts/112		code
+ef223eecc8	1	114	#/texts/113	) return x + y	code
+251d621e95	1	115	#/texts/114	We can search generated traces by using a workflow	text
+b2f74a36f4	1	116	#/texts/115	git_sha	code
+1bc9601788	1	117	#/texts/116	tag:	text
+32147ecc67	1	118	#/texts/117	mlflow . search_traces ( filter_string = f \"tags.g	code
+40054f136e	1	119	#/texts/118	Now that we understand how to work with MLflow tra	text
+f9fdaf3948	1	120	#/texts/119	@mlflow.trace	code
+f5c1a57348	1	121	#/texts/120	decorator, and passing additional context.	text
+d75e4d5c98	1	122	#/texts/39	Diagram showing the structure of a trace, divided 	caption
+14ee373137	1	123	#/texts/121	Defining a Custom Agent	title
+5c75bf0a4b	1	124	#/texts/122	The	text
+caea670165	1	125	#/texts/123	arxivAgent	code
+cdc0f209bb	1	126	#/texts/124	class inherits from the	text
+b8806ced97	1	127	#/texts/125	mlflow.pyfunc.ResponsesAgent	code
+7e62debd60	1	128	#/texts/126	. This base class requires us to implement predict	text
+108e6b4e8e	1	129	#/texts/127	ResponsesAgentResponse	code
+c7a6aa02fe	1	130	#/texts/128	objects (or streams of response events).	text
+6dd5f5d507	1	131	#/texts/129	Initialization and Async Handling	section_header
+e76fdeaeca	1	132	#/texts/130	To initialize the class, we provide the Databricks	text
+48a21526fe	1	133	#/texts/131	WorkspaceClient	code
+62f8d9a86d	1	134	#/texts/132	to retrieve an OpenAI-compatible client for Model 	text
+4112ce10ac	1	135	#/texts/133	This setup ensures that the agent has everything i	text
+d9d7ce845f	1	136	#/texts/134	create_mcp_tools()	code
+31c3b66367	1	137	#/texts/135	function we defined earlier. Here, we use the nest	text
+fc1b30e527	1	138	#/texts/136	asyncio.run()	code
+eb29275437	1	139	#/texts/137	would raise an error. The	text
+3c7e78e154	1	140	#/texts/138	nest_asyncio.apply()	code
+8c8b04463e	1	141	#/texts/139	function patches the existing loop, enabling async	text
+e76919bb1a	1	142	#/texts/140	create_mcp_tools()	code
+78a282ecf9	1	143	#/texts/141	to execute from synchronous code:	text
+75a6936383	1	144	#/texts/142	from mlflow.entities import SpanType	code
+fe329283e0	1	145	#/texts/143		code
+c003893d66	1	146	#/texts/144	from mlflow.models.resources import ( DatabricksGe	code
+859709966c	1	147	#/texts/145		code
+bb7a8c6d4c	1	148	#/texts/146	)	code
+b57e68a6f2	1	149	#/texts/147		code
+afc5c308db	1	150	#/texts/148	from mlflow.pyfunc import ResponsesAgent	code
+5db594d5f0	1	151	#/texts/149		code
+39e746b039	1	152	#/texts/150	from mlflow.types.responses import ( ResponsesAgen	code
+c9f549765c	1	153	#/texts/151		code
+a851747be3	1	154	#/texts/152	)	code
+a54885652e	1	155	#/texts/153		code
+9e1ab225bc	1	156	#/texts/154	from arxiv_curator.config import ProjectConfig	code
+8d4bf88b10	1	157	#/texts/155		code
+43c1ee4655	1	158	#/texts/156	from arxiv_curator.mcp import create_mcp_tools	code
+f8a148b0a1	1	159	#/texts/157		code
+fd762153c7	1	160	#/texts/158	from arxiv_curator.memory import LakebaseMemory	code
+13afaaa1da	1	161	#/texts/159		code
+9a6d808deb	1	162	#/texts/160	# Additional imports omitted for brevity - consult	code
+3cafcf5a7a	1	163	#/texts/161		code
+1b86b6c629	1	164	#/texts/162	class ArxivAgent ( ResponsesAgent ): def __init__ 	code
+b6a350eb3c	1	165	#/texts/163	If a Lakebase project ID is provided, the	text
+ac13bfbd4c	1	166	#/texts/164	LakebaseMemory	code
+7dff85d71c	1	167	#/texts/165	class gets initialized so that the agent can retri	text
+5b5db987f8	1	168	#/texts/166	Core Agent Logic	section_header
+0ce0d63923	1	169	#/texts/167	The	text
+fd8ee31e45	1	170	#/texts/168	get_tool_specs()	code
+046e6b75fc	1	171	#/texts/169	method returns the tool specifications in the form	text
+23a49bf230	1	172	#/texts/170	ToolInfo	code
+50aee144e4	1	173	#/texts/171	object exposes a spec that describes the tool's na	text
+53bea7ebc4	1	174	#/texts/172	def get_tool_specs ( self ) -> list [ dict ]: \"\"\"R	code
+d38b7bd659	1	175	#/texts/173	This method executes a tool by name, with the argu	text
+7f9d29c78a	1	176	#/texts/174	ToolInfo	code
+01a6ee11c1	1	177	#/texts/175	object and calls its execution function. (While yo	text
+35bae7b1fa	1	178	#/texts/176	@mlflow.trace	code
+4a9dd1ef65	1	179	#/texts/177	decorator to trace the tool execution:	text
+809bc10e12	1	180	#/texts/178	@mlflow . trace ( span_type = SpanType . TOOL )	code
+a4838c6db0	1	181	#/texts/179		code
+f3709bf81d	1	182	#/texts/180	def execute_tool ( self , tool_name : str , args :	code
+ece85834b1	1	183	#/texts/181	The	text
+0fbf67f8c6	1	184	#/texts/182	call_llm	code
+862a610893	1	185	#/texts/183	method invokes the LLM endpoint and streams its ou	text
+db153f0ccf	1	186	#/texts/184	For observability, we manually create an MLflow sp	text
+30a7e8e132	1	187	#/texts/185	mlflow.start_span()	code
+2962bf00b4	1	188	#/texts/186	instead of relying on	text
+accfd5339a	1	189	#/texts/187	@mlflow.trace	code
+d2c771a069	1	190	#/texts/188	. This allows us to capture additional information	text
+e72fde5443	1	191	#/texts/189	@backoff . on_exception ( backoff . expo , openai 	code
+2e41d0fdc8	1	192	#/texts/190		code
+389f30c895	1	193	#/texts/191	def call_llm ( self , messages : list [ dict [ str	code
+abe76d3578	1	194	#/texts/192		code
+a575b9e3f6	1	195	#/texts/193	) -> Generator [ dict [ str , Any ], None , None ]	code
+2477339ef2	1	196	#/texts/194	When the model decides to call a tool, the	text
+5499793691	1	197	#/texts/195	handle_tool_cal	code
+e5a1f86582	1	198	#/texts/196	l method handles the execution flow. The tool argu	text
+05b7459b84	1	199	#/texts/197	ResponsesAgentStreamEvent	code
+fa9ae0b083	1	200	#/texts/198	is then returned, to complete the tool call:	text
+d45f1512c7	1	201	#/texts/199	def handle_tool_call ( self , tool_call : dict [ s	code
+85674a0bcc	1	202	#/texts/200		code
+8a307d7321	1	203	#/texts/201	) -> ResponsesAgentStreamEvent : \"\"\"	code
+80ddcea8a8	1	204	#/texts/202		code
+ea989e8e76	1	205	#/texts/203	Execute tool calls, add them to the running messag	code
+6087acab83	1	206	#/texts/204		code
+3d8255a11b	1	207	#/texts/205	and return a ResponsesStreamEvent w/ tool output	code
+71b5a27f32	1	208	#/texts/206		code
+2a9b094970	1	209	#/texts/207	\"\"\" args = json . loads ( tool_call [ \"arguments\" 	code
+175a915834	1	210	#/texts/208	The	text
+2469638391	1	211	#/texts/209	arxivAgent	code
+74af0607b1	1	212	#/texts/210	class provides dedicated methods for loading and s	text
+23aeba9c22	1	213	#/texts/211	mlflow.trace	code
+5c35e82e3b	1	214	#/texts/212	decorator. By isolating memory access in these met	text
+b16ae077ae	1	215	#/texts/213	@mlflow . trace ( span_type = SpanType . RETRIEVER	code
+f7cce85436	1	216	#/texts/214		code
+285336d99c	1	217	#/texts/215	def load_memory ( self , session_id : str ) -> lis	code
+fca670c3b0	1	218	#/texts/216		code
+18752a5785	1	219	#/texts/217	@mlflow . trace ( span_type = SpanType . CHAIN , n	code
+6bc1f5a8d2	1	220	#/texts/218		code
+cbba19cbac	1	221	#/texts/219	def save_memory ( self , session_id : str , messag	code
+09993d0bec	1	222	#/texts/220		code
+ccf75b8fa4	1	223	#/texts/221	) -> None : \"\"\"Save new messages to Lakebase memor	code
+b248129a37	1	224	#/texts/222	The	text
+c1c8fc8b55	1	225	#/texts/223	call_and_run_tools()	code
+850ea6a690	1	226	#/texts/224	method implements the core agent loop. It builds t	text
+addf8d3cb2	1	227	#/texts/225	It then runs	text
+77761de6b6	1	228	#/texts/226	_run_tool_loop()	code
+2937734884	1	229	#/texts/227	, which alternates between executing tool calls an	text
+b3cd628d3b	1	230	#/texts/228	_run_tool_loop()	code
+0166c914ba	1	231	#/texts/229	here, but it's available in the full book code.	text
+3fe7bfaa74	1	232	#/texts/230	The method is traced with	text
+7cda65d0ab	1	233	#/texts/231	@mlflow.trace	code
+48a73d8ca3	1	234	#/texts/232	and enriched via	text
+b0d63525b8	1	235	#/texts/233	mlflow.update_current_trace()	code
+b4433435b3	1	236	#/texts/234	, which adds tags such as	text
+e608aa160c	1	237	#/texts/235	git_sha	code
+9d4cb26417	1	238	#/texts/236	,	text
+c22c32ebdc	1	239	#/texts/237	model_version	code
+bc2adaf2cd	1	240	#/texts/238	, and	text
+4c0f2a55d6	1	241	#/texts/239	model_ serving_endpoint_name	code
+0302b9b988	1	242	#/texts/240	. These environment-based tags ensure that every r	text
+fcfd5e3188	1	243	#/texts/241	Finally, if memory is enabled, the method saves bo	text
+30bce1318f	1	244	#/texts/242	@mlflow . trace ( span_type = SpanType . CHAIN )	code
+fef6776aa1	1	245	#/texts/243		code
+ac46a3d0cd	1	246	#/texts/244	def call_and_run_tools ( self , request_input : li	code
+54387e97f8	1	247	#/texts/245		code
+0357cc0ae2	1	248	#/texts/246	) -> list [ ResponsesAgentStreamEvent ]: messages 	code
+8a3c4b01f1	1	249	#/texts/247	Prediction and Streaming	section_header
+e122e8ad45	1	250	#/texts/248	The	text
+1f37833d66	1	251	#/texts/249	predict()	code
+56a75e5701	1	252	#/texts/250	method implements the nonstreaming interface requi	text
+04896f4cf7	1	253	#/texts/251	ResponsesAgent	code
+ddaf34113e	1	254	#/texts/252	. It simply calls	text
+2ae1daa6fd	1	255	#/texts/253	predict_stream()	code
+9757584c88	1	256	#/texts/254	, collects the emitted events, and returns the fin	text
+9fdb4ac16b	1	257	#/texts/255	The	text
+bddfde1668	1	258	#/texts/256	predict_stream()	code
+761cf98f26	1	259	#/texts/257	method serves as the main entry point for executio	text
+2936dc22ac	1	260	#/texts/258	session_id	code
+ba41b3247a	1	261	#/texts/259	and	text
+8112d66545	1	262	#/texts/260	request_id	code
+0144e880fa	1	263	#/texts/261	from the request, loads any previous messages from	text
+76999ccee3	1	264	#/texts/262	The	text
+0290c5880f	1	265	#/texts/263	predict_stream()	code
+24fe23c7e7	1	266	#/texts/264	method delegates all core execution logic to	text
+eb02b4049a	1	267	#/texts/265	call_and_run_tools	code
+42b64a4d12	1	268	#/texts/266	, which we discussed earlier. It then yields the r	text
+f7ec36d24f	1	269	#/texts/267	def predict ( self , request : ResponsesAgentReque	code
+9965b116df	1	270	#/texts/268		code
+4fb18d5d6a	1	271	#/texts/269	@mlflow . trace ( span_type = SpanType . AGENT )	code
+875a4e8f70	1	272	#/texts/270		code
+bbc28fdf44	1	273	#/texts/271	def predict_stream ( self , request : ResponsesAge	code
+8c3ebc43ba	1	274	#/texts/272		code
+5233db4847	1	275	#/texts/273	) -> Generator [ ResponsesAgentStreamEvent , None 	code
+5aab0d0d0a	1	276	#/texts/274	The agent is defined as part of the package in the	text
+2b9edd7f56	1	277	#/texts/275	arxiv_curator.agent	code
+c1eee7697f	1	278	#/texts/276	module. Let's now use this module and see how the 	text
+b56c4a53dc	1	279	#/texts/277	Testing the Agent	section_header
+9279ceed24	1	280	#/texts/278	Let's take a look at the	text
+a6c6181bb5	1	281	#/texts/279	chapter8_2.test_agent.py	text
+2fbb642e8b	1	282	#/texts/280	notebook. Here, we start by importing the project 	text
+79aa6e13e7	1	283	#/texts/281	project_config.yml	text
+3fd60966e8	1	284	#/texts/282	file:	text
+d3ea95a553	1	285	#/texts/283	import random	code
+be6119a70c	1	286	#/texts/284		code
+efd5159706	1	287	#/texts/285	from datetime import datetime	code
+70cc986fbc	1	288	#/texts/286		code
+14b3397723	1	289	#/texts/287	import mlflow	code
+d1c40069da	1	290	#/texts/288		code
+52af1b98b5	1	291	#/texts/289	from arxiv_curator.agent import ArxivAgent	code
+5922b4fa8f	1	292	#/texts/290		code
+50f980ca47	1	293	#/texts/291	from arxiv_curator.config import ProjectConfig	code
+0a95e8b385	1	294	#/texts/292		code
+a3af573e8d	1	295	#/texts/293	from arxiv_curator.utils.common import set_mlflow_	code
+1e12110eac	1	296	#/texts/294		code
+6a7e730b40	1	297	#/texts/295	set_mlflow_tracking_uri ()	code
+bd15bf8aaa	1	298	#/texts/296		code
+ff0c17838d	1	299	#/texts/297	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+348233168b	1	300	#/texts/298		code
+a508139a4a	1	301	#/texts/299	mlflow . set_experiment ( cfg . experiment_path )	code
+0d2e2eec22	1	302	#/texts/300		code
+45e1c606c5	1	303	#/texts/301	agent = ArxivAgent ( llm_endpoint = cfg . llm_endp	code
+95b4e2071d	1	304	#/texts/302		code
+7814d05594	1	305	#/texts/303	)	code
+c43e79aec9	1	306	#/texts/304		code
+adf62f9165	1	307	#/texts/305	mlflow . models . set_model ( agent )	code
+85a52a0ac9	1	308	#/texts/306	We want to verify that the agent behaves as expect	text
+96c210353b	1	309	#/texts/307	predict()	code
+6fd365b2c5	1	310	#/texts/308	method twice, using the same	text
+00397dc10f	1	311	#/texts/309	session_id	code
+c4d188de3e	1	312	#/texts/310	for both requests.	text
+1efd9572d7	1	313	#/texts/311	This allows us to simulate a multiturn interaction	text
+922a2bba5d	1	314	#/texts/312	timestamp = datetime . now () . strftime ( \" %Y%m%	code
+ee6fd6cd05	1	315	#/texts/313		code
+be1e3e1a89	1	316	#/texts/314	session_id = f \"s- { timestamp } - { random . rand	code
+1fcc80f9f9	1	317	#/texts/315		code
+669c5ecd88	1	318	#/texts/316	first_request = { \"input\" : [ { \"role\" : \"user\" , 	code
+b03f4e0515	1	319	#/texts/317		code
+a85d96026b	1	320	#/texts/318	}	code
+06c7b01f61	1	321	#/texts/319		code
+730fcbf3b5	1	322	#/texts/320	result_1 = agent . predict ( first_request )	code
+824ec15c5b	1	323	#/texts/321		code
+40e50bf1f2	1	324	#/texts/322	second_request = { \"input\" : [ { \"role\" : \"user\" ,	code
+b9704f0e55	1	325	#/texts/323		code
+1bb92f1aa7	1	326	#/texts/324	}	code
+d4a77e2583	1	327	#/texts/325		code
+803d17e666	1	328	#/texts/326	result_2 = agent . predict ( second_request )	code
+7df5da5df8	1	329	#/texts/327	After we invoke the	text
+bf396eb4f0	1	330	#/texts/328	predict	code
+6b1b6a682d	1	331	#/texts/329	functions, we'll see that an MLflow trace has appe	text
+8db13a10d0	1	332	#/texts/330	Figure 8-3	text
+19e8d9c88b	1	333	#/texts/331	):	text
+ecb3679793	1	334	#/pictures/2	Table showing MLflow traces from agent invocations	picture
+f821f1d50e	1	335	#/texts/333	We can inspect the trace in the UI to view a detai	text
+599c208b0e	1	336	#/texts/334	session_id	code
+c03135d9d7	1	337	#/texts/335	we passed in the code is captured in the trace met	text
+29a3534f79	1	338	#/texts/336	Figure 8-4	text
+409c1d9251	1	339	#/texts/337	).	text
+3cb24dfaf2	1	340	#/pictures/3	A screenshot of a user interface displaying a trac	picture
+fabb8b7a67	1	341	#/texts/332	Table showing MLflow traces from agent invocations	caption
+65bfbe1a3b	1	342	#/texts/338	A screenshot of a user interface displaying a trac	caption
+f80170d12d	1	343	#/texts/339	LLM System Evaluation	title
+a524375860	1	344	#/texts/340	Before we take a deep dive into the code, let's ta	text
+a5694a2436	1	345	#/texts/341	evaluation	text
+29c0b76fac	1	346	#/texts/342	is the systematic process of measuring a system's 	text
+57e7526d42	1	347	#/texts/343	evals	text
+9889dcd22c	1	348	#/texts/344	(a term that practitioners commonly use to refer t	text
+cd6b3a5f2d	1	349	#/texts/345	During the LLM system development phase, teams can	text
+1bb4556c36	1	350	#/texts/346	Just as we wouldn't skip evaluation in a standard 	text
+1a0f517347	1	351	#/texts/347	Explicit behavior	list_item
+779e2cd606	1	352	#/texts/348	They force you to define exactly what \"good behavi	list_item
+e3146438b3	1	353	#/texts/349	Measurable impact	list_item
+2f622c4eff	1	354	#/texts/350	They allow you to measure how changes to orchestra	list_item
+6f1229386b	1	355	#/texts/351	System optimization	list_item
+5467a6c32d	1	356	#/texts/352	In many ways, choosing a prompt or a temperature s	list_item
+75398f6110	1	357	#/texts/353	How to Evaluate LLM Systems	section_header
+d2bdcdd3b5	1	358	#/texts/354	If you're starting with evals early, the best appr	text
+d28e395337	1	359	#/texts/355	1	text
+81d69a6684	1	360	#/texts/356	suggest this workflow:	text
+d5cf85446b	1	361	#/texts/357	Create examples: start small; 10-20 high-quality e	list_item
+8d080badc2	1	362	#/texts/358	Run test cases: process them through your current 	list_item
+6fd8617cdb	1	363	#/texts/359	Evaluate with the business: determine whether the 	list_item
+2d047f9b90	1	364	#/texts/360	Identify error patterns: explain exactly why an ou	list_item
+da1d226e86	1	365	#/texts/361	Decide on key metrics: determine what you are actu	list_item
+5bc9165bea	1	366	#/texts/362	Iterate and expand: refine your prompts or tools a	list_item
+854e7c954b	1	367	#/texts/363	Anthropic's	text
+8d44b80738	1	368	#/texts/364	\"Demystifying evals for AI agents\" article	text
+c516e0cc49	1	369	#/texts/365	adds a few useful principles:	text
+8cfc59bb0d	1	370	#/texts/366	Product requirements naturally translate into test	list_item
+ed50653d09	1	371	#/texts/367		list_item
+4b22b06f6e	1	372	#/texts/368	If a requirement states that	text
+a8277a3108	1	373	#/texts/369	\"The agent must cite its sources,\"	text
+d1c84661b9	1	374	#/texts/370	you can turn that into a test that verifies whethe	text
+7a4f7fdc85	1	375	#/texts/371	The \"expert agreement\" rule	list_item
+55de923578	1	376	#/texts/372	A good test case is one in which two domain expert	list_item
+04b7be61e9	1	377	#/texts/373	Test negative behaviors	list_item
+55abec4586	1	378	#/texts/374	Don't forget to test both cases in which a behavio	list_item
+a55c556152	1	379	#/texts/375	Table 8-1	text
+6f312e49ba	1	380	#/texts/376	illustrates how test cases for a technical support	text
+fa5aacca0b	1	381	#/tables/0	| Input                                  | System 	table
+4dfddab450	1	382	#/texts/377	You can identify errors and potential causes after	text
+484826536c	1	383	#/texts/378	As a next step, you should identify metrics. A	text
+8558943a76	1	384	#/texts/379	metric	text
+fd3cc94942	1	385	#/texts/380	represents a	text
+316b20a35f	1	386	#/texts/381	behavior or quality you want to track over time	text
+a3b47b7ef3	1	387	#/texts/382	. Examples include tool usage correctness (for exa	text
+2fc64c5447	1	388	#/texts/383	After you define metrics, you choose graders to me	text
+7bc3417488	1	389	#/texts/384	grader	text
+0fa9d22463	1	390	#/texts/385	(also called a	text
+e013f893e3	1	391	#/texts/386	scorer	text
+9ed8d956d7	1	392	#/texts/387	) is the mechanism you use to evaluate a metric. I	text
+9160fa7cc7	1	393	#/texts/388	Code-based graders	list_item
+50f481d32d	1	394	#/texts/389	These are deterministic checks that are implemente	list_item
+786c1d0a51	1	395	#/texts/390	Model-based graders	list_item
+3f3722dd3c	1	396	#/texts/391		list_item
+95623471d1	1	397	#/texts/392	These are often referred to as	text
+8259211afb	1	398	#/texts/393	LLM judges	text
+2c39163f1d	1	399	#/texts/394	, and they use a language model to assess qualitie	text
+4b959587f0	1	400	#/texts/395	Human graders	list_item
+ff518c3318	1	401	#/texts/396	Using these is unavoidable if you want to have an 	list_item
+f0e490b630	1	402	#/texts/397	It's also important to keep in mind that this is s	text
+16d1a0f9ca	1	403	#/texts/398	With that context in mind, let's take a closer loo	text
+34ae6aca41	1	404	#/texts/399	MLflow GenAI Evaluation Framework	section_header
+3fbf3dbf9f	1	405	#/texts/400	Scorers	text
+858a2d043c	1	406	#/texts/401	serve as the core components of the MLflow GenAI e	text
+e6eacee8ab	1	407	#/texts/402	predefined model-based scorers	text
+2cccc2bc61	1	408	#/texts/403	that are designed to assess different aspects of m	text
+87c2d10179	1	409	#/texts/404	At a minimum, every evaluation requires scorers to	text
+369fa2b8a2	1	410	#/texts/405	inputs	text
+99dfb580e1	1	411	#/texts/406	(what was provided to the system) and	text
+6d6912e4e6	1	412	#/texts/407	outputs	text
+06db93cbbb	1	413	#/texts/408	(what the system produced). These correspond to th	text
+2eeb300472	1	414	#/texts/409	Table 8-1	text
+84889d904b	1	415	#/texts/410	. In addition, you must also specify the	text
+0faffb5a18	1	416	#/texts/411	evaluation model	text
+71e45579b3	1	417	#/texts/412	that will act as the judge. For some scorers, this	text
+3af5a67bac	1	418	#/texts/413	RelevanceToQuery, Completeness	text
+a6c89a43ca	1	419	#/texts/414	,	text
+1c33bcee0e	1	420	#/texts/415	Fluency,	text
+efa25c07e9	1	421	#/texts/416	and	text
+9fc2127ce4	1	422	#/texts/417	Safety	text
+01044ab414	1	423	#/texts/418	can evaluate a response using only the inputs and 	text
+76a493257e	1	424	#/texts/419	Other scorers rely on	text
+2c91de16d4	1	425	#/texts/420	user-provided evaluation criteria	text
+2a315dd65a	1	426	#/texts/421	. For example,	text
+94862e0c6d	1	427	#/texts/422	Correctness	text
+992c9a48c8	1	428	#/texts/423	and	text
+b686ae983a	1	429	#/texts/424	Equivalence	text
+f133dd33a6	1	430	#/texts/425	require explicit annotations, such as reference an	text
+6c49d3459e	1	431	#/texts/426	Table 8-1	text
+6b86a69ce9	1	432	#/texts/427	.	text
+3437c94f29	1	433	#/texts/428	Finally, some scorers operate on agent behavior ra	text
+2a0f9419f5	1	434	#/texts/429	Tool-calling	text
+188a638a4c	1	435	#/texts/430	and	text
+ee1b86b6d3	1	436	#/texts/431	retrieval-related scorers	text
+c4b98d45c0	1	437	#/texts/432	need access to traces so they can inspect tool usa	text
+8f4bd28d24	1	438	#/texts/433	session based	text
+69325241df	1	439	#/texts/434	, meaning they evaluate the entire conversation or	text
+64640f5780	1	440	#/texts/435	Table 8-2	text
+bc31d9f7c8	1	441	#/texts/436	summarizes MLflow's predefined model-based scorers	text
+2ca01ea2de	1	442	#/tables/1	| Scorer                                          	table
+bbb60403ba	1	443	#/texts/437	Does it require\nexpectations | traces | a session?	text
+c0cc0fc6d8	1	444	#/texts/438	No | No | No	text
+0d527fefa0	1	445	#/texts/439	No | No | No	text
+0717487a2d	1	446	#/texts/440	Yes | No | No	text
+61242a47e9	1	447	#/texts/441	No | No | No	text
+e184986240	1	448	#/texts/442	Yes | No | No	text
+c6ca31f3dc	1	449	#/texts/443	No | Yes | No	text
+6ce235080e	1	450	#/texts/444	a	text
+787f00d6f4	1	451	#/texts/445	Adapted from	text
+b5361f2065	1	452	#/texts/446	MLflow documentation	text
+1866969798	1	453	#/texts/447	where you can find an overview of all available sc	text
+d6a4334261	1	454	#/texts/448	Predefined scorers in MLflow evaluate model behavi	text
+e07d65a879	1	455	#/texts/449	To support more tailored evaluation needs, MLflow 	text
+d4ec5eedcf	1	456	#/texts/450	custom scorers.	text
+1c14e33e7b	1	457	#/texts/451	The simplest of these is the	text
+58103db3ec	1	458	#/texts/452	Guidelines scorer	text
+8996e6cbc5	1	459	#/texts/453	, which lets you specify general, natural language	text
+442e1e7f46	1	460	#/texts/454	For more nuanced and flexible evaluation, MLflow o	text
+9a1133cd6c	1	461	#/texts/455	template-based LLM scorers	text
+ee6bf432a0	1	462	#/texts/456	. These scorers enable richer evaluation logic by 	text
+c9b77c82eb	1	463	#/texts/457	Figure 8-5	text
+93afd659b1	1	464	#/texts/458	compares the different types of LLM-based scorers 	text
+e6febc5b15	1	465	#/pictures/4	Diagram comparing predefined, guidelines-based, an	picture
+1ab900a528	1	466	#/texts/460	The differences between guidelines-based and templ	text
+1c6b4e6e14	1	467	#/texts/461	make_judge	code
+d44f065c37	1	468	#/texts/462	function. We'll start with a simple example:	text
+d405b4e36e	1	469	#/texts/463	import mlflow	code
+1d70e6f100	1	470	#/texts/464		code
+fb77a7b557	1	471	#/texts/465	from mlflow.genai.scorers import Guidelines	code
+18a55fecb6	1	472	#/texts/466		code
+ffb9e7ead9	1	473	#/texts/467	mlflow . set_experiment ( \"/Shared/guidelines-exam	code
+93f4729ca7	1	474	#/texts/468		code
+85df19346c	1	475	#/texts/469	escalation_guidelines = Guidelines ( name = \"escal	code
+2e4426f548	1	476	#/texts/470		code
+7eb50703e8	1	477	#/texts/471	)	code
+babd8271f1	1	478	#/texts/472		code
+ea0b9da3f3	1	479	#/texts/473	data = [ { \"inputs\" : { \"message\" : \"Tried everyth	code
+357a250a68	1	480	#/texts/474		code
+a7e63c134e	1	481	#/texts/475	]	code
+dab7c910ea	1	482	#/texts/476		code
+102681634d	1	483	#/texts/477	mlflow . genai . evaluate ( data = data , scorers 	code
+620bc6d80d	1	484	#/texts/478	This evaluation session creates traces that show t	text
+023018c6cf	1	485	#/texts/479	Figure 8-6	text
+77b5b7f705	1	486	#/texts/480	).	text
+e1045feb81	1	487	#/pictures/5	A table compares two trace responses to guideline 	picture
+edb058c0af	1	488	#/texts/482	The Guidelines scorer produces binary outcomes (pa	text
+a577e2075b	1	489	#/texts/483	In the following code snippet, we create a judge t	text
+a913d4c906	1	490	#/texts/484	make_judge()	code
+eaeae648f5	1	491	#/texts/485	function takes an instruction argument that contai	text
+e935c23d89	1	492	#/texts/486	{{ inputs }}, {{ outputs }}, and {{ expectations }	code
+04c9d03cd0	1	493	#/texts/487	template variables:	text
+1d37ecbcf0	1	494	#/texts/488	import mlflow	code
+b3cb5986f0	1	495	#/texts/489		code
+811762867a	1	496	#/texts/490	from mlflow.genai.judges import make_judge	code
+8df74999e4	1	497	#/texts/491		code
+0bddf4719a	1	498	#/texts/492	# Example using make_judge for escalation quality 	code
+f88e98a76f	1	499	#/texts/493		code
+c9bc53a5ac	1	500	#/texts/494	mlflow . set_experiment ( \"/Shared/make-judge-exam	code
+708fd8191c	1	501	#/texts/495		code
+e6b195d139	1	502	#/texts/496	escalation_judge = make_judge ( name = \"escalation	code
+f17587dc4a	1	503	#/texts/497		code
+d17fbcd52b	1	504	#/texts/498	)	code
+4629993e97	1	505	#/texts/499		code
+7761c552de	1	506	#/texts/500	mlflow . genai . evaluate ( data = data , scorers 	code
+8c9eb46083	1	507	#/texts/501	This evaluation session creates traces that show s	text
+0a042616d7	1	508	#/texts/502	Figure 8-7	text
+eac90ad85f	1	509	#/texts/503	).	text
+cb063236cb	1	510	#/pictures/6	Table showing LLM scorer traces for escalation qua	picture
+a36fe851fb	1	511	#/texts/505	One of the key benefits of using a template-based 	text
+b1703d06f5	1	512	#/texts/506	In this example, we use the Stochastic Introspecti	text
+6e3f33c4c0	1	513	#/texts/507	SIMBA	text
+9a50ed00f5	1	514	#/texts/508	) optimizer from the DSPy library. It enables an L	text
+89cd8a4c4d	1	515	#/texts/509	To effectively align the judge, it is recommended 	text
+df7bd2549d	1	516	#/texts/510	2	text
+22e99ad0aa	1	517	#/texts/511	experiment_id = mlflow . search_experiments ( filt	code
+3569f504da	1	518	#/texts/512		code
+d9f0dd14c3	1	519	#/texts/513	from mlflow.genai.judges.optimizers import SIMBAAl	code
+27befbaa87	1	520	#/texts/514		code
+60324052a9	1	521	#/texts/515	# Retrieve traces with both judge and human assess	code
+6ddf068df9	1	522	#/texts/516		code
+305efb7b98	1	523	#/texts/517	traces_for_alignment = mlflow . search_traces ( ex	code
+4e1bf79f93	1	524	#/texts/518		code
+cf713add71	1	525	#/texts/519	)	code
+989e1e13b7	1	526	#/texts/520		code
+3eca96c7ee	1	527	#/texts/521	# Filter for traces with both judge and human feed	code
+612170ade7	1	528	#/texts/522		code
+9ad625b873	1	529	#/texts/523	valid_traces = []	code
+4b8f24c5ee	1	530	#/texts/524		code
+fce140cb8b	1	531	#/texts/525	for trace in traces_for_alignment : feedbacks = tr	code
+2fb4e753c7	1	532	#/texts/526		code
+0b6e678d7c	1	533	#/texts/527	optimizer = SIMBAAlignmentOptimizer ( model = \"dat	code
+00bd3d26a1	1	534	#/texts/528		code
+7cfd2e3595	1	535	#/texts/529	)	code
+64e53dfeb1	1	536	#/texts/530		code
+afbb4dc459	1	537	#/texts/531	aligned_judge = escalation_judge . align ( optimiz	code
+fe47bffb70	1	538	#/texts/532	MLflow also supports	text
+5992b1fd8a	1	539	#/texts/533	Agent-as-a-Judge	text
+8eef5d52fd	1	540	#/texts/534	, for which we can use the same	text
+6d824ab0d3	1	541	#/texts/535	make_judge()	code
+91ffe6cf18	1	542	#/texts/536	function and pass an instruction with the	text
+78a5a79a26	1	543	#/texts/537	{{ trace }}	code
+192230db67	1	544	#/texts/538	template variable. Here is an example of an Agent-	text
+cdbf3dc1d5	1	545	#/texts/539	from typing import Literal	code
+ae94c89bff	1	546	#/texts/540		code
+d75ed44b4c	1	547	#/texts/541	performance_judge = make_judge ( name = \"performan	code
+f657fe9454	1	548	#/texts/542		code
+2cd73ed01b	1	549	#/texts/543	The key difference between an LLM-as-a-Judge and a	text
+c87a6b78e9	1	550	#/texts/544	In addition to complex evaluation mechanisms, MLfl	text
+9d8a20d3cb	1	551	#/texts/545	code-based scorers	text
+4ba892db04	1	552	#/texts/546	, which allow you to implement custom evaluation l	text
+59cee61b9b	1	553	#/texts/547	Beyond evaluation, scorers also provide the object	text
+496d5ec4af	1	554	#/texts/548	3	text
+7a0591e480	1	555	#/texts/549	MLflow supports several optimization techniques, i	text
+f370b9bee6	1	556	#/texts/550	MIPROv2	text
+b43ff81700	1	557	#/texts/551	) from the DSPy library.	text
+d50e05cfdd	1	558	#/texts/552	MIPROv2 jointly refines task instructions and few-	text
+54791579ed	1	559	#/texts/553	Prompt optimization is conceptually similar to hyp	text
+d52aac8b56	1	560	#/texts/459	Diagram comparing predefined, guidelines-based, an	caption
+b394271829	1	561	#/texts/481	A table compares two trace responses to guideline 	caption
+911fa3d1c5	1	562	#/texts/504	Table showing LLM scorer traces for escalation qua	caption
+a69d372c00	1	563	#/texts/554	Evaluating, Logging, and Registering the Agent	title
+dcc7edfd02	1	564	#/texts/555	To see evaluation in practice, we'll create a code	text
+e2ae6e6384	1	565	#/texts/556	Chapter 3	text
+55a8efb038	1	566	#/texts/557	, we'll log these evaluation results directly to y	text
+63873cb86e	1	567	#/texts/558	Finally, after we evaluate the agent, we can log i	text
+ce3473f2c7	1	568	#/texts/559	Evaluation in Practice	section_header
+0f72b267a2	1	569	#/texts/560	Before we can evaluate an agent, we need to provid	text
+3e779763e6	1	570	#/texts/561	eval_inputs.txt	text
+603f5fc5e7	1	571	#/texts/562	file that contains the following records:	text
+ec65b8fa59	1	572	#/texts/563	What is so special about the last paper on RAG ?	code
+c3d407ea7e	1	573	#/texts/564		code
+fde63bd596	1	574	#/texts/565	Summarize the key findings from the last paper on 	code
+6e805ee6c2	1	575	#/texts/566		code
+b3401a026e	1	576	#/texts/567	What problem does the last paper on multi - agent 	code
+fee5dc181c	1	577	#/texts/568		code
+6d32291557	1	578	#/texts/569	Tell me about the last paper on prompt engineering	code
+153633cc6b	1	579	#/texts/570		code
+ba7e48d7e8	1	580	#/texts/571	What are the main contributions of the last paper 	code
+5a2cf283dd	1	581	#/texts/572		code
+43c20b66e5	1	582	#/texts/573	Explain the methodology in the last paper on chain	code
+dcb158fdf9	1	583	#/texts/574		code
+26f0d60857	1	584	#/texts/575	What results did the last paper on hallucination d	code
+fb14818f12	1	585	#/texts/576		code
+71d39f0637	1	586	#/texts/577	Describe the last paper on LLM benchmarks .	code
+6fa58db8b8	1	587	#/texts/578		code
+ac7958d257	1	588	#/texts/579	What approach does the last paper on code generati	code
+8735cfb8b7	1	589	#/texts/580		code
+6ca020ec2a	1	590	#/texts/581	What conclusions does the last paper on embedding 	code
+0bafe5959f	1	591	#/texts/582		code
+06e1032407	1	592	#/texts/583	In the	text
+120c22fde9	1	593	#/texts/584	chapter8_4.evaluate_log_register_agent.py	text
+bb20a47fdf	1	594	#/texts/585	notebook, we initialize the agent by following the	text
+679f7c912f	1	595	#/texts/586	import mlflow	code
+25a12542a3	1	596	#/texts/587		code
+d80517254a	1	597	#/texts/588	from mlflow.genai.scorers import Guidelines	code
+bba917c75e	1	598	#/texts/589		code
+006003df29	1	599	#/texts/590	from arxiv_curator.agent import ArxivAgent	code
+226d090b87	1	600	#/texts/591		code
+2d262097e4	1	601	#/texts/592	from arxiv_curator.config import ProjectConfig	code
+b93321b925	1	602	#/texts/593		code
+7ea0069081	1	603	#/texts/594	from arxiv_curator.evaluation import ( hook_in_pos	code
+f091d56278	1	604	#/texts/595		code
+f7f9bb53c8	1	605	#/texts/596	)	code
+0eb088b622	1	606	#/texts/597		code
+67f46efd4d	1	607	#/texts/598	from arxiv_curator.utils.common import set_mlflow_	code
+468e20e4fa	1	608	#/texts/599		code
+dbcff3304d	1	609	#/texts/600	set_mlflow_tracking_uri ()	code
+66245b337d	1	610	#/texts/601		code
+a382782269	1	611	#/texts/602	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+ce4fa338ed	1	612	#/texts/603		code
+83e49294b6	1	613	#/texts/604	mlflow . set_experiment ( cfg . experiment_path )	code
+bbeba8bca9	1	614	#/texts/605		code
+03c2984466	1	615	#/texts/606	agent = ArxivAgent ( llm_endpoint = cfg . llm_endp	code
+4fd228824e	1	616	#/texts/607		code
+4406fa3b34	1	617	#/texts/608	)	code
+46a214af98	1	618	#/texts/609		code
+d8e73148d0	1	619	#/texts/610	# Load evaluation inputs	code
+b81239275e	1	620	#/texts/611		code
+3ddb7df661	1	621	#/texts/612	with open ( \"../eval_inputs.txt\" ) as f : eval_dat	code
+b8fa17944c	1	622	#/texts/613		code
+3075d468a2	1	623	#/texts/614	def predict_fn ( question : str ) -> str : \"\"\"Pred	code
+5536b5a475	1	624	#/texts/615	Scorers are defined under the evaluation module of	text
+1d3e08346e	1	625	#/texts/616	import mlflow	code
+d272719acf	1	626	#/texts/617		code
+582ba3e699	1	627	#/texts/618	from mlflow.genai.scorers import Guidelines	code
+90211cd3e7	1	628	#/texts/619		code
+e773332e97	1	629	#/texts/620	polite_tone_guideline = Guidelines ( name = \"polit	code
+936dd19b86	1	630	#/texts/621		code
+961dbcfaf1	1	631	#/texts/622	)	code
+c7ccac3e72	1	632	#/texts/623		code
+04e9aca2c4	1	633	#/texts/624	hook_in_post_guideline = Guidelines ( name = \"hook	code
+0f0cd6acd9	1	634	#/texts/625		code
+4cd04be59a	1	635	#/texts/626	)	code
+107b81c5d2	1	636	#/texts/627		code
+e4b4165e51	1	637	#/texts/628	# Define code-based scorer for word count	code
+cea0ae143b	1	638	#/texts/629		code
+ddcb2ac0bd	1	639	#/texts/630	@mlflow . genai . scorer	code
+ac7bc2212e	1	640	#/texts/631		code
+d14afcd07f	1	641	#/texts/632	def word_count_check ( outputs : list ) -> bool : 	code
+393c40de57	1	642	#/texts/633	With the scorers and evaluation data in place, we 	text
+908412cfaf	1	643	#/texts/634	mlflow . set_experiment ( \"/Shared/genai-arxiv-age	code
+d75742a14a	1	644	#/texts/635		code
+db583a33d9	1	645	#/texts/636	results = mlflow . genai . evaluate ( predict_fn =	code
+306127387e	1	646	#/texts/637		code
+2b7c51f32c	1	647	#/texts/638	)	code
+5882433404	1	648	#/texts/639	Once the evaluation is complete, you can retrieve 	text
+2613064b78	1	649	#/texts/640	EvaluationResults	code
+f68ff27417	1	650	#/texts/641	object, where they are stored within the metrics a	text
+79e5ae4b29	1	651	#/texts/642	Figure 8-8	text
+d3ad1729f6	1	652	#/texts/643	). This view is particularly helpful as it provide	text
+305437d878	1	653	#/pictures/7	Screenshot of evaluation results in the MLflow tra	picture
+9ca131638b	1	654	#/texts/645	We can use the logic we defined to run evaluation 	text
+6c2c4fd148	1	655	#/texts/646	Agent Logging	section_header
+3fe55f0e44	1	656	#/texts/647	Custom agents that inherit from the	text
+3b5b0f7c59	1	657	#/texts/648	mlflow.pyfunc.ResponsesAgent	code
+584e869449	1	658	#/texts/649	class can be logged as code.	text
+1861bed94e	1	659	#/texts/650	4	text
+0950fc52bf	1	660	#/texts/651	This means that we must specify the agent, along w	text
+60897b38e1	1	661	#/texts/652	arxiv_agent.py	text
+0da1417994	1	662	#/texts/653	file is located in the root of the repository. Whi	text
+f66094a0cf	1	663	#/texts/654	For instance, we specify	text
+2753843f4b	1	664	#/texts/655	ModelConfig	code
+433e1dc00c	1	665	#/texts/656	, which is used for development purposes. You may 	text
+69b3f096bb	1	666	#/texts/657	project_config.yml	text
+13391493b1	1	667	#/texts/658	file (except that we've replaced the prompt). Thin	text
+ced58feaa7	1	668	#/texts/659	project_config.yml	text
+687a85ad7d	1	669	#/texts/660	file will be passed in the model logging step. We 	text
+53104b9698	1	670	#/texts/661	set_model()	code
+53ef36e4e9	1	671	#/texts/662	function from the	text
+bbaed96120	1	672	#/texts/663	mlflow.models	code
+9674db73f6	1	673	#/texts/664	module, which allows MLflow to package the agent a	text
+ffc0cc4c25	1	674	#/texts/665	arxiv_agent.py	code
+64c9da6dd0	1	675	#/texts/666	script:	text
+e342500913	1	676	#/texts/667	import mlflow	code
+af58fea9f6	1	677	#/texts/668		code
+716f5cbf74	1	678	#/texts/669	from mlflow.models import ModelConfig	code
+c47a2137c1	1	679	#/texts/670		code
+71334f9ecf	1	680	#/texts/671	from arxiv_curator.agent import ArxivAgent	code
+0c2e060ba2	1	681	#/texts/672		code
+cf1bdcdbeb	1	682	#/texts/673	config = ModelConfig ( development_config = { \"cat	code
+355b1fbb20	1	683	#/texts/674		code
+ed95828bcc	1	684	#/texts/675	)	code
+4964d081f7	1	685	#/texts/676		code
+919c3680cc	1	686	#/texts/677	agent = ArxivAgent ( llm_endpoint = config . get (	code
+370369e59a	1	687	#/texts/678		code
+d9e5edcb50	1	688	#/texts/679	)	code
+932de46b8e	1	689	#/texts/680		code
+19f4c73371	1	690	#/texts/681	mlflow . models . set_model ( agent )	code
+9be3a416ac	1	691	#/texts/682	Once you've defined the agent as code, we can proc	text
+63927f1e68	1	692	#/texts/683	resource dependencies	text
+f33e97da18	1	693	#/texts/684	and	text
+79c90aff62	1	694	#/texts/685	configuration	text
+c31c213804	1	695	#/texts/686	. Make sure to define all underlying dependencies,	text
+04d2486964	1	696	#/texts/687	from datetime import datetime	code
+1c29b79bbd	1	697	#/texts/688		code
+40742a6a30	1	698	#/texts/689	import mlflow	code
+f7031305a5	1	699	#/texts/690		code
+59c49b258b	1	700	#/texts/691	from mlflow.models.resources import ( DatabricksGe	code
+5b8b89ff4c	1	701	#/texts/692		code
+c0a252f562	1	702	#/texts/693	)	code
+cec39e8d35	1	703	#/texts/694		code
+9cc5fb2f77	1	704	#/texts/695	from arxiv_curator.config import ProjectConfig	code
+345bfe2394	1	705	#/texts/696		code
+0c3c6ebde1	1	706	#/texts/697	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+7f32f2053d	1	707	#/texts/698		code
+d42dca7579	1	708	#/texts/699	model_name = f \" { cfg . catalog } . { cfg . schem	code
+c1542df1c7	1	709	#/texts/700		code
+6bc2171a04	1	710	#/texts/701	resources = [ DatabricksServingEndpoint ( endpoint	code
+d3dc965e7e	1	711	#/texts/702		code
+029137ca9a	1	712	#/texts/703	]	code
+4749f30113	1	713	#/texts/704		code
+aa2380f21b	1	714	#/texts/705	model_config = { \"catalog\" : cfg . catalog , \"sche	code
+0ea2be730e	1	715	#/texts/706	We can log the agent by using the same approach we	text
+1886d74652	1	716	#/texts/707	Chapter 3	text
+b65201cfee	1	717	#/texts/708	. In this example, we start by providing placehold	text
+7b753f7c65	1	718	#/texts/709	git_sha	code
+aac468ee81	1	719	#/texts/710	and the Databricks	text
+d6184e68e6	1	720	#/texts/711	run_id	code
+05dc6ffaeb	1	721	#/texts/712	job, along with the path to the Python model relat	text
+def8384f96	1	722	#/texts/713	When the job executes, the script receives the act	text
+5736ca0a30	1	723	#/texts/714	Chapter 5	text
+d319d51337	1	724	#/texts/715	:	text
+c15cd4d46b	1	725	#/texts/716	git_sha = \"abc\"	code
+bc5e0069dd	1	726	#/texts/717		code
+70fee4d422	1	727	#/texts/718	run_id = \"unset\"	code
+d52a73e36d	1	728	#/texts/719		code
+d53fa5a028	1	729	#/texts/720	mlflow . set_experiment ( \"/Shared/genai-arxiv-age	code
+42ea091ae6	1	730	#/texts/721		code
+99ff230f6c	1	731	#/texts/722	ts = datetime . now () . strftime ( ' %Y - %m - %d	code
+0cc045ee47	1	732	#/texts/723		code
+d7bb654675	1	733	#/texts/724	with mlflow . start_run ( run_name = f \"arxiv-mcp-	code
+4c150af62f	1	734	#/texts/725		code
+7a8743e425	1	735	#/texts/726	) as run : model_info = mlflow . pyfunc . log_mode	code
+7ae2e71951	1	736	#/texts/727	Registering the Agent and Preparing for Serving	section_header
+e9ddff06e1	1	737	#/texts/728	Once the model is logged, we can proceed with regi	text
+cd534e48ad	1	738	#/texts/729	model_name = f \" { cfg . catalog } . { cfg . schem	code
+54a6534811	1	739	#/texts/730		code
+71c3eff081	1	740	#/texts/731	registered_model = mlflow . register_model ( model	code
+9e36cb7d25	1	741	#/texts/732		code
+ee311b9470	1	742	#/texts/733	)	code
+d0f295ca86	1	743	#/texts/734	Notice that we pass the	text
+da18f8f983	1	744	#/texts/735	env_pack	code
+7bad93789a	1	745	#/texts/736	argument with the	text
+b41133632f	1	746	#/texts/737	databricks_model_serving	code
+070dc9f922	1	747	#/texts/738	value. This indicates that we will use the express	text
+9b7e33dd0a	1	748	#/texts/739	5	text
+37fcbca4f3	1	749	#/texts/740	which significantly simplifies the handling of cus	text
+baf5796038	1	750	#/texts/741	Although the agent defined in the	text
+9259246453	1	751	#/texts/742	arxiv_agent.py	code
+45b7110be9	1	752	#/texts/743	script imports the custom	text
+9121626b85	1	753	#/texts/744	arxiv_curator	code
+ec14af762c	1	754	#/texts/745	package, we do not log this package explicitly, un	text
+a6f51b6c64	1	755	#/texts/746	Chapter 2	text
+82f42d9b35	1	756	#/texts/747	. The	text
+1262d1b7a6	1	757	#/texts/748	serverless environment packaging	text
+2e7683bec2	1	758	#/texts/749	mechanism handles dependency resolution automatica	text
+52c42c1ae4	1	759	#/texts/750	same serverless environment	text
+a7357cb09d	1	760	#/texts/751	.	text
+932d79806d	1	761	#/texts/752	Simplifying custom packaging is not the primary be	text
+b69449ad29	1	762	#/texts/753	faster agent deployment and autoscaling	text
+97ce72957d	1	763	#/texts/754	. Keep in mind that model registration takes sligh	text
+32f3c11ae8	1	764	#/texts/755	model size	text
+668fa0f49f	1	765	#/texts/756	: Databricks serverless optimized deployments supp	text
+a9240d99b3	1	766	#/texts/757	1 GB	text
+d4933130ac	1	767	#/texts/758	, compared to	text
+a8b6805f34	1	768	#/texts/759	4 GB	text
+612c0467be	1	769	#/texts/760	when environment packaging is not used.	text
+73fe8d8f16	1	770	#/texts/761	6	text
+f83b2a70e9	1	771	#/texts/762	The environment packaging stores all Python depend	text
+bb725b3ed7	1	772	#/texts/763	_databricks	text
+fdcdb2c4e9	1	773	#/texts/764	folder in the agent Artifacts tab (see	text
+bdc37e4e19	1	774	#/texts/765	Figure 8-9	text
+e891f5ea9e	1	775	#/texts/766	).	text
+00064945bc	1	776	#/pictures/8	Screenshot of the agent Artifacts tab showing the 	picture
+c49d3751eb	1	777	#/texts/768	After we register the agent, we can set the latest	text
+b9e23e2a64	1	778	#/texts/769	from mlflow import MlflowClient	code
+1b83d1539a	1	779	#/texts/770		code
+22e2b3be00	1	780	#/texts/771	client = MlflowClient ()	code
+524d8e0dae	1	781	#/texts/772		code
+4269923c73	1	782	#/texts/773	client . set_registered_model_alias ( name = model	code
+2723c093eb	1	783	#/texts/774		code
+026343357e	1	784	#/texts/775	)	code
+107fc3fdd9	1	785	#/texts/776	Now that we've successfully logged and registered 	text
+b9b99b3e4e	1	786	#/texts/644	Screenshot of evaluation results in the MLflow tra	caption
+3397e7d480	1	787	#/texts/767	Screenshot of the agent Artifacts tab showing the 	caption
+b80700cfcc	1	788	#/texts/777	Conclusion	title
+60a758e907	1	789	#/texts/778	In this chapter, we took the agent from a definiti	text
+1e9f5c144a	1	790	#/texts/779	A logged, evaluated, and traced agent is ready to 	text
+e193396f94	1	791	#/texts/780	1	text
+a78b975e44	1	792	#/texts/781	Check out	text
+6ea971c609	1	793	#/texts/782	their repository	text
+6370ff89eb	1	794	#/texts/783	.	text
+1862bff99a	1	795	#/texts/784	2	text
+09b43a2430	1	796	#/texts/785	For more details, check out	text
+9d38e6b797	1	797	#/texts/786	the Databricks documentation on judge alignment	text
+af211bd8bd	1	798	#/texts/787	.	text
+75c56b4762	1	799	#/texts/788	3	text
+0d899d9425	1	800	#/texts/789	Consult	text
+a25fc54836	1	801	#/texts/790	the MLflow documentation	text
+fac2c2de62	1	802	#/texts/791	for more details on prompt optimization.	text
+b1948fa6a4	1	803	#/texts/792	4	text
+2931a8fe4b	1	804	#/texts/793	You can consult	text
+4f8f894be9	1	805	#/texts/794	the Mlflow documentation on models from code	text
+333c3b6042	1	806	#/texts/795	.	text
+6ef363d189	1	807	#/texts/796	5	text
+140761d743	1	808	#/texts/797	For Model Serving endpoints, consult	text
+2958afd8ec	1	809	#/texts/798	the documentation on express deployments	text
+fe2d4dd592	1	810	#/texts/799	.	text
+e373b3dd16	1	811	#/texts/800	6	text
+ecfa2a9315	1	812	#/texts/801	CPU workload sizes of 8 GB and 16 GB are also avai	text
+839f974008	1	813	#/texts/802	per the documentation	text
+1454e4eb8e	1	814	#/texts/803	.	text

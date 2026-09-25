@@ -1,0 +1,497 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+3b6b9a1995	1	0	#/texts/0	Chapter 8. Deploying a GenAI Application with MLfl	title
+79c3d260a6	1	1	#/texts/1	In the previous chapter, we upgraded our Unity Air	text
+25e41b1150	1	2	#/texts/2	This chapter focuses on that next step: deployment	text
+e5058d1936	1	3	#/texts/3	As we operationalize our Unity Airways assistant, 	text
+b9a00b82ac	1	4	#/texts/4	Figure 8-1	text
+b9a517e708	1	5	#/texts/5	):	text
+36c138e3e0	1	6	#/texts/6	Deploying our agent to an endpoint for downstream 	list_item
+e3bb140016	1	7	#/texts/7	Setting Unity AI Gateway for endpoint access contr	list_item
+b7a724e722	1	8	#/texts/8	Adding AI guardrails to watch out for inquiries re	list_item
+5661068397	1	9	#/texts/9	Setting authentication methods to agents, tools, a	list_item
+5faa8bfaf6	1	10	#/texts/10	Using LLMOps best practices to address any challen	list_item
+180e78f338	1	11	#/texts/11	These steps will ensure you make the right archite	text
+dc843ecbbf	1	12	#/pictures/0	Diagram illustrating the steps for deploying an AI	picture
+163b55beaa	1	13	#/texts/13	Note	section_header
+562f142e10	1	14	#/texts/14	Keeping in mind that agent development is iterativ	text
+26da00cc36	1	15	#/texts/12	Diagram illustrating the steps for deploying an AI	caption
+0f39dc228c	1	16	#/texts/15	Deploying to Databricks Model Serving	title
+a06b7756b8	1	17	#/texts/16	Now that our agent has been registered and tested 	text
+1ab7846970	1	18	#/texts/17	agents.deploy()	code
+bf2d2e80ac	1	19	#/texts/18	from Mosaic AI Agent Framework to deploy our agent	text
+79ad4179d4	1	20	#/texts/19	from databricks import agents\nagents.deploy(\n   mo	code
+0bf73b82ff	1	21	#/texts/20	The function	text
+c88fad35d6	1	22	#/texts/21	agents.deploy()	code
+8c6eef9f6e	1	23	#/texts/22	has the following parameters:	text
+6d7ea4616c	1	24	#/texts/23	model_name	list_item
+56db3e4dcc	1	25	#/texts/24	This is the registered name of the model in Unity 	list_item
+3e0d1bb14e	1	26	#/texts/25	model_version	list_item
+27ad9bdc82	1	27	#/texts/26	This specifies the version number of the registere	list_item
+eec1907c86	1	28	#/texts/27	scale_to_zero	list_item
+b91c71317f	1	29	#/texts/28		list_item
+e310720ef0	1	30	#/texts/29	When set to	text
+aaf9cfee3d	1	31	#/texts/30	True	code
+f2083e6611	1	32	#/texts/31	, the model serving endpoint will automatically sc	text
+6d60b490dc	1	33	#/texts/32	False	code
+7ba5603b38	1	34	#/texts/33	for production workloads.	text
+bf36166b9f	1	35	#/texts/34	environment_vars	list_item
+d69477e4f2	1	36	#/texts/35		list_item
+2a1e9064a7	1	37	#/texts/36	This contains a dictionary of environment variable	text
+0c9847d83e	1	38	#/texts/37	{{secrets/<secret_scope>/<secret_name>}}	code
+9b87eb9397	1	39	#/texts/38	.	text
+b822ffd958	1	40	#/texts/39	deploy_feedback_model	list_item
+b8d202cbf8	1	41	#/texts/40		list_item
+9a6130161f	1	42	#/texts/41	When set to	text
+d44e9ad6bf	1	43	#/texts/42	True	code
+7a6a5b8dba	1	44	#/texts/43	, this deploys a review app alongside the agent en	text
+8afc394736	1	45	#/texts/44	Running the	text
+5716a0360e	1	46	#/texts/45	agents.deploy()	code
+6d8b6f8970	1	47	#/texts/46	function performs several actions:	text
+3e5c820002	1	48	#/texts/47	It deploys the agent endpoint and makes it availab	list_item
+672658d0a2	1	49	#/texts/48	It deploys a Review App, which is a chat interface	list_item
+c8f596f5ce	1	50	#/texts/49		list_item
+af81955997	1	51	#/texts/50	It logs every trace to an MLflow experiment in rea	text
+49e1439c84	1	52	#/texts/51	mlflow.set_experiment()	code
+557a70cf3d	1	53	#/texts/52	. We'll explore online monitoring in more detail i	text
+9dd81357ed	1	54	#/texts/53	Chapter 9	text
+dadcb0f2cd	1	55	#/texts/54	.	text
+bfe739c591	1	56	#/texts/55	Model Serving Endpoint	section_header
+8e27bf1c85	1	57	#/texts/56	In	text
+bae92ea17c	1	58	#/texts/57	Figure 8-2	text
+3346d485f0	1	59	#/texts/58	, you can see the endpoint UI page that's created 	text
+4a74bbc839	1	60	#/pictures/1	Databricks UI displays the serving endpoint config	picture
+9a261e98aa	1	61	#/texts/60	Within	text
+5a1854d82d	1	62	#/texts/61	Figure 8-2	text
+bd714e3304	1	63	#/texts/62	, you can see a number of metadata and configurati	text
+8074597e85	1	64	#/texts/63	To integrate the model serving endpoint to a downs	text
+00ac75a4f7	1	65	#/texts/64	Databricks provide different ways to use the endpo	text
+968581ac84	1	66	#/texts/65	Figure 8-3	text
+8882d0ff7a	1	67	#/texts/66	illustrates how this is accomplished with the Use 	text
+77ab979b25	1	68	#/texts/67	When integrating with an agent endpoint deployed o	text
+d4f0313c39	1	69	#/texts/68	Figure 8-3	text
+924b5f0a77	1	70	#/texts/69	, you will be directed to the \"Query endpoint\" UI 	text
+3fb875a458	1	71	#/texts/70	Figure 8-4	text
+a4b4a12721	1	72	#/texts/71	) where you can input your request content to send	text
+6e78f15664	1	73	#/pictures/2	Options available under the \"Use\" button for inter	picture
+fb99a31c4d	1	74	#/texts/73	In most development scenarios, this means sending 	text
+41c94c4448	1	75	#/pictures/3	Interface of the \"Query endpoint\" UI displaying a 	picture
+7c7ceb9318	1	76	#/texts/75	Streaming output	section_header
+c86756c386	1	77	#/texts/76	By default, when you call a serving endpoint, you 	text
+26763e5afd	1	78	#/texts/77	Streaming can be enabled in our case because our M	text
+8a95883544	1	79	#/texts/78	ResponsesAgent	code
+63801f4a28	1	80	#/texts/79	implements the	text
+04de074712	1	81	#/texts/80	predict_stream	code
+03032eb33b	1	82	#/texts/81	function. When this function is defined, the servi	text
+edac51fb7f	1	83	#/texts/82	stream	code
+f733969300	1	84	#/texts/83	set to	text
+e6af155ce3	1	85	#/texts/84	True	code
+ef794986dc	1	86	#/texts/85	. Under the hood, this creates a streaming respons	text
+ab2ee893d2	1	87	#/texts/86	When the	text
+5d7e6cae81	1	88	#/texts/87	stream	code
+124fd3a8d3	1	89	#/texts/88	parameter is set to	text
+ab9218bde7	1	90	#/texts/89	True	code
+5f4efc6623	1	91	#/texts/90	in the request, the endpoint does not wait for the	text
+f0117832ea	1	92	#/texts/91	Following is an example using Python and the reque	text
+78a2db0836	1	93	#/texts/92	import requests\n\nworkspace_serving_url = \"\"\"https:	code
+7c3888ff66	1	94	#/texts/93	In this example,	text
+6776c1a41a	1	95	#/texts/94	stream=True	code
+66c4737249	1	96	#/texts/95	ensures that the HTTP connection remains open whil	text
+0a61d38166	1	97	#/texts/96	iter_lines	code
+86854ab382	1	98	#/texts/97	method to process each chunk as soon as it is avai	text
+d657bb6cac	1	99	#/texts/98	As you can see in the following code snippet, the 	text
+b3fc3f7d74	1	100	#/texts/99	type	code
+e8fcc25e7a	1	101	#/texts/100	, an	text
+dd3bfb7a86	1	102	#/texts/101	id	code
+cbf1cd9df5	1	103	#/texts/102	, and the	text
+df30bd11fb	1	104	#/texts/103	delta	code
+07cac3b3dd	1	105	#/texts/104	field containing the streaming text chunk:	text
+7e7e979e17	1	106	#/texts/105	{'type': 'response.output_text.delta', 'item_id': 	code
+6b9d226ea1	1	107	#/texts/106	This snippet shows an example of streaming outputs	text
+0579c47204	1	108	#/texts/107	delta	code
+b440546ce0	1	109	#/texts/108	field.	text
+d8517a6e2c	1	110	#/texts/109	Return traces	section_header
+d3201d7d31	1	111	#/texts/110	One of the most valuable features for production e	text
+e99d894e7e	1	112	#/texts/111	\"databricks_options\": {\"return_trace\": true}	code
+33106fa17d	1	113	#/texts/112	parameter in your request payload, you instruct th	text
+6041ad06ca	1	114	#/texts/113	For instance, you could use the following query pa	text
+863b7eb8e1	1	115	#/texts/114	{\n   \"input\": [{\"role\": \"user\", \n              \"co	code
+97c213cf83	1	116	#/texts/115	Using	text
+ac26dcb401	1	117	#/texts/116	return_trace	code
+ef3fac1427	1	118	#/texts/117	gives you information on what query was sent to th	text
+ce6d58f103	1	119	#/texts/118	{\"mlflow.traceRequestId\": \"tr-b61b3080a6d134774a10	code
+5f3ccbb79b	1	120	#/texts/119	In the preceding code snippet, the vector database	text
+e33d175bdd	1	121	#/texts/120	Figure 8-5	text
+9ae6f131ad	1	122	#/texts/121	illustrates this where you can see the overall que	text
+068ef33ca9	1	123	#/texts/122	The agent's endpoint includes real-time traces alo	text
+dc62c15105	1	124	#/texts/123	return_trace	code
+088256dc69	1	125	#/texts/124	is enabled. This trace provides granular visibilit	text
+c84f85b943	1	126	#/pictures/4	A user interface screenshot displays a query and r	picture
+a5988bff1f	1	127	#/texts/126	These requests and traces are also logged to the M	text
+578712bf1b	1	128	#/texts/127	Chapter 9	text
+61420abc2d	1	129	#/texts/128	.	text
+eeeac8f92c	1	130	#/texts/129	Custom inputs	section_header
+c90b177145	1	131	#/texts/130	Another useful parameter to consider is using cust	text
+bb4f3c02f8	1	132	#/texts/131	Figure 8-6	text
+91aecb7520	1	133	#/texts/132	). These inputs provide a flexible way to include 	text
+c49aef484d	1	134	#/texts/133	custom_inputs	code
+15c9505351	1	135	#/texts/134	allows you to include extra contextual or operatio	text
+30a1cb22d5	1	136	#/texts/135	This is also useful because	text
+2812fd8ed9	1	137	#/texts/136	custom_inputs	code
+1449ec1fec	1	138	#/texts/137	does not directly get added to the LLM prompt, mak	text
+82b2dbef43	1	139	#/pictures/5	A screenshot of a query endpoint showing an exampl	picture
+a6b25cd8b2	1	140	#/texts/139	Another good point of using	text
+a12f37ad1f	1	141	#/texts/140	custom_inputs	code
+14738ca209	1	142	#/texts/141	is versatility and control. Instead of hardcoding 	text
+f9a4847e0b	1	143	#/texts/142	Review App	section_header
+38675a1b26	1	144	#/texts/143	The Review App is the second component that the de	text
+980af227f0	1	145	#/texts/144	Chapter 6	text
+4d9e38551e	1	146	#/texts/145	. We'll dive deeper into this in	text
+d92ace8ef1	1	147	#/texts/146	Chapter 9	text
+adef4c4641	1	148	#/texts/147	. For now, let's focus on how to use this Review A	text
+98d991913d	1	149	#/texts/148	Figure 8-7	text
+5767926d47	1	150	#/texts/149	.	text
+16cd11ae58	1	151	#/texts/150	Note	section_header
+c96b4fb6b5	1	152	#/texts/151	The Review App is not an app made for production w	text
+bbe99ae71e	1	153	#/pictures/6	The image shows the Databricks Review App interfac	picture
+86f5f4fe77	1	154	#/texts/153	There are two main ways to use the Review App for 	text
+219723c2a5	1	155	#/texts/154	The first approach is to use the agent directly on	text
+7b4908dc1d	1	156	#/texts/155	When test users use the app, it enables you to qui	text
+7fcb989e58	1	157	#/texts/156	The second approach is to label existing traces. I	text
+799b1c9d28	1	158	#/texts/157	Chapter 6	text
+4d905cd9c2	1	159	#/texts/158	), as well as for production monitoring (covered i	text
+510a46ecec	1	160	#/texts/159	Chapter 9	text
+1352008f8a	1	161	#/texts/160	).	text
+1da6113d7a	1	162	#/texts/59	Databricks UI displays the serving endpoint config	caption
+e97d27e410	1	163	#/texts/72	Options available under the \"Use\" button for inter	caption
+f1f632f6c2	1	164	#/texts/74	Interface of the \"Query endpoint\" UI displaying a 	caption
+1939c270a7	1	165	#/texts/125	A user interface screenshot displays a query and r	caption
+80923af6ce	1	166	#/texts/138	A screenshot of a query endpoint showing an exampl	caption
+2dcd309e15	1	167	#/texts/152	The image shows the Databricks Review App interfac	caption
+2236e0f902	1	168	#/texts/161	MLflow AI Gateway	title
+2778f65cae	1	169	#/texts/162	Now that we've made our agent accessible and usabl	text
+188facd364	1	170	#/texts/163	While our agent endpoint reliably handles incoming	text
+9f6b2aa85d	1	171	#/texts/164	Figure 8-8	text
+a56bbaa589	1	172	#/texts/165	, which can break when swapping models and require	text
+0452a1f0ed	1	173	#/pictures/7	Diagram showing the Unity Airways Assistant direct	picture
+e60d858ba8	1	174	#/texts/167	This is where the implementation of MLflow AI Gate	text
+1e63fbd0ec	1	175	#/texts/168	Figure 8-9	text
+76d50d4079	1	176	#/texts/169	illustrates this structure.	text
+bdd9101c04	1	177	#/texts/170	Instead of each application calling external provi	text
+22f9d3e39c	1	178	#/texts/171	This abstraction layer makes it easy to switch fro	text
+d7d6f980c0	1	179	#/pictures/8	Diagram illustrating the AI Gateway as a central a	picture
+f91f93804e	1	180	#/texts/173	Using Unity AI Gateway	section_header
+d283f8153a	1	181	#/texts/174	To use the Unity AI Gateway, we first need to add 	text
+709de893a6	1	182	#/texts/175	Figure 8-10	text
+67d42229f4	1	183	#/texts/176	).	text
+ed1e827121	1	184	#/texts/177	Instead of hardcoding provider-specific APIs insid	text
+a6ad067f2e	1	185	#/texts/178	To create a Unity AI Gateway, you can go to the AI	text
+6c076db956	1	186	#/texts/179	Figure 8-11	text
+ee4851125c	1	187	#/texts/180	shows the UI of the AI Gateway configuration page.	text
+cd666d4d3c	1	188	#/pictures/9	Diagram illustrating the integration of the Unity 	picture
+554959a733	1	189	#/pictures/10	Screenshot of the AI Gateway configuration page in	picture
+c6c2539f65	1	190	#/texts/183	Now that our LLMs are configured, we can use the A	text
+168cefcc7f	1	191	#/texts/184	If you recall, this is how we called our LLM initi	text
+dff306be78	1	192	#/texts/185	from openai import OpenAI\n\nclient = OpenAI(\nbase_u	code
+cc62049d34	1	193	#/texts/186	As we are using a Databricks-hosted LLM, this woul	text
+5186a3a589	1	194	#/texts/187	Now let's use the AI Gateway instead. We input the	text
+2d35fafa1b	1	195	#/texts/188	client = OpenAI(\nbase_url=\"https://<workspace_url>	code
+ec544900bd	1	196	#/texts/189	This successfully returns our LLM response:	text
+270d622d5a	1	197	#/texts/190	\"Hello. How can I help you today?\"	code
+3f74be188e	1	198	#/texts/191	.	text
+b58b53c008	1	199	#/texts/192	Unity AI Gateway Capabilities	section_header
+26cbe8075e	1	200	#/texts/193	Unlike third-party gateways that introduce additio	text
+60030765a0	1	201	#/texts/194	Fallbacks	section_header
+9482d80da2	1	202	#/texts/195	You can also configure fallbacks, so if a primary 	text
+db19f28331	1	203	#/texts/196	Figure 8-12	text
+03e1fc36f6	1	204	#/texts/197	shows this fallback functionality.	text
+77df90567b	1	205	#/texts/198	As a best practice, it's a good idea to introduce 	text
+2ef02ffa20	1	206	#/pictures/11	A diagram showing a primary and fallback model con	picture
+72845c282a	1	207	#/texts/166	Diagram showing the Unity Airways Assistant direct	caption
+197ee20fdd	1	208	#/texts/172	Diagram illustrating the AI Gateway as a central a	caption
+3ca4cc087b	1	209	#/texts/181	Diagram illustrating the integration of the Unity 	caption
+b9decaf48d	1	210	#/texts/182	Screenshot of the AI Gateway configuration page in	caption
+28ee74d100	1	211	#/texts/199	A diagram showing a primary and fallback model con	caption
+0043539386	1	212	#/texts/200	AI Guardrails	title
+6920577bb0	1	213	#/texts/201	When you move from developing an agent to running 	text
+2d0d51fa42	1	214	#/texts/202	But one risk that you'll find in production is whe	text
+be9026f5ba	1	215	#/texts/203	This is where guardrails come into play. Guardrail	text
+448b2feb22	1	216	#/texts/204	AI Guardrails Application	section_header
+79a7a7b1f4	1	217	#/texts/205	Guardrails usually apply to three areas:	text
+eff6798f03	1	218	#/texts/206	Input safety and shaping	list_item
+d5d74c9e27	1	219	#/texts/207	This includes requests that are unsafe or irreleva	list_item
+83d8769d16	1	220	#/texts/208	Output safety and quality	list_item
+8718d99184	1	221	#/texts/209	This includes reducing hallucinations in responses	list_item
+0dd9f596b0	1	222	#/texts/210	Branding, compliance, and regulation	list_item
+ce67ad5051	1	223	#/texts/211	This includes preventing the agent from mentioning	list_item
+4ded9a0895	1	224	#/texts/212	In practice, effective guardrail design involves l	text
+ce2761b402	1	225	#/texts/213	For instance, our Unity Airways assistant architec	text
+74d474da0d	1	226	#/texts/214	The model endpoint or custom-agent endpoint that r	list_item
+501fec294e	1	227	#/texts/215	The knowledge-retrieval component, a vector index 	list_item
+0878f56512	1	228	#/texts/216	The different tools used to retrieve structured da	list_item
+1eaad6d849	1	229	#/texts/217	The AI Gateway for governance and limits of the LL	list_item
+83143ae49f	1	230	#/texts/218	You can see our Unity Airways assistant flow diagr	text
+74e849c813	1	231	#/texts/219	Figure 8-13	text
+2b106ce17a	1	232	#/texts/220	.	text
+038b95053c	1	233	#/texts/221	Guardrails can fit between all of these components	text
+b4cd440502	1	234	#/texts/222	Before an LLM/tool/agent is invoked, to validate, 	list_item
+2b49b02e63	1	235	#/texts/223	After an LLM/tool/agent responds, to validate, rev	list_item
+db31348c56	1	236	#/pictures/12	Flow diagram illustrating the Unity Airways assist	picture
+dde90562c8	1	237	#/texts/225	This is also where MLflow becomes extremely valuab	text
+066e2095b0	1	238	#/texts/226	Supported Guardrails	section_header
+ca2897cadb	1	239	#/texts/227	Unity AI Gateway provides out-of-the-box guardrail	text
+543c59507a	1	240	#/texts/228	Figure 8-14	text
+56866b3dc5	1	241	#/texts/229	) that can be parametrized to fit your safety requ	text
+5a463fc5bd	1	242	#/texts/230	Inspect the inbound request (before it reaches the	list_item
+a8d6584402	1	243	#/texts/231	Inspect the outbound request (the response generat	list_item
+08599cc993	1	244	#/texts/232	This is useful when the assistant answers airline 	text
+991807ae43	1	245	#/pictures/13	Diagram showing Unity AI Gateway's built-in guardr	picture
+4e61cd0b62	1	246	#/texts/234	At the time of writing, the following out-of-the-b	text
+298fa1abf2	1	247	#/texts/235	PII redaction	list_item
+fd03c30825	1	248	#/texts/236	Detects personal information such as names, emails	list_item
+33eab4c77c	1	249	#/texts/237	PII blocking	list_item
+e1cd9819ac	1	250	#/texts/238	Blocks requests or responses that contain personal	list_item
+e29487917e	1	251	#/texts/239	Unsafe content	list_item
+ad275a6dc7	1	252	#/texts/240	Blocks speech related to hate, harassment, violenc	list_item
+efdd7fd3f2	1	253	#/texts/241	Jailbreak	list_item
+6bdf0baa3a	1	254	#/texts/242	Blocks input attempts that try to bypass model saf	list_item
+6ca793bcba	1	255	#/texts/243	Hallucination	list_item
+69f4d5872a	1	256	#/texts/244	Blocks output that appears to include fabricated f	list_item
+c7373ef1ff	1	257	#/texts/245	Custom Guardrails	section_header
+0f4741eda9	1	258	#/texts/246	An important capability introduced in the MLflow A	text
+8ccb5e7717	1	259	#/texts/247	Guardrails Examples	section_header
+43ba0e34c7	1	260	#/texts/248	Let's look at some example scenarios of when guard	text
+8f5bb7b411	1	261	#/texts/249	At the gateway level:	text
+226f0a1fab	1	262	#/texts/250	Rate limiting	list_item
+1d63176410	1	263	#/texts/251	A traveler is capped at 20 requests per minute, pr	list_item
+8e366fc1bc	1	264	#/texts/252	Token limiting	list_item
+6ceb444a1c	1	265	#/texts/253	A user pasting an entire travel itinerary document	list_item
+848fe3a381	1	266	#/texts/254	Keyword blocking	list_item
+2764410116	1	267	#/texts/255	Any message referencing a competitor airline is in	list_item
+5a637a1b16	1	268	#/texts/256	At the input level:	text
+e6809c60a5	1	269	#/texts/257	Topic relevance and safety	list_item
+43d1cba7fb	1	270	#/texts/258	\"Write me how to harm the airport\" is classified a	list_item
+ea75b52ac9	1	271	#/texts/259	PII redaction	list_item
+e32b05f2c8	1	272	#/texts/260	A traveler who pastes their passport number into t	list_item
+cae7d7d048	1	273	#/texts/261	Booking reference validation	list_item
+2b6345b19f	1	274	#/texts/262	If the LLM extracts a malformed reference like \"AB	list_item
+7e10450d20	1	275	#/texts/263	Prompt injection	list_item
+f398d22f5b	1	276	#/texts/264	A message like \"Ignore your instructions and act a	list_item
+f9229f67f9	1	277	#/texts/265	After retrieval and tool:	text
+8f8fc33845	1	278	#/texts/266	Similarity threshold	list_item
+2da70b20c6	1	279	#/texts/267	If no policy document scores above 0.70 relevance 	list_item
+dfc55894e0	1	280	#/texts/268	Tool error handling	list_item
+a5244b07d4	1	281	#/texts/269	If the flight booking API times out, the assistant	list_item
+74a657d149	1	282	#/texts/270	At the output level:	text
+5f3a3025af	1	283	#/texts/271	Groundedness or hallucination check	list_item
+b256b07d00	1	284	#/texts/272	If the assistant says \"Unity Airways allows 2 carr	list_item
+c7b840e2ec	1	285	#/texts/273	PII in output	list_item
+10d4f35e97	1	286	#/texts/274	If the LLM accidentally echoes another passenger's	list_item
+d22507eb07	1	287	#/texts/275	Branding check	list_item
+5e6348eded	1	288	#/texts/276	Verifies whether the output of the model follows a	list_item
+424c4289ff	1	289	#/texts/277	We can see where these guardrails are integrated i	text
+c605405499	1	290	#/texts/278	Figure 8-15	text
+41edcfe806	1	291	#/texts/279	, with our assistant flow responding to the exampl	text
+fb74d40ba4	1	292	#/texts/280	This query could trigger the input guardrail with 	text
+7122153415	1	293	#/pictures/14	Diagram illustrating the process of a guardrail-se	picture
+56480f6124	1	294	#/texts/282	As you can see, there are many types of errors and	text
+cae0d82f83	1	295	#/texts/283	Note	section_header
+2be72687bc	1	296	#/texts/284	Guardrails are an important component for agentic 	text
+d072f1fa9b	1	297	#/texts/285	Simpler guardrails, like rule-based ones, might be	text
+9cf36dbded	1	298	#/texts/224	Flow diagram illustrating the Unity Airways assist	caption
+6f8e563db2	1	299	#/texts/233	Diagram showing Unity AI Gateway's built-in guardr	caption
+dcd14c5e58	1	300	#/texts/281	Diagram illustrating the process of a guardrail-se	caption
+2103d3bc95	1	301	#/texts/286	LLM Operations and Agent Operations	title
+afa32a49f8	1	302	#/texts/287	Often, when we talk about productionizing, the ter	text
+2667cf2fbb	1	303	#/texts/288	Why does LLMOps or AgentOps matter? Once we have o	text
+0b9f812e07	1	304	#/texts/289	Nowadays, this is evolving toward AgentOps, where 	text
+9ef3dd740d	1	305	#/texts/290	Environment Management	section_header
+2aa7ac87bb	1	306	#/texts/291	Before we go deeper into LLMOps and AgentOps, it i	text
+2761bbde0f	1	307	#/texts/292	An	text
+76449d4846	1	308	#/texts/293	environment	text
+2d84007b71	1	309	#/texts/294	is a separate space where an application runs. Eac	text
+bd33896011	1	310	#/texts/295	Most organizations use three common environments: 	text
+6028a465f7	1	311	#/texts/296	Development	text
+053b09f614	1	312	#/texts/297	, often called dev or sandbox, is where engineers 	text
+d6c7b77af5	1	313	#/texts/298	Staging	text
+a32daeb302	1	314	#/texts/299	is an environment that is a near-copy of the produ	text
+a77ae570ef	1	315	#/texts/300	Production	text
+5d39971da7	1	316	#/texts/301	, usually shortened as prod, is the live environme	text
+ff619ca658	1	317	#/texts/302	Note	section_header
+c067d66e14	1	318	#/texts/303	These environments usually have separate levels of	text
+f9968a8ecd	1	319	#/texts/304	All in all, the key value of having multiple envir	text
+67990dcdb3	1	320	#/texts/305	Figure 8-16	text
+433dc770fe	1	321	#/texts/306	illustrates, can be summarized to these concepts: 	text
+dda4d918dd	1	322	#/pictures/15	Diagram illustrating the transition from developme	picture
+e98c538556	1	323	#/texts/308	A transition between environments usually happens 	text
+3dd60323aa	1	324	#/texts/309	Every agent version is tied to a set of artifacts,	text
+6cdff96c05	1	325	#/texts/310	Figure 8-17	text
+962bb3fbf5	1	326	#/texts/311	). Because you've already learned how to version t	text
+274c0f9845	1	327	#/pictures/16	Interface showing artifacts and metadata dependenc	picture
+0632f0e4d1	1	328	#/texts/313	Warning	section_header
+d11b2da449	1	329	#/texts/314	Having multiple environments brings structure and 	text
+ae4b67c916	1	330	#/texts/315	Challenger Versus Champion	section_header
+2b3d899ecd	1	331	#/texts/316	When productionizing AI applications, it is common	text
+74d46934bb	1	332	#/texts/317	The champion is the current production version of 	list_item
+89d5f893b1	1	333	#/texts/318	The challenger is a new candidate version that int	list_item
+6e460fc900	1	334	#/texts/319	Instead of replacing the production system immedia	text
+ed50a57619	1	335	#/texts/320	This comparison can happen through dataset-based b	text
+cd30bef5d4	1	336	#/texts/321	Deployment Rollout	section_header
+87bc5420e8	1	337	#/texts/322	Once a challenger agent has demonstrated strong re	text
+536b00e62c	1	338	#/texts/323	Blue-green deployment	list_item
+0b649cc330	1	339	#/texts/324	A/B testing	list_item
+f60d2898bb	1	340	#/texts/325	Blue-green deployment is one of the most common ap	text
+0d06835d2c	1	341	#/texts/326	Once the green version has been validated, the ful	text
+da4874a7f5	1	342	#/texts/327	Figure 8-18	text
+0069b7004d	1	343	#/texts/328	). The serving endpoint can reference a stable ali	text
+90af835def	1	344	#/texts/329	Another rollout strategy that can be used in paral	text
+5358315d16	1	345	#/texts/330	Figure 8-19	text
+f1bc479520	1	346	#/texts/331	.	text
+70e40f8b08	1	347	#/pictures/17	Diagram showing two model versions in a catalog wi	picture
+c4d299e9e7	1	348	#/pictures/18	Table showing active configuration for deployment 	picture
+2dd2658159	1	349	#/texts/334	It becomes possible to compare metrics such as res	text
+c113bf909f	1	350	#/texts/335	Authentication for Agent Endpoint	section_header
+cefb8ed19b	1	351	#/texts/336	When deploying agents with Databricks, it is impor	text
+32ddd03b82	1	352	#/texts/337	User authentication	section_header
+b3a7e4427e	1	353	#/texts/338	User authentication is the most common model. In t	text
+0c14e0ed56	1	354	#/texts/339	Service principal authentication	section_header
+3f5b858ffb	1	355	#/texts/340	Service principal authentication is commonly used 	text
+cd09cda205	1	356	#/texts/341	On-behalf-of (OBO) authentication	section_header
+114c98ab4a	1	357	#/texts/342	A more advanced pattern is on-behalf-of (OBO) auth	text
+fdaa1cf79d	1	358	#/texts/343	Note	section_header
+d038dc7350	1	359	#/texts/344	MLflow itself does not directly manage authenticat	text
+edd879bc46	1	360	#/texts/345	Best Practices	section_header
+d77995f045	1	361	#/texts/346	Throughout this book, we have explored the key pil	text
+880f7e73df	1	362	#/texts/347	Figure 8-20	text
+2457e4ec3e	1	363	#/texts/348	).	text
+f54cbf036e	1	364	#/pictures/19	Diagram illustrating the LLMOps process flow using	picture
+7247dcefae	1	365	#/texts/350	These pillars closely align with the best practice	text
+f51f9c4c7a	1	366	#/texts/351	Development and experimentation	list_item
+ddfe22a3ad	1	367	#/texts/352		list_item
+f5109434ee	1	368	#/texts/353	These practices include prompt engineering, experi	text
+98271c04a8	1	369	#/texts/354	3	text
+fc2fd20a05	1	370	#/texts/355	,	text
+22e82dba74	1	371	#/texts/356	4	text
+9b1a964503	1	372	#/texts/357	,	text
+1d10f1419a	1	373	#/texts/358	5	text
+71e5c6f1e0	1	374	#/texts/359	, and	text
+53b047d0fa	1	375	#/texts/360	7	text
+62b0373c37	1	376	#/texts/361	.	text
+e991e03e3c	1	377	#/texts/362	Evaluation and quality assurance	list_item
+15db2b21b2	1	378	#/texts/363		list_item
+de2a8a938b	1	379	#/texts/364	These practices cover how to measure agent perform	text
+eaa0f1d444	1	380	#/texts/365	Chapter 6	text
+85742de5d0	1	381	#/texts/366	.	text
+2550a61b2e	1	382	#/texts/367	Deployment and lifecycle management	list_item
+7fed592ccf	1	383	#/texts/368	These practices, explored in this chapter, focus o	list_item
+47e9b9147e	1	384	#/texts/369	Observability, monitoring, and feedback loops	list_item
+e9a4db83c0	1	385	#/texts/370		list_item
+9d9817e821	1	386	#/texts/371	These will be covered in	text
+f12a3353a5	1	387	#/texts/372	Chapter 9	text
+52cc698f42	1	388	#/texts/373	. We will discuss how to track agent behavior in p	text
+8b33fb3945	1	389	#/texts/374	Let's now point out some best practices that are s	text
+8dbcb14a39	1	390	#/texts/375	Version the entire agent system	section_header
+19967c2431	1	391	#/texts/376	Do not version a few parts of your agent like the 	text
+d1e108a5af	1	392	#/texts/377	Use model registry and aliases for safe promotion	section_header
+bae642fe8e	1	393	#/texts/378	Model versions provide precision, but aliases make	text
+83aad53183	1	394	#/texts/379	This allows applications to call a stable alias wh	text
+d795cd4ed2	1	395	#/texts/380	Automate evaluation before promotion	section_header
+58023f79d5	1	396	#/texts/381	It's usually recommended to start a project by des	text
+7b13abc1e0	1	397	#/texts/382	Having automated evaluation suites before promotin	text
+503914db30	1	398	#/texts/383	Manage library and code environments for reproduci	section_header
+a1ead6789e	1	399	#/texts/384	Two agent versions can behave differently even wit	text
+6300e4080d	1	400	#/texts/385	Pin dependency versions for production.	list_item
+77cb96b383	1	401	#/texts/386	Test dependency updates in development or staging 	list_item
+fd78399680	1	402	#/texts/387	Promote environment changes through the same lifec	list_item
+e73be0a564	1	403	#/texts/388	Treating environments as code ensures consistent b	text
+0257e398ab	1	404	#/texts/389	Enable safe and frequent releases	section_header
+f3bc57cfd2	1	405	#/texts/390	Your LLMOps design goal is to support frequent ite	text
+fc9e1d56fc	1	406	#/texts/307	Diagram illustrating the transition from developme	caption
+5f2c483af2	1	407	#/texts/312	Interface showing artifacts and metadata dependenc	caption
+4690da241e	1	408	#/texts/332	Diagram showing two model versions in a catalog wi	caption
+21f2efb4d2	1	409	#/texts/333	Table showing active configuration for deployment 	caption
+dc85701fe6	1	410	#/texts/349	Diagram illustrating the LLMOps process flow using	caption
+148e0e0d33	1	411	#/texts/391	Challenges of Productionization	title
+9eff82774b	1	412	#/texts/392	Despite rapid progress in agent development and ev	text
+99b29579aa	1	413	#/texts/393	Components of a Productionized AI Application	section_header
+75deb5fb70	1	414	#/texts/394	If we zoom out from our previous flows, production	text
+1ffdbd3444	1	415	#/texts/395	Figure 8-21	text
+d8ecf6ad68	1	416	#/texts/396	illustrates the flow of a productionized agentic s	text
+d5597740cb	1	417	#/pictures/20	Diagram showing the component architecture of a pr	picture
+95d865dcb2	1	418	#/texts/398	Each component here serves a specific purpose:	text
+cea6d71ac8	1	419	#/texts/399	User interaction and session management	list_item
+7376ae61f7	1	420	#/texts/400	Connects the agent to humans or external systems a	list_item
+01427354a7	1	421	#/texts/401	Agent orchestration loop	list_item
+ab2b858ff8	1	422	#/texts/402	Executes agent logic reliably over time. Coordinat	list_item
+c39a972e88	1	423	#/texts/403	Task state management	list_item
+827d22bac6	1	424	#/texts/404	Provides the data required for the execution runti	list_item
+139110f25c	1	425	#/texts/405	Model inference and response generation	list_item
+9547cfb4f7	1	426	#/texts/406	Generates the next reasoning step or produces a us	list_item
+f56e2e6795	1	427	#/texts/407	External knowledge and tool access	list_item
+574afb5a17	1	428	#/texts/408	Allows to retrieve information or interact with sy	list_item
+3c07815d24	1	429	#/texts/409	Runtime observability and quality monitoring	list_item
+1f53367862	1	430	#/texts/410	Understands agent behavior in production across pe	list_item
+135120cc21	1	431	#/texts/411	These components bear their responsibilities and r	text
+9e220eeb48	1	432	#/texts/412	Table 8-1	text
+a4cc7d8ed4	1	433	#/texts/413	describes these challenges.	text
+489b7da6ec	1	434	#/tables/0	| Components                                   | E	table
+2d92812333	1	435	#/texts/414	What conversation ID should I pass to the agent in	list_item
+9e6e2a5e94	1	436	#/texts/415	How do I resume a previously interrupted interacti	list_item
+c2d262ee98	1	437	#/texts/416	What if the database is down and cannot store ongo	list_item
+0cd573d76a	1	438	#/texts/417	If tool code crashes, how do I prevent the rest of	list_item
+c5cb91d1d4	1	439	#/texts/418	If the agent sends an email to a user and then cra	list_item
+07078760fe	1	440	#/texts/419	How do we fit large multiturn conversations or doc	list_item
+8578176fd6	1	441	#/texts/420	How do we block offensive or inappropriate content	list_item
+1926350a24	1	442	#/texts/421	What happens if the LLM provider is slow or unavai	list_item
+62a122da21	1	443	#/texts/422	How do we enforce access controls across systems a	list_item
+742e6a0028	1	444	#/texts/423	How do we handle unreliable REST APIs or SQL execu	list_item
+7e838920dc	1	445	#/texts/424	How do we understand how each step impacts the fin	list_item
+d07295c87c	1	446	#/texts/425	How do we collect feedback from users to measure s	list_item
+6cd8d7abb2	1	447	#/texts/426	As you've learned throughout this book, many of th	text
+502e7a1062	1	448	#/texts/427	6	text
+8c8aada6db	1	449	#/texts/428	and	text
+dcdccc4f8b	1	450	#/texts/429	9	text
+3ac526786f	1	451	#/texts/430	). Enforcing proper guardrails and gateways, as di	text
+bdedfb0cd2	1	452	#/texts/431	These challenges can be addressed by adding layers	text
+46e220a97e	1	453	#/texts/432	Decoupling Production Agent Systems from Runtime	section_header
+73d557b35e	1	454	#/texts/433	The idea of decoupling dependencies has been a fou	text
+3b6fb4e59a	1	455	#/texts/434	Let's imagine we're writing a baking recipe. In th	text
+fbf9cbd029	1	456	#/texts/435	Agent frameworks today do not follow this level of	text
+e0e3096694	1	457	#/texts/436	This coupling creates three concrete problems:	text
+167c848003	1	458	#/texts/437	Vendor lock-in	list_item
+4b04b4308e	1	459	#/texts/438	A team that builds on LangGraph inherits LangGraph	list_item
+6eef4935eb	1	460	#/texts/439	Fragile production deployments	list_item
+640f642d81	1	461	#/texts/440	Many existing agent runtimes are designed with a f	list_item
+f2c2c70bb4	1	462	#/texts/441	No widely adopted and standardized runtime layer f	list_item
+6a8824f1e1	1	463	#/texts/442	Teams can rely on mature and well-understood found	list_item
+0bce86c59f	1	464	#/texts/443	What is missing? A clear separation between agent 	text
+62d3f6203b	1	465	#/texts/444	MLflow Agent Server consolidates these layers into	text
+de95e9f010	1	466	#/texts/445	MLflow Agent Server	section_header
+2eb74757fb	1	467	#/texts/446	MLflow Agent Server is a production runtime design	text
+97969da813	1	468	#/texts/447	The step-by-step process, which	text
+5bff853fb3	1	469	#/texts/448	Figure 8-22	text
+815825453d	1	470	#/texts/449	illustrates, is as follows:	text
+3ac02a0877	1	471	#/texts/450	Authoring	list_item
+d3621dd44c	1	472	#/texts/451	First, an agent is defined and created. Multiple i	list_item
+ba0ecff10b	1	473	#/texts/452	Packaging	list_item
+99704cce06	1	474	#/texts/453	Once registered, the agent definition includes the	list_item
+b7794c7a23	1	475	#/texts/454	Deployment	list_item
+d4c3d64bb2	1	476	#/texts/455	The packaged agent is then loaded by MLflow Agent 	list_item
+47b7c5dc8b	1	477	#/texts/456	Infrastructure	list_item
+2860ac7d36	1	478	#/texts/457	That serving runtime can then run on different und	list_item
+f5e1f60e6d	1	479	#/texts/458	In the context of our Unity Airways assistant, thi	text
+c37ff16736	1	480	#/texts/459	Without this separation, each deployment surface w	text
+2bc6a044ff	1	481	#/pictures/21	Diagram illustrating the four layers of separation	picture
+d3f22fb95d	1	482	#/texts/461	With MLflow Agent Server, the underlying agent rem	text
+8ffc349da6	1	483	#/texts/462	This separation directly addresses the problems ou	text
+6a6e0db194	1	484	#/texts/397	Diagram showing the component architecture of a pr	caption
+7796b56889	1	485	#/texts/460	Diagram illustrating the four layers of separation	caption
+c2e9e2ba36	1	486	#/texts/463	Conclusion and Key Takeaways	title
+a0b1ce237e	1	487	#/texts/464	In this chapter, we explored the full lifecycle of	text
+aa6bceae62	1	488	#/texts/465	We also discussed how production introduces new re	text
+a5b91210b5	1	489	#/texts/466	Key features and capabilities covered in this chap	text
+8e2bb8bab0	1	490	#/texts/467	Your agent should be easy to deploy and interact w	list_item
+77fbcb4faa	1	491	#/texts/468	Your system should be validated, secure, and gover	list_item
+ba7fd402b3	1	492	#/texts/469	Model updates should be managed with clear release	list_item
+ab567d444f	1	493	#/texts/470	Operations should stay reliable and reproducible. 	list_item
+4720118e61	1	494	#/texts/471	By combining these practices with the MLflow ecosy	text
+339b4be164	1	495	#/texts/472	In the next chapter, we will build on this foundat	text

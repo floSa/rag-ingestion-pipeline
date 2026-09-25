@@ -1,0 +1,128 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+bdbf44223b	1	0	#/texts/0	Preface	title
+d0ce4b050f	1	1	#/texts/1	It is remarkably easy to build an AI prototype tha	text
+0f95693860	1	2	#/texts/2	Then reality shows up.	text
+7843ebb88c	1	3	#/texts/3	We wrote this book to close that gap. In productio	text
+5b63abcf52	1	4	#/texts/4	Our goal is to help you move from \"We built someth	text
+f5e41b2469	1	5	#/texts/5	What is the GenAI application doing for each reque	list_item
+4e8aab0924	1	6	#/texts/6	What changed between two versions, and why did qua	list_item
+6e14316ebb	1	7	#/texts/7	What does \"good\" mean for your domain, and how do 	list_item
+d336316fb2	1	8	#/texts/8	How do you promote changes safely and roll back qu	list_item
+24c93bcf85	1	9	#/texts/9	How do you monitor real usage in a way that captur	list_item
+1467e7586a	1	10	#/texts/10	MLflow is the backbone of our approach to those qu	text
+adf3d38a55	1	11	#/texts/11	Databricks provides the environment where this dis	text
+4c05109a70	1	12	#/texts/12	This book is deliberately practical. We focus on p	text
+e23ffc40b2	1	13	#/texts/13	Versioning prompts as first-class assets	list_item
+6d675e5d70	1	14	#/texts/14	Tracing execution paths so you can debug confident	list_item
+8af465408b	1	15	#/texts/15	Building evaluation datasets that reflect real usa	list_item
+2d7dadd8ea	1	16	#/texts/16	Defining evaluation scorers that turn free-form te	list_item
+ee4e852bfb	1	17	#/texts/17	Deploying with a controlled promotion path	list_item
+e63aa73cfc	1	18	#/texts/18	Monitoring online production quality with the same	list_item
+fb38ee9203	1	19	#/texts/19	In bringing all these components together, you wil	text
+b84094db9a	1	20	#/texts/20	Along the way, we use a single running example: a 	text
+ef134d402b	1	21	#/texts/21	The companion public GitHub repository is part of 	text
+40c05a01d9	1	22	#/texts/22	GenAI applications do not become reliable by accid	text
+f51c76e9b1	1	23	#/texts/23	Why We Wrote This Book	title
+40f85d8e89	1	24	#/texts/24	We wrote this book because we have watched the sam	text
+48ea8773e2	1	25	#/texts/25	The common failure mode is a lack of operational d	text
+c152c0e629	1	26	#/texts/26	The right response is to treat AI application deve	text
+47541d1b27	1	27	#/texts/27	MLflow on Databricks is a practical foundation for	text
+fc4ade38fb	1	28	#/texts/28	Who This Book Is For	title
+54ec58051b	1	29	#/texts/29	This book is written for practitioners who have mo	text
+1b0c737ccb	1	30	#/texts/30	You will find this book useful if you identify wit	text
+5c009f81ab	1	31	#/texts/31	Data scientists	list_item
+bbf8060340	1	32	#/texts/32	These are the visionaries who prototype and valida	list_item
+3511ea24fb	1	33	#/texts/33	AI and ML engineers	list_item
+6fb99bae05	1	34	#/texts/34	These are the engineers who operationalize systems	list_item
+e2739ba7a7	1	35	#/texts/35	AI and ML architects	list_item
+0d63a7f4a0	1	36	#/texts/36	These are the builders designing end-to-end platfo	list_item
+8b3dc575c5	1	37	#/texts/37	AI practitioners	list_item
+0954b5b4b7	1	38	#/texts/38	These are the hands-on promoters who build GenAI s	list_item
+f090a17dbf	1	39	#/texts/39	We assume you are comfortable with Python and have	text
+f9dba2d71c	1	40	#/texts/40	This is a guide to building and operating GenAI ap	text
+eeb9cd5fca	1	41	#/texts/41	What You Will Learn	title
+4144a82d75	1	42	#/texts/42	This book is organized as a progression from funda	text
+38133f4451	1	43	#/texts/43	Chapter 1, \"Introduction to MLflow for GenAI on Da	list_item
+c303e2227f	1	44	#/texts/44	You will get the foundation you need to use MLflow	list_item
+005763b1d3	1	45	#/texts/45	Chapter 2, \"End-to-End GenAI Application Lifecycle	list_item
+a66320d491	1	46	#/texts/46	You will learn the lifecycle mindset: development,	list_item
+bcbe276715	1	47	#/texts/47	Chapter 3, \"Prompt Engineering with MLflow\"	list_item
+2ec2068c35	1	48	#/texts/48	You will learn how to treat prompts as first-class	list_item
+1357d0afdc	1	49	#/texts/49	Chapter 4, \"Building and Versioning a Tool-Calling	list_item
+f0e9cbf4e4	1	50	#/texts/50	You will build a tool-calling agent for the Unity 	list_item
+d689f32373	1	51	#/texts/51	Chapter 5, \"MLflow Tracing for GenAI Application O	list_item
+f7b9e643ef	1	52	#/texts/52	You will learn how to make GenAI applications inte	list_item
+44ceef2d8a	1	53	#/texts/53	Chapter 6, \"Evaluating GenAI Applications with MLf	list_item
+70fb8c399f	1	54	#/texts/54	You will learn how to replace vibe checks with evi	list_item
+259b72683e	1	55	#/texts/55	Chapter 7, \"Advanced Agents and Tools\"	list_item
+426757efba	1	56	#/texts/56	You will deep dive further into agents, where you 	list_item
+e9adbe827c	1	57	#/texts/57	Chapter 8, \"Deploying a GenAI Application with MLf	list_item
+60b362ba42	1	58	#/texts/58	You will learn deployment strategies that fit ente	list_item
+f39006a4e1	1	59	#/texts/59	Chapter 9, \"Production Monitoring with MLflow\"	list_item
+bdfac836e8	1	60	#/texts/60	You will learn how to monitor what matters in prod	list_item
+2dec9e68e7	1	61	#/texts/61	Chapter 10, \"Unifying GenAI Systems with MLflow\"	list_item
+6ffb5ae6ae	1	62	#/texts/62	We close by looking ahead at how MLflow helps unif	list_item
+26e97ff2c9	1	63	#/texts/63	By the end of the book, you should be able to buil	text
+1011069ae1	1	64	#/texts/64	Using Code Examples	title
+f55a62b8c4	1	65	#/texts/65	Code examples discussed throughout the book and re	text
+9e5c055c22	1	66	#/texts/66	https://github.com/manganganath/mlflow-genai-book	text
+f58d959d9b	1	67	#/texts/67	.	text
+96af9b0a45	1	68	#/texts/68	You will need access to a Databricks workspace to 	text
+86c6e43064	1	69	#/texts/69	https://www.databricks.com/learn/free-edition	text
+ece8903d37	1	70	#/texts/70	.	text
+9c7b19b3b5	1	71	#/texts/71	If you have a technical question or a problem usin	text
+3efda1cb52	1	72	#/texts/72	support@oreilly.com	text
+6c0e70e1fb	1	73	#/texts/73	.	text
+907e430b41	1	74	#/texts/74	This book is here to help you get your job done. I	text
+9f21f2a3ff	1	75	#/texts/75	We appreciate, but generally do not require, attri	text
+6810555c5b	1	76	#/texts/76	Practical MLflow for Generative AI on Databricks	text
+ccf0432250	1	77	#/texts/77	by Nuwan Ganganath, Julie Nguyen, and Chang Shi Li	text
+43367d7731	1	78	#/texts/78	If you feel your use of code examples falls outsid	text
+37fbb8e58d	1	79	#/texts/79	permissions@oreilly.com	text
+ab25a83e9c	1	80	#/texts/80	.	text
+5535515970	1	81	#/texts/81	Conventions Used in This Book	title
+9eb2811501	1	82	#/texts/82	The following typographical conventions are used i	text
+6939024a21	1	83	#/texts/83	Italic	list_item
+c67f9cde57	1	84	#/texts/84	Indicates new terms, URLs, email addresses, filena	list_item
+e6d1f50824	1	85	#/texts/85	Constant width	list_item
+5d1b987796	1	86	#/texts/86	Used for program listings, as well as within parag	list_item
+068d636ebb	1	87	#/texts/87	Constant width bold	list_item
+aafb3eb01a	1	88	#/texts/88	Shows commands or other text that should be typed 	list_item
+f4769eed64	1	89	#/texts/89	Constant width italic	list_item
+71b842a259	1	90	#/texts/90	Shows text that should be replaced with user-suppl	list_item
+311a0dac6c	1	91	#/texts/91	Tip	section_header
+92736cc688	1	92	#/texts/92	This element signifies a tip or suggestion.	text
+680afe8b31	1	93	#/texts/93	Note	section_header
+d2181adc8c	1	94	#/texts/94	This element signifies a general note.	text
+731089949e	1	95	#/texts/95	Warning	section_header
+bcb532f711	1	96	#/texts/96	This element indicates a warning or caution.	text
+79cfddbee1	1	97	#/texts/97	O'Reilly Online Learning	title
+104a136cef	1	98	#/texts/98	Note	section_header
+c42c42047e	1	99	#/texts/99	For more than 40 years,	text
+38e56255f9	1	100	#/texts/100	O'Reilly Media	text
+962e3259f2	1	101	#/texts/101	has provided technology and business training, kno	text
+1d5197a322	1	102	#/texts/102	Our unique network of experts and innovators share	text
+15ed3fd391	1	103	#/texts/103	https://oreilly.com	text
+8e86a07662	1	104	#/texts/104	.	text
+e40c5a88a5	1	105	#/texts/105	How to Contact Us	title
+3e95d1440b	1	106	#/texts/106	Please address comments and questions concerning t	text
+091bd5a2a6	1	107	#/texts/107	O'Reilly Media, Inc.	list_item
+fde58c2cbb	1	108	#/texts/108	141 Stony Circle, Suite 195	list_item
+54d5030a58	1	109	#/texts/109	Santa Rosa, CA 95401	list_item
+6a4f4776c6	1	110	#/texts/110	800-889-8969 (in the United States or Canada)	list_item
+bc066201b9	1	111	#/texts/111	707-827-7019 (international or local)	list_item
+f30d073f73	1	112	#/texts/112	707-829-0104 (fax)	list_item
+c3e9ae695a	1	113	#/texts/113	support@oreilly.com	list_item
+e7a12c9c8e	1	114	#/texts/114	https://oreilly.com/about/contact.html	list_item
+695e79c737	1	115	#/texts/115	We have a web page for this book, where we list er	text
+ddda6887ed	1	116	#/texts/116	https://oreil.ly/practical-MLflow-GenAI-Databricks	text
+ef4e21ec1a	1	117	#/texts/117	.	text
+4e592957cf	1	118	#/texts/118	For news and information about our books and cours	text
+15da27f81b	1	119	#/texts/119	https://oreilly.com	text
+61e1b3a4b2	1	120	#/texts/120	.	text
+e6bd816b59	1	121	#/texts/121	Find us on LinkedIn:	text
+e91ff60836	1	122	#/texts/122	https://linkedin.com/company/oreilly	text
+38f9c8009e	1	123	#/texts/123	.	text
+27e4c5a906	1	124	#/texts/124	Watch us on YouTube:	text
+4e9fd2e46b	1	125	#/texts/125	https://youtube.com/oreillymedia	text
+69278d8562	1	126	#/texts/126	.	text

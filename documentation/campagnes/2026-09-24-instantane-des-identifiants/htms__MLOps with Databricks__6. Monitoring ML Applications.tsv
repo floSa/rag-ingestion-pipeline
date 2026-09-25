@@ -1,0 +1,914 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+bff8964d7f	1	0	#/texts/0	Chapter 6. Monitoring ML Applications	title
+f6f5f4fedc	1	1	#/texts/1	According to The Institute for Ethical AI & Machin	text
+28a96a1a72	1	2	#/texts/2	Figure 6-1	text
+64e6362002	1	3	#/texts/3	). Even though that figure is better than the one 	text
+5095c2db0a	1	4	#/pictures/0	Bar chart showing that 42% of respondents do not u	picture
+27ce31f2f1	1	5	#/texts/5	But monitoring isn't a \"nice-to-have.\" Without it,	text
+5d235cc172	1	6	#/texts/6	By the end of this chapter, you will understand al	text
+421d528e6c	1	7	#/texts/7	The different layers of ML monitoring	list_item
+fa96830b93	1	8	#/texts/8	How to design a practical monitoring strategy	list_item
+903073435a	1	9	#/texts/9	What metrics actually matter in production	list_item
+2d834ed7f6	1	10	#/texts/10	How to set alerts on aspects that matter	list_item
+fcc5c599f5	1	11	#/texts/11	How monitoring connects to retraining and continuo	list_item
+1e49c1ed82	1	12	#/texts/12	In short, this chapter will move you from \"Model d	text
+364602f32d	1	13	#/texts/4	Bar chart showing that 42% of respondents do not u	caption
+7447e0c7c3	1	14	#/texts/13	What to Monitor	title
+bdb7aea749	1	15	#/texts/14	Monitoring requirements for ML projects are highly	text
+2d95db48e3	1	16	#/texts/15	Recommender Systems	section_header
+16c5bb8804	1	17	#/texts/16	In a	text
+082ef47da5	1	18	#/texts/17	recommender system	text
+d57e7538d8	1	19	#/texts/18	, such as one for an online grocery store, a user 	text
+842234edc2	1	20	#/texts/19	You can use metrics like precision@K, recall@K, an	text
+2f05bd65e7	1	21	#/texts/20	Precision@K	list_item
+e7fb432f9a	1	22	#/texts/21		list_item
+6a5d1bc678	1	23	#/texts/22	This measures what share of items within the top	text
+5fa9bb0a12	1	24	#/texts/23	K	text
+4e47b1db34	1	25	#/texts/24	positions are relevant.	text
+2c5b70e159	1	26	#/texts/25	Recall@K	list_item
+cb27cd8b12	1	27	#/texts/26		list_item
+66bb848edf	1	28	#/texts/27	This measures the share of relevant items captured	text
+19992c4fea	1	29	#/texts/28	K	text
+0b3d8f0540	1	30	#/texts/29	positions.	text
+717606ed06	1	31	#/texts/30	F-score@K	list_item
+f1025c50ec	1	32	#/texts/31		list_item
+ab9b92b9cd	1	33	#/texts/32	This provides a balanced measure of Precision and 	text
+7e76faf200	1	34	#/texts/33	K	text
+e8f10e006a	1	35	#/texts/34	.	text
+2b263a09ae	1	36	#/texts/35	If you want to explore the nuances further, Eviden	text
+bb24f755fd	1	37	#/texts/36	extensive explanation of these metrics	text
+97d9e36381	1	38	#/texts/37	. Overall, the higher the value of these metrics, 	text
+8136de788e	1	39	#/texts/38	However, we should not forget the purpose of the r	text
+abe031e2b0	1	40	#/texts/39	higher basket value	text
+2bf717af28	1	41	#/texts/40	with the recommender than they would with random s	text
+2c91822f9c	1	42	#/texts/41	In the case of such a recommender system, we can e	text
+12aa39fc98	1	43	#/texts/42	Regression and Demand Forecasting	section_header
+35ed6389de	1	44	#/texts/43	In regression tasks, such as predicting weekly sal	text
+c219e5af75	1	45	#/texts/44	However, there are two things we can monitor with 	text
+e5a376541c	1	46	#/texts/45	Business user feedback	list_item
+d76fd861c3	1	47	#/texts/46	We can monitor for an unusual volume of manual cor	list_item
+2faffefa50	1	48	#/texts/47	Estimated model performance	list_item
+c91175486a	1	49	#/texts/48	We can utilize methods like direct loss estimation	list_item
+36276cf26a	1	50	#/texts/49	The DLE method works by training a secondary	text
+ee7df0a3ad	1	51	#/texts/50	nanny model	text
+53a0b5ce57	1	52	#/texts/51	to predict the absolute error of the primary	text
+77d9b85859	1	53	#/texts/52	child model	text
+33bef1a540	1	54	#/texts/53	. While both models use the same input features, t	text
+54497b2467	1	55	#/texts/54	NannyML documentation	text
+d68734ed36	1	56	#/texts/55	, which offers extensive resources on this approac	text
+eb77ccd4a8	1	57	#/texts/56	The ultimate performance metric is again the busin	text
+7653a87a7a	1	58	#/texts/57	Large Language Models	section_header
+78bafc167e	1	59	#/texts/58	Monitoring LLMs is even harder because outputs are	text
+e77c4869a0	1	60	#/texts/59	Azure uses two ways of validating that new models 	text
+b735fe1a43	1	61	#/texts/60	1	text
+7f0d9d65d5	1	62	#/texts/61	Monitoring AI projects often comes down to monitor	text
+7683402277	1	63	#/texts/62	Regardless of the use case, the goal is to detect	text
+ce94af8ff2	1	64	#/texts/63	abrupt or gradual changes in model outputs	text
+e2b334565c	1	65	#/texts/64	, which can signal that the world around the model	text
+8f7d13fe64	1	66	#/texts/65	concept drift.	text
+74bfc26456	1	67	#/texts/66	For example, imagine a model that predicts housing	text
+01bd2412f7	1	68	#/texts/67	Concept Drift versus Data Drift	section_header
+12b5f3b388	1	69	#/texts/68	In contrast,	text
+443eb5cc03	1	70	#/texts/69	data drift	text
+4862d5b6d8	1	71	#/texts/70	happens when the input data distribution shifts ev	text
+7ca378b5fc	1	72	#/texts/71	Significant data drift, even in features with high	text
+8c234675fb	1	73	#/texts/72	2	text
+9ea3977ce6	1	74	#/texts/73	Fairness, Bias, and Regulatory Compliance	section_header
+2e9be1fcce	1	75	#/texts/74	Another aspect of monitoring is	text
+7b85afee36	1	76	#/texts/75	fairness and bias	text
+870a82f797	1	77	#/texts/76	, which has become a formal regulatory requirement	text
+4cb84f25ce	1	78	#/texts/77	Chapter 10	text
+9f4195f6bc	1	79	#/texts/78	.	text
+5ce0de939f	1	80	#/texts/79	System and Infrastructure Health	section_header
+281e5953f6	1	81	#/texts/80	Besides model- and business-specific aspects, it's	text
+3b5460b03f	1	82	#/texts/81	generic monitoring	text
+319a67cbed	1	83	#/texts/82	that every software system needs. Even the best mo	text
+f0fcb2e77e	1	84	#/texts/83	This includes tracking	text
+25fa4297ca	1	85	#/texts/84	system health	text
+3044be39ca	1	86	#/texts/85	,	text
+b9b55694c0	1	87	#/texts/86	errors	text
+10bfcf3ab8	1	88	#/texts/87	,	text
+af8ff9acb9	1	89	#/texts/88	latency	text
+4ff3358618	1	90	#/texts/89	, and	text
+19cdad56d0	1	91	#/texts/90	infrastructure costs	text
+23e3e7ab96	1	92	#/texts/91	. A data pipeline outage or slow feature store can	text
+58b204edca	1	93	#/texts/92	Monitoring, in the end, is about	text
+fb7e40a2ce	1	94	#/texts/93	closing feedback loops	text
+c3e03740c6	1	95	#/texts/94	across models, data, and infrastructure so that is	text
+af8376661f	1	96	#/texts/95	To recap, a comprehensive monitoring strategy for 	text
+4e67cea986	1	97	#/texts/96	Model performance metrics	list_item
+ba7e4acbcb	1	98	#/texts/97	Prediction quality	list_item
+a0f4b40cbc	1	99	#/texts/98	You perform real-time tracking of metrics like pre	list_item
+0e0ad5c635	1	100	#/texts/99	Estimated performance	list_item
+cef367a431	1	101	#/texts/100	When ground truth arrives late (e.g., weekly or mo	list_item
+7da9f0ec87	1	102	#/texts/101	Drift and stability	list_item
+30d653640a	1	103	#/texts/102	You watch for abrupt or gradual changes in model o	list_item
+11171f46b1	1	104	#/texts/103	Fairness and bias	list_item
+a95658b15c	1	105	#/texts/104	You monitor whether the model performs similarly o	list_item
+d60a44d38d	1	106	#/texts/105	Business metrics	list_item
+7e6748d286	1	107	#/texts/106	Value alignment	list_item
+a6ec0dd8de	1	108	#/texts/107	You connect model output to revenue lift, conversi	list_item
+ab8c5ca833	1	109	#/texts/108	Impact over accuracy	list_item
+f9cfb999f9	1	110	#/texts/109	Even if your offline metrics look good, you must m	list_item
+39c095b8f7	1	111	#/texts/110	Operational and human-in-the-loop signals	list_item
+225211085d	1	112	#/texts/111	User feedback	list_item
+05f3073707	1	113	#/texts/112	You track user interactions and feedback (clicks, 	list_item
+147556d4e8	1	114	#/texts/113	Manual overrides	list_item
+b927ff5d4d	1	115	#/texts/114	You monitor business user overrides or corrections	list_item
+2cf441b900	1	116	#/texts/115	System and infrastructure health	list_item
+e82326876a	1	117	#/texts/116	Operational robustness	list_item
+ec3c99e235	1	118	#/texts/117	Monitoring system health, errors, latency, and inf	list_item
+2122cd9f1c	1	119	#/texts/118	Cost management	list_item
+0f2423c8b0	1	120	#/texts/119	A broken pipeline, a slow feature store, or escala	list_item
+f6d2f5f9c2	1	121	#/texts/120	Next, we'll take a deep dive into Databricks Data 	text
+4081d66472	1	122	#/texts/121	Introduction to Databricks Data Quality Monitoring	title
+26cb9a2eb2	1	123	#/texts/122	Databricks Data Quality Monitoring provides built-	text
+04b4e35909	1	124	#/texts/123	Note	section_header
+014b5ae606	1	125	#/texts/124	You can monitor the input tables that are used to 	text
+899ea9126f	1	126	#/texts/125	Data Quality Monitoring supports two primary autom	text
+9bb0a3a067	1	127	#/texts/126	Time series scenario	list_item
+04f4148690	1	128	#/texts/127	This is suitable for input tables that are used fo	list_item
+1695e925ce	1	129	#/texts/128	Inference scenario	list_item
+4ea025a65d	1	130	#/texts/129	This is designed for tables that store model input	list_item
+93b69a1b92	1	131	#/texts/130	When monitoring is enabled on a table, Databricks 	text
+aaf45d113a	1	132	#/texts/131	A profile metrics table	list_item
+d7846d0d29	1	133	#/texts/132	A drift metrics table	list_item
+868d964390	1	134	#/texts/133	A Databricks SQL dashboard for visualization	list_item
+c2f23bffa8	1	135	#/texts/134	Figure 6-2	text
+1be51f4e5b	1	136	#/texts/135	depicts the relationships among these assets.	text
+f06da69804	1	137	#/pictures/1	Diagram illustrating the relationships among Datab	picture
+9236947ced	1	138	#/texts/137	The	text
+977b5b3f99	1	139	#/texts/138	profile metrics table	text
+4ef69d8b8b	1	140	#/texts/139	contains summary statistics for each column and fo	text
+c6591434af	1	141	#/texts/140	time window, slice	text
+ae0a08046a	1	142	#/texts/141	, and	text
+0809627172	1	143	#/texts/142	grouping columns	text
+5c94c807f1	1	144	#/texts/143	. These include measures such as counts, means, st	text
+09f8e131ce	1	145	#/texts/144	model accuracy metrics	text
+e1e3baf0ca	1	146	#/texts/145	like precision, recall, or RMSE, depending on the 	text
+8202c571a1	1	147	#/texts/146	The	text
+895102bac0	1	148	#/texts/147	drift metrics table	text
+d4e9491c20	1	149	#/texts/148	tracks	text
+9c251b739d	1	150	#/texts/149	changes in data distributions	text
+79ad4cb496	1	151	#/texts/150	over time. Rather than focusing on specific values	text
+10da0da0fb	1	152	#/texts/151	previous time window	text
+601f424bed	1	153	#/texts/152	(via consecutive drift) or an optional	text
+4c9437aec4	1	154	#/texts/153	baseline table	text
+8612b135ef	1	155	#/texts/154	, such as the training dataset, which is used as a	text
+c1bd5cc58b	1	156	#/texts/155	Consecutive drift	text
+ea7b84e007	1	157	#/texts/156	is computed only when a preceding time window exis	text
+41d5faae61	1	158	#/texts/157	5 minutes	list_item
+edfddee439	1	159	#/texts/158	30 minutes	list_item
+b4267d5de2	1	160	#/texts/159	1 hour	list_item
+ad555102a6	1	161	#/texts/160	1 day	list_item
+e2ca3478d9	1	162	#/texts/161		list_item
+e239eebc69	1	163	#/texts/162	N	text
+61a4e06ce9	1	164	#/texts/163	weeks	text
+935942d6c2	1	165	#/texts/164	1 month	list_item
+592accc150	1	166	#/texts/165	1 year	list_item
+d8a3be33d3	1	167	#/texts/166	If you need more control-for example, to monitor t	text
+a351f11a2f	1	168	#/texts/167	Snapshot profiles	text
+18c7591a81	1	169	#/texts/168	process the entire table at each run and can optio	text
+7add64b217	1	170	#/texts/169	Across all monitoring modes, you can define	text
+427aa3cf66	1	171	#/texts/170	slices	text
+7e32487d28	1	172	#/texts/171	to break down metrics by dimensions such as region	text
+f9168469a2	1	173	#/texts/172	Profile Metrics Table	section_header
+17cd92c7d7	1	174	#/texts/173	Let's take a closer look at the profile metrics ta	text
+082f6b3956	1	175	#/texts/174	The table organizes data using several key	text
+16b43a1fe7	1	176	#/texts/175	grouping columns	text
+47d00143dc	1	177	#/texts/176	:	text
+54bba4d0e0	1	178	#/texts/177	Window and granularity	list_item
+006430b584	1	179	#/texts/178		list_item
+7a9686d3f3	1	180	#/texts/179	This column defines the specific time interval (e.	text
+b5f7c8f3c2	1	181	#/texts/180	struct<start: timestamp, end: timestamp>	code
+d48b948cd6	1	182	#/texts/181	format.	text
+164064a69a	1	183	#/texts/182		list_item
+c0d76b41f0	1	184	#/texts/183	Model ID (	text
+992e7bda66	1	185	#/texts/184	model_id_col	code
+cfc2793ef8	1	186	#/texts/185	)	text
+4ea1e6f294	1	187	#/texts/186	This column is specific to the inference scenario.	list_item
+0ae2ea1651	1	188	#/texts/187		list_item
+dd29967b03	1	189	#/texts/188	Log type (	text
+4b1d2cf4fa	1	190	#/texts/189	log_type	code
+dff8830d7c	1	191	#/texts/190	)	text
+b611994d09	1	192	#/texts/191		list_item
+6dac3df4f6	1	193	#/texts/192	This column indicates which table was used to calc	text
+2ff0682c86	1	194	#/texts/193	BASELINE	code
+679f5b892a	1	195	#/texts/194	, metrics are computed for the baseline (reference	text
+38172c6533	1	196	#/texts/195	INPUT	code
+95965f5236	1	197	#/texts/196	, metrics are computed for the currently monitored	text
+2f908a8545	1	198	#/texts/197		list_item
+39b66b3e1d	1	199	#/texts/198	Slicing (	text
+1aa57916a7	1	200	#/texts/199	slice_key	code
+9c4ab48d77	1	201	#/texts/200	and	text
+9dbf513b3f	1	202	#/texts/201	slice_value	code
+bcce10a1ff	1	203	#/texts/202	)	text
+ff7bb1bb00	1	204	#/texts/203	These columns capture the slicing expression and i	list_item
+2dc5b4021d	1	205	#/texts/204		list_item
+918380e35e	1	206	#/texts/205	Column metadata (	text
+0db59bc959	1	207	#/texts/206	column_name	code
+a99e6dc929	1	208	#/texts/207	and	text
+2d8a06a204	1	209	#/texts/208	data_type	code
+4e757dcbaa	1	210	#/texts/209	)	text
+0e83587b87	1	211	#/texts/210		list_item
+715238af3a	1	212	#/texts/211	These columns include the column used to calculate	text
+50f98536e0	1	213	#/texts/212	:table	code
+a98c057fd3	1	214	#/texts/213	is used for metrics (such as overall model accurac	text
+a19d6aead2	1	215	#/texts/214	Summary statistics are computed for every combinat	text
+8dc9208be9	1	216	#/texts/215	Table 6-1	text
+c4db3a86c1	1	217	#/texts/216	shows the summary statistics present in the profil	text
+6bb60e3d02	1	218	#/tables/0	| Column name        | Data type                  	table
+688e23d33a	1	219	#/texts/217	count	code
+8d27d72b6e	1	220	#/texts/218	bigint	code
+70a97d105e	1	221	#/texts/219	num_nulls	code
+1dffdc84a1	1	222	#/texts/220	bigint	code
+8bfb2b5f80	1	223	#/texts/221	avg	code
+290a24ecc9	1	224	#/texts/222	double	code
+9657fea402	1	225	#/texts/223	quantiles	code
+017e881366	1	226	#/texts/224	array<double>	code
+ac242bd352	1	227	#/texts/225	distinct_count	code
+3a1bff2073	1	228	#/texts/226	bigint	code
+18be8bba80	1	229	#/texts/227	min	code
+e4f4ff3f6f	1	230	#/texts/228	double	code
+ce53a5437e	1	231	#/texts/229	max	code
+bf6c8fefe0	1	232	#/texts/230	double	code
+3d2754ea8b	1	233	#/texts/231	stddev	code
+6b7214c898	1	234	#/texts/232	double	code
+9b5777d134	1	235	#/texts/233	num_zeros	code
+95bb16cf6a	1	236	#/texts/234	bigint	code
+ca2d47b77a	1	237	#/texts/235	num_nan	code
+6e395c942f	1	238	#/texts/236	bigint	code
+dd6900a97d	1	239	#/texts/237	min_size	code
+9d15e449cd	1	240	#/texts/238	double	code
+b843121c3e	1	241	#/texts/239	max_size	code
+9d01a9d70d	1	242	#/texts/240	double	code
+cad67174ad	1	243	#/texts/241	avg_size	code
+9c5c7ae3c7	1	244	#/texts/242	double	code
+95c3c6577c	1	245	#/texts/243	min_len	code
+adaac46438	1	246	#/texts/244	double	code
+34afd81d03	1	247	#/texts/245	max_len	code
+be70688eba	1	248	#/texts/246	double	code
+e5963eed8e	1	249	#/texts/247	avg_len	code
+15c513b86c	1	250	#/texts/248	double	code
+31e521c69b	1	251	#/texts/249	frequent_items	code
+8689ba23f8	1	252	#/texts/250	array<struct<item: string, count: bigint>>	code
+de1e5a4bd3	1	253	#/texts/251	non_null_columns	code
+c75024a22b	1	254	#/texts/252	array<string>	code
+533d2f6737	1	255	#/texts/253	median	code
+faaa1a81f3	1	256	#/texts/254	double	code
+f07bca0e99	1	257	#/texts/255	percent_null	code
+82d1c32559	1	258	#/texts/256	double	code
+561557d86a	1	259	#/texts/257	percent_zeros	code
+ec227a8465	1	260	#/texts/258	double	code
+484a4cc678	1	261	#/texts/259	percent_distinct	code
+39d29acbf5	1	262	#/texts/260	double	code
+684507a197	1	263	#/texts/261	In the inference scenario, providing ground truth 	text
+738e1aa583	1	264	#/texts/262	Table 6-2	text
+6c1aa9acce	1	265	#/texts/263	outlines the specific metrics computed for classif	text
+70f747a531	1	266	#/tables/1	| Column name        | Type                       	table
+457968f32e	1	267	#/texts/264	accuracy_score	code
+9957b779ef	1	268	#/texts/265	double	code
+d0aafac975	1	269	#/texts/266	confusion_matrix	code
+4f78000ad5	1	270	#/texts/267	struct<prediction: string, label: string, count: b	code
+73c5c86b29	1	271	#/texts/268	precision	code
+789cafde41	1	272	#/texts/269	struct<one_vs_all: map<string,double>, macro: doub	code
+92ab0232e9	1	273	#/texts/270	recall	code
+f8cc8a0c51	1	274	#/texts/271	struct<one_vs_all: map<string,double>, macro: doub	code
+895215df8a	1	275	#/texts/272	f1_score	code
+d2c7548920	1	276	#/texts/273	struct<one_vs_all: map<string,double>, macro: doub	code
+59438de96b	1	277	#/texts/274	Table 6-3	text
+527e492d2d	1	278	#/texts/275	shows the metrics computed for regression problems	text
+7f5d3a8429	1	279	#/tables/2	| Column name                      | Type     |\n|-	table
+e2cc4478cc	1	280	#/texts/276	mean_squared_error	code
+c11d2435d8	1	281	#/texts/277	double	code
+41347bd40b	1	282	#/texts/278	root_mean_squared_error	code
+d74487b3b2	1	283	#/texts/279	double	code
+c81a8b069c	1	284	#/texts/280	mean_average_error	code
+0edc5c4b65	1	285	#/texts/281	double	code
+ed594ec80f	1	286	#/texts/282	mean_absolute_percentage_error	code
+45d79e3047	1	287	#/texts/283	double	code
+ada6380504	1	288	#/texts/284	r2_score	code
+1ef8a241d1	1	289	#/texts/285	double	code
+00bd9de288	1	290	#/texts/286	For classification problems, we can also monitor f	text
+50b103650e	1	291	#/texts/287	protected group	text
+9b2c8681ad	1	292	#/texts/288	(the group we are checking for bias against), and 	text
+ad64857a1d	1	293	#/texts/289	unprotected group	text
+1a50568b73	1	294	#/texts/290	. For example, if the slice is defined by	text
+5a76ac72b4	1	295	#/texts/291	slice_key = \"age < 18\"	code
+1a45c00940	1	296	#/texts/292	and	text
+c2e297d78b	1	297	#/texts/293	slice_value = True	code
+ec4f8bfcde	1	298	#/texts/294	, we will be checking whether the algorithm is bia	text
+9ea115f3ba	1	299	#/texts/295	The monitor then automatically computes fairness m	text
+7a9e5832b1	1	300	#/texts/296	predictive_parity	list_item
+63e4f072ae	1	301	#/texts/297	This compares model precision between groups.	list_item
+c3703b652b	1	302	#/texts/298	predictive_equality	list_item
+caa7f883c7	1	303	#/texts/299	This compares false positive rates.	list_item
+14fd007f5f	1	304	#/texts/300	equal_opportunity	list_item
+5712840794	1	305	#/texts/301	This compares recall.	list_item
+432b89cd39	1	306	#/texts/302	statistical_parity	list_item
+592e77e7e9	1	307	#/texts/303	This compares the proportions of positive predicti	list_item
+454e988ef0	1	308	#/texts/304	At this point, we've walked through the profile me	text
+bb45bbc32c	1	309	#/texts/305	Now, let's take a closer look at the	text
+813b38ab83	1	310	#/texts/306	drift metrics table	text
+bb674c70a8	1	311	#/texts/307	, which builds on these profiles to quantify how d	text
+b5a88e4721	1	312	#/texts/308	Drift Metrics Table	section_header
+36900b2309	1	313	#/texts/309	The drift metrics table uses the same grouping col	text
+40349e9c33	1	314	#/texts/310	log_type	code
+63d82532ae	1	315	#/texts/311	column. Instead, it includes the following additio	text
+f59e838b90	1	316	#/texts/312	drift_type	list_item
+16e4e6a404	1	317	#/texts/313		list_item
+e9c6e2002b	1	318	#/texts/314	This column indicates whether the drift is measure	text
+c38ec08d4a	1	319	#/texts/315	BASELINE	code
+8fb74175c2	1	320	#/texts/316	or the	text
+daa6df89ab	1	321	#/texts/317	CONSECUTIVE	code
+40d20fa5a8	1	322	#/texts/318	(previous) time window.	text
+c85e6d8f6a	1	323	#/texts/319	window_cmp	list_item
+db852bcb3b	1	324	#/texts/320		list_item
+84997016d2	1	325	#/texts/321	This column specifies the comparison window used w	text
+5282601549	1	326	#/texts/322	drift_type	code
+dc7137a610	1	327	#/texts/323	is	text
+70376e3fd9	1	328	#/texts/324	CONSECUTIVE	code
+4f64afac2f	1	329	#/texts/325	.	text
+7d731272a5	1	330	#/texts/326	Table 6-4	text
+cc817c9e2b	1	331	#/texts/327	lists all computed drift metrics and gives descrip	text
+a32675b5c6	1	332	#/tables/3	| Column name                  | Data type        	table
+6060468890	1	333	#/texts/328	count_delta	code
+b6023ec1b0	1	334	#/texts/329	double	code
+a7a9b86e0c	1	335	#/texts/330	Difference in	text
+1edbe62f2c	1	336	#/texts/331	count	code
+71eb1f2b0e	1	337	#/texts/332	avg_delta	code
+456858ae25	1	338	#/texts/333	double	code
+22f54a6802	1	339	#/texts/334	Difference in	text
+1710008f16	1	340	#/texts/335	avg	code
+c9d0d50478	1	341	#/texts/336	percent_null_delta	code
+b8c97a0afd	1	342	#/texts/337	double	code
+f51c0bdac3	1	343	#/texts/338	Difference in	text
+27b34c133f	1	344	#/texts/339	percent_null	code
+1e835a0519	1	345	#/texts/340	percent_zeros_delta	code
+1e6f241125	1	346	#/texts/341	double	code
+55eac08d8b	1	347	#/texts/342	Difference in	text
+b9a3b8e181	1	348	#/texts/343	percent_zeros	code
+dbd09fdb9b	1	349	#/texts/344	percent_distinct_delta	code
+af2e1adac7	1	350	#/texts/345	double	code
+183b14fa26	1	351	#/texts/346	Difference in	text
+718aa4c5ce	1	352	#/texts/347	percent_distinct	code
+ae541e5b08	1	353	#/texts/348	non_null_columns_delta	code
+3c210b0f1c	1	354	#/texts/349	struct<added: int, missing: int>	code
+dd95bb20ad	1	355	#/texts/350	chi_squared_test	code
+ef020bc22a	1	356	#/texts/351	struct<statistic: double, pvalue: double>	code
+e8d47ced77	1	357	#/texts/352	Chi-square test for drift in distribution, which i	text
+5bbf8e92a2	1	358	#/texts/353	categorical columns	text
+f045b93a33	1	359	#/texts/354	only	text
+ae803bb44b	1	360	#/texts/355	ks_test	code
+a5b1e8c30c	1	361	#/texts/356	struct<statistic: double, pvalue: double>	code
+9feae7f458	1	362	#/texts/357	Kolmogorov-Smirnov test for drift in distribution,	text
+5f07a49bc2	1	363	#/texts/358	numeric columns	text
+89409a25c9	1	364	#/texts/359	only	text
+494116bcf5	1	365	#/texts/360	tv_distance	code
+64f1d93eb8	1	366	#/texts/361	double	code
+c7bf97a6d2	1	367	#/texts/362	Total variation distance, which is calculated for	text
+38d2dc62a8	1	368	#/texts/363	categorical columns	text
+15c169dda5	1	369	#/texts/364	only	text
+8afc30659a	1	370	#/texts/365	l_infinity_distance	code
+dee56c6840	1	371	#/texts/366	double	code
+3f637bc7a0	1	372	#/texts/367	L-infinity distance, which is calculated for	text
+212589f632	1	373	#/texts/368	categorical columns	text
+72572018bc	1	374	#/texts/369	only	text
+c70ec0211f	1	375	#/texts/370	js_distance	code
+5f4caec187	1	376	#/texts/371	double	code
+cdb1c409a3	1	377	#/texts/372	Jensen-Shannon distance, which is calculated for	text
+7ba1d87c69	1	378	#/texts/373	categorical columns	text
+92882e2151	1	379	#/texts/374	only	text
+feaa4db6f7	1	380	#/texts/375	wasserstein_distance	code
+424583bd71	1	381	#/texts/376	double	code
+192574066a	1	382	#/texts/377	Wasserstein distance metric, which is calculated f	text
+7b259a8930	1	383	#/texts/378	numeric columns	text
+5764987d83	1	384	#/texts/379	only	text
+d95732a951	1	385	#/texts/380	population_stability_index	code
+b26c3cf663	1	386	#/texts/381	double	code
+24d2056929	1	387	#/texts/382	Population stability index metric, which is calcul	text
+98c6d43b2c	1	388	#/texts/383	numeric columns	text
+75f83abf34	1	389	#/texts/384	only	text
+990a4274ce	1	390	#/texts/385	Let's now go through all the metrics we've mention	text
+17a33c6f87	1	391	#/texts/136	Diagram illustrating the relationships among Datab	caption
+9a8d517676	1	392	#/texts/386	Metrics for Monitoring Data Drift	title
+61a973912b	1	393	#/texts/387	If you're familiar with statistics, you've likely 	text
+059e6ff69e	1	394	#/texts/388	These same techniques are widely used for	text
+4a85432784	1	395	#/texts/389	data drift detection	text
+9ec6221bcb	1	396	#/texts/390	, to help identify shifts between training data an	text
+00649f0698	1	397	#/texts/391	Chi-squared Test	section_header
+982257c94a	1	398	#/texts/392	The	text
+f1aaf0783c	1	399	#/texts/393	chi-squared test	text
+5bef6a3945	1	400	#/texts/394	is frequently used to compare the distributions of	text
+6627fd0aba	1	401	#/texts/395	To illustrate how to calculate the chi-squared sta	text
+479cef1f43	1	402	#/texts/396	p	text
+e9019e6f2a	1	403	#/texts/397	-value), let's look at the categorical	text
+b765368cf5	1	404	#/texts/398	type_of_meal	code
+da9b22c876	1	405	#/texts/399	variable across the last two monitoring windows.	text
+eb556e4c7d	1	406	#/texts/400	We start by defining our hypotheses:	text
+8c8200c717	1	407	#/texts/401	Null hypothesis (H\u2080)	list_item
+83196249f5	1	408	#/texts/402	Both datasets come from the same underlying distri	list_item
+bd857943b3	1	409	#/texts/403	Alternative hypothesis (H\u2081)	list_item
+a2e8a596c0	1	410	#/texts/404	The datasets come from different distributions, wh	list_item
+faff7c73a7	1	411	#/texts/405	Next, we use the data to test the null hypothesis.	text
+f3f9ef9815	1	412	#/texts/406	Based on the observed values (	text
+d04d5914ed	1	413	#/texts/407	O	text
+c8652864d3	1	414	#/texts/408	) recorded in the profile metrics table,	text
+94947759ba	1	415	#/texts/409	Table 6-5	text
+af207e20c4	1	416	#/texts/410	provides an overview of the category counts for ea	text
+0785d7d16f	1	417	#/tables/4	|                  | Window 1   | Window 2   | Tot	table
+5f7a8033b6	1	418	#/texts/411	Meal Plan 1	text
+86d07e1755	1	419	#/texts/412	853	text
+adcf5bb07e	1	420	#/texts/413	Not Selected	text
+cf43820f66	1	421	#/texts/414	183	text
+6f0c8ed27d	1	422	#/texts/415	Meal Plan 2	text
+dc0dd5785f	1	423	#/texts/416	88	text
+43b5c05682	1	424	#/texts/417	Total	text
+0349f43c90	1	425	#/texts/418	289	text
+7f6f190a27	1	426	#/texts/419	835	text
+4cc3e6318a	1	427	#/texts/420	1124	text
+e57db33984	1	428	#/texts/421	Now, let's calculate the expected values (	text
+5b9d736a98	1	429	#/texts/422	E	text
+ad7430d9cb	1	430	#/texts/423	), as shown in	text
+2ac96e526d	1	431	#/texts/424	Table 6-6	text
+966aa37fe5	1	432	#/texts/425	.	text
+09d2eca9d1	1	433	#/tables/5	|                  | Window 1                  | W	table
+8ccf8f83a7	1	434	#/texts/426	Meal Plan 1	text
+485413fdac	1	435	#/texts/427	Not Selected	text
+31d28e41d3	1	436	#/texts/428	Meal Plan 2	text
+6083e6072f	1	437	#/texts/429	The observed chi-squared statistics are calculated	text
+8129995dee	1	438	#/texts/430	This matches the exact value we observed in the dr	text
+b3c5dc6662	1	439	#/texts/431	Now, let's now calculate the	text
+9f934cec21	1	440	#/texts/432	p	text
+412efa232f	1	441	#/texts/433	-value, which is a measure of whether the results 	text
+8f279c72fd	1	442	#/texts/434	where is a cumulative distribution function of the	text
+e75cb018ec	1	443	#/texts/435	Also, , as we have three rows () and two columns (	text
+445ae90274	1	444	#/texts/436	Finally, .	text
+119239c685	1	445	#/texts/437	The	text
+7a57b0c7ba	1	446	#/texts/438	significance level (\u03b1)	text
+fafc2242ad	1	447	#/texts/439	defines how much evidence we need to reject the nu	text
+c8ca4de7d2	1	448	#/texts/440	p-value \u2264 \u03b1	text
+27c35628d4	1	449	#/texts/441	, we reject	text
+15995ffbf7	1	450	#/texts/442	H	text
+78c8adaf81	1	451	#/texts/443	\u2080, if the	text
+a9f0c9784f	1	452	#/texts/444	p-value > \u03b1	text
+67e97dc7e1	1	453	#/texts/445	, we fail to reject	text
+834d729e1c	1	454	#/texts/446	H	text
+36e5e55313	1	455	#/texts/447	\u2080.	text
+27f5ed76e9	1	456	#/texts/448	In our case, the	text
+8e7f7de065	1	457	#/texts/449	p	text
+893a150efd	1	458	#/texts/450	-value is 0,65, which is much greater than a typic	text
+34701e5ccf	1	459	#/texts/451	.	text
+d65265e356	1	460	#/texts/452	This means the observed difference could easily be	text
+8786a68a75	1	461	#/texts/453	Overall, a chi-squared test is a common choice amo	text
+331234a04e	1	462	#/texts/454	Kolmogorov-Smirnov Test	section_header
+251336aaa0	1	463	#/texts/455	The	text
+35ba17e09b	1	464	#/texts/456	Kolmogorov-Smirnov test	text
+394d0935e0	1	465	#/texts/457	is a widely used test for investigating the signif	text
+4f1e7ebaa5	1	466	#/texts/458	H	text
+ac38dc5897	1	467	#/texts/459	\u2080) or if a significant shift, which is indicative 	text
+5ff37fb97f	1	468	#/texts/460	H	text
+5f76f62ac6	1	469	#/texts/461	\u2081).	text
+26e0eacad6	1	470	#/texts/462	Let's create a fictional example for the	text
+1f00b42716	1	471	#/texts/463	number_of_week_nights	code
+0c219ee3a1	1	472	#/texts/464	variable to help us understand how the test is cal	text
+c6f3c7d5ff	1	473	#/texts/465	n	text
+407b0fcc2b	1	474	#/texts/466	= 4 entries, and the second window contains	text
+6e62dac114	1	475	#/texts/467	m	text
+d06bf3e0a0	1	476	#/texts/468	= 6 entries:	text
+d21c390afd	1	477	#/texts/469	Window 1: 1, 5, 7, 3	list_item
+f5e7ad80fb	1	478	#/texts/470	Window 2: 2, 3, 3, 5, 8, 1	list_item
+518f48b2a7	1	479	#/texts/471	Now we can calculate the cumulative relative frequ	text
+d70c8b036f	1	480	#/texts/472	Table 6-7	text
+d3e43c0e9d	1	481	#/texts/473	).	text
+2104dacb40	1	482	#/tables/6	|    |   Window 1 freq |   Window 2 freq | Window 	table
+a67f65b83c	1	483	#/texts/474	0,167	text
+02153a917b	1	484	#/texts/475	0,167	text
+1b1b2254dc	1	485	#/texts/476	The maximum difference is 0,167, which is the valu	text
+adaca1c431	1	486	#/texts/477	Rejection of the null hypothesis occurs at a signi	text
+8327dce280	1	487	#/texts/478	With the significance level 0,05, the critical lev	text
+99aeb71fe9	1	488	#/texts/479	For simplicity, Databricks also calculates	text
+9e03204eb7	1	489	#/texts/480	p	text
+ff13a1d771	1	490	#/texts/481	-value for the Kolmogorov-Smirnov test, which allo	text
+0954b1a779	1	491	#/texts/482	It's important to note that the Kolmogorov-Smirnov	text
+5637c84cfe	1	492	#/texts/483	Total Variation Distance	section_header
+dcb37d50b8	1	493	#/texts/484	The total variation distance (TVD) is another meas	text
+70fdb6a540	1	494	#/texts/485	p	text
+40bba2e8f2	1	495	#/texts/486	-values, the TVD is a	text
+691a7dbe60	1	496	#/texts/487	direct numerical measure	text
+eb8d39aac4	1	497	#/texts/488	of how much two distributions diverge independent 	text
+521e1fbdc3	1	498	#/texts/489	Let's come back to the same example we used to exp	text
+ee43a7241b	1	499	#/texts/490	type_of_meal	text
+ff5b8ad92e	1	500	#/texts/491	variable for each of the windows are presented in	text
+70f13f48f1	1	501	#/texts/492	Table 6-8	text
+f70091e5b2	1	502	#/texts/493	.	text
+d7d840ff82	1	503	#/tables/7	|              | Window 1   | Window 2   | Total  	table
+fe81a766b8	1	504	#/texts/494	853	text
+b90a78e3ca	1	505	#/texts/495	183	text
+8025951949	1	506	#/texts/496	88	text
+86fd4da046	1	507	#/texts/497	289	text
+37d234f480	1	508	#/texts/498	835	text
+978b248ae6	1	509	#/texts/499	1,124	text
+a0a73157fe	1	510	#/texts/500	Now, let's calculate the relative frequencies for 	text
+b4c0f46eaa	1	511	#/texts/501	Table 6-9	text
+9c4afd15c8	1	512	#/texts/502	.	text
+45905853e2	1	513	#/tables/8	|              | *P* (Window 1)    | *Q* (Window 2	table
+928c46b1b1	1	514	#/texts/503	P	text
+9dc1cb0b03	1	515	#/texts/504	(Window 1)	text
+714739f380	1	516	#/texts/505	Q	text
+036e32e3c0	1	517	#/texts/506	(Window 2)	text
+4c38310706	1	518	#/texts/507	|	text
+b1ead165dc	1	519	#/texts/508	P	text
+d105b1c6ed	1	520	#/texts/509	-	text
+c980285a31	1	521	#/texts/510	Q	text
+4c9b2888b5	1	522	#/texts/511	|	text
+0085bcc359	1	523	#/texts/512	0,022	text
+55fc51de7f	1	524	#/texts/513	0,024	text
+b9ed2adf4a	1	525	#/texts/514	0,002	text
+1c4f6129b6	1	526	#/texts/515	Total: 0,048	text
+1d6489e182	1	527	#/texts/516	We use this formula to calculate the TVD:	text
+1789a56c3b	1	528	#/texts/517	This result means that the categorical distributio	text
+d2f06172bb	1	529	#/texts/518	no meaningful evidence of drift	text
+35104f5f5b	1	530	#/texts/519	.	text
+a5336f4ac8	1	531	#/texts/520	The TVD is easy to compute, and it ranges from 0 (	text
+2fb97aa67f	1	532	#/texts/521	L-Infinity Distance	section_header
+3936d01d8e	1	533	#/texts/522	The	text
+745157127c	1	534	#/texts/523	L-infinity distance	text
+19b44ddb5a	1	535	#/texts/524	(also known as the	text
+bf17485163	1	536	#/texts/525	maximum absolute difference	text
+e1b781b6a9	1	537	#/texts/526	) measures the largest change between category fre	text
+920c173700	1	538	#/texts/527	It is defined as follows:	text
+7d103f11e0	1	539	#/texts/528	where and are the relative frequencies of category	text
+87f0391814	1	540	#/texts/529	i	text
+9031f6e393	1	541	#/texts/530	in each window.	text
+97fb164db5	1	542	#/texts/531	Using the same example as in our TVD calculation a	text
+099617372d	1	543	#/texts/532	This means the maximum shift in any single categor	text
+5c15d5c479	1	544	#/texts/533	L-infinity distance is easy to compute, ranges fro	text
+8200894ec6	1	545	#/texts/534	Jensen-Shannon Distance	section_header
+9b81ce5da1	1	546	#/texts/535	The Jensen-Shannon distance (JSD) measures how dif	text
+f1f8105755	1	547	#/texts/536	data drift detection	text
+1b45a86cfc	1	548	#/texts/537	.	text
+d730f0d38b	1	549	#/texts/538	It's defined as follows:	text
+6c92b484a7	1	550	#/texts/539	where , and .	text
+c6c827f56c	1	551	#/texts/540	Using the same previously computed relative freque	text
+ea5d851d44	1	552	#/texts/541	M	text
+eff8b1e784	1	553	#/texts/542	and	text
+088dcca5be	1	554	#/texts/543	KL	text
+8d6953a739	1	555	#/texts/544	divergences in	text
+b95eeafa76	1	556	#/texts/545	Table 6-10	text
+dbe19a24ee	1	557	#/texts/546	.	text
+6607a7c734	1	558	#/tables/9	|              |   (Window 1) |   (Window 2) |    	table
+5e5af81ad2	1	559	#/texts/547	(Window 1)	text
+8acbc1fc88	1	560	#/texts/548	(Window 2)	text
+1a58917056	1	561	#/texts/549	We can now compute the Jensen-Shannon distance:	text
+0e85277fb2	1	562	#/texts/550	The value of the JSD runs from 0 for identical dis	text
+9dddce4625	1	563	#/texts/551	While JSD is highly intuitive and stable, it is mo	text
+182dd5f058	1	564	#/texts/552	Wasserstein Distance	section_header
+cfd9f1324b	1	565	#/texts/553	The	text
+133b683368	1	566	#/texts/554	Wasserstein distance	text
+f1596be575	1	567	#/texts/555	(also known as the	text
+1f1cf5b688	1	568	#/texts/556	earth mover's distance	text
+5061160540	1	569	#/texts/557	) measures how much \"work\" is needed to transform 	text
+56d0a3ae44	1	570	#/texts/558	It's expressed in the same units as the variable, 	text
+f59f4fb573	1	571	#/texts/559	Let's use the same example we used to explain the 	text
+6e0009ef9e	1	572	#/texts/560	Window 1: 1, 5, 7, 3	list_item
+c65f4bc0db	1	573	#/texts/561	Window 2: 2, 3, 3, 5, 8, 1	list_item
+159c3839d3	1	574	#/texts/562	Using the	text
+b2e2539598	1	575	#/texts/563	number_of_week_nights	code
+1d0699cbfe	1	576	#/texts/564	variable, let's recalculate the cumulative relativ	text
+b760a4f23a	1	577	#/texts/565	Table 6-11	text
+215ce8083b	1	578	#/texts/566	.	text
+0fa9bf7d92	1	579	#/tables/10	|    |   Window 1 freq |   Window 2 freq | Window 	table
+95d71c83f5	1	580	#/texts/567	The Wasserstein distance is the sum of the areas:	text
+f08e949f74	1	581	#/texts/568	It's equal to 0,83 nights, which means that on ave	text
+3c92281f06	1	582	#/texts/569	One of the advantages of the Wasserstein distance 	text
+b9db9a21cb	1	583	#/texts/570	how far	text
+a3644985f3	1	584	#/texts/571	distributions move, not just whether they differ.	text
+2abadce519	1	585	#/texts/572	Population Stability Index	section_header
+6c481061fb	1	586	#/texts/573	The Population Stability Index (PSI) measures how 	text
+de28e8179d	1	587	#/texts/574	Let's take the same example again, with the	text
+1323c23abc	1	588	#/texts/575	number_of_week_nights	code
+da6b8e6cfc	1	589	#/texts/576	variable:	text
+22464c7b44	1	590	#/texts/577	Window 1: 1, 5, 7, 3	list_item
+2c75f53922	1	591	#/texts/578	Window 2: 2, 3, 3, 5, 8, 1	list_item
+c2de54c484	1	592	#/texts/579	Now, we can create bins and compute probabilities 	text
+f009b0b6de	1	593	#/texts/580	Table 6-12	text
+4b2273517b	1	594	#/texts/581	.	text
+44fb13c30a	1	595	#/tables/11	| Interval   | (Window 1)   | (Window 2)   |      	table
+eb8a5544ab	1	596	#/texts/582	Finally, we aggregate these individual bin results	text
+de980a19ca	1	597	#/texts/583	A PSI of 0,112 can be considered a moderate shift 	text
+8954e4d63b	1	598	#/texts/584	PSI < 0,1 indicates a negligible shift.	list_item
+9864d630be	1	599	#/texts/585	0,1 < = PSI < 0,25 indicates a moderate shift.	list_item
+0215e07bda	1	600	#/texts/586	PSI > = 0,25 indicates a significant shift.	list_item
+d0435b4e79	1	601	#/texts/587	In general, PSI does not have a theoretical cutoff	text
+ddd4f28b1f	1	602	#/texts/588	Now that we have explored the structure of profile	text
+729272c30d	1	603	#/texts/589	From Inference Tables to Data Quality Monitoring	title
+9c2000db9a	1	604	#/texts/590	In	text
+f607893076	1	605	#/texts/591	Chapter 4	text
+f897c1dee3	1	606	#/texts/592	, we enabled an inference table for our custom Mod	text
+225a2ca67d	1	607	#/texts/593	To demonstrate data drift, let's invoke the endpoi	text
+22c7712330	1	608	#/texts/594	hotel_booking	code
+feb20693fd	1	609	#/texts/595	table: 2,000 selected randomly from the entire dat	text
+b7c7004ad6	1	610	#/texts/596	import time	code
+7195cbfe30	1	611	#/texts/597		code
+471bab7346	1	612	#/texts/598	import pandas as pd	code
+0fb1eff123	1	613	#/texts/599		code
+46afb8308f	1	614	#/texts/600	import requests	code
+945e75788c	1	615	#/texts/601		code
+bc0c1a6189	1	616	#/texts/602	from databricks.sdk import WorkspaceClient	code
+cef48a71ee	1	617	#/texts/603		code
+fe2e4317e5	1	618	#/texts/604	from pyspark.sql import SparkSession	code
+2e5c865f55	1	619	#/texts/605		code
+4cd77305ff	1	620	#/texts/606	from hotel_booking.config import ProjectConfig	code
+72b33e6509	1	621	#/texts/607		code
+00a1f4176f	1	622	#/texts/608	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+1be55f3fa8	1	623	#/texts/609		code
+d9beadd519	1	624	#/texts/610	catalog = cfg . catalog	code
+5a487ae2a4	1	625	#/texts/611		code
+401b3e6a02	1	626	#/texts/612	schema = cfg . schema	code
+d0a513ab48	1	627	#/texts/613		code
+eeeb5da002	1	628	#/texts/614	spark = SparkSession . builder . getOrCreate ()	code
+e9cfe2d978	1	629	#/texts/615		code
+2bd0fab16a	1	630	#/texts/616	input_data = spark . table ( f \" { catalog } . { s	code
+773bdb2702	1	631	#/texts/617		code
+75a68b3216	1	632	#/texts/618	# Define required columns for endpoint	code
+36605fbabe	1	633	#/texts/619		code
+4051a0d983	1	634	#/texts/620	required_columns = [ \"Booking_ID\" , \"number_of_adu	code
+f09abc74ec	1	635	#/texts/621		code
+a38fc451e0	1	636	#/texts/622	]	code
+3fffab4bca	1	637	#/texts/623		code
+9fe804443f	1	638	#/texts/624	sample_per_phase = 2000	code
+a48af64924	1	639	#/texts/625		code
+d6926e7e25	1	640	#/texts/626	sampled_all = input_data [ required_columns ] . sa	code
+43976345c3	1	641	#/texts/627		code
+4eceef2c9b	1	642	#/texts/628	)	code
+c8680d2528	1	643	#/texts/629		code
+fbc7def573	1	644	#/texts/630	corporate = input_data [ input_data [ \"market_segm	code
+883e96975c	1	645	#/texts/631		code
+01b3cbd7e9	1	646	#/texts/632	sampled_corporate = corporate [ required_columns ]	code
+09fe7b8fa3	1	647	#/texts/633		code
+4443d2eade	1	648	#/texts/634	sampled_records = pd . concat ([ sampled_all , sam	code
+d74d1dadb0	1	649	#/texts/635	The script for this task,	text
+1e16576f59	1	650	#/texts/636	chapter6_1.call_endpoint.py	text
+3ce5adabec	1	651	#/texts/637	, is located in the	text
+20eba2b4d5	1	652	#/texts/638	notebooks	text
+ebe31d31b4	1	653	#/texts/639	folder.	text
+37376ed543	1	654	#/texts/640	We're not changing the approach from	text
+58c32b160c	1	655	#/texts/641	Chapter 4	text
+062fd710b6	1	656	#/texts/642	, except that we're now including a	text
+777f18cc1b	1	657	#/texts/643	client_request_id	code
+3f74ad14ca	1	658	#/texts/644	field that contains the	text
+f91091335f	1	659	#/texts/645	Booking_ID	code
+4195b9dd27	1	660	#/texts/646	. This addition will be important later, when we j	text
+b09ab93fb5	1	661	#/texts/647	Here's an example of what the request payload look	text
+473f9fd3dd	1	662	#/texts/648	{ \"client_request_id\" : \"INN36285\" , \"dataframe_re	code
+410cfa092e	1	663	#/texts/649		code
+b303e39952	1	664	#/texts/650	}	code
+58d6d10ca4	1	665	#/texts/651	Now, let's investigate the structure of an inferen	text
+b90837659e	1	666	#/texts/652	Inference Table Structure	section_header
+0d07d0750c	1	667	#/texts/653	Table 6-13	text
+298142ed81	1	668	#/texts/654	shows the structure of the inference table. This t	text
+48e510bcf5	1	669	#/texts/655	request	code
+da21cd69ae	1	670	#/texts/656	column as JSON-like strings, rather than as separa	text
+bc456e5856	1	671	#/texts/657	To enable effective monitoring, we first need to p	text
+6baa40655f	1	672	#/tables/12	| Column                  | Data type   | Comment 	table
+914cc7229b	1	673	#/texts/658	databricks_request_id	code
+395296ba0e	1	674	#/texts/659	string	code
+91ef53f79c	1	675	#/texts/660	c0e67132-e924-4fb4-b83d-ab5603758baf	code
+881c33d124	1	676	#/texts/661	request_date	code
+c5b6d41c9e	1	677	#/texts/662	date	code
+4afe5c09a4	1	678	#/texts/663	2025-10-25	code
+dee9af0ffc	1	679	#/texts/664	client_request_id	code
+f6e17a3885	1	680	#/texts/665	string	code
+307dc206ab	1	681	#/texts/666	INN34434	code
+7479e7866b	1	682	#/texts/667	request_time	code
+fb5d26ea2a	1	683	#/texts/668	timestamp	code
+4a9a2aafb8	1	684	#/texts/669	2025-10-25T21:44:34.637+00:00	code
+2da29927a7	1	685	#/texts/670	status_code	code
+a38fcf8cdc	1	686	#/texts/671	int	code
+b289e9cf29	1	687	#/texts/672	200	code
+dc58a00990	1	688	#/texts/673	sampling_fraction	code
+1bc143e5e4	1	689	#/texts/674	double	code
+e5cc98d94d	1	690	#/texts/675	1.0	code
+c287729743	1	691	#/texts/676	execution_duration_ms	code
+150cf07d89	1	692	#/texts/677	bigint	code
+78b866d976	1	693	#/texts/678	5	code
+b35d2826be	1	694	#/texts/679	request	code
+b1fde0a1b0	1	695	#/texts/680	string	code
+bbe5d29bb5	1	696	#/texts/681	response	code
+785e384169	1	697	#/texts/682	string	code
+4e8f911d8f	1	698	#/texts/683	logging_error_codes:	code
+9f19c6c8d1	1	699	#/texts/684	array	code
+7312649a9b	1	700	#/texts/685	[]	code
+5f927df6f0	1	701	#/texts/686	served_entity_id	code
+c3aa21fa2a	1	702	#/texts/687	string	code
+32951d213f	1	703	#/texts/688	40e11be0ddd340eca7e975b13005edc1	code
+9bc36ea784	1	704	#/texts/689	requester	code
+a59ffcbfcc	1	705	#/texts/690	string	code
+e381aab95b	1	706	#/texts/691	maria@cauchy.io	code
+7bb69665c5	1	707	#/texts/692	Now that we're familiar with the structure of the 	text
+42ac3bd43d	1	708	#/texts/693	Processing an Inference Table	section_header
+2eeec1246c	1	709	#/texts/694	To process the inference table, we need to specify	text
+241bb16117	1	710	#/texts/695	from pyspark.sql import SparkSession	code
+4bef2f692e	1	711	#/texts/696		code
+5e592848ae	1	712	#/texts/697	from pyspark.sql import functions as F	code
+7c8c719219	1	713	#/texts/698		code
+9dc31f3613	1	714	#/texts/699	from pyspark.sql.types import ( ArrayType , Double	code
+ae1f68b9ab	1	715	#/texts/700		code
+83e5ea1c25	1	716	#/texts/701	)	code
+e3898c8e6a	1	717	#/texts/702		code
+7d3ff4bff8	1	718	#/texts/703	spark = SparkSession . builder . getOrCreate ()	code
+db037406e2	1	719	#/texts/704		code
+8e10aa7de4	1	720	#/texts/705	request_schema = StructType ([ StructField ( \"data	code
+27370fb99a	1	721	#/texts/706		code
+57ed32f72b	1	722	#/texts/707	])	code
+bb58fbc848	1	723	#/texts/708		code
+9c631334f5	1	724	#/texts/709	response_schema = StructType ([ StructField ( \"pre	code
+cebce929f3	1	725	#/texts/710		code
+04bd8eccf4	1	726	#/texts/711	])	code
+c6972517b1	1	727	#/texts/712	Let's apply the defined schemas and use the	text
+62fc652a32	1	728	#/texts/713	explode	code
+aa083d678e	1	729	#/texts/714	function:	text
+1975aabb9c	1	730	#/texts/715	from hotel_booking.config import ProjectConfig	code
+6ea1db6992	1	731	#/texts/716		code
+7a01b21319	1	732	#/texts/717	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+8df6f63c6f	1	733	#/texts/718		code
+682116a7ae	1	734	#/texts/719	catalog = cfg . catalog	code
+108d6be5dc	1	735	#/texts/720		code
+074cba8c1a	1	736	#/texts/721	schema = cfg . schema	code
+c9ea71892f	1	737	#/texts/722		code
+d67b7027b8	1	738	#/texts/723	inf_table = spark . table ( f \" { catalog } . { sc	code
+6e7108aa06	1	739	#/texts/724		code
+58950522da	1	740	#/texts/725	inf_table_parsed = ( inf_table . withColumn ( \"p_r	code
+93e86799fd	1	741	#/texts/726		code
+b0056987af	1	742	#/texts/727	)	code
+70ebab5a71	1	743	#/texts/728	Next, we select the required columns for the monit	text
+ed2888f9dc	1	744	#/texts/729	hotel_booking	code
+72a14b7079	1	745	#/texts/730	table that contains the ground truth (the actual p	text
+917936a0c0	1	746	#/texts/731	databricks_request_id	code
+949fa8a0c7	1	747	#/texts/732	as an identifier, the execution duration, all the 	text
+3c9c782c4b	1	748	#/texts/733	df_final = inf_table_parsed . select ( \"request_ti	code
+f541e6095a	1	749	#/texts/734		code
+4099c804e7	1	750	#/texts/735	)	code
+efbde11f67	1	751	#/texts/736		code
+ed64f52b2f	1	752	#/texts/737	ground_truth_set = spark . table ( f \" { catalog }	code
+fec598e755	1	753	#/texts/738		code
+25cb33e33b	1	754	#/texts/739	df_final_with_status = df_final . join ( ground_tr	code
+53c0638567	1	755	#/texts/740	Then, we write the results to the Delta table and 	text
+fda10b134b	1	756	#/texts/741	monitoring_table = f \" { catalog } . { schema } .m	code
+97da8feef7	1	757	#/texts/742		code
+b66dc61912	1	758	#/texts/743	df_final_with_status . write . format ( \"delta\" ) 	code
+2792ea6116	1	759	#/texts/744		code
+d47894827d	1	760	#/texts/745	# Important to update monitoring	code
+bad4d40e4e	1	761	#/texts/746		code
+84f71658b0	1	762	#/texts/747	spark . sql ( f \"\"\"ALTER TABLE { monitoring_table 	code
+c3a270f8e2	1	763	#/texts/748		code
+9cb1aa5ccf	1	764	#/texts/749	SET TBLPROPERTIES (delta.enableChangeDataFeed = tr	code
+ffcd156561	1	765	#/texts/750	Creating a Data Quality Monitor	section_header
+97ec2712f1	1	766	#/texts/751	Finally, let's create a data quality monitor:	text
+903d8383ff	1	767	#/texts/752	from databricks.sdk import WorkspaceClient	code
+53c68c9c59	1	768	#/texts/753		code
+d0d060f740	1	769	#/texts/754	from databricks.sdk.service.dataquality import ( A	code
+50dcba405d	1	770	#/texts/755		code
+33de23dd35	1	771	#/texts/756	)	code
+53b46e84f0	1	772	#/texts/757		code
+4b8769557c	1	773	#/texts/758	w = WorkspaceClient ()	code
+e98f40b15a	1	774	#/texts/759		code
+fb6ef0986a	1	775	#/texts/760	output_schema = w . schemas . get ( full_name = f 	code
+283fd943d4	1	776	#/texts/761		code
+5c9b826894	1	777	#/texts/762	monitored_table = w . tables . get ( full_name = m	code
+a90aaa55b5	1	778	#/texts/763		code
+11813fd602	1	779	#/texts/764	w . data_quality . create_monitor ( monitor = Moni	code
+d3a33dda59	1	780	#/texts/765		code
+d05df28c26	1	781	#/texts/766	)	code
+2872d900e1	1	782	#/texts/767	We specified the inference log problem type as	text
+f28f488f7a	1	783	#/texts/768	regression	text
+832fadbae3	1	784	#/texts/769	, and we provided the prediction column, timestamp	text
+db67c5a052	1	785	#/texts/770	Note	section_header
+563864bca5	1	786	#/texts/771	In this example, we selected a	text
+3af16f7cb1	1	787	#/texts/772	five-minute granularity	text
+ee5aadbd23	1	788	#/texts/773	purely for demonstration purposes. In practice, ho	text
+1547320294	1	789	#/texts/774	The	text
+d292607a76	1	790	#/texts/775	granularity	text
+58203d876d	1	791	#/texts/776	defines the time window over which metrics are agg	text
+2bc7c5c18d	1	792	#/texts/777	Once you've initiated the monitor creation process	text
+ac500cd891	1	793	#/texts/778	At the end of the exercise, under the	text
+18efdea965	1	794	#/texts/779	hotel_booking	code
+17277df639	1	795	#/texts/780	catalog, we'll have the following tables related t	text
+4bf7b8b267	1	796	#/texts/781	hotel_booking	code
+7f6219f885	1	797	#/texts/782		code
+b2c7343e61	1	798	#/texts/783	\u2514\u2500\u2500 Tables \u251c\u2500\u2500 hotel_booking_monitoring_payload \u251c\u2500	code
+64e4c26fbf	1	799	#/texts/784	Using the Dashboard	section_header
+2b76cf6c24	1	800	#/texts/785	The dashboard is generated immediately and becomes	text
+1471ea349a	1	801	#/texts/786	Figure 6-3	text
+d26d0db144	1	802	#/texts/787	depicts a subset of such a dashboard-notice how th	text
+bf226cfd4c	1	803	#/pictures/2	The monitoring dashboard displays performance metr	picture
+fd46875f52	1	804	#/texts/789	Feature drift information is also available in the	text
+2b0ac5a903	1	805	#/texts/790	Figure 6-4	text
+e2190c72e0	1	806	#/texts/791	demonstrates what categorical features exhibited a	text
+834fc53707	1	807	#/pictures/3	Dashboard displaying categorical feature drift dat	picture
+f4ce013f62	1	808	#/texts/793	You can customize the dashboard to fit your prefer	text
+264353f06d	1	809	#/texts/794	Since we expect the constant payload to be generat	text
+5aceccf1bc	1	810	#/texts/795	Refreshing the Monitor	section_header
+b1eabd840b	1	811	#/texts/796	Refreshing the monitor is rather simple. We only h	text
+4fcabb17ce	1	812	#/texts/797	create_refresh()	code
+63a10f0e47	1	813	#/texts/798	command, which will trigger the underlying SDP run	text
+a85b5fca84	1	814	#/texts/799	from databricks.sdk.service.dataquality import ( R	code
+c44773ea14	1	815	#/texts/800		code
+13f142d5cf	1	816	#/texts/801	)	code
+cf6bf97c55	1	817	#/texts/802		code
+37102ce085	1	818	#/texts/803	w . data_quality . create_refresh ( object_type = 	code
+4149f3dce8	1	819	#/texts/804		code
+c7b3053602	1	820	#/texts/805	)	code
+5dd19d9baa	1	821	#/texts/806	In	text
+72502e11ad	1	822	#/texts/807	Chapter 5	text
+d38dbe4773	1	823	#/texts/808	, we looked at the definition of the monitoring La	text
+e4bb17b970	1	824	#/texts/809	refresh_monitor.py	code
+0f08eb3a60	1	825	#/texts/810	. We have packaged all the previous logic into thi	text
+59c1cc534b	1	826	#/texts/811	MonitoringManager	code
+6ac25065f4	1	827	#/texts/812	class from the	text
+1f2569c2ba	1	828	#/texts/813	hotel_booking.monitoring	code
+0d45d973d7	1	829	#/texts/814	module:	text
+bfe2f9ae01	1	830	#/texts/815	from loguru import logger	code
+6189cd8322	1	831	#/texts/816		code
+c4bb773855	1	832	#/texts/817	from pyspark.sql import SparkSession	code
+54ee0596af	1	833	#/texts/818		code
+3ab80b5ae2	1	834	#/texts/819	from hotel_booking.config import ProjectConfig	code
+e29fedd94e	1	835	#/texts/820		code
+c4eff17bb0	1	836	#/texts/821	from hotel_booking.monitoring import MonitoringMan	code
+421f354bb2	1	837	#/texts/822		code
+5d916849c9	1	838	#/texts/823	from hotel_booking.utils.common import create_pars	code
+069dbe5809	1	839	#/texts/824		code
+1ff718388a	1	840	#/texts/825	args = create_parser ()	code
+adb4485dff	1	841	#/texts/826		code
+29e54b1a21	1	842	#/texts/827	cfg = ProjectConfig . from_yaml ( config_path = f 	code
+83742bf4b4	1	843	#/texts/828		code
+1b06bdbb2d	1	844	#/texts/829	)	code
+bf182e4e20	1	845	#/texts/830		code
+6b1b1026ac	1	846	#/texts/831	spark = SparkSession . builder . getOrCreate ()	code
+bd7e55d684	1	847	#/texts/832		code
+7ec9b69666	1	848	#/texts/833	logger . info ( \"Initializing MonitoringManager\" )	code
+7617a7c3dd	1	849	#/texts/834		code
+31e321dced	1	850	#/texts/835	manager = MonitoringManager ( spark = spark , conf	code
+495c254b0d	1	851	#/texts/836		code
+a63ab22c63	1	852	#/texts/837	logger . info ( \"Starting monitoring table update\"	code
+cc427f7072	1	853	#/texts/838		code
+54982c9882	1	854	#/texts/839	num_records = manager . update_monitoring_table ()	code
+081bb2cf77	1	855	#/texts/840		code
+7ffc2e38ff	1	856	#/texts/841	if num_records > 0 : logger . info ( f \"Successful	code
+00929d8f50	1	857	#/texts/842		code
+54ed0c3da2	1	858	#/texts/843	else : logger . info ( \"No new records to process\"	code
+7b3a529fcc	1	859	#/texts/844	The task has the following steps:	text
+d4d1006a92	1	860	#/texts/845	Check whether new data is populated in the inferen	list_item
+3d483cda15	1	861	#/texts/846	If new data is available, parse it, join it with t	list_item
+cb98696015	1	862	#/texts/847	Once the monitoring table is updated, refresh the 	list_item
+9df411e7d8	1	863	#/texts/848	The ML pipeline we defined earlier is set to run w	text
+822ceeceab	1	864	#/texts/849	Chapter 5	text
+dd61a03e8b	1	865	#/texts/850	.	text
+4f81793778	1	866	#/texts/851	The frequency we use is illustrative. Your monitor	text
+04393a1242	1	867	#/texts/852	Having a monitoring dashboard and keeping the unde	text
+4b96d2fde3	1	868	#/texts/788	The monitoring dashboard displays performance metr	caption
+0f0fc1b676	1	869	#/texts/792	Dashboard displaying categorical feature drift dat	caption
+b13f41e229	1	870	#/texts/853	Alerting	title
+5015c125fd	1	871	#/texts/854	There are different ways to set up alerting, and t	text
+09c05d7359	1	872	#/texts/855	Chapter 5	text
+9a1bc7b264	1	873	#/texts/856	). The alert deployment is specified in the	text
+247db48309	1	874	#/texts/857	resources/alert.yml	text
+d2ca195a4c	1	875	#/texts/858	file.	text
+027789f768	1	876	#/texts/859	To create an alert, we first need to create a SQL 	text
+46e456808a	1	877	#/texts/860	resources : sql_warehouses : hotel_booking_sql_war	code
+15baf78799	1	878	#/texts/861	Now, let's define an alert. This one triggers when	text
+bd4202a20f	1	879	#/texts/862	model_monitoring_profile_metrics	code
+6d2e16733a	1	880	#/texts/863	table exceeds 45%. Note that we're pointing at the	text
+6c2de8ec7d	1	881	#/texts/864	alerts : my_alert : display_name : hotel - booking	code
+de7c4081f0	1	882	#/texts/865	Note that the alert won't run in acceptance becaus	text
+6a9f8ff4f9	1	883	#/texts/866	schedule_pause_status	code
+c0afaa5740	1	884	#/texts/867	to	text
+924efaf6ed	1	885	#/texts/868	PAUSED	code
+f3e5307e6d	1	886	#/texts/869	for that target, and it won't run in development b	text
+098117c717	1	887	#/texts/870	databricks.yml	text
+819f828b04	1	888	#/texts/871	file definition in	text
+68b6ad60b8	1	889	#/texts/872	Chapter 5	text
+5cb23df612	1	890	#/texts/873	.	text
+49835d2181	1	891	#/texts/874	It's possible to configure different notification 	text
+c1ffb7c9b3	1	892	#/texts/875	Figure 6-5	text
+4b32ba8e03	1	893	#/texts/876	shows how workspace admins can configure notificat	text
+ae286e9074	1	894	#/pictures/4	The screenshot shows the interface for configuring	picture
+8b4d0f9fe7	1	895	#/texts/878	So far, we've talked about monitoring that's relat	text
+1b1959f0c1	1	896	#/texts/879	Chapter 9	text
+71a4da093f	1	897	#/texts/880	, where we'll discuss the cost dimension. Cost mat	text
+0787158238	1	898	#/texts/877	The screenshot shows the interface for configuring	caption
+b207e8cc6b	1	899	#/texts/881	Conclusion	title
+84e8fa5707	1	900	#/texts/882	In this chapter, we explored the many facets of mo	text
+c17fce1079	1	901	#/texts/883	A model in production without monitoring is a liab	text
+cae66544ca	1	902	#/texts/884	This chapter closes the MLOps part of the book. Th	text
+dc3ac0272c	1	903	#/texts/885	Chapter 9	text
+f1e83dd841	1	904	#/texts/886	, where nondeterministic, open-ended output makes 	text
+e0ee620d06	1	905	#/texts/887	1	text
+029fcb7c37	1	906	#/texts/888	Read	text
+fad8dc4e0d	1	907	#/texts/889	the full article	text
+634f74cae7	1	908	#/texts/890	.	text
+a09f772d60	1	909	#/texts/891	2	text
+7dab2e10bd	1	910	#/texts/892	Check out Santiago Viquez's article	text
+64b5d61d48	1	911	#/texts/893	\"Don't Let Yourself Be Fooled by Data Drift\"	text
+c93dabe6b9	1	912	#/texts/894	. It discusses this problem in detail.	text

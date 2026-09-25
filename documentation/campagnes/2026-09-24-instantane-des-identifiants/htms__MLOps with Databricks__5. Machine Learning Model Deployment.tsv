@@ -1,0 +1,1059 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+8288122ce6	1	0	#/texts/0	Chapter 5. Machine Learning Model Deployment	title
+2f3b37bcb6	1	1	#/texts/1	So far, we've explored the individual stages of bu	text
+65236313c8	1	2	#/texts/2	We'll walk through how to structure end-to-end ML 	text
+8b512a89db	1	3	#/texts/3	Let's begin with the orchestration of our machine 	text
+3a281e0146	1	4	#/texts/4	Chapter 2	text
+ddb8eaaa8c	1	5	#/texts/5	, we introduced DABs and examined the structure of	text
+5c52125230	1	6	#/texts/6	databricks.yml	text
+5c7501e138	1	7	#/texts/7	file. What we have not yet looked at are the resou	text
+b193b83e69	1	8	#/texts/8	databricks bundle deploy	code
+4b5389fbe5	1	9	#/texts/9	command runs.	text
+4a9c69c4c1	1	10	#/texts/10	The	text
+ab3a631545	1	11	#/texts/11	resources	text
+f87b8f57d6	1	12	#/texts/12	folder is referenced in the bundle definition and 	text
+2c5b430392	1	13	#/texts/13	ml_pipeline.yml	list_item
+157070980a	1	14	#/texts/14	This is a Lakeflow job that defines the whole ML p	list_item
+071e719a23	1	15	#/texts/15	ml_monitoring.yml	list_item
+e34f0b244d	1	16	#/texts/16	This is a Lakeflow job that updates the monitoring	list_item
+75dc3ddec0	1	17	#/texts/17	alert.yml	list_item
+b286f03deb	1	18	#/texts/18	This file contains alert-related resources.	list_item
+3d57e8b0d0	1	19	#/texts/19	In this chapter, we focus on the ML pipeline, and 	text
+b698c2c83b	1	20	#/texts/20	Chapter 6	text
+b9ec82e13c	1	21	#/texts/21	, we'll turn to monitoring and alerting resources.	text
+4e8cfb3d19	1	22	#/texts/22	Machine Learning Pipeline	title
+bbff056b09	1	23	#/texts/23	Before we examine the structure of the	text
+86c5e474fc	1	24	#/texts/24	ml_pipeline.yml	text
+2b2008dbdd	1	25	#/texts/25	file, let's clarify the objective. The file contai	text
+e01e402834	1	26	#/texts/26	Figure 5-1	text
+b2721dc149	1	27	#/texts/27	illustrates the pipeline's architecture, highlight	text
+a16c23638c	1	28	#/pictures/0	Diagram of a Lakeflow job structure showing a sequ	picture
+7f28b94f53	1	29	#/texts/29	The workflow begins with a preprocessing step that	text
+385e011fe4	1	30	#/texts/30	train_model	code
+eec382b423	1	31	#/texts/31	task retrains the model, evaluates its performance	text
+9389df4b29	1	32	#/texts/32	model_updated	code
+497c6594a2	1	33	#/texts/33	and	text
+9d9438cd1a	1	34	#/texts/34	model_version	code
+92e68c3772	1	35	#/texts/35	.	text
+c044878f2d	1	36	#/texts/36	The	text
+552aa15680	1	37	#/texts/37	model_updated	code
+6d6a23cc73	1	38	#/texts/38	task is an	text
+ee54036da0	1	39	#/texts/39	IF	code
+4869e807c9	1	40	#/texts/40	task in the Lakeflow job. It checks whether a new 	text
+562ecb6e93	1	41	#/texts/41	returns model_updated = 0	code
+a3946faedb	1	42	#/texts/42	), the job ends early. If a new model was register	text
+5478449757	1	43	#/texts/43	model_updated = 1	code
+e88a24bc15	1	44	#/texts/44	), the workflow continues to the	text
+63b334f5f8	1	45	#/texts/45	deploy_model	code
+93b396715c	1	46	#/texts/46	task, which wraps the model as a PyFunc and deploy	text
+1d410e02b7	1	47	#/texts/47	model_version	code
+dd87e11060	1	48	#/texts/48	. This setup ensures that only evaluated and impro	text
+d911c4a552	1	49	#/texts/49	Each task in the workflow (except the	text
+a934ca7bb0	1	50	#/texts/50	IF	code
+13eb98a2f1	1	51	#/texts/51	task) runs a Python script that requires specific 	text
+936f96de41	1	52	#/texts/52	env	list_item
+f3c8e858b4	1	53	#/texts/53		list_item
+eecc59d1b1	1	54	#/texts/54	This parameter matches the bundle target (e.g.,	text
+631ef7e4cf	1	55	#/texts/55	dev	code
+976789803c	1	56	#/texts/56	,	text
+5c2b57f38b	1	57	#/texts/57	prd	code
+927de933eb	1	58	#/texts/58	).	text
+35f1869d5f	1	59	#/texts/59	root_path	list_item
+4d4002bd8c	1	60	#/texts/60	This is the root directory of the bundle.	list_item
+0eff8ce6fd	1	61	#/texts/61	git_sha and branch	list_item
+e98021d711	1	62	#/texts/62	These are variables that are defined in the bundle	list_item
+0514e0026f	1	63	#/texts/63	run_id, job_id, and task_name	list_item
+6a9feae4a6	1	64	#/texts/64		list_item
+e36e1efadb	1	65	#/texts/65	These are set dynamically, using references like	text
+9935ecdc0d	1	66	#/texts/66	{{job.run_id}}	code
+bc8f09f15e	1	67	#/texts/67	and	text
+3b441bef90	1	68	#/texts/68	{{task.name}}	code
+ff3bf2201b	1	69	#/texts/69	, when the job starts.	text
+d05bceae6f	1	70	#/texts/70	We need these parameters for a few reasons:	text
+b53defd512	1	71	#/texts/71	They allow the scripts to access the correct confi	list_item
+44e121f491	1	72	#/texts/72	We can use them to tag experiments, models, and de	list_item
+3d9912a5e1	1	73	#/texts/73	To simplify parameter parsing, we'll define a	text
+43221703e3	1	74	#/texts/74	create_parser()	code
+1d2ab1d457	1	75	#/texts/75	function in the	text
+c97de6c6a0	1	76	#/texts/76	utils.common	code
+bede1ca93b	1	77	#/texts/77	module of our package.	text
+6aee0496d5	1	78	#/texts/78	First, we define the common arguments among all st	text
+a1442518f4	1	79	#/texts/79	env	code
+c8d6c255f8	1	80	#/texts/80	and	text
+bdfceddb04	1	81	#/texts/81	root_path	code
+f6d6e1096b	1	82	#/texts/82	. We then create a	text
+3f1ec20a43	1	83	#/texts/83	common	code
+103268e753	1	84	#/texts/84	parser that accepts these two arguments, which is 	text
+01fb7e966d	1	85	#/texts/85	Next, the training and deployment steps require th	text
+dfb4e71fda	1	86	#/texts/86	train_deploy_model	code
+7c8eb2a82b	1	87	#/texts/87	parser for them:	text
+3737085bdd	1	88	#/texts/88	def create_parser ( args : Sequence [ str ] = None	code
+f5b9887b08	1	89	#/texts/89		code
+b36e324492	1	90	#/texts/90	This function sets up a parser with subparsers for	code
+b97434b33d	1	91	#/texts/91		code
+d1f2f59355	1	92	#/texts/92	:param args: Optional sequence of command-line arg	code
+08daada4bd	1	93	#/texts/93		code
+0724463f07	1	94	#/texts/94	:return: Parsed argument namespace	code
+d00f24ddb9	1	95	#/texts/95		code
+4c1db96955	1	96	#/texts/96	\"\"\" parser = argparse . ArgumentParser ( descripti	code
+89afeef9c2	1	97	#/texts/97	Using this approach means we don't have to define 	text
+98833e3603	1	98	#/texts/98	Data Preprocessing	section_header
+c94cbbfbb6	1	99	#/texts/99	Let's take a look at the	text
+ba1d232a67	1	100	#/texts/100	ml_pipeline.yml	text
+d96d8633ad	1	101	#/texts/101	file. It has a resources section where one job,	text
+0cbb3050b0	1	102	#/texts/102	ml-pipeline	code
+d76af3a8fb	1	103	#/texts/103	, is defined. Once deployed, the job will be calle	text
+061eb3bae8	1	104	#/texts/104	hotel-booking-ml-pipeline	code
+7f2d9d0d1e	1	105	#/texts/105	. It runs based on a schedule (which we can set us	text
+0859301a25	1	106	#/texts/106	Quartz Cron syntax	text
+098885b41a	1	107	#/texts/107	): every Monday at 6:00 a.m. CET. We can set the p	text
+51377fd6d1	1	108	#/texts/108	PAUSED	code
+9dc78dcaae	1	109	#/texts/109	to nonproduction environments by using the	text
+2816fb9a84	1	110	#/texts/110	schedule_pause_status	code
+59b43ccf0a	1	111	#/texts/111	bundle variable.	text
+d06c43ecc6	1	112	#/texts/112	The schedule is illustrative: in practice, to choo	text
+33753521c1	1	113	#/texts/113	Triggering retraining only when monitoring detects	text
+e8d8f95122	1	114	#/texts/114	Chapter 6	text
+b5c0a3d2f9	1	115	#/texts/115	.	text
+76624b91fa	1	116	#/texts/116	Here is how the schedule for the pipeline is defin	text
+bcd354ba0f	1	117	#/texts/117	resources/ml_pipeline.yml	text
+4cd88c2b02	1	118	#/texts/118	file:	text
+3693a2b954	1	119	#/texts/119	resources : jobs : ml - pipeline : name : hotel - 	code
+cff3a5404b	1	120	#/texts/120	We pass a usage policy ID (formerly known as a bud	text
+eb4b4cf38d	1	121	#/texts/121	budget_policy_id : \"$ {var.usage_policy_id} \"	code
+a1d199cfb4	1	122	#/texts/122	We'll discuss cost allocation in	text
+77747b34ff	1	123	#/texts/123	Chapter 9	text
+694167310f	1	124	#/texts/124	.	text
+7905dcbb2f	1	125	#/texts/125	Here, we will use a serverless cluster to run the 	text
+7e9f0fd521	1	126	#/texts/126	default	code
+f0204054b4	1	127	#/texts/127	and select environment version 4, which matches Py	text
+4c8825a7f7	1	128	#/texts/128	Chapter 2	text
+dc17525a8f	1	129	#/texts/129	. Here, we'll also specify the project dependencie	text
+e427548101	1	130	#/texts/130	. whl	text
+d930c7dc24	1	131	#/texts/131	files in the	text
+9611db74d7	1	132	#/texts/132	dist	text
+0883f3732d	1	133	#/texts/133	folder, where the project package built by the bun	text
+715c64ddf4	1	134	#/texts/134	environments : - environment_key : default spec : 	code
+ad5f15887d	1	135	#/texts/135	The first task of the job is called	text
+925bf06ed3	1	136	#/texts/136	preprocessing	code
+cdf5430545	1	137	#/texts/137	. It is a	text
+c0f28572ed	1	138	#/texts/138	spark_python	code
+a7305b0453	1	139	#/texts/139	task that runs the	text
+c82eb82e06	1	140	#/texts/140	preprocess_data.py	code
+dc1f70bee1	1	141	#/texts/141	Python script. Notice that the location of the scr	text
+9f10a640c2	1	142	#/texts/142	ml_pipeline.yml	text
+d27966cca9	1	143	#/texts/143	file. (It is located in the	text
+6d22224e79	1	144	#/texts/144	resources	text
+0c2907527d	1	145	#/texts/145	folder.):	text
+50a7c1a25c	1	146	#/texts/146	tasks : - task_key : preprocessing environment_key	code
+eef6848bfc	1	147	#/texts/147	You'll notice that the	text
+a78a87268e	1	148	#/texts/148	preprocess_data.py	text
+6d5862ccf2	1	149	#/texts/149	script takes two arguments:	text
+16c31b9ed0	1	150	#/texts/150	env	code
+8d4a72ce46	1	151	#/texts/151	and	text
+9425fb3b6b	1	152	#/texts/152	root_path	code
+6d280e010a	1	153	#/texts/153	. The first parameter,	text
+60060c506b	1	154	#/texts/154	common	code
+6ba7f88ef1	1	155	#/texts/155	, means that we will use the common parser to pars	text
+44f380f835	1	156	#/texts/156	databricks bundle deploy	code
+e990370e3a	1	157	#/texts/157	command uploads all the files that belong to the b	text
+aca10c71c6	1	158	#/texts/158	root_path	code
+c2f4585eb4	1	159	#/texts/159	). Our data preprocessing code depends on the	text
+947fc3690d	1	160	#/texts/160	project_config.yml	text
+f5bc5e0f25	1	161	#/texts/161	file, which is stored in the files folder under th	text
+a7ddf0eac0	1	162	#/texts/162	project_config.yml	text
+f790332dd4	1	163	#/texts/163	file, we define the environment-specific values fo	text
+120deacdb7	1	164	#/texts/164	databricks.yml	text
+240ecef518	1	165	#/texts/165	file, so we can pass the target as an argument.	text
+33d60e47f1	1	166	#/texts/166	Inside the	text
+bb4f8fdc0f	1	167	#/texts/167	preprocess_data.py	code
+e9f178ee2b	1	168	#/texts/168	script, we use the	text
+0bc45c07cc	1	169	#/texts/169	create_parser	code
+27c1450028	1	170	#/texts/170	function we defined earlier to parse the arguments	text
+060ecd62e0	1	171	#/texts/171	import pandas as pd	code
+4500716fdb	1	172	#/texts/172		code
+27cf72c3c7	1	173	#/texts/173	import yaml	code
+d435642155	1	174	#/texts/174		code
+e252575762	1	175	#/texts/175	from loguru import logger	code
+1be1337dbf	1	176	#/texts/176		code
+0bbf7d5500	1	177	#/texts/177	from pyspark.sql import SparkSession	code
+f6ec677ad0	1	178	#/texts/178		code
+cdd4800b7c	1	179	#/texts/179	from hotel_booking.config import ProjectConfig	code
+e1f5c4efc4	1	180	#/texts/180		code
+1a7b7f7f66	1	181	#/texts/181	from hotel_booking.data.data_processor import Data	code
+ffea4ed777	1	182	#/texts/182		code
+fd6502742e	1	183	#/texts/183	from hotel_booking.utils.common import create_pars	code
+e88028d6c1	1	184	#/texts/184		code
+613d3aab10	1	185	#/texts/185	args = create_parser ()	code
+b52aaa0a88	1	186	#/texts/186		code
+ff60fe593f	1	187	#/texts/187	cfg = ProjectConfig . from_yaml ( config_path = f 	code
+7740c03c60	1	188	#/texts/188		code
+c2caa87cd5	1	189	#/texts/189	)	code
+74f8fb6ba4	1	190	#/texts/190		code
+bcfb8c3e99	1	191	#/texts/191	logger . info ( \"Configuration loaded:\" )	code
+518b675886	1	192	#/texts/192		code
+49ac465170	1	193	#/texts/193	logger . info ( yaml . dump ( cfg , default_flow_s	code
+086f18aaa3	1	194	#/texts/194	After that, the code gets really simple. We initia	text
+b3108627b0	1	195	#/texts/195	DataProcessor	code
+32acd3fd33	1	196	#/texts/196	class we defined earlier by using the Pandas DataF	text
+015f1c6ffb	1	197	#/texts/197	SparkSession	code
+68ed382f57	1	198	#/texts/198	. We preprocess the data, generate 1,000 synthetic	text
+9d554747cc	1	199	#/texts/199	project_config.yml	text
+292f38e40e	1	200	#/texts/200	file:	text
+b6ba2c2b5b	1	201	#/texts/201	spark = SparkSession . builder . getOrCreate ()	code
+5c3872b897	1	202	#/texts/202		code
+040e21158a	1	203	#/texts/203	# Load the dataset	code
+3fd07e7322	1	204	#/texts/204		code
+f82cd2cc1a	1	205	#/texts/205	df = pd . read_csv ( f \" { args . root_path } /fil	code
+bee6d31120	1	206	#/texts/206		code
+2677501c20	1	207	#/texts/207	# Initialize DataProcessor	code
+23421f7052	1	208	#/texts/208		code
+46df3c936d	1	209	#/texts/209	data_processor = DataProcessor ( df = df , config 	code
+3e0e2ac735	1	210	#/texts/210		code
+7343a80050	1	211	#/texts/211	data_processor . preprocess ()	code
+680b0b59e6	1	212	#/texts/212		code
+723aa120ca	1	213	#/texts/213	if spark . catalog . tableExists ( data_processor 	code
+b040acd020	1	214	#/texts/214		code
+0720cd3ad2	1	215	#/texts/215	data_processor . save_to_catalog ()	code
+eafeaec089	1	216	#/texts/216	And with that, we're done with the data preprocess	text
+5f27019424	1	217	#/texts/217	Training, Evaluating, and Registering a Model	section_header
+c479d1913d	1	218	#/texts/218	In the	text
+efe027cbb8	1	219	#/texts/219	databricks.yml	text
+ee18b88ab1	1	220	#/texts/220	file, we've defined the	text
+4e82462c5a	1	221	#/texts/221	branch	code
+a767386bae	1	222	#/texts/222	and	text
+f4c75c1b7d	1	223	#/texts/223	git_sha	code
+2b3f065daa	1	224	#/texts/224	variables, which are passed as parameters in the	text
+8c7ec250c6	1	225	#/texts/225	train_model	code
+9e5b86885b	1	226	#/texts/226	task, along with other parameters. Here, we'll use	text
+a462cc74a4	1	227	#/texts/227	train_deploy_model	code
+85105c7c45	1	228	#/texts/228	parser we defined earlier:	text
+6dc61481c3	1	229	#/texts/229	- task_key : \"train_model\" environment_key : defau	code
+4d1dfed8ef	1	230	#/texts/230	This task runs the	text
+1cf2267dbc	1	231	#/texts/231	train_register_model.py	code
+b5277b9996	1	232	#/texts/232	Python script. Here, we are mostly going through t	text
+392b398faa	1	233	#/texts/233	Chapter 3	text
+8dfd1d2b7f	1	234	#/texts/234	. Just as in the data preprocessing step, we load 	text
+25efa06e34	1	235	#/texts/235	SparkSession	code
+61b8a1ad68	1	236	#/texts/236	, and parse the arguments, and then, we use the	text
+34b81e7423	1	237	#/texts/237	DataLoader	code
+db384aad50	1	238	#/texts/238	class to load and split the data into the train an	text
+0441f75c8c	1	239	#/texts/239	import mlflow	code
+aa6e7c01c6	1	240	#/texts/240		code
+e46972bb11	1	241	#/texts/241	import yaml	code
+2fe6caf1b4	1	242	#/texts/242		code
+4af2859b5c	1	243	#/texts/243	from loguru import logger	code
+445dd29159	1	244	#/texts/244		code
+e76ca55123	1	245	#/texts/245	from pyspark.sql import SparkSession	code
+51421d22b3	1	246	#/texts/246		code
+3600b6c302	1	247	#/texts/247	from hotel_booking.config import ProjectConfig , T	code
+a9a5f1da28	1	248	#/texts/248		code
+c27053e291	1	249	#/texts/249	from hotel_booking.data.data_loader import DataLoa	code
+e5e6ad406e	1	250	#/texts/250		code
+62f473a8e1	1	251	#/texts/251	from hotel_booking.models.lightgbm_model import Li	code
+343b779507	1	252	#/texts/252		code
+ad62959591	1	253	#/texts/253	from hotel_booking.utils.common import create_pars	code
+e145c55866	1	254	#/texts/254		code
+986fe4c10d	1	255	#/texts/255	args = create_parser ()	code
+a7815991ac	1	256	#/texts/256		code
+2352c767be	1	257	#/texts/257	cfg = ProjectConfig . from_yaml ( config_path = f 	code
+ff4915733a	1	258	#/texts/258		code
+70c0dc8a46	1	259	#/texts/259	logger . info ( \"Configuration loaded:\" )	code
+2c6e93f2d5	1	260	#/texts/260		code
+f24cfbf51e	1	261	#/texts/261	logger . info ( yaml . dump ( cfg , default_flow_s	code
+56d079f829	1	262	#/texts/262		code
+dff390dba5	1	263	#/texts/263	spark = SparkSession . builder . getOrCreate ()	code
+94a4d6df6c	1	264	#/texts/264		code
+9ad51cc82e	1	265	#/texts/265	data_loader = DataLoader ( spark = spark , config 	code
+77937f1803	1	266	#/texts/266		code
+2b24880f58	1	267	#/texts/267	X_train , y_train , X_test , y_test = data_loader 	code
+0d269a730b	1	268	#/texts/268	After we load the data, we train and log the model	text
+a0c6ec1691	1	269	#/texts/269	metrics_new	code
+5c780bf15b	1	270	#/texts/270	. Notice that we pass actual values of the	text
+4eae548735	1	271	#/texts/271	run_id	code
+d6a76136de	1	272	#/texts/272	,	text
+a530715302	1	273	#/texts/273	git_sha	code
+25f4d28525	1	274	#/texts/274	, and	text
+2ed5915461	1	275	#/texts/275	branch	code
+cfa052d382	1	276	#/texts/276	as tags:	text
+8ea4e961b2	1	277	#/texts/277	model = LightGBMModel ( config = cfg )	code
+581d170777	1	278	#/texts/278		code
+016423ac29	1	279	#/texts/279	tags = Tags ( ** { \"git_sha\" : args . git_sha , \"b	code
+b61d741f23	1	280	#/texts/280		code
+a2861804c3	1	281	#/texts/281	model . train ( X_train = X_train , y_train = y_tr	code
+b748807d7f	1	282	#/texts/282		code
+85bde71c54	1	283	#/texts/283	model_info = model . log_model ( experiment_name =	code
+43f7815e86	1	284	#/texts/284		code
+33a4054aef	1	285	#/texts/285	)	code
+96e505b686	1	286	#/texts/286		code
+b8d439a05f	1	287	#/texts/287	metrics_new = model . metrics	code
+3d10d5aa70	1	288	#/texts/288	Now, we'll evaluate the latest registered model (i	text
+450b726fb9	1	289	#/texts/289	latest-model	code
+9d2601245a	1	290	#/texts/290	alias exists, or if the newly trained model improv	text
+7ed945c6b1	1	291	#/texts/291	model_updated	code
+fd669a7794	1	292	#/texts/292	and	text
+5763ffa7f1	1	293	#/texts/293	model_version	code
+fd74052b70	1	294	#/texts/294	task values, which we will use in the follow-up ta	text
+08e3284219	1	295	#/texts/295	sklearn_model_name = f \" { cfg . catalog } . { cfg	code
+be8f61241e	1	296	#/texts/296		code
+62ccfa7a91	1	297	#/texts/297	eval_data = X_test . copy ()	code
+96911a449b	1	298	#/texts/298		code
+d6736c1ada	1	299	#/texts/299	eval_data [ cfg . target ] = y_test	code
+a435b1a548	1	300	#/texts/300		code
+0e0bf66452	1	301	#/texts/301	should_register = True	code
+457b6a5378	1	302	#/texts/302		code
+6eb1e23c99	1	303	#/texts/303	try : mlflow . MlflowClient () . get_model_version	code
+209f2518ce	1	304	#/texts/304		code
+8fd226f73f	1	305	#/texts/305	except mlflow . exceptions . RestException : model	code
+c4ea6c0b4f	1	306	#/texts/306		code
+b80731a535	1	307	#/texts/307	if model_exists : result = mlflow . models . evalu	code
+abb8747480	1	308	#/texts/308		code
+c3063a30f3	1	309	#/texts/309	if should_register : model_version = model . regis	code
+ea358f14f4	1	310	#/texts/310		code
+2dbab87740	1	311	#/texts/311	else : dbutils . jobs . taskValues . set ( key = \"	code
+060ef9c000	1	312	#/texts/312	Deploying a Model Serving Endpoint	section_header
+f0ef5acb3f	1	313	#/texts/313	The	text
+df56fc83bc	1	314	#/texts/314	model_updated	code
+3a40d21f40	1	315	#/texts/315	task defines whether the pipeline will run further	text
+23bf61e43c	1	316	#/texts/316	model_updated	code
+b99b2dbd02	1	317	#/texts/317	task value is equal to 1: if the condition evaluat	text
+85cd2548ea	1	318	#/texts/318	deploy_model	code
+5786ccdc9a	1	319	#/texts/319	task. It takes the same arguments as the	text
+ae0cb59731	1	320	#/texts/320	train_model	code
+c0e04c93d8	1	321	#/texts/321	task:	text
+3639f2602c	1	322	#/texts/322	- task_key : model_updated condition_task : op : \"	code
+4ca96cb43e	1	323	#/texts/323		code
+d55bcd36a6	1	324	#/texts/324	- task_key : \"deploy_model\" environment_key : defa	code
+d19c6eb310	1	325	#/texts/325	The task runs the	text
+a60c9b9275	1	326	#/texts/326	deploy_model.py	code
+47449ac868	1	327	#/texts/327	script. After loading the project configuration an	text
+48b95aa835	1	328	#/texts/328	model_version	code
+8b9585c37d	1	329	#/texts/329	task value from the	text
+958e21860a	1	330	#/texts/330	train_model	code
+d5fe01d936	1	331	#/texts/331	task. We then use it to look up the corresponding	text
+60d8d86fd7	1	332	#/texts/332	ModelInfo	code
+49fb9e4777	1	333	#/texts/333	instance:	text
+b88aaf7f6b	1	334	#/texts/334	import mlflow	code
+e13f957be7	1	335	#/texts/335		code
+75d174783e	1	336	#/texts/336	from loguru import logger	code
+605f31961a	1	337	#/texts/337		code
+fef2e27842	1	338	#/texts/338	from hotel_booking.config import ProjectConfig , T	code
+537a8eb131	1	339	#/texts/339		code
+672f03fb7a	1	340	#/texts/340	from hotel_booking.models.pyfunc_model_wrapper imp	code
+c777637d46	1	341	#/texts/341		code
+435b3d92de	1	342	#/texts/342	from hotel_booking.models.serving import serve_mod	code
+4af53279b5	1	343	#/texts/343		code
+392cd59368	1	344	#/texts/344	from hotel_booking.utils.common import create_pars	code
+53fdb76b6f	1	345	#/texts/345		code
+f702db395a	1	346	#/texts/346	args = create_parser ()	code
+f6f0042949	1	347	#/texts/347		code
+68403f2f6c	1	348	#/texts/348	model_version = dbutils . jobs . taskValues . get 	code
+5d12793ada	1	349	#/texts/349		code
+1782bd1047	1	350	#/texts/350	logger . info ( f \"Retrieved wrapped model version	code
+05c523f0d2	1	351	#/texts/351		code
+e92de01b04	1	352	#/texts/352	cfg = ProjectConfig . from_yaml ( config_path = f 	code
+0827d24a27	1	353	#/texts/353		code
+c214871192	1	354	#/texts/354	model_name = f \" { cfg . catalog } . { cfg . schem	code
+a5dd86b3bd	1	355	#/texts/355		code
+5b1e2a9f9c	1	356	#/texts/356	wrapped_model_name = f \" { cfg . catalog } . { cfg	code
+68187690ac	1	357	#/texts/357		code
+40422877e5	1	358	#/texts/358	wrapped_model_info = mlflow . models . get_model_i	code
+9db63d8e64	1	359	#/texts/359		code
+7dbbed88d4	1	360	#/texts/360	)	code
+ced110f11b	1	361	#/texts/361	We then use that to log and register the wrapper w	text
+f9c31c2f5c	1	362	#/texts/362	wrapper = HotelBookingModelWrapper ()	code
+0c075d5245	1	363	#/texts/363		code
+30202ad88d	1	364	#/texts/364	with open ( f \" { args . root_path } /files/versio	code
+b375fae33a	1	365	#/texts/365		code
+bf765f0c52	1	366	#/texts/366	whl_name = f \"hotel_booking- { version } -py3-none	code
+2210ea8c09	1	367	#/texts/367		code
+c4efee5246	1	368	#/texts/368	code_paths = [ f \" { args . root_path } /artifacts	code
+06cbcacbe0	1	369	#/texts/369		code
+1461780c73	1	370	#/texts/370	tags = Tags ( ** { \"git_sha\" : args . git_sha , \"b	code
+ee38d6483e	1	371	#/texts/371		code
+2e7b097d7a	1	372	#/texts/372	model_version = wrapper . log_register_model ( wra	code
+e7f6190f4d	1	373	#/texts/373		code
+56491a8f6a	1	374	#/texts/374	)	code
+d011779b56	1	375	#/texts/375	After we have registered the model, we can finally	text
+4170e9b8b8	1	376	#/texts/376	serve_model	code
+a26fc6be71	1	377	#/texts/377	function that we defined earlier (and that you can	text
+d153a0b520	1	378	#/texts/378	models.serving	code
+a2dacdc535	1	379	#/texts/379	module) and finish our pipeline:	text
+277f1e2b49	1	380	#/texts/380	serve_model ( entity_name = model_name , entity_ve	code
+214a4722d1	1	381	#/texts/381		code
+b03167ae27	1	382	#/texts/382	)	code
+60ca40e59d	1	383	#/texts/383	As mentioned earlier, we should view PyFunc more a	text
+b2fce3eda9	1	384	#/texts/384	So far, we've been using	text
+dfb6429c80	1	385	#/texts/385	serverless compute	text
+a3e78934b9	1	386	#/texts/386	to run our jobs. Now, let's look at another Lakefl	text
+55f2079a95	1	387	#/texts/387	classic cluster configuration	text
+98d4250f4e	1	388	#/texts/388	instead. In this example, we use	text
+95d76dc8c3	1	389	#/texts/389	classic compute	text
+e940a13819	1	390	#/texts/390	purely for demonstration purposes, to show how clu	text
+7a47b30634	1	391	#/texts/391	Serverless versus Classic Compute for Lakeflow Job	section_header
+48b61012a0	1	392	#/texts/392	In the	text
+abb0a04bb1	1	393	#/texts/393	resources	text
+f55ea398b8	1	394	#/texts/394	folder, you can find another	text
+d083abaff8	1	395	#/texts/395	yml	text
+eff23ad6ff	1	396	#/texts/396	file called	text
+b24e6ea5ed	1	397	#/texts/397	ml_monitoring.yml	text
+83a3b69089	1	398	#/texts/398	, which defines the	text
+4797d10978	1	399	#/texts/399	hotel-booking-monitor-update	code
+75e585d365	1	400	#/texts/400	job.	text
+171ffaa82e	1	401	#/texts/401	This job is configured to run daily at 9:00 CET, a	text
+6871d80035	1	402	#/texts/402	scripts/refresh_monitor.py	code
+e0cbc73cfe	1	403	#/texts/403	Python script:	text
+cd6e8cc993	1	404	#/texts/404	resources : jobs : house - price - monitor - updat	code
+6b7fd05b57	1	405	#/texts/405	Notice that we do not provide a usage policy ID in	text
+d374515ba4	1	406	#/texts/406	We can also override the job's default cluster wit	text
+b777d74922	1	407	#/texts/407	cluster_id	code
+df7b128380	1	408	#/texts/408	argument for a given target. For example, it's com	text
+47fe49c60a	1	409	#/texts/409	dev	code
+37344d7d52	1	410	#/texts/410	target to speed up iteration and debugging. In thi	text
+e1e8c6409a	1	411	#/texts/411	dynamic_version	code
+ae030c6507	1	412	#/texts/412	setting for	text
+8f5582c4ea	1	413	#/texts/413	artifacts	code
+0e3c1b319a	1	414	#/texts/414	to	text
+277d75e569	1	415	#/texts/415	true	code
+4898d7ff94	1	416	#/texts/416	, to ensure that the latest version of the package	text
+6b2c946db2	1	417	#/texts/417	targets : dev : default : true mode : development 	code
+827be25d13	1	418	#/texts/418		code
+29d4231c95	1	419	#/texts/419	.bundle/$ {bundle.target} /$ {bundle.name} \" artif	code
+b726435f7b	1	420	#/texts/420	In	text
+9ebdb79329	1	421	#/texts/421	Chapter 6	text
+3348baeeea	1	422	#/texts/422	, we'll cover the monitoring job in detail, includ	text
+a9748a6b45	1	423	#/texts/423	So far, we've worked entirely in a development env	text
+e85cb99980	1	424	#/texts/28	Diagram of a Lakeflow job structure showing a sequ	caption
+a5c92413a8	1	425	#/texts/424	Databricks Platform Design	title
+a728615392	1	426	#/texts/425	We have already interacted with various components	text
+a1f37200cf	1	427	#/texts/426	We've also interacted with Unity Catalog: we used 	text
+a83dfac3d8	1	428	#/texts/427	In Unity Catalog, assets are organized using the f	text
+c389403542	1	429	#/texts/428	Catalogs, which are the highest level of organizat	list_item
+74d5eaf093	1	430	#/texts/429	Schemas, which are contained within catalogs.	list_item
+5acbbf3739	1	431	#/texts/430		list_item
+afa1c67926	1	432	#/texts/431	Assets, which include the tables, views, volumes, 	text
+fd6edecc63	1	433	#/texts/432	catalog.schema.asset	text
+7563495d2b	1	434	#/texts/433	.	text
+dee37c3d31	1	435	#/texts/434	Figure 5-2	text
+98991cbe51	1	436	#/texts/435	depicts this hierarchy.	text
+d8348416f2	1	437	#/pictures/1	Diagram showing the Unity Catalog metastore object	picture
+7813a4dc83	1	438	#/texts/437	All the workspaces belong to a Databricks account.	text
+ae29ba85af	1	439	#/texts/438	Figure 5-3	text
+bcd8c603c2	1	440	#/texts/439	depicts the relationships among accounts, metastor	text
+fc1245d8ed	1	441	#/pictures/2	Diagram showing the relationships between Databric	picture
+4a43e62f99	1	442	#/texts/441	I've mentioned that you may want to have different	text
+c381e92f3f	1	443	#/texts/442	How Many Environments Do You Need?	section_header
+876bf0a3fe	1	444	#/texts/443	The development, testing, acceptance, and producti	text
+b95d15d627	1	445	#/texts/444	One of the earliest formalizations of DTAP came fr	text
+8c43472ea9	1	446	#/texts/445	1	text
+0ac1ccf8f4	1	447	#/texts/446	He noted that \"The structure of development enviro	text
+b941b3b154	1	448	#/texts/447	Consider what the software development sequence lo	text
+5c3b00d657	1	449	#/texts/448		list_item
+b43672283c	1	450	#/texts/449	Development	text
+2e7c2f307b	1	451	#/texts/450	happened first, on individual laptops or desktops.	text
+bf0853d206	1	452	#/texts/451	CVS	text
+443a22e13c	1	453	#/texts/452	) or	text
+a8daf466e4	1	454	#/texts/453	Subversion	text
+90a7051d27	1	455	#/texts/454	, but it wasn't universal. Git was only invented i	text
+6cdd68da1a	1	456	#/texts/455		list_item
+1edce571c1	1	457	#/texts/456	Testing	text
+4e04b665df	1	458	#/texts/457	came next and was where code got integrated. On a 	text
+39a49579a6	1	459	#/texts/458		list_item
+f0679dbbfe	1	460	#/texts/459	Acceptance	text
+cf7975c863	1	461	#/texts/460	came after testing, and mirrored production in ser	text
+c013c4e33c	1	462	#/texts/461		list_item
+4d422d443d	1	463	#/texts/462	Production deployment	text
+3261b84e7a	1	464	#/texts/463	was the final phase. At the time, Cal optimistical	text
+ae2d50b2ca	1	465	#/texts/464	The DTAP gates weren't just about catching bugs; t	text
+6cb81cdb90	1	466	#/texts/465	This made sense in a world where the following thi	text
+48c89d229a	1	467	#/texts/466	Environments were expensive physical servers, whic	list_item
+73ac439425	1	468	#/texts/467	Deployments were manual, risky, and infrequent.	list_item
+2c79cc01dd	1	469	#/texts/468	A bad deployment could mean hours or days of downt	list_item
+4434568715	1	470	#/texts/469		list_item
+1a84e6d2a7	1	471	#/texts/470	CI/CD tooling barely existed. (	text
+4b3e610851	1	472	#/texts/471	Jenkins	text
+c2191fe51f	1	473	#/texts/472	, then called Hudson, appeared in 2005 but wasn't 	text
+768dca3c99	1	474	#/texts/473	DTAP was a safety net for a world without better o	text
+40061218fe	1	475	#/texts/474	But by the late 2000s, DevOps culture began challe	text
+20d12e0448	1	476	#/texts/475	Today, especially for ML/AI development, having th	text
+8032910929	1	477	#/texts/476	ML/AI development comes with certain requirements,	list_item
+0f7b8607b8	1	478	#/texts/477	IaC makes environments reproducible. We can deploy	list_item
+d5b4217a1c	1	479	#/texts/478	CI/CD is mature. Automated pipelines can build, te	list_item
+f3f7f1b83a	1	480	#/texts/479	Teams that follow DevOps principles and own code f	list_item
+17e4dca5bd	1	481	#/texts/480	However, you need to be aware that having four env	text
+73434a42b5	1	482	#/texts/481	The Big Book of MLOps	text
+8dc4d93bb5	1	483	#/texts/482	,	text
+8e8f9221bb	1	484	#/texts/483	2	text
+7335d16e42	1	485	#/texts/484	which was developed by Databricks, also mentions t	text
+ffdcfffa91	1	486	#/texts/485	dev	code
+bc81297b9b	1	487	#/texts/486	,	text
+c0764d2899	1	488	#/texts/487	acc	code
+d7a8f6a276	1	489	#/texts/488	, and	text
+bf566c8c60	1	490	#/texts/489	prd	code
+58d5d784f4	1	491	#/texts/490	. We use the three-environment setup in this book 	text
+4313e88b8e	1	492	#/texts/491	Platform Best Practices	section_header
+f2a6ba32ca	1	493	#/texts/492	Let's discuss an example of a Databricks platform 	text
+c90d611ec0	1	494	#/texts/493	dev	code
+2779d83d56	1	495	#/texts/494	,	text
+7c1d8ff370	1	496	#/texts/495	acc	code
+859642ebc1	1	497	#/texts/496	, and	text
+835c4e791c	1	498	#/texts/497	prd	code
+9c9a14390c	1	499	#/texts/498	-and a schema or a set of schemas in environment-s	text
+580a8233a0	1	500	#/texts/499	mlops_dev	code
+c0fbfde31e	1	501	#/texts/500	,	text
+a6bb4ab43b	1	502	#/texts/501	mlops_acc	code
+8d6c89d147	1	503	#/texts/502	, and	text
+660211afff	1	504	#/texts/503	mlops_prd	code
+d4bd4c6f8b	1	505	#/texts/504	).	text
+c467daed08	1	506	#/texts/505	Figure 5-4	text
+9a35604b3e	1	507	#/texts/506	illustrates this structure.	text
+fd1192de14	1	508	#/pictures/3	Diagram illustrating a Databricks platform setup f	picture
+5b9b5de185	1	509	#/texts/508	ML teams act as both data consumers and data produ	text
+481cc7a465	1	510	#/texts/509	Data engineering teams commonly organize source da	text
+4120c66882	1	511	#/texts/510	<env>_bronze	code
+0362914a1f	1	512	#/texts/511	,	text
+3058c52edb	1	513	#/texts/512	<env>_silver	code
+c816c7fe04	1	514	#/texts/513	, and	text
+71fabdea28	1	515	#/texts/514	<env>_gold	code
+d28e4cd622	1	516	#/texts/515	:	text
+7003bb12c5	1	517	#/texts/516	Bronze	list_item
+f27512b1e6	1	518	#/texts/517	This layer holds raw, ingested data.	list_item
+799caf69b1	1	519	#/texts/518	Silver	list_item
+55a3eec6c1	1	520	#/texts/519	This layer includes cleaned and structured tables.	list_item
+2e728b86a5	1	521	#/texts/520	Gold	list_item
+378c8d32cf	1	522	#/texts/521	This layer contains business-ready datasets.	list_item
+307443d654	1	523	#/texts/522	Each data source or product has a dedicated schema	text
+df96de81c3	1	524	#/texts/523	An important best practice is for the platform tea	text
+b67d667586	1	525	#/texts/524	prd_gold	code
+477f0f6eef	1	526	#/texts/525	), even when working from the development workspac	text
+c9868e671e	1	527	#/texts/526	Lower-environment copies of data often differ in s	text
+d777680df3	1	528	#/texts/527	At the same time, write access must remain environ	text
+37c49840e7	1	529	#/texts/528	dev	code
+fe68cc7cb1	1	530	#/texts/529	,	text
+43df9d4ef5	1	531	#/texts/530	acc	code
+2abd51a922	1	532	#/texts/531	, and	text
+ebd2c2aa51	1	533	#/texts/532	prd	code
+1cf050d444	1	534	#/texts/533	), teams can write data only to their own schemas 	text
+5088748338	1	535	#/texts/534	mlops_dev	code
+e26a2decdd	1	536	#/texts/535	,	text
+d5817b6c10	1	537	#/texts/536	mlops_acc	code
+c0b1758112	1	538	#/texts/537	, or	text
+29f1a626b4	1	539	#/texts/538	mlops_prd	code
+88bc99825b	1	540	#/texts/539	). This prevents accidental pollution of productio	text
+fe8cb35764	1	541	#/texts/540	For platform teams, this pattern balances consiste	text
+b2dd8313bd	1	542	#/texts/541	prd_gold	code
+3203c929d6	1	543	#/texts/542	, while ML teams consume them as read-only depende	text
+2c5e2f5e88	1	544	#/texts/543	This structure enables modular, secure development	text
+c1634bcdb8	1	545	#/texts/544	I've just mentioned a number of things related to 	text
+28de020ee0	1	546	#/texts/545	Access Control Strategy	section_header
+2f22094178	1	547	#/texts/546	In Databricks, access controls are applied at two 	text
+3c7153b9db	1	548	#/texts/547	Figure 5-5	text
+88f250de7a	1	549	#/texts/548	for a list of securables.	text
+32d07c2698	1	550	#/pictures/4	Diagram listing workspace securables like dashboar	picture
+751aa8d00a	1	551	#/texts/550	Workspace securables	text
+1b8c99015c	1	552	#/texts/551	include items like notebooks, dashboards, endpoint	text
+f8558ba8c5	1	553	#/texts/552	Unity Catalog securables	text
+4b0c1ed073	1	554	#/texts/553	include catalogs, schemas, tables, and other data 	text
+a82d350005	1	555	#/texts/554	Workspace securables are managed through access co	text
+4c9d6a686b	1	556	#/texts/555	3	text
+04c3dbd9fa	1	557	#/texts/556	Workspace admins have the	text
+f11bfd334f	1	558	#/texts/557	CAN_MANAGE	code
+19b99da1e3	1	559	#/texts/558	permission on all objects in their workspace (incl	text
+6251181cff	1	560	#/texts/559	CAN_MANAGE	code
+765b59980d	1	561	#/texts/560	permission on objects they create.	text
+c0cf0cbe6c	1	562	#/texts/561	Unity Catalog securables are managed through privi	text
+427a00280e	1	563	#/texts/562	4	text
+667818140e	1	564	#/texts/563	Metastore admins can create catalogs, manage permi	text
+3617bfae32	1	565	#/texts/564	Consider a ML engineer working on two projects sim	text
+75274f6779	1	566	#/texts/565	Unity Catalog supports two access modes for secura	text
+ba4ec0758b	1	567	#/texts/566	OPEN and ISOLATED	code
+0647517d04	1	568	#/texts/567	. In	text
+8d18eb07e2	1	569	#/texts/568	OPEN	code
+50b3019215	1	570	#/texts/569	mode, the securable can be accessed from any works	text
+87d5051580	1	571	#/texts/570	ISOLATED	code
+41b7d1edb4	1	572	#/texts/571	mode, access is restricted to a specified list of 	text
+96945777d8	1	573	#/texts/572	Let's review how we can organize the permissions f	text
+2a305f7982	1	574	#/texts/573	Figure 5-6	text
+f21a2481d8	1	575	#/texts/574	outlines the permissions for the team and service 	text
+14cecddf9e	1	576	#/pictures/5	Diagram showing the Hotel\\_booking team's permanen	picture
+0bd910e709	1	577	#/texts/576	The team should have permanent access to the devel	text
+f6cf27f6c7	1	578	#/texts/577	Access to the acceptance (	text
+f49bc8a6ba	1	579	#/texts/578	acc	code
+81006f8f73	1	580	#/texts/579	) and production (	text
+14ac970772	1	581	#/texts/580	prd	code
+6afa85f7d3	1	582	#/texts/581	) workspaces should be restricted by default and o	text
+ab89aa4005	1	583	#/texts/582	Additionally, service principals (SPNs) are used f	text
+8584616410	1	584	#/texts/583	Figure 5-7	text
+97e999e462	1	585	#/texts/584	shows the permissions for the team and service pri	text
+58b9e57e03	1	586	#/pictures/6	Diagram illustrating team and service principal pe	picture
+1d3347e227	1	587	#/texts/586	The hotel booking team has	text
+2d3b516954	1	588	#/texts/587	ALL_PRIVILEGES	code
+72ec9fbab5	1	589	#/texts/588	permissions on the	text
+3541c3b11b	1	590	#/texts/589	mlops_dev.hotel_booking	code
+cf9cc91032	1	591	#/texts/590	schema. In other environments (	text
+22cad048ce	1	592	#/texts/591	mlops_acc	code
+e5c7e59b3b	1	593	#/texts/592	,	text
+2ec067cd1b	1	594	#/texts/593	mlops_prd	code
+48b1c9460e	1	595	#/texts/594	, and	text
+cc509541df	1	596	#/texts/595	prd_gold	code
+f8e1e43c23	1	597	#/texts/596	), they have read-only access (	text
+21e8068e80	1	598	#/texts/597	SELECT	code
+c4c2dff57d	1	599	#/texts/598	,	text
+8c28e5a3f1	1	600	#/texts/599	READ_VOLUME	code
+06f145aeb3	1	601	#/texts/600	, and	text
+dba72ccf0b	1	602	#/texts/601	EXECUTE	code
+f04e449002	1	603	#/texts/602	), which allows them safe use of production data f	text
+6c7d2b95c3	1	604	#/texts/603	SPNs have	text
+cc9dfbb0f3	1	605	#/texts/604	ALL_PRIVILEGES	code
+cebe1cf262	1	606	#/texts/605	access on schemas in the corresponding catalogs (	text
+70abc5270d	1	607	#/texts/606	mlops_dev	code
+25f73003b9	1	608	#/texts/607	,	text
+a2e6c8f0c9	1	609	#/texts/608	mlops_acc	code
+b34e04b915	1	610	#/texts/609	, and	text
+b48a447711	1	611	#/texts/610	mlops_prd	code
+e512129e3e	1	612	#/texts/611	) and read-only access to	text
+6e40240897	1	613	#/texts/612	prd_gold.hotel_booking	code
+1c6c1d05dc	1	614	#/texts/613	to ensure consistent data consumption across envir	text
+3b40473f72	1	615	#/texts/436	Diagram showing the Unity Catalog metastore object	caption
+e82fb421fd	1	616	#/texts/440	Diagram showing the relationships between Databric	caption
+3f4e85e0dd	1	617	#/texts/507	Diagram illustrating a Databricks platform setup f	caption
+1c3f14c9a7	1	618	#/texts/549	Diagram listing workspace securables like dashboar	caption
+2c5fa0bb19	1	619	#/texts/575	Diagram showing the Hotel_booking team's permanent	caption
+cdae0eb19e	1	620	#/texts/585	Diagram illustrating team and service principal pe	caption
+1add7b4949	1	621	#/texts/614	Promoting Code and Models to Higher Environments	title
+951581a2a4	1	622	#/texts/615	Now that we've covered how different environments 	text
+ad8963dee2	1	623	#/texts/616	dev	code
+d980c4e9f3	1	624	#/texts/617	,	text
+ee7d71b0d8	1	625	#/texts/618	acc	code
+7fd52d854c	1	626	#/texts/619	, and	text
+7faa5c7489	1	627	#/texts/620	prd	code
+c8f67b125e	1	628	#/texts/621	) are structured and secured, we can look at how c	text
+0863cf0c3e	1	629	#/texts/622	Git Branching Model	section_header
+96105abe4c	1	630	#/texts/623	Anyone who uses version control has probably come 	text
+1ad9d54e52	1	631	#/texts/624	5	text
+2c2d9ca2e7	1	632	#/texts/625	Gitflow became the default branching strategy for 	text
+86ef90ff44	1	633	#/texts/626	This model assumes two default branches, developme	text
+61d2a11264	1	634	#/texts/627	Figure 5-8	text
+d72a3107f3	1	635	#/texts/628	).	text
+91a2d9fb21	1	636	#/pictures/7	Diagram illustrating the Gitflow branching model, 	picture
+891829efbd	1	637	#/texts/630	As Vincent mentions in his note of reflection for 	text
+de9c4cd5bf	1	638	#/texts/631	6	text
+7137465103	1	639	#/texts/632	dated 2020, the world of software has changed sinc	text
+e3e475d921	1	640	#/texts/633	GitHub flow	text
+4ccab6a07b	1	641	#/texts/634	, which is a Git branching model developed and use	text
+bcc196ef6e	1	642	#/texts/635	In the past, I've tried to adapt Gitflow to ML pro	text
+bd1cf77ab8	1	643	#/texts/636	Here's how the GitHub flow approach works:	text
+bae36dc67c	1	644	#/texts/637	A feature branch feature/foo is created from the m	list_item
+1cfaa81d60	1	645	#/texts/638	A developer creates a pull request (PR).	list_item
+5cef693a20	1	646	#/texts/639	At PR to the main branch, a CI pipeline run gets t	list_item
+1ae6a8879f	1	647	#/texts/640	It runs pre-commit checks and unit tests. An appro	list_item
+a760dc8e9d	1	648	#/texts/641	When the feature branch is merged to main, a CD pi	list_item
+b9fdf1bd9e	1	649	#/texts/642	The CD pipeline in the acceptance environment can 	list_item
+d835b76f79	1	650	#/texts/643		list_item
+e816291a75	1	651	#/texts/644	Figure 5-9	text
+a6c2353760	1	652	#/texts/645	provides a simplified illustration of this GitHub 	text
+ff0b9552cf	1	653	#/pictures/8	Diagram illustrating a simplified GitHub flow, sho	picture
+54fd7240cc	1	654	#/texts/647	Let's now take a close look at the CI and CD pipel	text
+94bfc2b032	1	655	#/texts/648	Continuous Integration Pipeline	section_header
+7b29190883	1	656	#/texts/649	Let's take a look at the continuous integration (C	text
+3650d6aa07	1	657	#/texts/650	ci_mlops.yml	text
+df11973c08	1	658	#/texts/651	file in the	text
+a6f095593f	1	659	#/texts/652	.github/workflows	text
+31d9e9da62	1	660	#/texts/653	folder), which is triggered to run on each PR to t	text
+8ff04fba01	1	661	#/texts/654	mlops	text
+7f79c52d76	1	662	#/texts/655	folder have changed:	text
+9f54ce9c87	1	663	#/texts/656	on : pull_request : branches : - 'main' paths : - 	code
+045dfbda07	1	664	#/texts/657	The pipeline has one job. The first step in this j	text
+98d542c4f7	1	665	#/texts/658	fetch_depth	code
+01a44d85c0	1	666	#/texts/659	to	text
+bf795bc9d6	1	667	#/texts/660	0	code
+e75fc10a67	1	668	#/texts/661	(the default is	text
+57cbaa384d	1	669	#/texts/662	1	code
+f5f0ae1e72	1	670	#/texts/663	), to make sure that the next step can run correct	text
+6e6d21e862	1	671	#/texts/664	jobs : pytest_and_checks : runs - on : ubuntu - la	code
+23d3636851	1	672	#/texts/665	The following steps install uv and all the depende	text
+573a58fb76	1	673	#/texts/666	- name : Install uv uses : astral - sh / setup - u	code
+48247a8234	1	674	#/texts/667		code
+29b6e9bc1e	1	675	#/texts/668	- name : Install the dependencies run : | uv sync 	code
+f074a36e69	1	676	#/texts/669		code
+2d6da89501	1	677	#/texts/670	- name : Run pre - commit checks run : | uv run pr	code
+e0595933a9	1	678	#/texts/671		code
+1942a0b479	1	679	#/texts/672	- name : run pytest run : | uv run pytest	code
+2f8e559469	1	680	#/texts/673	It's also important to note that we do not use tag	text
+a5d798b9f3	1	681	#/texts/674	7	text
+1d85c43278	1	682	#/texts/675	Continuous Deployment Pipeline	section_header
+4d3ea22dc9	1	683	#/texts/676	Let's take a look at the continuous deployment (CD	text
+24e7e21f45	1	684	#/texts/677	mlops	code
+877ded1804	1	685	#/texts/678	folder have changed:	text
+98ce79ddaa	1	686	#/texts/679	on : push : branches : - 'main' paths : - 'mlops/*	code
+74244be221	1	687	#/texts/680	This pipeline defines a single deployment job with	text
+4bbf0d5779	1	688	#/texts/681	acc	code
+64b69ca7bb	1	689	#/texts/682	and	text
+ba5faa76d0	1	690	#/texts/683	prd	code
+5296667674	1	691	#/texts/684	environments), based on the values defined in the 	text
+4f0454e318	1	692	#/texts/685	GitHub environments are used to manage environment	text
+68125cfaaa	1	693	#/texts/686	${{ matrix.environment }}	code
+0d71c25b06	1	694	#/texts/687	, the job dynamically applies the appropriate conf	text
+cd9af1fd96	1	695	#/texts/688	The job requires specific permissions:	text
+9ce0edcef4	1	696	#/texts/689	id-token	list_item
+48359eed13	1	697	#/texts/690	This is write permission to fetch an OpenID Connec	list_item
+f3ef25edea	1	698	#/texts/691	contents	list_item
+46e27435c3	1	699	#/texts/692	This is write permission to push a Git tag after a	list_item
+fe231530fa	1	700	#/texts/693	The	text
+0ebe932602	1	701	#/texts/694	DATABRICKS_HOST	code
+d683502f99	1	702	#/texts/695	environment variable is set using the GitHub envir	text
+e462cfb62e	1	703	#/texts/696	jobs : deploy : runs - on : ubuntu - latest strate	code
+070c434041	1	704	#/texts/697	The first step checks out the repository under Git	text
+18e10eed53	1	705	#/texts/698	steps : - name : Checkout Source Code uses : actio	code
+149721fd2e	1	706	#/texts/699	In this example, we use Amazon Web Services (AWS),	text
+3db038c9aa	1	707	#/texts/700	The second step uses the	text
+7b0f588e9d	1	708	#/texts/701	configure-aws-credentials	code
+6e8cd043dd	1	709	#/texts/702	GitHub action to assume an identity and access man	text
+3663d4c173	1	710	#/texts/703	ARN_ROLE	code
+45fe121bb9	1	711	#/texts/704	variable and then set the AWS region. This grants 	text
+f096cf932f	1	712	#/texts/705	The third step fetches secrets from AWS Secrets Ma	text
+021bf7ad2d	1	713	#/texts/706	DATABRICKS_CLIENT_ID	code
+972aea3012	1	714	#/texts/707	and	text
+0df77e8ee8	1	715	#/texts/708	DATABRICKS_CLIENT_SECRET	code
+511151a12e	1	716	#/texts/709	. These values are exported as environment variabl	text
+b8264bf4b5	1	717	#/texts/710	databricks bundle deploy	code
+6bdde3bba6	1	718	#/texts/711	. Note that the Databricks CLI requires three envi	text
+a05d058efc	1	719	#/texts/712	DATABRICKS_CLIENT_ID	code
+ef47ef7a78	1	720	#/texts/713	,	text
+345203b3d7	1	721	#/texts/714	DATABRICKS_CLIENT_SECRET	code
+fe06d8363f	1	722	#/texts/715	, and	text
+9c3cd63d41	1	723	#/texts/716	DATABRICKS_HOST	code
+635e7c81cc	1	724	#/texts/717	:	text
+341929fe4a	1	725	#/texts/718	- name : Configure AWS credentials uses : aws - ac	code
+b5fe95609c	1	726	#/texts/719		code
+49773f3fae	1	727	#/texts/720	- name : Fetch secrets uses : aws - actions / aws 	code
+1370c681d2	1	728	#/texts/721	The final steps in the pipeline prepare the deploy	text
+bf9a29d974	1	729	#/texts/722	databricks bundle deploy	code
+6a05304515	1	730	#/texts/723	command, which publishes the bundle definition to 	text
+84118d2302	1	731	#/texts/724	Next, the uv package manager is installed. It's us	text
+0112affc3e	1	732	#/texts/725	databricks bundle deploy	code
+7e50526228	1	733	#/texts/726	, passing the current	text
+1023c738db	1	734	#/texts/727	git sha	code
+9353845fbf	1	735	#/texts/728	as a variable. Note that deploying a bundle does n	text
+dd95b78c9f	1	736	#/texts/729	- name : Install Databricks CLI uses : databricks 	code
+6c22d0bf6f	1	737	#/texts/730		code
+0847de4ff4	1	738	#/texts/731	- name : Install uv uses : astral - sh / setup - u	code
+76d33063d5	1	739	#/texts/732		code
+33f0619f2b	1	740	#/texts/733	- name : Deploy to Databricks env : DATABRICKS_BUN	code
+b23f1933bb	1	741	#/texts/734	In our CD pipeline example, we have authenticated 	text
+70ef683f00	1	742	#/texts/735	OpenID Connect	section_header
+b699cc1103	1	743	#/texts/736	Figure 5-10	text
+df2f965383	1	744	#/texts/737	shows an example of the setup. It assumes that we 	text
+ca3a9adc82	1	745	#/texts/738	dev	code
+3f142f13ee	1	746	#/texts/739	,	text
+3d3f2ac102	1	747	#/texts/740	acc	code
+d839d333d2	1	748	#/texts/741	, and	text
+391b5731c2	1	749	#/texts/742	prd	code
+f7d7e48bfc	1	750	#/texts/743	). Each of these workspaces contains a service pri	text
+f71ebc8d22	1	751	#/pictures/9	Diagram illustrating the connection between GitHub	picture
+c0c7258303	1	752	#/texts/745	You can find the trust policy definition for the I	text
+8024cb032d	1	753	#/texts/746	provider	code
+0559903044	1	754	#/texts/747	to	text
+e395bbb8d6	1	755	#/texts/748	token.actions.githubusercontent.com	code
+0a58060cc2	1	756	#/texts/749	and	text
+ffc7f664c3	1	757	#/texts/750	audience	code
+b8f2cdd1af	1	758	#/texts/751	to	text
+12302ac0dc	1	759	#/texts/752	sts.amazonaws.com	code
+fe7956e715	1	760	#/texts/753	:	text
+9cfb791f4e	1	761	#/texts/754	{ \"Version\" : \"2012-10-17\" , \"Statement\" : [ { \"Ef	code
+f9baf1817b	1	762	#/texts/755		code
+b901508915	1	763	#/texts/756	}	code
+83f566169c	1	764	#/texts/757	In our setup, we do not use GitHub secrets. Instea	text
+e35af74a99	1	765	#/texts/758	Figure 5-11	text
+41646563ca	1	766	#/texts/759	shows the view of configured environments in GitHu	text
+b03c37de61	1	767	#/pictures/10	Screenshot of GitHub showing configured environmen	picture
+b722db57db	1	768	#/texts/761	Here are example values for the variables in the d	text
+27b2bff351	1	769	#/texts/762		list_item
+7eaeebc142	1	770	#/texts/763	ARN_ROLE	code
+7f23758960	1	771	#/texts/764	: arn:aws:iam::123456789:role/GitHubDevOIDC	text
+bd70a33b77	1	772	#/texts/765		list_item
+ed3e68db62	1	773	#/texts/766	DATABRICKS_HOST	code
+eead36f09b	1	774	#/texts/767	: https://dbc-c2e8445d-159d.cloud.databricks.com	text
+73d21e71d6	1	775	#/texts/768		list_item
+ce7a34bc8e	1	776	#/texts/769	SECRET_ID	code
+cc6f2f8b55	1	777	#/texts/770	: dev_dbr	text
+73b0ffd5ae	1	778	#/texts/771	Using CI/CD pipelines alone is not sufficient to e	text
+4c1cb0d340	1	779	#/texts/772	Branch and deployment protection rules	section_header
+7ffbe691f2	1	780	#/texts/773	Implementing branch protection rules is essential 	text
+daf248fc07	1	781	#/texts/774	Figure 5-12	text
+c5ca9a5bc3	1	782	#/texts/775	.	text
+86885b1e30	1	783	#/pictures/11	Screenshot of a branch protection settings interfa	picture
+46e7fe7ce5	1	784	#/texts/777	These include the following:	text
+e53fdd08e6	1	785	#/texts/778	Requiring at least one (ideally, two) approvals	list_item
+3e3dbac1c9	1	786	#/texts/779	Requiring a review if a new commit is pushed after	list_item
+c00b359f06	1	787	#/texts/780	Using the CODEOWNERS file: automatically assigning	list_item
+d5df601ca1	1	788	#/texts/781	Enforcing approval: requiring the most recent push	list_item
+65c23f3770	1	789	#/texts/782	I also recommend enabling the \"Do not bypass the a	text
+586e4da6ec	1	790	#/texts/783	I mentioned earlier that deployment to production 	text
+b96395ab5b	1	791	#/texts/784	Figure 5-13	text
+a942561ee9	1	792	#/texts/785	, which we can set for each environment and reposi	text
+26dd875ddf	1	793	#/pictures/12	Diagram showing deployment protection rules config	picture
+5398ab0cf1	1	794	#/texts/787	So far, we've explored key considerations for prom	text
+be4919e247	1	795	#/texts/788	For deep learning models, which can be large and e	text
+693a0ba165	1	796	#/texts/789	dev	code
+2cb381dcf5	1	797	#/texts/790	to	text
+c43726b7e5	1	798	#/texts/791	acc	code
+876a3c8a93	1	799	#/texts/792	to	text
+cbb5888708	1	800	#/texts/793	prd	code
+8fcc56ec08	1	801	#/texts/794	) is not the best approach. Instead, it is more ef	text
+effdbde383	1	802	#/texts/629	Diagram illustrating the Gitflow branching model, 	caption
+80eb35ccde	1	803	#/texts/646	Diagram illustrating a simplified GitHub flow, sho	caption
+afe1308a46	1	804	#/texts/744	Diagram illustrating the connection between GitHub	caption
+30c3714285	1	805	#/texts/760	Screenshot of GitHub showing configured environmen	caption
+a11925c759	1	806	#/texts/776	Screenshot of a branch protection settings interfa	caption
+674775711c	1	807	#/texts/786	Diagram showing deployment protection rules config	caption
+b0f5cac0a7	1	808	#/texts/795	Promoting Models to Higher Environments	title
+e298c65c5a	1	809	#/texts/796	Let's say the ML team is working on updating the w	text
+e5906cf235	1	810	#/texts/797	Figure 5-14	text
+692937550e	1	811	#/texts/798	demonstrates how to do this in a secure way.	text
+5db33b309e	1	812	#/pictures/13	Diagram illustrating the workflow for promoting a 	picture
+362e8ff29a	1	813	#/texts/800	In this workflow, the embedding model is managed c	text
+33f5fd5f99	1	814	#/texts/801	mlops_shared.hotel_booking.embeddings	code
+b413207f00	1	815	#/texts/802	catalog and promoted across environments using MLf	text
+9c922870c7	1	816	#/texts/803	latest-dev	code
+3337ec4af9	1	817	#/texts/804	alias.	text
+d3e6bf6fea	1	818	#/texts/805	In the simplest scenario, the model update did not	text
+efbb27eed5	1	819	#/texts/806	project_config.yml	text
+9438f8b6a1	1	820	#/texts/807	). A PR to the main branch gets created, and it tr	text
+f63cacdf33	1	821	#/texts/808	In the acceptance environment, the Lakeflow job ge	text
+279149b2f6	1	822	#/texts/809	latest-dev	code
+f077777814	1	823	#/texts/810	alias, verifies that the model version matches the	text
+cbbde12673	1	824	#/texts/811	latest-acc	code
+415d294cc6	1	825	#/texts/812	and the model is deployed to the acceptance endpoi	text
+57ada5ab36	1	826	#/texts/813	latest-acc	code
+bac4a1eedd	1	827	#/texts/814	alias, assuming that the pipeline ran in the accep	text
+1ab10b1f34	1	828	#/texts/815	In the approach we've discussed, the model stays i	text
+8ef6531121	1	829	#/texts/816	Earlier, when we built the CI pipeline, testing sh	text
+e940f7c616	1	830	#/texts/799	Diagram illustrating the workflow for promoting a 	caption
+88f7b450e2	1	831	#/texts/817	Testing	title
+d5913185a5	1	832	#/texts/818	Many ML practitioners have converged on the same o	text
+21747be6b0	1	833	#/texts/819	Jeremy Jordan, a core maintainer of PyTorch Lightn	text
+035bb31afb	1	834	#/texts/820	8	text
+5e195522ba	1	835	#/texts/821	Developing ML models relies on a large amount of t	text
+9601c8c847	1	836	#/texts/822	In this section of the book, we limit ourselves to	text
+abc270b472	1	837	#/texts/823	ML Model Testing	section_header
+97b61f4b4b	1	838	#/texts/824	Model tests are divided into pre-train tests and p	text
+96c38c244e	1	839	#/texts/825	Pre-train tests	list_item
+be6bddf8a1	1	840	#/texts/826	These run before training and short-circuit a wast	list_item
+4c063181cc	1	841	#/texts/827	Post-train tests	list_item
+baecfb2a97	1	842	#/texts/828	Invariance tests	list_item
+008c0569f3	1	843	#/texts/829	These are tests for perturbations that must not ch	list_item
+43ddf845fb	1	844	#/texts/830	Directional expectation tests	list_item
+9e2569371c	1	845	#/texts/831	These are tests for perturbations that must change	list_item
+849443a2bf	1	846	#/texts/832	Minimum functionality tests	list_item
+c8bb93e626	1	847	#/texts/833	These are tests on critical data slices.	list_item
+055ef6fbcc	1	848	#/texts/834	It is also important not to confuse model evaluati	text
+f2980cd01d	1	849	#/texts/835	Model evaluation	list_item
+f0160a00e4	1	850	#/texts/836	This summarizes performance and tells you whether 	list_item
+145aec2fd2	1	851	#/texts/837	Model testing	list_item
+544bc3e64a	1	852	#/texts/838	This consists of explicit checks for specific beha	list_item
+0d9cc0fbbc	1	853	#/texts/839	The distinction between these two matters, because	text
+717f70ea72	1	854	#/texts/840	There are also tests for data specifically: assert	text
+e88915785c	1	855	#/texts/841	DQX	text
+bd2ad8ad8c	1	856	#/texts/842	provides declarative checks of this kind, and the 	text
+dd8354ccf0	1	857	#/texts/843	We won't go deep into any of these here. They sit 	text
+08817b2b55	1	858	#/texts/844	9	text
+12cb76041d	1	859	#/texts/845	Software Testing	section_header
+33fe7f6938	1	860	#/texts/846	For decades, software engineering has organized te	text
+badb09bb12	1	861	#/texts/847	test pyramid	text
+759b4cb8d4	1	862	#/texts/848	: there are many fast unit tests at the base, fewe	text
+a75ff93032	1	863	#/texts/849	Figure 5-15	text
+d06e6af9e4	1	864	#/texts/850	shows the test pyramid on Databricks that follows 	text
+77e1ec73e2	1	865	#/pictures/14	Diagram illustrating the test pyramid for Databric	picture
+4abe86e57c	1	866	#/texts/852	The trade-off is simple: as tests become more real	text
+8b34f9ba09	1	867	#/texts/853	There is a lot of great literature on software tes	text
+7d89dbb5a2	1	868	#/texts/854		list_item
+09fdd5197f	1	869	#/texts/855	Effective Testing: From Slop to Software	text
+caad0c8dd0	1	870	#/texts/856	by Matt Harrison (self-pub.)	text
+c1afdbdaa9	1	871	#/texts/857		list_item
+c977eb4e23	1	872	#/texts/858	Python Testing with pytest	text
+311730eeea	1	873	#/texts/859	by Brian Okken (O'Reilly)	text
+4e98fe9b8a	1	874	#/texts/860	Let's go through the layers one by one, but not in	text
+a3cef1221a	1	875	#/texts/861	Unit testing	section_header
+110fb64e55	1	876	#/texts/862	A	text
+d4076ad939	1	877	#/texts/863	unit test	text
+4d0be907ff	1	878	#/texts/864	isolates a small piece of logic and runs entirely 	text
+636c665f91	1	879	#/texts/865	Your code does use actual SDK clients, and since w	text
+2ae8da5e06	1	880	#/texts/866	unittest.mock	code
+103569a748	1	881	#/texts/867	and	text
+eae2c477cf	1	882	#/texts/868	pytest-mock	code
+d8a5c774a5	1	883	#/texts/869	make this straightforward.	text
+8a1612084e	1	884	#/texts/870	You should mock only at genuine system boundaries 	text
+4a58963879	1	885	#/texts/871	Two rules prevent most mistakes:	text
+9aeca05373	1	886	#/texts/872	Patch where the name is looked up, not where it is	list_item
+4d1ce9b8c9	1	887	#/texts/873		list_item
+8bad954534	1	888	#/texts/874	Use	text
+4361838111	1	889	#/texts/875	autospec=True	code
+76366eb1be	1	890	#/texts/876	whenever possible. A mock with	text
+b122fc3d8b	1	891	#/texts/877	autospec	code
+d661f92775	1	892	#/texts/878	derives its interface from the real object, so if 	text
+ff6fa722e9	1	893	#/texts/879	Databricks considerations	section_header
+6952f876b1	1	894	#/texts/880	For Databricks projects, we reserve unit tests for	text
+c11b26f952	1	895	#/texts/881	Spark transformations are where unit testing on Da	text
+c09bd760a9	1	896	#/texts/882	pyspark	code
+fa53ab8058	1	897	#/texts/883	, create a local	text
+c055b50852	1	898	#/texts/884	SparkSession	code
+b81d1f748c	1	899	#/texts/885	, and run transformations against small test DataF	text
+ea9abb3aaa	1	900	#/texts/886	The complication is that	text
+7d5ad07c64	1	901	#/texts/887	databricks-connect	code
+7dd4c49243	1	902	#/texts/888	and	text
+99ee45ce2d	1	903	#/texts/889	pyspark	code
+044b69a854	1	904	#/texts/890	are mutually exclusive. Once	text
+f33e18cdbb	1	905	#/texts/891	databricks-connect	code
+097425c82b	1	906	#/texts/892	is installed, local Spark sessions become unavaila	text
+4cb85f59a9	1	907	#/texts/893	databricks-connect	code
+53ec502914	1	908	#/texts/894	is pulled in by the version of	text
+ba0ff3b8c8	1	909	#/texts/895	databricks-agents	code
+72933146de	1	910	#/texts/896	we use in the book.	text
+6813e1bf15	1	911	#/texts/897	10	text
+a202d7a139	1	912	#/texts/898	One way out is to keep these dependencies out of t	text
+e9099468b7	1	913	#/texts/899	pyspark	code
+c01873513d	1	914	#/texts/900	. This works, but it requires discipline and makes	text
+4b5c845c55	1	915	#/texts/901	databricks-connect	code
+185b6adc58	1	916	#/texts/902	, which brings us to integration testing.	text
+43a45a6203	1	917	#/texts/903	Integration testing	section_header
+c925b6d062	1	918	#/texts/904	There are two levels of integration testing on Dat	text
+2e9465f1c1	1	919	#/texts/905		list_item
+a9d320dfeb	1	920	#/texts/906	The first level	text
+06539e0dbe	1	921	#/texts/907	runs Spark logic on Databricks compute	text
+e8a8b2b0b3	1	922	#/texts/908	. Once Spark execution goes through	text
+1c6b718435	1	923	#/texts/909	databricks-connect	code
+b0c8fe061c	1	924	#/texts/910	, tests that exercise Spark logic run remotely rat	text
+2fe86cf304	1	925	#/texts/911	spark	code
+cb590e9639	1	926	#/texts/912	fixture from	text
+ed3b26fc37	1	927	#/texts/913	databricks-labs-pytester	code
+13add32671	1	928	#/texts/914	is exactly this: a Databricks Connect-backed sessi	text
+122f3fbd35	1	929	#/texts/915		list_item
+4ab7995317	1	930	#/texts/916	The second level	text
+1ddc5c3a4a	1	931	#/texts/917	validates an entire pipeline end to end	text
+e8e9dbb391	1	932	#/texts/918	: workflow orchestration, task dependencies, param	text
+821b2ef401	1	933	#/texts/919		list_item
+c5e7bfa765	1	934	#/texts/920	At this level, the job definition itself is part o	text
+3139fdf2b6	1	935	#/texts/921	environment_key	code
+5bd8152dd2	1	936	#/texts/922	, a broken task dependency, or a parameter wired t	text
+8df3eda917	1	937	#/texts/923	databricks bundle validate	code
+5b9d415e09	1	938	#/texts/924	test catches definition errors before execution st	text
+8c3f3131be	1	939	#/texts/925	Taras Chaikovsk describes integration testing patt	text
+04722ec48c	1	940	#/texts/926	11	text
+47f13c5c37	1	941	#/texts/927	Practical considerations: Integration tests in CI	section_header
+ed361bb1cd	1	942	#/texts/928	The orchestrated ML pipeline can run as part of CI	text
+8a0d7b40a6	1	943	#/texts/929	The obstacle is duration. Even on sampled data, a 	text
+6e6192572a	1	944	#/texts/930	Figure 5-16	text
+6f40a8098b	1	945	#/texts/931	).	text
+8a6f689734	1	946	#/pictures/15	Diagram showing the integration of Databricks Lake	picture
+ba75327265	1	947	#/texts/933	The CI workflow validates the bundle, deploys it t	text
+01ff61ec31	1	948	#/texts/934	Commit Status API	text
+29eb199fa5	1	949	#/texts/935	, and exits green. The commit SHA is passed in as 	text
+52ff050ae2	1	950	#/texts/936	A commit status can be	text
+ed9e6b299d	1	951	#/texts/937	error	code
+9057bce564	1	952	#/texts/938	,	text
+d9a9c74e12	1	953	#/texts/939	failure	code
+adebc97f13	1	954	#/texts/940	,	text
+285f36cbcc	1	955	#/texts/941	pending	code
+87a8a7be90	1	956	#/texts/942	, or	text
+0cab8ef861	1	957	#/texts/943	success	code
+e5171fb10f	1	958	#/texts/944	, and it will surface on any PR involving the comm	text
+3f137128e5	1	959	#/texts/945	target_url	code
+fb71bf87a1	1	960	#/texts/946	and	text
+44adc141b0	1	961	#/texts/947	description	code
+98e4be9b13	1	962	#/texts/948	: the URL points to the Databricks run output, the	text
+b5ad25453b	1	963	#/texts/949	context	code
+d7e1cf86be	1	964	#/texts/950	field names the service that is reporting the stat	text
+5a71673ea0	1	965	#/texts/951	databricks/pipeline-integration	code
+2c7fbdef37	1	966	#/texts/952	), so this check stays distinct from other checks 	text
+d42f68e35c	1	967	#/texts/953	repo:status	code
+3118b6513d	1	968	#/texts/954	OAuth scope grants access to statuses without gran	text
+552d4ccf0c	1	969	#/texts/955	The run reports its own results through two tasks 	text
+c7525539c4	1	970	#/texts/956	run_if: ALL_SUCCESS	code
+69a87ed3c1	1	971	#/texts/957	and posts	text
+5ac91f0f7c	1	972	#/texts/958	success	code
+71811f01a2	1	973	#/texts/959	. The other runs with	text
+0e368504a9	1	974	#/texts/960	run_if: AT_LEAST_ONE_FAILED	code
+339601da71	1	975	#/texts/961	and posts	text
+ee9ed653c1	1	976	#/texts/962	failure	code
+8cc2a5efb4	1	977	#/texts/963	. Splitting it in two is what makes failure report	text
+ab3d309f16	1	978	#/texts/964	pending	code
+8653403c38	1	979	#/texts/965	. Each task knows its outcome from the condition t	text
+061f739f78	1	980	#/texts/966	pending	code
+b032bbb892	1	981	#/texts/967	at trigger time and then exactly one of	text
+017b457f70	1	982	#/texts/968	success	code
+c90e0969fe	1	983	#/texts/969	or	text
+124fff0f31	1	984	#/texts/970	failure	code
+03d99b014c	1	985	#/texts/971	.	text
+f6902558c4	1	986	#/texts/972	Branch protection turns that status into a merge g	text
+3b92423d34	1	987	#/texts/973	pending	code
+02200554d7	1	988	#/texts/974	until a reporter fires, and merging is blocked unt	text
+3bbb74dc7d	1	989	#/texts/975	Notice that	text
+ff310110e2	1	990	#/texts/976	Figure 5-16	text
+014dd37156	1	991	#/texts/977	also lists data tests, model tests, and endpoint p	text
+a0a6abbee5	1	992	#/texts/978	End-to-end testing	section_header
+e8818a13ba	1	993	#/texts/979	Integration tests prove that the pipeline works. E	text
+1b66964198	1	994	#/texts/980	The model is served behind an endpoint, and a fron	text
+6303b9f01f	1	995	#/texts/981	The common failure mode looks like this:	text
+1dc1ea17e0	1	996	#/texts/982	The ML team tests the pipeline, evaluates the mode	list_item
+affd5eba5a	1	997	#/texts/983	An incident still happens because the frontend exp	list_item
+850b885674	1	998	#/texts/984	None of this is specific to ML. It is the contract	text
+3c6bce9209	1	999	#/texts/985	These tests run in an acceptance environment where	text
+fd2f38d949	1	1000	#/texts/986	End-to-end tests and production monitoring are two	text
+27ae33aa8b	1	1001	#/texts/851	Diagram illustrating the test pyramid for Databric	caption
+1e2d1f89f8	1	1002	#/texts/932	Diagram showing the integration of Databricks Lake	caption
+eef486c1ce	1	1003	#/texts/987	Conclusion	title
+d43237d914	1	1004	#/texts/988	This chapter moved from model development to a str	text
+3869f38ccb	1	1005	#/texts/989	We defined end-to-end ML pipelines declaratively i	text
+1414a17578	1	1006	#/texts/990	databricks.yml	text
+4cc6153866	1	1007	#/texts/991	. Configuring jobs as code and passing parameters 	text
+a51e5b75a3	1	1008	#/texts/992	We also covered testing for ML systems, from unit 	text
+abbb7b760a	1	1009	#/texts/993	In the next chapter, we'll shift our focus to moni	text
+326e95f63d	1	1010	#/texts/994	1	text
+14cde28158	1	1011	#/texts/995	Cal Evans, \"Professional Programming: DTAP-Part 1:	text
+fa09dd5c9f	1	1012	#/texts/996	php[architect]	text
+4f99c14ff9	1	1013	#/texts/997	, July 27, 2009,	text
+19e4898922	1	1014	#/texts/998	https://oreil.ly/Jg9yM	text
+f6a9a3f2b4	1	1015	#/texts/999	2	text
+7a31e2df3d	1	1016	#/texts/1000	Databricks,	text
+bac85f7321	1	1017	#/texts/1001	The Big Book of MLOps	text
+a1753e65bd	1	1018	#/texts/1002	, 2nd ed. (Databricks, 2023),	text
+e4d9165f26	1	1019	#/texts/1003	https://oreil.ly/r5fYY	text
+e3244ce6e5	1	1020	#/texts/1004	.	text
+9ab3ff62fd	1	1021	#/texts/1005	3	text
+a4059ab211	1	1022	#/texts/1006	Consult	text
+9bdcd3ab7f	1	1023	#/texts/1007	the Databricks documentation	text
+0ec695db0b	1	1024	#/texts/1008	for more details on ACLs.	text
+b34abf6d9a	1	1025	#/texts/1009	4	text
+6c0e34e217	1	1026	#/texts/1010	Consult	text
+0b0471863d	1	1027	#/texts/1011	the Databricks documentation	text
+114306d05b	1	1028	#/texts/1012	for more information on privileges.	text
+3876b39836	1	1029	#/texts/1013	5	text
+fa7a9076a5	1	1030	#/texts/1014	Vincent Driessen, \"A Successful Git Branching Mode	text
+e09bb18fa3	1	1031	#/texts/1015	https://oreil.ly/HzKrc	text
+a71c1bf220	1	1032	#/texts/1016	.	text
+f4873c0235	1	1033	#/texts/1017	6	text
+5086229e6e	1	1034	#/texts/1018	The note of reflection is published in the same bl	text
+d17e02c62f	1	1035	#/texts/1019	7	text
+eacf8dde6b	1	1036	#/texts/1020	For more details, see	text
+41640d8d45	1	1037	#/texts/1021	an article about the GitHub Actions Worm written b	text
+76be211fdf	1	1038	#/texts/1022	.	text
+5d36521f7b	1	1039	#/texts/1023	8	text
+8788d11404	1	1040	#/texts/1024	Jeremy Jordan, \"Effective Testing for Machine Lear	text
+60f556f6ac	1	1041	#/texts/1025	https://oreil.ly/_4m1E	text
+9d39f3dcda	1	1042	#/texts/1026	.	text
+90ef4bda15	1	1043	#/texts/1027	9	text
+a520c3eb8e	1	1044	#/texts/1028	Check out	text
+fca7aee286	1	1045	#/texts/1029	his blog post on testing machine learning code and	text
+8cc9ce72ae	1	1046	#/texts/1030	.	text
+694b6304b0	1	1047	#/texts/1031	10	text
+98230808ec	1	1048	#/texts/1032	databricks-agents	code
+001d08e6ac	1	1049	#/texts/1033	removed	text
+718f816329	1	1050	#/texts/1034	databricks-connect	code
+0413affb97	1	1051	#/texts/1035	from its requirements in version 1.9.1. If you pin	text
+36ecc9d5c6	1	1052	#/texts/1036	11	text
+cc7b0bfbdb	1	1053	#/texts/1037	Taras Chaikovsk, \"Integration Testing for Lakeflow	text
+f6b069e1d9	1	1054	#/texts/1038	Databricks Community Technical Blog	text
+9c47735099	1	1055	#/texts/1039	, December 2025,	text
+3cf5d56da5	1	1056	#/texts/1040	https://oreil.ly/hSI23	text
+1918f96eef	1	1057	#/texts/1041	.	text

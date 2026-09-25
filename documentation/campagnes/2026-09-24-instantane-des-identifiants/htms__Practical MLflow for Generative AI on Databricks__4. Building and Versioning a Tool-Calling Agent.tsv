@@ -1,0 +1,451 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+61bc332e35	1	0	#/texts/0	Chapter 4. Building and Versioning a Tool-Calling 	title
+6a0db29f36	1	1	#/texts/1	In traditional machine learning (ML), rigorous log	text
+1ac335840b	1	2	#/texts/2	As we saw in	text
+9d1bcc46fa	1	3	#/texts/3	Chapter 2	text
+e91b5b2c8d	1	4	#/texts/4	, MLflow provides the capabilities for managing th	text
+ea3bdecba2	1	5	#/texts/5	What Is a Tool-Calling Agent?	title
+c0c6b8651e	1	6	#/texts/6	One of the simplest design patterns for developing	text
+a5db6f9537	1	7	#/texts/7	This design pattern is well suited for application	text
+37b42b3b82	1	8	#/texts/8	A common example of a deterministic chain is retri	text
+562c5d9280	1	9	#/texts/9	To address these limitations, tool-calling agents 	text
+396dceca62	1	10	#/texts/10	Compared to RAG, which always performs retrieval a	text
+68a81a0de0	1	11	#/texts/11	In this chapter, we will build a simple tool-calli	text
+26d8582a14	1	12	#/texts/12	Chapter 7	text
+0b8ac1e9ae	1	13	#/texts/13	, we will cover the broader agentic design pattern	text
+61126ac224	1	14	#/texts/14	Unstructured Data Preparation for Retrieval	section_header
+6e431fec81	1	15	#/texts/15	Before we can build a tool-calling agent for retri	text
+91f4f75d5d	1	16	#/texts/16	Figure 4-1	text
+13a0bcced8	1	17	#/texts/17	illustrates:	text
+e697a37ad7	1	18	#/texts/18	Parsing of documents	list_item
+6f268fc5e0	1	19	#/texts/19	Text chunking	list_item
+f2c9fee7f2	1	20	#/texts/20	Embedding and indexing chunks	list_item
+21ba1e928f	1	21	#/pictures/0	Diagram comparing RAG chain and tool-calling agent	picture
+3cb330adbe	1	22	#/texts/22	Parsing of documents	section_header
+2c93066bd0	1	23	#/texts/23	During the parsing stage, documents are parsed to 	text
+0497e97e98	1	24	#/texts/24	ai_parse_document	code
+4a6aecb7ea	1	25	#/texts/25	on Databricks) are common ways to parse these docu	text
+d990557a7d	1	26	#/texts/26	Text chunking	section_header
+727bdecedc	1	27	#/texts/27	The next step is to break down the extracted text 	text
+4af88996d1	1	28	#/texts/28	There are several techniques for performing text c	text
+06f27dd437	1	29	#/texts/29	Embedding and indexing the chunks	section_header
+e8bca3834e	1	30	#/texts/30	Each text chunk is first converted into vector emb	text
+c3d9885725	1	31	#/texts/31	Figure 4-2	text
+de9a27cf96	1	32	#/texts/32	illustrates this concept.	text
+783cd9f346	1	33	#/pictures/1	Diagram showing an embedding model converting vari	picture
+10ef555a63	1	34	#/texts/34	This allows for searching based on semantic simila	text
+504b6d26ca	1	35	#/texts/35	In this book, we use the	text
+d8ceae34dd	1	36	#/texts/36	gte-large-en	code
+4dc7390638	1	37	#/texts/37	model hosted on the Databricks Foundation Model AP	text
+800c7212c5	1	38	#/texts/38	The code for preparing the dataset, generating tex	text
+73ec602e4a	1	39	#/texts/21	Diagram comparing RAG chain and tool-calling agent	caption
+00e06ad54d	1	40	#/texts/33	Diagram showing an embedding model converting vari	caption
+fca26641a5	1	41	#/texts/39	LangChain and Databricks Integration	title
+0b465ee0bb	1	42	#/texts/40	The tool-calling agent, illustrated in the previou	text
+de39596e89	1	43	#/texts/41	Figure 4-1	text
+613070ecd8	1	44	#/texts/42	, can be built using various libraries designed to	text
+9ed69612c6	1	45	#/texts/43	ChatDatabricks	code
+438ebfceb3	1	46	#/texts/44	and	text
+b0b74167e7	1	47	#/texts/45	VectorSearchRetrieverTool	code
+e915dbda07	1	48	#/texts/46	.	text
+e93c8508e6	1	49	#/texts/47	To execute the code examples, make sure you have a	text
+f4d466b814	1	50	#/texts/48	Use serverless compute attached to a notebook.	list_item
+19fb59b85b	1	51	#/texts/49	For simplicity, it is recommended to use a pay-per	list_item
+d3bf46554f	1	52	#/texts/50	Establish a Databricks Vector Search endpoint with	list_item
+1f4426b19c	1	53	#/texts/51	ChatDatabricks	section_header
+11c3ac33ac	1	54	#/texts/52	ChatDatabricks	code
+2ca14073d9	1	55	#/texts/53	is a wrapper of LangChain's	text
+c1107abb8d	1	56	#/texts/54	ChatModel	code
+a66128519f	1	57	#/texts/55	class to query a model endpoint that is hosted on 	text
+0e1b6b4982	1	58	#/texts/56	from databricks_langchain import ChatDatabricks	code
+f28d4171a2	1	59	#/texts/57		code
+b5bd4883ff	1	60	#/texts/58	chat_model = ChatDatabricks ( endpoint = \"databric	code
+9f4bf67fa9	1	61	#/texts/59		code
+06627e95d8	1	62	#/texts/60	)	code
+9c2ea0f001	1	63	#/texts/61		code
+c2a884c3ba	1	64	#/texts/62	# Invoke the chat model	code
+c1f3cb6e2f	1	65	#/texts/63		code
+d13834b6e7	1	66	#/texts/64	print ( chat_model . invoke ( \"How do I book fligh	code
+e490300421	1	67	#/texts/65	If the invocation is successful, you should be abl	text
+b1704470d6	1	68	#/texts/66	Note	section_header
+37c6f0594a	1	69	#/texts/67	temperature	code
+d9e1a171fe	1	70	#/texts/68	controls how random or creative an LLM's responses	text
+9cb40a7ab1	1	71	#/texts/69	max_tokens	code
+1fc8e5190e	1	72	#/texts/70	sets the maximum length of the model's output, lim	text
+d41734d19d	1	73	#/texts/71	Databricks Vector Search	section_header
+ea3676b500	1	74	#/texts/72	VectorSearchRetrieverTool	code
+f2367170d8	1	75	#/texts/73	is a wrapper around LangChain's	text
+947c214e2d	1	76	#/texts/74	BaseTool	code
+3adcf8e314	1	77	#/texts/75	class that enables the LLM to query Databricks Vec	text
+19d0f2da7c	1	78	#/texts/76	from databricks_langchain import VectorSearchRetri	code
+31483fa29b	1	79	#/texts/77		code
+3f7573e578	1	80	#/texts/78	index_name = \"workspace.unity_airways.faq_index\"	code
+3ef9d2eeb5	1	81	#/texts/79		code
+90138597f6	1	82	#/texts/80	endpoint_name = \"vs_endpoint\"	code
+e23e9b6ebf	1	83	#/texts/81		code
+f0ac468d98	1	84	#/texts/82	vs_tool = VectorSearchRetrieverTool ( index_name =	code
+10da1c7152	1	85	#/texts/83		code
+78ba9ccf99	1	86	#/texts/84	)	code
+5ab32f1c4d	1	87	#/texts/85		code
+31ab0f45a3	1	88	#/texts/86	results = vs_tool . invoke ( \"How do I book flight	code
+474f1b8aae	1	89	#/texts/87		code
+c517294757	1	90	#/texts/88	print ( results )	code
+ef54145b49	1	91	#/texts/89	If the invocation is successful, you should be abl	text
+1fd0fe6363	1	92	#/texts/90	Building a LangChain Agent and Versioning in MLflo	title
+4952d540d6	1	93	#/texts/91	As we discussed in the previous chapters, MLflow i	text
+48dd5aed3a	1	94	#/texts/92	Note	section_header
+2f3b0e5e82	1	95	#/texts/93	For a more hands-on experience with the code examp	text
+7a1cf6c75e	1	96	#/texts/94	LLM-Only Application	section_header
+ef37364b27	1	97	#/texts/95	The first step in the process is to establish a ba	text
+3152719957	1	98	#/texts/96	import mlflow	code
+cb4b9acb34	1	99	#/texts/97		code
+60d03f0316	1	100	#/texts/98	mlflow . langchain . autolog ()	code
+bcf7bb09e0	1	101	#/texts/99		code
+36d1a78bb3	1	102	#/texts/100	# Set the active model context	code
+0baa4ec289	1	103	#/texts/101		code
+ab7e09a854	1	104	#/texts/102	logged_model_name = \"llm_only\"	code
+1f860282cc	1	105	#/texts/103		code
+14bc9eed0c	1	106	#/texts/104	active_model_info = mlflow . set_active_model ( na	code
+12b691c2a9	1	107	#/texts/105		code
+92426b52f0	1	108	#/texts/106	print ( f \"Active LoggedModel: ' { active_model_in	code
+c689ea0e41	1	109	#/texts/107		code
+d5edb121b4	1	110	#/texts/108	)	code
+178b9a32b2	1	111	#/texts/109	When you call	text
+b449b15346	1	112	#/texts/110	mlflow.set_active_model(name=logged_model_name)	code
+948b09e7e1	1	113	#/texts/111	, it creates a new MLflow	text
+b1c5575f67	1	114	#/texts/112	LoggedModel	code
+b269cb4b60	1	115	#/texts/113	object called	text
+782f9cafa9	1	116	#/texts/114	llm_only	code
+c1b8a8fedf	1	117	#/texts/115	. This	text
+06aa73635a	1	118	#/texts/116	LoggedModel	code
+3a8cafb9f9	1	119	#/texts/117	object represents a specific version of your appli	text
+1ccebca53c	1	120	#/texts/118	LoggedModel	code
+e881edac47	1	121	#/texts/119	object can be used for logical version tracking. F	text
+31535ee4ec	1	122	#/texts/120	llm_only	code
+7158b37892	1	123	#/texts/121	, but keep in mind that this is flexible and you c	text
+f3b852934d	1	124	#/texts/122	Let's see what happens when we ask the LLM a quest	text
+c4b650319c	1	125	#/texts/123	from databricks_langchain import ChatDatabricks	code
+34dcc5b28f	1	126	#/texts/124		code
+c84c3c209d	1	127	#/texts/125	chat_model = ChatDatabricks ( endpoint = \"databric	code
+a28e9edf3f	1	128	#/texts/126		code
+97289c3563	1	129	#/texts/127	)	code
+d738987cfa	1	130	#/texts/128		code
+4122810299	1	131	#/texts/129	query = \"How do I book flights with Unity Airways?	code
+06e399a947	1	132	#/texts/130		code
+50986d7b02	1	133	#/texts/131	print ( chat_model . invoke ( query ) . content )	code
+ad194621a0	1	134	#/texts/132	We see a new version created when we navigate to t	text
+48cdd8d162	1	135	#/texts/133	Figure 4-3	text
+b238f38134	1	136	#/texts/134	).	text
+f352034506	1	137	#/pictures/2	MLflow Experiment UI displaying the \"Agent version	picture
+aa05e02106	1	138	#/texts/136	When we navigate to the Traces tab in the MLflow E	text
+1d6db2b1a6	1	139	#/texts/137	mlflow.langchain.autolog()	code
+12557a5331	1	140	#/texts/138	at the beginning of the script. Additionally, the 	text
+13a1548dd9	1	141	#/texts/139	llm_only	code
+71a2d3f461	1	142	#/texts/140	version.	text
+96f6272cec	1	143	#/texts/141	By default, the Traces tab UI may not display the 	text
+eb95c49618	1	144	#/texts/142	Figure 4-4	text
+23f8b383b3	1	145	#/texts/143	).	text
+157fc2f27f	1	146	#/texts/144	By clicking on the trace, we can view the question	text
+bb9d6f7b10	1	147	#/texts/145	Figure 4-5	text
+ecedcb0f42	1	148	#/texts/146	.	text
+bb992b1f56	1	149	#/pictures/3	Traces tab in the MLflow Experiment UI displays a 	picture
+bc4cca8350	1	150	#/pictures/4	Screenshot of a Trace UI showing the question \"How	picture
+2613c435c5	1	151	#/texts/149	Doing a quick review of the response, we can see t	text
+57faba8fa8	1	152	#/texts/150	Full Tool-Calling Agent Application	section_header
+0b6bc1d50c	1	153	#/texts/151	Now we will build a complete tool-calling agent ap	text
+b68e36e0ab	1	154	#/texts/152	To manage these configurations more efficiently, w	text
+16a48d380e	1	155	#/texts/153	chapter04_conf.yml	text
+b59e109e7c	1	156	#/texts/154	in the	text
+619685eed4	1	157	#/texts/155	conf	text
+fd6269f5b1	1	158	#/texts/156	folder of the book's GitHub repository.	text
+0d4cd634d2	1	159	#/texts/157	Since we are building a new application now, we wi	text
+9cc542a7a8	1	160	#/texts/158	logged_model_name = \"tool_calling_agent\"	code
+c4c36873ff	1	161	#/texts/159		code
+943388bd8d	1	162	#/texts/160	active_model_info = mlflow . set_active_model ( na	code
+a0902f3a07	1	163	#/texts/161		code
+d16efa2655	1	164	#/texts/162	print ( f \"Active LoggedModel: ' { active_model_in	code
+6f636ec167	1	165	#/texts/163		code
+03f25d33f6	1	166	#/texts/164	)	code
+9e5a78aa5b	1	167	#/texts/165		code
+e82e7696e8	1	168	#/texts/166	Then load our YAML configuration:	text
+d67576c819	1	169	#/texts/167	import yaml	code
+926ebc3138	1	170	#/texts/168		code
+5730212fb3	1	171	#/texts/169	with open ( \"../conf/chapter04_conf.yml\" , \"r\" ) a	code
+5d45311400	1	172	#/texts/170		code
+4f29ff9f1e	1	173	#/texts/171	databricks_resources = model_config . get ( \"datab	code
+39b5676d14	1	174	#/texts/172		code
+bc95e5a02d	1	175	#/texts/173	retriever_config = model_config . get ( \"retriever	code
+c1c2facf06	1	176	#/texts/174		code
+45ddd4db3a	1	177	#/texts/175	llm_config = model_config . get ( \"llm_config\" )	code
+f3ed0b4e79	1	178	#/texts/176	Like before, we instantiate the	text
+ff81fca9a8	1	179	#/texts/177	ChatDatabricks	code
+e506967fd3	1	180	#/texts/178	object. This time, we will reference the parameter	text
+ca7296f7e2	1	181	#/texts/179	from databricks_langchain import ChatDatabricks	code
+91bad3a266	1	182	#/texts/180		code
+5d58c50aaf	1	183	#/texts/181	model = ChatDatabricks ( endpoint = databricks_res	code
+58ad449dac	1	184	#/texts/182		code
+907ebc1579	1	185	#/texts/183	)	code
+32c2a8850a	1	186	#/texts/184	Next,	text
+51f39f4f8a	1	187	#/texts/185	VectorSearchRetrieverTool	code
+8e5ce6ed6d	1	188	#/texts/186	is created with the index name and the additional 	text
+6b1924eb2f	1	189	#/texts/187	from databricks_langchain import VectorSearchRetri	code
+6bee66ab0e	1	190	#/texts/188		code
+8ede1b01a2	1	191	#/texts/189	vector_search_tool = VectorSearchRetrieverTool ( i	code
+85d67f308a	1	192	#/texts/190		code
+31e5f31691	1	193	#/texts/191	)	code
+c851b86d71	1	194	#/texts/192	We'll then register the prompt into MLflow's Promp	text
+42e431e631	1	195	#/texts/193	import mlflow	code
+efc52f121c	1	196	#/texts/194		code
+18133aa7f2	1	197	#/texts/195	# Steps to register prompt	code
+58a8154c38	1	198	#/texts/196		code
+76ede8cf89	1	199	#/texts/197	# ...	code
+6c53cf70ab	1	200	#/texts/198		code
+1b71dfeaad	1	201	#/texts/199	# Load prompt	code
+1aefd8a321	1	202	#/texts/200		code
+d6a068f6d1	1	203	#/texts/201	prompt_template = mlflow . genai . load_prompt ( f	code
+6ee0e10acb	1	204	#/texts/202	Finally, we create the agent with LangChain:	text
+acb6363bf4	1	205	#/texts/203	from langchain.agents import create_agent	code
+f2c85624e1	1	206	#/texts/204		code
+5eaa8899cc	1	207	#/texts/205	lc_agent = create_agent ( model = model , tools = 	code
+eaab50b050	1	208	#/texts/206		code
+edd1e5a250	1	209	#/texts/207	)	code
+79f4200dc5	1	210	#/texts/208	We can also visualize the agent:	text
+93858625a6	1	211	#/texts/209	from PIL import Image	code
+b829e4dd54	1	212	#/texts/210		code
+d9a32ea393	1	213	#/texts/211	from io import BytesIO	code
+d1a57340d9	1	214	#/texts/212		code
+8bb7987f1b	1	215	#/texts/213	from IPython.display import display as image_displ	code
+e8e66b9041	1	216	#/texts/214		code
+659b104800	1	217	#/texts/215	image_byte = lc_agent . get_graph () . draw_mermai	code
+f6ccd89594	1	218	#/texts/216		code
+13b9c829ea	1	219	#/texts/217	image = Image . open ( BytesIO ( image_byte ))	code
+7b667d03dd	1	220	#/texts/218		code
+55739dc6d7	1	221	#/texts/219	image_display ( image )	code
+1f60b371d1	1	222	#/texts/220	This code should generate an image similar to	text
+5c96fe8aab	1	223	#/texts/221	Figure 4-6	text
+a1ac22fa6f	1	224	#/texts/222	.	text
+019190efd0	1	225	#/pictures/5	Flowchart illustrating the process of a tool-calli	picture
+7e269a3a14	1	226	#/texts/224	Then we invoke the agent by providing an input tha	text
+698d4d42ac	1	227	#/texts/225	lc_agent . invoke ( { \"messages\" : [ { \"role\" : \"u	code
+97460dc605	1	228	#/texts/226		code
+9d7123e1d2	1	229	#/texts/227	)	code
+d4d76f1f50	1	230	#/texts/228	Reviewing the response now, we can see that the to	text
+7b219ad363	1	231	#/texts/229	We can also optionally log the key parameters that	text
+5aa3b11862	1	232	#/texts/230	app_params = { \"model_name\" : model_config . get (	code
+6049f7bd52	1	233	#/texts/231		code
+acd56a5444	1	234	#/texts/232	}	code
+d155634dba	1	235	#/texts/233		code
+2114c3c332	1	236	#/texts/234	mlflow . log_model_params ( model_id = active_mode	code
+c12384846c	1	237	#/texts/235	Navigating to the \"Agent versions\" tab in the MLfl	text
+9fb8a153b5	1	238	#/texts/236	tool_calling_agent	code
+3180daadcf	1	239	#/texts/237	created and the associated parameters that we logg	text
+a67a85096c	1	240	#/texts/238	Figure 4-7	text
+4504366c4a	1	241	#/texts/239	).	text
+3ca76e24be	1	242	#/pictures/6	MLflow UI showing the \"Agent versions\" tab with a 	picture
+40107ca734	1	243	#/texts/241	In the Traces tab in the MLflow UI, we can see a n	text
+fcf740e8a0	1	244	#/texts/242	tool_calling_agent	code
+51172baff6	1	245	#/texts/243	(	text
+44d4bc1c77	1	246	#/texts/244	Figure 4-8	text
+2c60007349	1	247	#/texts/245	).	text
+1731cdeab5	1	248	#/pictures/7	MLflow Experiment UI's Traces tab displaying a log	picture
+8217ca535a	1	249	#/texts/247	Clicking into the trace, we see more details such 	text
+6bd3f66b7d	1	250	#/texts/248	Figure 4-9	text
+4a4652eff9	1	251	#/texts/249	).	text
+b559bafa7e	1	252	#/pictures/8	A screenshot of the Trace UI showing input and out	picture
+a401d66bba	1	253	#/texts/251	There we have it. We have just built a simple tool	text
+96565952b0	1	254	#/texts/252	MLflow App Versioning	section_header
+470f75b355	1	255	#/texts/253	We have built two versions of an application desig	text
+82277a6421	1	256	#/texts/254	In the preceding examples, each application is ass	text
+ed7026a249	1	257	#/texts/255	llm_only	code
+0dab78a8c5	1	258	#/texts/256	and	text
+71a6958e58	1	259	#/texts/257	tool_calling_agent	code
+1e2a87fc78	1	260	#/texts/258	) for simplicity. In practice, to achieve reproduc	text
+e5149185e4	1	261	#/texts/259	We also performed a simple vibe check to evaluate 	text
+84df30c785	1	262	#/texts/260	Chapter 6	text
+60f3444fe5	1	263	#/texts/261	, we will explore how to evaluate traces using spe	text
+71e82d3010	1	264	#/texts/135	MLflow Experiment UI displaying the \"Agent version	caption
+d4471813f5	1	265	#/texts/147	Traces tab in the MLflow Experiment UI displays a 	caption
+e7bad01ade	1	266	#/texts/148	Screenshot of a Trace UI showing the question \"How	caption
+9cc9c63846	1	267	#/texts/223	Flowchart illustrating the process of a tool-calli	caption
+cd33341c0a	1	268	#/texts/240	MLflow UI showing the \"Agent versions\" tab with a 	caption
+c0de2906f7	1	269	#/texts/246	MLflow Experiment UI's Traces tab displaying a log	caption
+82f809fde6	1	270	#/texts/250	A screenshot of the Trace UI showing input and out	caption
+b31f1a6e8f	1	271	#/texts/262	Packaging and Logging the Agent and Artifacts	title
+bef3e20e36	1	272	#/texts/263	So far, we've been tracking only each application'	text
+6fda0fa7f3	1	273	#/texts/264	Chapter 8	text
+6a02c50ad9	1	274	#/texts/265	).	text
+588137fb9b	1	275	#/texts/266	Model Signatures and Dependent Resources	section_header
+0ce33cdc19	1	276	#/texts/267	To begin, let's create a new application version. 	text
+587b6b6cd6	1	277	#/texts/268	tool_calling_agent	code
+a600b76498	1	278	#/texts/269	version from the previous section. However, to bet	text
+a6e66daabd	1	279	#/texts/270	logged_model_name = \"tool_calling_agent_with_error	code
+e8f27ba67c	1	280	#/texts/271		code
+5d4314cd05	1	281	#/texts/272	active_model_info = mlflow . set_active_model ( na	code
+2119be8712	1	282	#/texts/273		code
+c37800c4c2	1	283	#/texts/274	print ( f \"Active LoggedModel: ' { active_model_in	code
+7ae397bf35	1	284	#/texts/275		code
+d0bf411931	1	285	#/texts/276	)	code
+99015e362c	1	286	#/texts/277	Before logging the tool-calling agent, we first ne	text
+ca56a8d3c9	1	287	#/texts/278	To define the model signature, we can leverage the	text
+55a03c7adb	1	288	#/texts/279	mlflow.models.infer_signature	code
+2dc8f2155f	1	289	#/texts/280	method:	text
+c8249d03db	1	290	#/texts/281	from mlflow.models import infer_signature	code
+c538460780	1	291	#/texts/282		code
+cce8af81cc	1	292	#/texts/283	lc_agent_signature = infer_signature ( model_input	code
+89a031afb3	1	293	#/texts/284		code
+495ee87ccb	1	294	#/texts/285	)	code
+3f3331b9d7	1	295	#/texts/286	We provided an input and output example to the	text
+fa0896f359	1	296	#/texts/287	infer_signature	code
+bc3d1d6da2	1	297	#/texts/288	method, which generates a	text
+51c726f699	1	298	#/texts/289	ModelSignature	code
+64ec2468f0	1	299	#/texts/290	object that is required by MLflow during model log	text
+d7c8da118b	1	300	#/texts/291	Next, we'll log the dependent resources required b	text
+d88684adf1	1	301	#/texts/292	The simplest authentication mechanism is to use au	text
+fe9bdbb9b2	1	302	#/texts/293	Chapter 8	text
+ad2694dcfb	1	303	#/texts/294	. For now, we'll focus on setting up automatic aut	text
+02abcbfe1e	1	304	#/texts/295	from mlflow.models.resources import ( DatabricksSe	code
+a37b58d00a	1	305	#/texts/296		code
+141e1508d8	1	306	#/texts/297	dependent_resources = [ DatabricksServingEndpoint 	code
+9aff3dd7cd	1	307	#/texts/298		code
+c0b43c83b6	1	308	#/texts/299	]	code
+efcbc91c7d	1	309	#/texts/300	DatabricksServingEndpoint	code
+a1df004ea7	1	310	#/texts/301	and	text
+6e8f60b215	1	311	#/texts/302	DatabricksVectorSearchIndex	code
+0368ad2ef0	1	312	#/texts/303	are helper objects provided by MLflow to support a	text
+948159dd0e	1	313	#/texts/304	Logging with LangChain Flavor	section_header
+3005abbc0f	1	314	#/texts/305	With model signature and dependent resources defin	text
+7f8be780d9	1	315	#/texts/306	image_filename = \"lc_agent.png\"	code
+400aa10cf4	1	316	#/texts/307		code
+b977548896	1	317	#/texts/308	with mlflow . start_run (): logged_agent_info = ml	code
+ca4ff10808	1	318	#/texts/309		code
+8f7681ab30	1	319	#/texts/310	)	code
+c72ba783a4	1	320	#/texts/311	If you're already familiar with MLflow, this is th	text
+1720de2949	1	321	#/texts/312	model_id	code
+c1d13fd30e	1	322	#/texts/313	of the	text
+c4d324eb20	1	323	#/texts/314	tool_calling_agent_with_error LoggedModel	code
+94a32df538	1	324	#/texts/315	to the	text
+cbfb83117d	1	325	#/texts/316	model_id	code
+a387217632	1	326	#/texts/317	parameter of	text
+ca58bd0e8e	1	327	#/texts/318	mlflow.langchain.log_model	code
+ed69d4e2e2	1	328	#/texts/319	. This ensures that the artifacts are packaged and	text
+5f096d09e3	1	329	#/texts/320	When you run the preceding code snippet, you'll en	text
+2836b3196c	1	330	#/texts/321	mlflow.exceptions.MlflowException: LangChain v1 on	code
+7305bbf32d	1	331	#/texts/322	At first glance, it may seem that MLflow does not 	text
+72853b7eed	1	332	#/texts/323	When MLflow logs a model, it serializes the model 	text
+c7710b760f	1	333	#/texts/324	Note	section_header
+40d41569f2	1	334	#/texts/325	This is not unique to LangChain. Many GenAI framew	text
+c4dbc33968	1	335	#/texts/326	Logging Model As Code	section_header
+179b3efe84	1	336	#/texts/327	Before the advent of GenAI, developing ML models p	text
+43406c2554	1	337	#/texts/328	However, with the surge in popularity of GenAI, th	text
+1001a64c87	1	338	#/texts/329	Databricks Vector Search to retrieve relevant docu	list_item
+04ccd14575	1	339	#/texts/330	LLM hosted on the Databricks Foundation Model API 	list_item
+6438847d0d	1	340	#/texts/331	As we saw in the previous section, using the tradi	text
+015d107ed2	1	341	#/texts/332	With this approach, MLflow saves the Python script	text
+87cac52e3b	1	342	#/texts/333	tool_calling_agent.py	code
+25464a77f6	1	343	#/texts/334	that contains our agent logic. Then, at the bottom	text
+1a0ba12779	1	344	#/texts/335	mlflow . models . set_model ( model = lc_agent )	code
+592e9b3850	1	345	#/texts/336	The	text
+522820dc5b	1	346	#/texts/337	set_model	code
+90c3619133	1	347	#/texts/338	method is to tell MLflow that this is the model to	text
+d0044bf62e	1	348	#/texts/339	import yaml	code
+de5596e90d	1	349	#/texts/340		code
+20efb42d16	1	350	#/texts/341	with open ( \"../conf/chapter04_conf.yml\" , \"r\" ) a	code
+0d2fc0a98a	1	351	#/texts/342		code
+087a12c5c4	1	352	#/texts/343	databricks_resources = model_config . get ( \"datab	code
+1f28379897	1	353	#/texts/344		code
+c1d5823ae6	1	354	#/texts/345	retriever_config = model_config . get ( \"retriever	code
+62bad95591	1	355	#/texts/346		code
+85cb33ae49	1	356	#/texts/347	llm_config = model_config . get ( \"llm_config\" )	code
+f7fd2096e4	1	357	#/texts/348		code
+53c20d0da1	1	358	#/texts/349	from tool_calling_agent import lc_agent	code
+9940618dde	1	359	#/texts/350		code
+3da3853d88	1	360	#/texts/351	lc_agent . invoke ( model_config . get ( \"input_ex	code
+5ea7283a22	1	361	#/texts/352	The tool-calling agent should respond in a similar	text
+d441d1348c	1	362	#/texts/353	# python	code
+8125c1a76d	1	363	#/texts/354		code
+57f5f06228	1	364	#/texts/355	logged_model_name = \"tool_calling_agent_from_code\"	code
+5cb9a1d4f8	1	365	#/texts/356		code
+9b1822ef3f	1	366	#/texts/357	active_model_info = mlflow . set_active_model ( na	code
+2270a3cf1d	1	367	#/texts/358		code
+c0acf430aa	1	368	#/texts/359	print ( f \"Active LoggedModel: ' { active_model_in	code
+48b73235b5	1	369	#/texts/360		code
+f637e81325	1	370	#/texts/361	)	code
+d1fe24cb13	1	371	#/texts/362	Like before, we have to define our model signature	text
+b820684f9f	1	372	#/texts/363	import os	code
+7b28f6ba5a	1	373	#/texts/364		code
+61f52317ec	1	374	#/texts/365	from mlflow.models import infer_signature	code
+15c3934ca7	1	375	#/texts/366		code
+076c909d8f	1	376	#/texts/367	from mlflow.models.resources import ( DatabricksSe	code
+08cd09b33a	1	377	#/texts/368		code
+95aeae05d0	1	378	#/texts/369	lc_agent_signature = infer_signature ( model_input	code
+f9bac772d0	1	379	#/texts/370		code
+f11dd2150f	1	380	#/texts/371	)	code
+172c530411	1	381	#/texts/372		code
+ee3c9bb292	1	382	#/texts/373	dependent_resources = [ DatabricksServingEndpoint 	code
+7b9c87d71c	1	383	#/texts/374		code
+284094a09a	1	384	#/texts/375	]	code
+7f2ec0d60a	1	385	#/texts/376	Now we can log our tool-calling agent:	text
+01add64de7	1	386	#/texts/377	image_filename = \"lc_agent.png\"	code
+8b4b3f3a2f	1	387	#/texts/378		code
+58e26f95e0	1	388	#/texts/379	tool_calling_agent_script_path = \"tool_calling_age	code
+65f406f838	1	389	#/texts/380		code
+6bbbd06cd1	1	390	#/texts/381	tool_calling_agent_conf_path = \"../conf/chapter04_	code
+1704387305	1	391	#/texts/382		code
+20c3f117c1	1	392	#/texts/383	uc_model_conf_path = \"../conf/uc_model_registry.ym	code
+e62d95c5c5	1	393	#/texts/384		code
+cf51724e4e	1	394	#/texts/385	with open ( uc_model_conf_path , \"r\" ) as f : uc_m	code
+780f8903e0	1	395	#/texts/386		code
+277a57c655	1	396	#/texts/387	with mlflow . start_run (): logged_agent_info = ml	code
+3ab740d681	1	397	#/texts/388	Similarly, we are using the same	text
+60ed6f7ff1	1	398	#/texts/389	mlflow.langchain.log_model	code
+77e2266e60	1	399	#/texts/390	method to log our agent, with a few key difference	text
+2faa08833a	1	400	#/texts/391		list_item
+47b9c0160b	1	401	#/texts/392	Instead of the actual	text
+67e5b81b69	1	402	#/texts/393	tool_calling_agent	code
+346e690534	1	403	#/texts/394	, the	text
+7eef6ff9f1	1	404	#/texts/395	lc_model	code
+3bdd8d501e	1	405	#/texts/396	parameter now points to our	text
+9a5848a38a	1	406	#/texts/397	tool_calling_agent.py	code
+1721402823	1	407	#/texts/398	script, which contains the model definition.	text
+b74be531f3	1	408	#/texts/399		list_item
+3d656bc008	1	409	#/texts/400	We introduce a new parameter,	text
+9171dec127	1	410	#/texts/401	code_paths	code
+6fc131293a	1	411	#/texts/402	, which specifies the paths to any dependencies or	text
+e0e5ba2658	1	412	#/texts/403	tool_calling_agent.py	code
+b7586b6b83	1	413	#/texts/404	. For example, this script relies on several confi	text
+bd17b97e5b	1	414	#/texts/405	conf/	code
+1c1389acce	1	415	#/texts/406	folder. By specifying	text
+f82eb068cf	1	416	#/texts/407	code_paths	code
+3cfd35aa64	1	417	#/texts/408	, these additional files are included during loggi	text
+ee06fa3f65	1	418	#/texts/409		list_item
+a27e61bc2d	1	419	#/texts/410	We use the	text
+7ed06a4ccc	1	420	#/texts/411	registered_model_name	code
+5c41371c63	1	421	#/texts/412	to register our model in Unity Catalog. This helps	text
+a23d1374ec	1	422	#/texts/413	Chapter 8	text
+be3219ec78	1	423	#/texts/414	.	text
+2731fd2bbc	1	424	#/texts/415	Heading back to MLflow Experiment UI, we can see t	text
+9d48970953	1	425	#/texts/416	tool_calling_agent_from_code	code
+3116b0a9ef	1	426	#/texts/417	is created. Clicking into the version and selectin	text
+059923d42d	1	427	#/texts/418	Figure 4-10	text
+04320a72d7	1	428	#/texts/419	).	text
+9bb5968513	1	429	#/pictures/9	Screenshot of the MLflow Experiment UI showing the	picture
+7b6d6bbc62	1	430	#/texts/421	To ensure the logged tool calling will still work 	text
+93915ef128	1	431	#/texts/422	loaded_agent = mlflow . langchain . load_model ( l	code
+a12406b474	1	432	#/texts/423		code
+a2f595d9fb	1	433	#/texts/424	loaded_agent . invoke ( model_config . get ( \"inpu	code
+ed0cc92446	1	434	#/texts/425	The tool-calling agent should load successfully an	text
+c01d5971e2	1	435	#/texts/420	Screenshot of the MLflow Experiment UI showing the	caption
+9816e29174	1	436	#/texts/426	Conclusion and Key Takeaways	title
+fcfbb1b9fb	1	437	#/texts/427	In this chapter, we demonstrated how to use MLflow	text
+edf6dbfdc4	1	438	#/texts/428	Versioning may seem trivial, yet many practitioner	text
+a57ad6cffe	1	439	#/texts/429	MLflow addresses these challenges by automating th	text
+2cf9e813d9	1	440	#/texts/430	Unlike traditional ML models, a GenAI application 	list_item
+ba7bdcd019	1	441	#/texts/431	Versioning across iteration cycles is essential fo	list_item
+b48c2c96dc	1	442	#/texts/432		list_item
+16e9169262	1	443	#/texts/433	Use	text
+eeb1d29f4c	1	444	#/texts/434	mlflow.set_active_model	code
+9e36c80ac6	1	445	#/texts/435	to track each version of your GenAI application an	text
+d126424bb2	1	446	#/texts/436	Traditional model serialization methods aren't sui	list_item
+3c46bba416	1	447	#/texts/437	In this chapter, we briefly introduced MLflow trac	text
+61c9428c60	1	448	#/texts/438	mlflow.langchain.autolog()	code
+b3aac3d9a9	1	449	#/texts/439	function, we saw how traces are automatically capt	text

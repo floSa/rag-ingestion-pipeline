@@ -1,0 +1,88 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+3eb1c7af1e	1	0	#/texts/0	Chapter 10. Unifying GenAI Systems with MLflow	title
+ae94274e59	1	1	#/texts/1	Throughout this book, we have explored the main pi	text
+acf4f69a80	1	2	#/texts/2	By the time a GenAI application reaches production	text
+89acd094bb	1	3	#/texts/3	This is where MLflow's role expands, which is the 	text
+e3bccd7c74	1	4	#/texts/4	What that looks like in practice: requests can be 	text
+4f7efc56ae	1	5	#/texts/5	Figure 10-1	text
+11acabedb9	1	6	#/texts/6	shows this idea at a high level, connecting runtim	text
+77b9cb973f	1	7	#/pictures/0	Diagram illustrating MLflow as an integration plan	picture
+9d477686f8	1	8	#/texts/7	Diagram illustrating MLflow as an integration plan	caption
+d36929632c	1	9	#/texts/8	MLflow Traces As the Shared Integration Artifact	title
+70b6305375	1	10	#/texts/9	Earlier chapters treated traces primarily as an ob	text
+f19c6cb618	1	11	#/texts/10	This matters even more in heterogeneous architectu	text
+22d69e4659	1	12	#/texts/11	MLflow is useful here because it provides teams wi	text
+9e8ad01556	1	13	#/texts/12	A shared trace store is only as useful as the conv	text
+9015c2c03e	1	14	#/texts/13	AGENT	code
+3ff5efa04d	1	15	#/texts/14	,	text
+7e3e4b90c3	1	16	#/texts/15	TOOL	code
+97caa887b4	1	17	#/texts/16	, and	text
+43385a1bbf	1	18	#/texts/17	RETRIEVER	code
+693ad68047	1	19	#/texts/18	) consistently, choose stable names for recurring 	text
+553a84e564	1	20	#/texts/19	user_id	code
+8cfadb2974	1	21	#/texts/20	,	text
+a28a256e29	1	22	#/texts/21	session_id	code
+b747d41159	1	23	#/texts/22	,	text
+0792cefe2c	1	24	#/texts/23	environment	code
+69d6c72a02	1	25	#/texts/24	, or	text
+aa829a05e9	1	26	#/texts/25	app_version	code
+665a150ef4	1	27	#/texts/26	). Those conventions make it much easier to find c	text
+2287b845ac	1	28	#/texts/27	OpenTelemetry for Cross-Stack Tracing	title
+2d386ded6a	1	29	#/texts/28	A shared trace model matters even more when your s	text
+da5319f742	1	30	#/texts/29	OTel integration is useful in two directions. Firs	text
+c10b051516	1	31	#/texts/30	Together, these patterns make cross-stack debuggin	text
+203e047908	1	32	#/texts/31	To enable this functionality, configure the follow	text
+2859cbbb5f	1	33	#/texts/32	import mlflow	code
+7edbee46cf	1	34	#/texts/33		code
+4a6876a083	1	35	#/texts/34	import os	code
+b0da7f1b7d	1	36	#/texts/35		code
+f07abeb52a	1	37	#/texts/36	# Set the endpoint of the OpenTelemetry Collector	code
+264113fd32	1	38	#/texts/37		code
+e870e26fe2	1	39	#/texts/38	os . environ [ \"MLFLOW_ENABLE_DUAL_EXPORT\" ] = \"tr	code
+26e20a6b0d	1	40	#/texts/39		code
+f2c32fa1a2	1	41	#/texts/40	os . environ [ \"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT	code
+f96e312893	1	42	#/texts/41		code
+7bc3ddc86b	1	43	#/texts/42	# Optionally, set the service name to group traces	code
+213bd7fc08	1	44	#/texts/43		code
+f111ad1bc9	1	45	#/texts/44	os . environ [ \"OTEL_SERVICE_NAME\" ] = \"your-servi	code
+04c7638c4c	1	46	#/texts/45		code
+4e9301ef72	1	47	#/texts/46	# Configure MLflow tracking URI to Databricks	code
+b102a9e143	1	48	#/texts/47		code
+9a4b9b33ba	1	49	#/texts/48	mlflow . set_tracking_uri ( \"databricks\" )	code
+d1c473e01c	1	50	#/texts/49	This reflects the current Databricks configuration	text
+77728f3bf4	1	51	#/texts/50	What matters for this chapter is the operating ben	text
+15014f9d6c	1	52	#/texts/51	To display OTel traces meaningfully in MLflow, app	text
+4135672487	1	53	#/texts/52	MLflow Agent Server As a Stable Serving Layer	title
+48b9099fde	1	54	#/texts/53	Tracing gives teams a shared artifact after execut	text
+17de75eba7	1	55	#/texts/54	In many production systems, the challenge is expos	text
+062f4dc942	1	56	#/texts/55	MLflow Agent Server addresses this by giving teams	text
+113743c7a3	1	57	#/texts/56	/invocations	code
+4ac912e867	1	58	#/texts/57	endpoint, supports decorator-based registration wi	text
+3a84f2558e	1	59	#/texts/58	@invoke()	code
+fe06166552	1	60	#/texts/59	and	text
+a770ead2e6	1	61	#/texts/60	@stream()	code
+b21082e901	1	62	#/texts/61	, validates requests and responses against the Res	text
+7a139f085e	1	63	#/texts/62	The architectural benefit is just as important. Cl	text
+252fc96b8e	1	64	#/texts/63	MLflow MCP As the Bridge to Assistants and IDEs	title
+f84e4d7b62	1	65	#/texts/64	In this chapter, assistants refer broadly to AI he	text
+729b01bf8a	1	66	#/texts/65	Currently, MLflow MCP is an experimental feature. 	text
+aa87023039	1	67	#/texts/66	It also changes the quality of the debugging conve	text
+cfbbe99901	1	68	#/texts/67	One caveat is worth stating explicitly. At the tim	text
+344265add3	1	69	#/texts/68	MLflow Skills for Coding Agents	title
+605d30f4c6	1	70	#/texts/69	MCP gives assistants and coding agents access to M	text
+9bbfa011a5	1	71	#/texts/70	One of the recurring frustrations with coding assi	text
+09573e6fe9	1	72	#/texts/71	These are reusable operational knowledge, not just	text
+f04e2dceec	1	73	#/texts/72	This also matters for standardization. The current	text
+f705de4650	1	74	#/texts/73	Integrating the Ecosystem Through Third-Party Judg	title
+825c99a7f4	1	75	#/texts/74	Evaluation, which we explored in depth in	text
+1618676ab5	1	76	#/texts/75	Chapter 6	text
+3ca1b5f562	1	77	#/texts/76	, is also central to MLflow's role as an integrati	text
+08a0b4e70c	1	78	#/texts/77	The GenAI evaluation ecosystem is moving fast. Dif	text
+e9295f7769	1	79	#/texts/78	MLflow addresses this by allowing third-party judg	text
+fe926deb35	1	80	#/texts/79	Integration is about measurement, too, not only ru	text
+e6431bd5af	1	81	#/texts/80	The Road Ahead	title
+79236e6b3e	1	82	#/texts/81	If you look back at where you started, your goal m	text
+71db7aa59f	1	83	#/texts/82	That shift also reflects where the field is headin	text
+65359f854c	1	84	#/texts/83	Throughout this book, the Unity Airways assistant 	text
+a396026511	1	85	#/texts/84	MLflow plays an important role in that model. It p	text
+ee1c1765a0	1	86	#/texts/85	From here, feel free to revisit your own projects 	text

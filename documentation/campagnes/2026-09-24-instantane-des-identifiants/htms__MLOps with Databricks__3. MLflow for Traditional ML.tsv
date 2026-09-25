@@ -1,0 +1,1248 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+cf14198234	1	0	#/texts/0	Chapter 3. MLflow for Traditional ML	title
+d3feef7014	1	1	#/texts/1	MLflow	text
+e1b0071204	1	2	#/texts/2	is an open-source tool that was originally created	text
+a5da4a37ea	1	3	#/texts/3	Early in my career, before MLflow existed, we buil	text
+b487b32eac	1	4	#/texts/4	MLflow provides a wide range of features, for both	text
+f7f14fa7b7	1	5	#/texts/5	Chapter 8	text
+22ca94a8e3	1	6	#/texts/6	):	text
+c5af1e1e9e	1	7	#/texts/7	MLflow Tracking	list_item
+83de227396	1	8	#/texts/8	This is a centralized repository that logs ML mode	list_item
+0b370f6b0d	1	9	#/texts/9	MLflow Model Registry	list_item
+13d86e2af2	1	10	#/texts/10	This is a centralized model store that allows user	list_item
+f31e687eb9	1	11	#/texts/11	MLflow evaluation	list_item
+04f45139a0	1	12	#/texts/12	This is a set of tools that facilitate model evalu	list_item
+d42d3605b4	1	13	#/texts/13	MLflow Tracing	list_item
+cd61874af0	1	14	#/texts/14	This is a feature that is integrated into MLflow T	list_item
+4ceb238b09	1	15	#/texts/15	This book focuses on the Databricks-managed versio	text
+3508336547	1	16	#/texts/16	We'll begin by exploring	text
+61cb7b4c66	1	17	#/texts/17	experiment tracking	text
+7fef9e7db1	1	18	#/texts/18	, which is one of the most mature and widely used 	text
+45cdaf6784	1	19	#/texts/19	Experiment Tracking	title
+de8aedcd88	1	20	#/texts/20	Experiment tracking	text
+554be862d1	1	21	#/texts/21	helps teams keep track of model performance, confi	text
+9805da8b2c	1	22	#/texts/22	MLflow addresses this challenge with its experimen	text
+d7b0ac3113	1	23	#/texts/23	experiments	text
+ff612b1c4c	1	24	#/texts/24	serve as the primary unit of organization for mode	text
+b15e93de65	1	25	#/texts/25	run	text
+04278acff3	1	26	#/texts/26	, which captures metadata such as parameters, metr	text
+ecf3894a66	1	27	#/texts/27	Tracking URI	section_header
+7365b99ad5	1	28	#/texts/28	By default, MLflow will track experiment runs usin	text
+fe2cb40450	1	29	#/texts/29	./mlruns	text
+4056185c02	1	30	#/texts/30	directory. Since we use the Databricks-managed ver	text
+51e6e76197	1	31	#/texts/31	\"databricks\"	code
+5101b60563	1	32	#/texts/32	when running code locally so that all the experime	text
+d54503fe12	1	33	#/texts/33	\"databricks-uc\"	code
+f5ee0ada38	1	34	#/texts/34	.	text
+d4f3b3caaa	1	35	#/texts/35	You do this by setting the	text
+8b083ab027	1	36	#/texts/36	MLFLOW_TRACKING_URI	code
+c27cf67f38	1	37	#/texts/37	and	text
+21d76740b6	1	38	#/texts/38	MLFLOW_REGISTRY_URI	code
+d59dd99792	1	39	#/texts/39	environment variables or running the	text
+278ea856fb	1	40	#/texts/40	mlflow.set_tracking_uri()	code
+8e5806a4ab	1	41	#/texts/41	and	text
+888ddd6fd5	1	42	#/texts/42	mlflow.set_ registry_ uri()	code
+94313288e7	1	43	#/texts/43	commands. Please note that you need to provide the	text
+4ba1259443	1	44	#/texts/44	.databrickscfg	text
+27b6fb4e18	1	45	#/texts/45	file (an example of the profile name could be	text
+e9076de4c9	1	46	#/texts/46	mlops-book	code
+1c407bfdc3	1	47	#/texts/47	). If you use the	text
+9688427f7b	1	48	#/texts/48	DEFAULT	code
+d6793b9678	1	49	#/texts/49	profile, you do not need to pass the profile name 	text
+1049d11afc	1	50	#/texts/50	import mlflow\n\nprofile = \" mlops-book \"\nmlflow . s	code
+d2b7b832a5	1	51	#/texts/51	profile	code
+4be4d7f5a3	1	52	#/texts/52	} \" )\nmlflow . set_registry_uri ( f \" databricks-u	code
+bff1497b40	1	53	#/texts/53	profile	code
+3753cae8af	1	54	#/texts/54	} \" )	code
+d950a79f0a	1	55	#/texts/55	If we run the code on Databricks, however, we don'	text
+5237763265	1	56	#/texts/56	.env	text
+a02ab8e40c	1	57	#/texts/57	file (which should be ignored by Git via a	text
+7dfac11a1b	1	58	#/texts/58	.gitignore	text
+32dfc8b7fd	1	59	#/texts/59	file) and set the	text
+1d9e8cf80c	1	60	#/texts/60	PROFILE	code
+e114129250	1	61	#/texts/61	environment variable by using the	text
+1c9dd87466	1	62	#/texts/62	python-dotenv package	text
+fefd2e2346	1	63	#/texts/63	.	text
+9b2d89629e	1	64	#/texts/64	We can then define whether the code runs on Databr	text
+8ce693b1fd	1	65	#/texts/65	DATABRICKS_RUNTIME_VERSION	code
+c459b85c0c	1	66	#/texts/66	environment variable is available. We can define t	text
+3ea2b62a40	1	67	#/texts/67	src/hotel_booking/utils/common.py	text
+9daa499ff0	1	68	#/texts/68	) and use this code in all the scripts that use ML	text
+4c2c182d70	1	69	#/texts/69	import os	code
+5d7e558f09	1	70	#/texts/70		code
+65e6c4d4ae	1	71	#/texts/71	import mlflow	code
+85acd84ce8	1	72	#/texts/72		code
+937675639c	1	73	#/texts/73	from dotenv import load_dotenv	code
+4684676b37	1	74	#/texts/74		code
+c213482fad	1	75	#/texts/75	def set_mlflow_tracking_uri () -> None : if \"DATAB	code
+4b809db0e2	1	76	#/texts/76	We can then check the current tracking and registr	text
+322d72008c	1	77	#/texts/77	mlflow.get_tracking_uri()	code
+e1c148f88b	1	78	#/texts/78	and	text
+808c15ac2a	1	79	#/texts/79	mlflow.get_registry_uri()	code
+26d5cc91f6	1	80	#/texts/80	commands. After we have set the tracking URI, we c	text
+4ecf0f5371	1	81	#/texts/81	MLflow Experiment	section_header
+0229f3ed89	1	82	#/texts/82	You can create an MLflow experiment by using the	text
+ed9deba0af	1	83	#/texts/83	mlflow.create_experiment()	code
+9e2b3fa105	1	84	#/texts/84	or	text
+ac62d0b979	1	85	#/texts/85	mlflow.set_experiment()	code
+fe048c68cb	1	86	#/texts/86	function. The	text
+a0443708db	1	87	#/texts/87	mlflow.set_experiment()	code
+c43cfc2b2e	1	88	#/texts/88	function will activate the existing experiment by 	text
+8e0bce2323	1	89	#/texts/89	mlflow . set_experiment ( experiment_name = \"/Shar	code
+7788b62c08	1	90	#/texts/90	You can add tags to your experiment by passing it 	text
+f1c3a9cbd3	1	91	#/texts/91	mlflow. create_experiment()	code
+fba8137e4d	1	92	#/texts/92	command, or if the experiment already exists, you 	text
+bfad19c47c	1	93	#/texts/93	mlflow.set_experiment_tags()	code
+4c28b4e737	1	94	#/texts/94	command after the experiment gets activated:	text
+301299f76b	1	95	#/texts/95	mlflow . set_experiment_tags ( { \"repository_name\"	code
+04d860c7fc	1	96	#/texts/96	You can then retrieve an experiment by its experim	text
+1035cfb819	1	97	#/texts/97	mlflow.get_experiment()	code
+1bab6bc133	1	98	#/texts/98	command as follows:	text
+db7732843d	1	99	#/texts/99	mlflow . get_experiment ( experiment . experiment_	code
+bfd37db344	1	100	#/texts/100	You can also search for the MLflow experiment by n	text
+ca9932a103	1	101	#/texts/101	search_experiments()	code
+5b527f6bc1	1	102	#/texts/102	function outputs a list of instances of an experim	text
+395b442954	1	103	#/texts/103	experiment_id	code
+cb6f8bf3a8	1	104	#/texts/104	, creation time, and artifact location, plus tags 	text
+01c5c965ad	1	105	#/texts/105	experiments = mlflow . search_experiments ( filter	code
+34dae4626e	1	106	#/texts/106		code
+142b3fdf5d	1	107	#/texts/107	)	code
+d2e08a699f	1	108	#/texts/108	You can also easily view how the class is construc	text
+47cc2840b9	1	109	#/texts/109	import json	code
+d865ec282e	1	110	#/texts/110		code
+e92c8e8d0b	1	111	#/texts/111	import os	code
+e2186179a8	1	112	#/texts/112		code
+ed95d7483a	1	113	#/texts/113	if not os . path . exists ( \"../demo_artifacts\" ):	code
+c5532063c8	1	114	#/texts/114		code
+d13c6bcc9c	1	115	#/texts/115	with open ( \"../demo_artifacts/mlflow_experiment.j	code
+d9ed260f2b	1	116	#/texts/116	Then, you visualize it with	text
+a5a9850fb8	1	117	#/texts/117	JSON Lens	text
+221f9db91b	1	118	#/texts/118	or a similar Visual Studio Code extension (see	text
+ad8783cdb6	1	119	#/texts/119	Figure 3-1	text
+c88e9760aa	1	120	#/texts/120	).	text
+39d7cec28a	1	121	#/pictures/0	Diagram illustrating the attributes of the mlflow.	picture
+be07448f07	1	122	#/texts/122	MLflow Run	section_header
+524f0ccc7d	1	123	#/texts/123	We can create an MLflow run by running the	text
+c256b45e75	1	124	#/texts/124	mlflow.start_run()	code
+ac3b4c6d62	1	125	#/texts/125	command. Let's start a run and log some metrics an	text
+9e50e23063	1	126	#/texts/126	with mlflow . start_run ( run_name = \"demo-run\" , 	code
+2b6fb74fcb	1	127	#/texts/127		code
+c23932662c	1	128	#/texts/128	) as run : mlflow . log_params ({ \"type\" : \"demo\" 	code
+7285699ec3	1	129	#/texts/129	Note that we use the command within the	text
+5ab113a72f	1	130	#/texts/130	with	code
+d5400f3e4a	1	131	#/texts/131	block. If you didn't use it, you would have to run	text
+04c30a4707	1	132	#/texts/132	mlflow.end_run()	code
+861b01e6b9	1	133	#/texts/133	command to end the run. In this run, we logged a p	text
+3530dc9be7	1	134	#/texts/134	We can retrieve the run by using the	text
+1e74e40dd7	1	135	#/texts/135	mlflow.get_run()	code
+3b4772d849	1	136	#/texts/136	command:	text
+4b25c3fcf3	1	137	#/texts/137	run_info = mlflow . get_run ( run_id = run_id )	code
+781b13832c	1	138	#/texts/138	You can easily visualize how the MLflow run class 	text
+9a78e79f9d	1	139	#/texts/139	run_info_dict = run_info . to_dictionary ()	code
+cb99b8eab7	1	140	#/texts/140		code
+b1864541c8	1	141	#/texts/141	with open ( \"../demo_artifacts/run_info.json\" , \"w	code
+b9ddd93cf2	1	142	#/texts/142	Then, visualize it with JSON Lens (see	text
+459026b1a9	1	143	#/texts/143	Figure 3-2	text
+681b5e75eb	1	144	#/texts/144	).	text
+dbc9210741	1	145	#/pictures/1	Diagram showing the attributes of the `mlflow.enti	picture
+9dfe26dd20	1	146	#/texts/146	We can access the logged metrics and parameters vi	text
+800e612590	1	147	#/texts/147	run_info_dict [ \"data\" ][ \"metrics\" ]	code
+ee013d7b85	1	148	#/texts/148		code
+d02a0a9f13	1	149	#/texts/149	run_info_dict [ \"data\" ][ \"params\" ]	code
+74790fd31d	1	150	#/texts/150	And we can also search for a run by using the	text
+07c6c1882c	1	151	#/texts/151	mlflow.search_runs()	code
+221f1b188a	1	152	#/texts/152	function:	text
+63f7a99b9d	1	153	#/texts/153	from time import time	code
+ccfd6ddd7f	1	154	#/texts/154		code
+2b1c28515f	1	155	#/texts/155	time_hour_ago = int (( time () - 3600 ) * 1000 )	code
+790dc0f9d2	1	156	#/texts/156		code
+ea89167dc2	1	157	#/texts/157	runs = mlflow . search_runs ( search_all_experimen	code
+da9aa8778c	1	158	#/texts/158		code
+057370ac9e	1	159	#/texts/159	)	code
+be38742f82	1	160	#/texts/160	The function supports complex string filtering, wh	text
+2cfb7759d0	1	161	#/texts/161	We can also start the existing run again and log e	text
+5ac8510a0a	1	162	#/texts/162	metric1	code
+bfcb48b16f	1	163	#/texts/163	already exists and has a value of 1.0, we cannot a	text
+55156bf1b0	1	164	#/texts/164	Let's start the run again and log some artifacts a	text
+113abe042f	1	165	#/texts/165	mlflow . start_run ( run_id = run_id )	code
+03d5430a56	1	166	#/texts/166		code
+1fc94604c2	1	167	#/texts/167	for i in range ( 0 , 3 ): mlflow . log_metric ( ke	code
+34d3a0ad58	1	168	#/texts/168		code
+179fd485e1	1	169	#/texts/169	mlflow . log_artifact ( \"../demo_artifacts/mlflow_	code
+4a131af0f1	1	170	#/texts/170		code
+2e43b8ca29	1	171	#/texts/171	mlflow . log_text ( \"hello, MLflow!\" , \"hello.txt\"	code
+bc633f3a9a	1	172	#/texts/172		code
+5de28fa0b2	1	173	#/texts/173	mlflow . log_dict ({ \"k\" : \"v\" }, \"dict_example.js	code
+fd577dba03	1	174	#/texts/174		code
+b5d2a3791c	1	175	#/texts/175	mlflow . log_artifacts ( \"../demo_artifacts\" , art	code
+1b3e6d3b35	1	176	#/texts/176	We can log metrics dynamically, like during each t	text
+4173104b98	1	177	#/texts/177	mlflow.log_artifact()	code
+8db7bbfeec	1	178	#/texts/178	command. To log a folder, we can use the	text
+0f087abf8a	1	179	#/texts/179	mlflow.log_artifacts()	code
+0f84c1ca9c	1	180	#/texts/180	function instead. We can also log text and a dicti	text
+d2dd3b8917	1	181	#/texts/181	MLflow experiment tracking supports logging images	text
+b858add242	1	182	#/texts/182	with	code
+1e282ab1fd	1	183	#/texts/183	block, remember to end the run once you've finishe	text
+c05b55be92	1	184	#/texts/184	import matplotlib.pyplot as plt	code
+f1fd9c3fc9	1	185	#/texts/185		code
+663f41efc7	1	186	#/texts/186	import numpy as np	code
+295aebde68	1	187	#/texts/187		code
+1d3809e1d9	1	188	#/texts/188	fig , ax = plt . subplots ()	code
+afaa15a98b	1	189	#/texts/189		code
+2e514608d1	1	190	#/texts/190	ax . plot ([ 0 , 1 ], [ 2 , 3 ])	code
+37145fd880	1	191	#/texts/191		code
+24d9ff203a	1	192	#/texts/192	mlflow . log_figure ( fig , \"figure.png\" )	code
+4ffcec4085	1	193	#/texts/193		code
+2650b67159	1	194	#/texts/194	for i in range ( 0 , 3 ): image = np . random . ra	code
+9a214abf82	1	195	#/texts/195		code
+58845a3562	1	196	#/texts/196	mlflow . end_run ()	code
+e6b9cf960a	1	197	#/texts/197	At this point, we've covered the most important lo	text
+37d36f1ee6	1	198	#/texts/198	First of all, we need to retrieve the artifact URI	text
+f13b39103f	1	199	#/texts/199	load_dict()	code
+3c2cdc1791	1	200	#/texts/200	,	text
+54ec6a4478	1	201	#/texts/201	load_image()	code
+980f81d472	1	202	#/texts/202	, and	text
+6c27e236a7	1	203	#/texts/203	load_text()	code
+fe5e60df50	1	204	#/texts/204	functions from the	text
+e66de239b3	1	205	#/texts/205	mlflow. artifacts	code
+a1823ec647	1	206	#/texts/206	module:	text
+c1b3b2c675	1	207	#/texts/207	artifact_uri = runs . artifact_uri [ 0 ]	code
+b652e2479d	1	208	#/texts/208		code
+da625f6e33	1	209	#/texts/209	dict_example = mlflow . artifacts . load_dict ( f 	code
+fec9a48fcc	1	210	#/texts/210		code
+b1d7eb0284	1	211	#/texts/211	figure = mlflow . artifacts . load_image ( f \" { a	code
+dd549c7add	1	212	#/texts/212		code
+aa29d53422	1	213	#/texts/213	text = mlflow . artifacts . load_text ( f \" { arti	code
+63794fc7a9	1	214	#/texts/214	Then, download artifacts using the	text
+fbeaf2a858	1	215	#/texts/215	mlflow.artifacts.download_artifacts()	code
+7581778a1b	1	216	#/texts/216	function:	text
+3073ac19bc	1	217	#/texts/217	if not os . path . exists ( \"../downloaded_artifac	code
+f15d36079d	1	218	#/texts/218		code
+cbe6f5747b	1	219	#/texts/219	mlflow . artifacts . download_artifacts ( artifact	code
+d179a0caa6	1	220	#/texts/220	Figure 3-3	text
+25cc98cf66	1	221	#/texts/221	demonstrates all the logging and loading functiona	text
+690ef961f0	1	222	#/pictures/2	Diagram illustrating the logging and loading funct	picture
+d4e6bb871e	1	223	#/texts/223	All the logged information can be also found in th	text
+d88531d52f	1	224	#/texts/224	Figure 3-4	text
+0a5d73312f	1	225	#/texts/225	demonstrates the top-level overview of the run. Th	text
+7169f17808	1	226	#/pictures/3	Screenshot of the UI showing the overview of a run	picture
+d99b2581d1	1	227	#/texts/227	Another important function for experiment tracking	text
+5972a64e1f	1	228	#/texts/228	mlflow.log_input()	code
+f3c40d97d7	1	229	#/texts/229	. This feature improves traceability and reproduci	text
+d4e099c533	1	230	#/texts/230	For certain model flavors, we can auto-log using t	text
+b0d4d0ea78	1	231	#/texts/231	mlflow.<model_flavor>.autolog()	code
+d417facc78	1	232	#/texts/232	command, which will store metrics and parameters f	text
+74c3c0c589	1	233	#/texts/121	Diagram illustrating the attributes of the mlflow.	caption
+304bf3ef0c	1	234	#/texts/145	Diagram showing the attributes of the `mlflow.enti	caption
+d281a568eb	1	235	#/texts/222	Diagram illustrating the logging and loading funct	caption
+a65d376c47	1	236	#/texts/226	Screenshot of the UI showing the overview of a run	caption
+8a6f616a5f	1	237	#/texts/233	Training Data	title
+2e9480ddfc	1	238	#/texts/234	Let's define how to split the data into the traini	text
+3c8249ad33	1	239	#/texts/235	time-based splits	text
+b6d6bc9f53	1	240	#/texts/236	, which means that we'll train on 12 months of dat	text
+5317821ad0	1	241	#/texts/237	In general, whenever possible, you should use time	text
+378f962317	1	242	#/texts/238	This works for datasets in which the timestamp of 	text
+5b46799c4f	1	243	#/texts/239	data leakage	text
+b049a6750e	1	244	#/texts/240	: IDs from the train set end up in the test set an	text
+536441fef1	1	245	#/texts/241	Now, let's define a	text
+1265dbf610	1	246	#/texts/242	DataLoader	code
+e10c95085a	1	247	#/texts/243	class under the	text
+eae0e38bed	1	248	#/texts/244	hotel_booking.data	code
+1ed0267bca	1	249	#/texts/245	module:	text
+8884570fbb	1	250	#/texts/246	from datetime import datetime , timedelta	code
+eb50bbd60a	1	251	#/texts/247		code
+1b495416c9	1	252	#/texts/248	import pandas as pd	code
+d0c7914818	1	253	#/texts/249		code
+b3c569be96	1	254	#/texts/250	from dateutil.relativedelta import relativedelta	code
+eb15c152b2	1	255	#/texts/251		code
+61830de998	1	256	#/texts/252	from pyspark.sql import SparkSession	code
+0dda164636	1	257	#/texts/253		code
+3aa39d2437	1	258	#/texts/254	from hotel_booking.config import ProjectConfig	code
+a60f9132dd	1	259	#/texts/255		code
+5d9b9cb507	1	260	#/texts/256	from hotel_booking.utils.common import get_delta_t	code
+e63f963a3f	1	261	#/texts/257		code
+2eb4596434	1	262	#/texts/258	class DataLoader : \"\"\"Loads, splits, and accesses 	code
+655c43a6b7	1	263	#/texts/259		code
+c6cfb057ef	1	264	#/texts/260	:param config: Project configuration containing ta	code
+e89842c930	1	265	#/texts/261		code
+6a6c58c68a	1	266	#/texts/262	:param spark: Active Spark session.	code
+48812c4d5a	1	267	#/texts/263		code
+7218be67f9	1	268	#/texts/264	\"\"\" self . cfg = config self . spark = spark	code
+fee0ef25f2	1	269	#/texts/265	The split method outputs	text
+f76ec5139b	1	270	#/texts/266	X_train	code
+3106697142	1	271	#/texts/267	,	text
+3b8d05bfe1	1	272	#/texts/268	y_train	code
+c0583e96ad	1	273	#/texts/269	,	text
+8f00fe6859	1	274	#/texts/270	X_test	code
+6712d46a11	1	275	#/texts/271	, and	text
+fa7b2a2847	1	276	#/texts/272	y_test	code
+8075858d04	1	277	#/texts/273	, which belong to the right time period from the	text
+ed0755163c	1	278	#/texts/274	hotel_booking	code
+861f44464d	1	279	#/texts/275	table and are used further to train the model. The	text
+c0b94eae24	1	280	#/texts/276	def split ( self , test_months : int = 1 , train_m	code
+a7fbf36e6f	1	281	#/texts/277		code
+ecbc7a0e8b	1	282	#/texts/278	) -> tuple [ pd . DataFrame , pd . Series , pd . D	code
+096096d9a8	1	283	#/texts/279		code
+5bc7dfa19d	1	284	#/texts/280	#Splits the dataset and loads it into pandas DataF	code
+8444554279	1	285	#/texts/281		code
+d8346d9a42	1	286	#/texts/282	:param test_months: Number of months for the test 	code
+fda7135c29	1	287	#/texts/283		code
+c5d19f3416	1	288	#/texts/284	:param train_months: Number of months for the trai	code
+0f7c977958	1	289	#/texts/285		code
+4759388722	1	290	#/texts/286	:param max_date: The maximum date for splitting. I	code
+8164fcc567	1	291	#/texts/287		code
+0598a50a12	1	292	#/texts/288	:param version: Optional Delta table version to qu	code
+611305b26d	1	293	#/texts/289		code
+c8cfc7d98a	1	294	#/texts/290	:return: A tuple (X_train, y_train, X_test, y_test	code
+fabb5c1fdf	1	295	#/texts/291		code
+841962c374	1	296	#/texts/292	\"\"\" self . train_query , self . test_query = self 	code
+517a628734	1	297	#/texts/293	The split() method relies on	text
+192abfc529	1	298	#/texts/294	generate_queries()	code
+f2caac926c	1	299	#/texts/295	to construct queries for reading the training and 	text
+793a24a2b2	1	300	#/texts/296	_get_start_end_dates()	code
+fb3fa211c3	1	301	#/texts/297	using the provided period length and	text
+6e71f611db	1	302	#/texts/298	max_date	code
+1ea0f8cf81	1	303	#/texts/299	. If the	text
+9ff660d073	1	304	#/texts/300	max_date	code
+07f57761bb	1	305	#/texts/301	is not specified, the latest available date will b	text
+795c61f6de	1	306	#/texts/302	hotel_booking	code
+7a7ebf2de9	1	307	#/texts/303	table. Similarly, if no Delta table version is pro	text
+636ca0e9cb	1	308	#/texts/304	def generate_queries ( self , test_months : int = 	code
+77222d071b	1	309	#/texts/305		code
+e2577bee47	1	310	#/texts/306	) -> tuple [ str , str ]: \"\"\"	code
+788e729c3f	1	311	#/texts/307		code
+c1301e2072	1	312	#/texts/308	#Generates SQL queries for the training and test s	code
+df42a2a70d	1	313	#/texts/309		code
+2d1b600851	1	314	#/texts/310	:param test_months: Number of months for the test 	code
+bc7bde95de	1	315	#/texts/311		code
+f5f7a0fc5c	1	316	#/texts/312	:param train_months: Number of months for the trai	code
+c8f5948e68	1	317	#/texts/313		code
+b527d2b92a	1	318	#/texts/314	:param max_date: The maximum date for splitting. I	code
+d58f2a6e3f	1	319	#/texts/315		code
+9898c8a114	1	320	#/texts/316	:param version: Optional Delta table version to qu	code
+2e986bbd1e	1	321	#/texts/317		code
+2129d91f91	1	322	#/texts/318	:return: A tuple containing the training and test 	code
+d3b83873b1	1	323	#/texts/319		code
+2e54290f51	1	324	#/texts/320	\"\"\" table_ref = f \" { self . cfg . catalog } . { s	code
+ade2ee76a9	1	325	#/texts/321		code
+4edd605e83	1	326	#/texts/322	SELECT * FROM { table_ref } VERSION AS OF { versio	code
+7bd6ec4e8a	1	327	#/texts/323		code
+997f5b80c9	1	328	#/texts/324	WHERE arrival_date BETWEEN DATE(' { train_start } 	code
+8b8b8054ce	1	329	#/texts/325		code
+7ae9850a92	1	330	#/texts/326	\"\"\" test_query = f \"\"\"	code
+952954ea02	1	331	#/texts/327		code
+0e4a1ba8ab	1	332	#/texts/328	SELECT * FROM { table_ref } VERSION AS OF { versio	code
+b23c2a9c56	1	333	#/texts/329		code
+c463ec1a9b	1	334	#/texts/330	WHERE arrival_date BETWEEN DATE(' { test_start } '	code
+89eec77c13	1	335	#/texts/331		code
+88d605873a	1	336	#/texts/332	\"\"\" return train_query , test_query	code
+18ae8406e1	1	337	#/texts/333	We won't go into the implementation details of	text
+8a4e35ff8b	1	338	#/texts/334	_get_start_end_dates()	code
+b782665a6a	1	339	#/texts/335	and	text
+c7c78ec4a0	1	340	#/texts/336	get_delta_table_version()	code
+a5e6f42257	1	341	#/texts/337	from the common module here; refer to the code for	text
+dbec6b5b9b	1	342	#/texts/338	Note	section_header
+98d70d32c5	1	343	#/texts/339	Remember to set a proper retention period on the d	text
+b51295e34c	1	344	#/texts/340	Notice that the split method uses PySpark to read 	text
+f5611be1a0	1	345	#/texts/341	However, for large datasets, this conversion is no	text
+c0ed90775e	1	346	#/texts/342	pyarrow	code
+369f31a960	1	347	#/texts/343	and the	text
+1557fa0c14	1	348	#/texts/344	deltalake	code
+f1f628a3c6	1	349	#/texts/345	library, but that approach requires a more complex	text
+f2993fff90	1	350	#/texts/346	Now, we need to load a training and validation set	text
+eb6ca826b4	1	351	#/texts/347	chapter3_2.model_finetuning.py	code
+bfd618db95	1	352	#/texts/348	notebook:	text
+1cf5e5f0d4	1	353	#/texts/349	import os	code
+24edf77686	1	354	#/texts/350		code
+85d201ea35	1	355	#/texts/351	from datetime import datetime	code
+e66a8e9003	1	356	#/texts/352		code
+29bbc4d5dc	1	357	#/texts/353	import pandas as pd	code
+b96c4e6877	1	358	#/texts/354		code
+6992b82313	1	359	#/texts/355	from pyspark.sql import SparkSession	code
+cebe161098	1	360	#/texts/356		code
+5a266ee0be	1	361	#/texts/357	from hotel_booking.config import ProjectConfig	code
+183637d5f7	1	362	#/texts/358		code
+c23baafd46	1	363	#/texts/359	from hotel_booking.data.data_loader import DataLoa	code
+8d291480cc	1	364	#/texts/360		code
+ed18b8bf7a	1	365	#/texts/361	from hotel_booking.utils.common import set_mlflow_	code
+6a30707545	1	366	#/texts/362		code
+20917e0ff4	1	367	#/texts/363	set_mlflow_tracking_uri ()	code
+26cbf0ba92	1	368	#/texts/364		code
+d4daea4360	1	369	#/texts/365	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+9485acff09	1	370	#/texts/366		code
+8872a57719	1	371	#/texts/367	spark = SparkSession . builder . getOrCreate ()	code
+a7cee3574d	1	372	#/texts/368		code
+332c68fb6e	1	373	#/texts/369	data_loader = DataLoader ( spark = spark , config 	code
+11460134c7	1	374	#/texts/370		code
+d0b798a1f5	1	375	#/texts/371	X_train , y_train , X_valid , y_valid = data_loade	code
+428b9cbc76	1	376	#/texts/372		code
+d33c05733c	1	377	#/texts/373	)	code
+0b9f3655d4	1	378	#/texts/374	Now that we have loaded the data, let's see how we	text
+4b04e50888	1	379	#/texts/375	Hyperparameter Tuning and Nested Runs	title
+5b16d899dd	1	380	#/texts/376	Every ML project starts with setting a business pr	text
+a8e95ab944	1	381	#/texts/377	There are several popular libraries for hyperparam	text
+479281c9a2	1	382	#/texts/378	Hyperopt	text
+8c346f6fcc	1	383	#/texts/379	,	text
+3eff38ee2c	1	384	#/texts/380	Optuna	text
+bc1632ab5d	1	385	#/texts/381	, and	text
+ab12892486	1	386	#/texts/382	Ray Tune	text
+09fb8b79ef	1	387	#/texts/383	. Historically, Hyperopt was the go-to solution, a	text
+210edc8e43	1	388	#/texts/384	Today, it's important to distinguish between the o	text
+0208fcec5f	1	389	#/texts/385	Tree-structured Parzen Estimator	text
+0637ac9a94	1	390	#/texts/386	(TPE), while Ray Tune focuses on scalable and dist	text
+3e557b736e	1	391	#/texts/387	In this chapter, we use Ray Tune together with Opt	text
+7e653993b3	1	392	#/texts/388	MLflow nested runs are especially convenient for h	text
+160c8614dd	1	393	#/texts/389	with mlflow . start_run ( run_name = \"top_level_ru	code
+430f3c6454	1	394	#/texts/390	Next, let's demonstrate how we can use MLflow nest	text
+eacbbf49c1	1	395	#/texts/391	chapter3_2.model_finetuning.py	text
+0c1a9a1884	1	396	#/texts/392	notebook.	text
+2ceb6e4555	1	397	#/texts/393	The	text
+f12fde5476	1	398	#/texts/394	LightGBMModel	code
+ade920a9d4	1	399	#/texts/395	class is defined in the	text
+c544ee3c31	1	400	#/texts/396	models	code
+d693335aba	1	401	#/texts/397	module of the	text
+341086af71	1	402	#/texts/398	hotel_booking	code
+de1172993b	1	403	#/texts/399	package:	text
+388c208d9a	1	404	#/texts/400	from datetime import datetime	code
+2ecbe521c7	1	405	#/texts/401		code
+5b80d983be	1	406	#/texts/402	import mlflow	code
+6746732335	1	407	#/texts/403		code
+714af7c35e	1	408	#/texts/404	import pandas as pd	code
+a133e5254a	1	409	#/texts/405		code
+172007359c	1	410	#/texts/406	import pyspark	code
+820a3d039c	1	411	#/texts/407		code
+f22958e808	1	412	#/texts/408	from lightgbm import LGBMRegressor	code
+fc3139b2c5	1	413	#/texts/409		code
+4b1eaadb7e	1	414	#/texts/410	from loguru import logger	code
+b875bc30d4	1	415	#/texts/411		code
+9bc2806150	1	416	#/texts/412	from mlflow import MlflowClient	code
+13ed232d7a	1	417	#/texts/413		code
+365d34adea	1	418	#/texts/414	from mlflow.models import infer_signature	code
+b6ca42666f	1	419	#/texts/415		code
+4c321432a7	1	420	#/texts/416	from sklearn.base import BaseEstimator , Transform	code
+1ad4742c1e	1	421	#/texts/417		code
+4889b64a5a	1	422	#/texts/418	from sklearn.compose import ColumnTransformer	code
+6801374131	1	423	#/texts/419		code
+ffd4436ab3	1	424	#/texts/420	from sklearn.pipeline import Pipeline	code
+386d3d1370	1	425	#/texts/421		code
+7081367fbd	1	426	#/texts/422	from hotel_booking.config import ProjectConfig , T	code
+fd478696c7	1	427	#/texts/423		code
+085b40e6eb	1	428	#/texts/424	class LightGBMModel : \"\"\"A basic model class for h	code
+7a7dade4c9	1	429	#/texts/425		code
+fe16910864	1	430	#/texts/426	This class handles data loading, feature preparati	code
+f833f2d3f6	1	431	#/texts/427		code
+8565481fde	1	432	#/texts/428	model training, and MLflow logging.	code
+5a3e49daed	1	433	#/texts/429		code
+02cf153b45	1	434	#/texts/430	\"\"\" def __init__ ( self , config : ProjectConfig )	code
+fd7a4622fd	1	435	#/texts/431	In the	text
+8f15fcf4b1	1	436	#/texts/432	train	code
+ef382e91f2	1	437	#/texts/433	method, we define a	text
+c595496173	1	438	#/texts/434	sklearn	code
+0c27530f6c	1	439	#/texts/435	pipeline that consists of two steps: encoding cate	text
+6c086333b8	1	440	#/texts/436	CatToIntTransformer	code
+b009f0a187	1	441	#/texts/437	and	text
+fe1ef9654e	1	442	#/texts/438	LGBMRegeressor	code
+20af4a28ef	1	443	#/texts/439	:	text
+88761858da	1	444	#/texts/440	def train ( self , X_train : pd . DataFrame , y_tr	code
+07daa78096	1	445	#/texts/441		code
+fa2145b630	1	446	#/texts/442	) -> None : \"\"\"Prepare features and train the mode	code
+00a68ee1bc	1	447	#/texts/443		code
+1704e89550	1	448	#/texts/444	:param X_train: Training features as a DataFrame	code
+6dc1dfb285	1	449	#/texts/445		code
+fc72a16ace	1	450	#/texts/446	:param y_train: Training target as a Series	code
+d300b58d69	1	451	#/texts/447		code
+9cae20bb6a	1	452	#/texts/448	\"\"\" class CatToIntTransformer ( BaseEstimator , Tr	code
+cbfd8e65ae	1	453	#/texts/449		code
+c2a2c8735f	1	454	#/texts/450	Transformer that encodes categorical columns as in	code
+06e38ec97b	1	455	#/texts/451		code
+e92699f77c	1	456	#/texts/452	for LightGBM.	code
+673cfd5f8c	1	457	#/texts/453		code
+2d7993d598	1	458	#/texts/454	Unknown categories at transform time are encoded a	code
+8a6af0b234	1	459	#/texts/455		code
+b74dda58d7	1	460	#/texts/456	\"\"\" def __init__ ( self , cat_features : list [ st	code
+f928b28243	1	461	#/texts/457	LightGBM supports integer-encoded categorical feat	text
+b479754a81	1	462	#/texts/458	LightGBM documentation	text
+85b9ab79f6	1	463	#/texts/459	for more details. We also need a custom encoder to	text
+a3ad213115	1	464	#/texts/460	Note that the	text
+4b903f3517	1	465	#/texts/461	CatToIntTransformer	code
+374a3a1bf7	1	466	#/texts/462	class is defined inside the train method of the	text
+ed9a6375e3	1	467	#/texts/463	LightGBMModel	code
+7cea04dce6	1	468	#/texts/464	class. While this isn't ideal from a design standp	text
+fe638fe7f1	1	469	#/texts/465	hotel_booking	code
+a9c65a410e	1	470	#/texts/466	package available when serving the model. This kee	text
+1b1dc2120b	1	471	#/texts/467	pyfunc	code
+05f50afd42	1	472	#/texts/468	models later.	text
+2ca0ce220a	1	473	#/texts/469	Now that we've defined the model class and covered	text
+078067b59d	1	474	#/texts/470	Figure 3-5	text
+07d4538f51	1	475	#/texts/471	shows the six main components of Ray Tune.	text
+ee24d92cb8	1	476	#/texts/472	1	text
+4abb827a2f	1	477	#/texts/473	We begin by defining the search space, what object	text
+3780cfa3a5	1	478	#/pictures/4	Diagram illustrating the six main components of Ra	picture
+fac484c740	1	479	#/texts/475	Continuing with the	text
+3f6245cacd	1	480	#/texts/476	chapter3_2.model_finetuning.py	text
+9c129a972c	1	481	#/texts/477	notebook, we define three hyperparameters to tune:	text
+9faa0b1cfd	1	482	#/texts/478	n_estimators	code
+820af585f2	1	483	#/texts/479	,	text
+5f411cef08	1	484	#/texts/480	max_depth	code
+3429581e52	1	485	#/texts/481	, and	text
+b10add3ee3	1	486	#/texts/482	learning_rate	code
+35a0a9d889	1	487	#/texts/483	. Ray Tune supports a large variety of search spac	text
+7f4e3a8527	1	488	#/texts/484	tune.choice()	code
+5b975dd0e1	1	489	#/texts/485	to sample	text
+9ab1892120	1	490	#/texts/486	max_depth	code
+575c401c73	1	491	#/texts/487	uniformly from the specified choices,	text
+c3ff06c239	1	492	#/texts/488	tune.loguniform	code
+ddc5d6abe7	1	493	#/texts/489	to sample	text
+1f894965d9	1	494	#/texts/490	learning_rate	code
+54a5ccbd4b	1	495	#/texts/491	, and	text
+ae4d075e6d	1	496	#/texts/492	tune.qrandint	code
+88d4a0ec34	1	497	#/texts/493	to sample	text
+2e4cdba7a1	1	498	#/texts/494	n_estimators	code
+31618df12b	1	499	#/texts/495	:	text
+99e3a4db0d	1	500	#/texts/496	from ray import tune	code
+076a2dec7f	1	501	#/texts/497		code
+628ac4fbf9	1	502	#/texts/498	param_space = { \"n_estimators\" : tune . qrandint (	code
+640d025b98	1	503	#/texts/499	The	text
+421b536bf6	1	504	#/texts/500	tune.qrandint	code
+880731c466	1	505	#/texts/501	function samples integers in fixed steps of size	text
+d49acbf933	1	506	#/texts/502	q	text
+c5ad7a9812	1	507	#/texts/503	within the specified range. For example, with inte	text
+4c203ada29	1	508	#/texts/504	q=50	code
+a06fb6282e	1	509	#/texts/505	, it draws the	text
+ba13a46e4b	1	510	#/texts/506	n_estimators	code
+f90f0da320	1	511	#/texts/507	value from {50, 100, 150, ..., 650, 700}. This is 	text
+dd477d14f5	1	512	#/texts/508	For	text
+902e4cfb7b	1	513	#/texts/509	max_depth	code
+4829f0179f	1	514	#/texts/510	, we also provide a small set of sensible choices 	text
+c698bc0d95	1	515	#/texts/511	tune.choice	code
+c12259e071	1	516	#/texts/512	. A value of -1 (unlimited) is also provided as an	text
+138bb4855c	1	517	#/texts/513	max_depth	code
+35d4f8b49a	1	518	#/texts/514	and	text
+06737574aa	1	519	#/texts/515	n_estimators	code
+f77e503761	1	520	#/texts/516	allows us to keep the number of unique configurati	text
+08246be5f4	1	521	#/texts/517	Log-uniform distribution is useful for sampling th	text
+fbf64a65de	1	522	#/texts/518	tune.loguniform	code
+b0c7c33473	1	523	#/texts/519	a perfect fit for the	text
+9d5429bdc3	1	524	#/texts/520	learning_rate	code
+e8fae6657b	1	525	#/texts/521	hyperparameter.	text
+6093948491	1	526	#/texts/522	Let's now define a	text
+69360a5ece	1	527	#/texts/523	trainable	text
+3f5276e5e2	1	528	#/texts/524	, where we pass the	text
+77e22a6f53	1	529	#/texts/525	train_with_nested_mlflow	code
+f64206f5aa	1	530	#/texts/526	function. Within that function, we start a nested 	text
+1eb33571d9	1	531	#/texts/527	parent_run_id	code
+70ef5493b7	1	532	#/texts/528	and	text
+3399aaf76e	1	533	#/texts/529	experiment_id	code
+0d9456c9e3	1	534	#/texts/530	as arguments, and then, we train the model and log	text
+e561f17dca	1	535	#/texts/531	import mlflow	code
+d0ee57ccf6	1	536	#/texts/532		code
+d2b385a4d6	1	537	#/texts/533	import numpy as np	code
+b45a48280f	1	538	#/texts/534		code
+220b4304c1	1	539	#/texts/535	from sklearn.metrics import mean_absolute_error , 	code
+77a2ebaa72	1	540	#/texts/536		code
+89ca0f3d3d	1	541	#/texts/537	from hotel_booking.models.lightgbm_model import Li	code
+b7b0aa2e34	1	542	#/texts/538		code
+e156bec1f2	1	543	#/texts/539	def train_with_nested_mlflow ( config , X_train : 	code
+e31ff95dbe	1	544	#/texts/540	In the	text
+4fad7084c4	1	545	#/texts/541	train_with_nested_mlflow	code
+cf2ff3b0a6	1	546	#/texts/542	function, we must establish a connection with MLfl	text
+e38229aac5	1	547	#/texts/543	DATABRICKS_HOST	code
+83b8cbc8fb	1	548	#/texts/544	and	text
+ac3030d8c8	1	549	#/texts/545	DATABRICKS_TOKEN	code
+1048f12ab5	1	550	#/texts/546	environment variables. We also need to be aware of	text
+0f4487ea2b	1	551	#/texts/547	from databricks.sdk import WorkspaceClient	code
+fb6c9ccc51	1	552	#/texts/548		code
+ada8f2e379	1	553	#/texts/549	w = WorkspaceClient ()	code
+8233934361	1	554	#/texts/550		code
+03db13073f	1	555	#/texts/551	os . environ [ \"DATABRICKS_HOST\" ] = w . config . 	code
+d131083c10	1	556	#/texts/552		code
+842c13be4c	1	557	#/texts/553	os . environ [ \"DATABRICKS_TOKEN\" ] = w . tokens .	code
+ab3b96f674	1	558	#/texts/554	You can set up a Ray cluster on Databricks to util	text
+12737aec3d	1	559	#/texts/555	Note	section_header
+1daa3cc4c8	1	560	#/texts/556	At the time of writing this book, this code is not	text
+fa434f8263	1	561	#/texts/557	You'll need to use the	text
+9825ff2332	1	562	#/texts/558	ray.util.spark.setup_ray_cluster()	code
+a2ddbced3b	1	563	#/texts/559	command and define the	text
+ad430d7d39	1	564	#/texts/560	RAY_ADDRESS	code
+9a86c3b0d3	1	565	#/texts/561	environment variable so that all the processes can	text
+44dc640f80	1	566	#/texts/562	from ray.util.spark import setup_ray_cluster	code
+36566ac3aa	1	567	#/texts/563		code
+d398475492	1	568	#/texts/564	ray_conf = setup_ray_cluster ( min_worker_nodes = 	code
+ac7a55c7b7	1	569	#/texts/565		code
+8a78db3cf1	1	570	#/texts/566	os . environ [ 'RAY_ADDRESS' ] = ray_conf [ 0 ]	code
+5ab78d1cc3	1	571	#/texts/567	Now, we can set the experiment, start the MLflow p	text
+97cdfb7ef6	1	572	#/texts/568	tune.with_parameters()	code
+f046fd943b	1	573	#/texts/569	function, which allows us to pass constant, non-se	text
+6470e01a93	1	574	#/texts/570	experiment_id	code
+562519b0e7	1	575	#/texts/571	,	text
+305552703a	1	576	#/texts/572	parent_run_id	code
+a8bca0c196	1	577	#/texts/573	, project configuration, and datasets for training	text
+70a761c9df	1	578	#/texts/574	As part of the tuner, we define the	text
+3b1a2fce1f	1	579	#/texts/575	TuneConfig	code
+bf55a154c8	1	580	#/texts/576	, where the search algorithm is specified. In this	text
+01865582cb	1	581	#/texts/577	Optuna documentation	text
+bce1fed78e	1	582	#/texts/578	for more details. Here, we minimize the root mean 	text
+29ff518c05	1	583	#/texts/579	from ray.tune.search.optuna import OptunaSearch	code
+6f613a25b4	1	584	#/texts/580		code
+fbba7c80fa	1	585	#/texts/581	mlflow . set_experiment ( \"/Shared/hotel-booking-f	code
+d0e67f9dd1	1	586	#/texts/582		code
+f2f7f522b4	1	587	#/texts/583	experiment_id = mlflow . get_experiment_by_name ( 	code
+297c56b24e	1	588	#/texts/584		code
+66a277ba66	1	589	#/texts/585	n_trials = 5	code
+c0641c8e30	1	590	#/texts/586		code
+89206bd5cc	1	591	#/texts/587	with mlflow . start_run ( run_name = f \"optuna-fin	code
+80820cd195	1	592	#/texts/588		code
+95e748e1b1	1	593	#/texts/589	) as parent_run : tuner = tune . Tuner ( tune . wi	code
+808850bee2	1	594	#/texts/590	After we perform hyperparameter tuning, we can get	text
+32fb07d16f	1	595	#/texts/591	project.config.yml	text
+56e9133576	1	596	#/texts/592	file:	text
+f3cc7647bf	1	597	#/texts/593	best_result = results . get_best_result ( metric =	code
+07b717080a	1	598	#/texts/594		code
+5d2d00a5fc	1	599	#/texts/595	best_result . config	code
+20d97dc934	1	600	#/texts/596	We can also use the UI to view all the nested runs	text
+497e76598c	1	601	#/texts/597	hotel-booking-finetuning	code
+45d5fe574b	1	602	#/texts/598	experiment (see	text
+5b92f0ca0c	1	603	#/texts/599	Figure 3-6	text
+69447cc990	1	604	#/texts/600	).	text
+9762298afb	1	605	#/pictures/5	Nested runs under the parent run of the hotel-book	picture
+be4c228841	1	606	#/texts/602	It's also possible to plot and compare metrics tha	text
+b712027943	1	607	#/texts/603	Figure 3-7	text
+152f6ed3a5	1	608	#/texts/604	).	text
+49ecad841c	1	609	#/pictures/6	Bar chart comparing 'mae', 'mse', and 'rmse' metri	picture
+76ea1f4645	1	610	#/texts/606	At this point, we have gone through experiment tra	text
+f6434f46d9	1	611	#/texts/474	Diagram illustrating the six main components of Ra	caption
+433744c724	1	612	#/texts/601	Nested runs under the parent run of the hotel-book	caption
+db7f77acb9	1	613	#/texts/605	Bar chart comparing 'mae', 'mse', and 'rmse' metri	caption
+0e1f9c9210	1	614	#/texts/607	Logging and Registering Models with MLflow	title
+ed1a2abcaa	1	615	#/texts/608	Once you've tracked your experiments and identifie	text
+25968035e4	1	616	#/texts/609	Chapter 4	text
+c5aaa8a0a7	1	617	#/texts/610	.	text
+78ee19c841	1	618	#/texts/611	MLflow supports a wide range of flavors \"out-of-th	text
+92777ad9db	1	619	#/texts/612	2	text
+c44b2d4c85	1	620	#/texts/613	mlflow.lightgbm	list_item
+ebed392753	1	621	#/texts/614	mlflow.prophet	list_item
+a8a9e3eb11	1	622	#/texts/615	mlflow.pytorch	list_item
+48d8fef04a	1	623	#/texts/616	mlflow.sklearn	list_item
+25a1dc7140	1	624	#/texts/617	mlflow.spacy	list_item
+7e4d8d0741	1	625	#/texts/618	mlflow.tensorflow	list_item
+4b2298bfcb	1	626	#/texts/619	mlflow.xgboost	list_item
+6a422944f1	1	627	#/texts/620	You can log a model by using the	text
+4b7f243a69	1	628	#/texts/621	mlflow.<model_flavor>.log_model()	code
+f844b097c6	1	629	#/texts/622	function.	text
+c766b55b72	1	630	#/texts/623	To demonstrate logging, we'll use a LightGBM model	text
+64e459a378	1	631	#/texts/624	sklearn	code
+212bf210b9	1	632	#/texts/625	flavor rather than	text
+8d351ce99f	1	633	#/texts/626	lightgbm	code
+a380802ce1	1	634	#/texts/627	because it's integrated within a scikit-learn pipe	text
+cd4a5fe8d9	1	635	#/texts/628	Model Logging with the sklearn Flavor	section_header
+6dcb23bc0f	1	636	#/texts/629	Much like how we defined the training and validati	text
+13c1fb53f3	1	637	#/texts/630	hotel_booking	code
+2932818fa9	1	638	#/texts/631	table:	text
+01f7835f83	1	639	#/texts/632	import json	code
+de6fa27938	1	640	#/texts/633		code
+a8cfafc5a4	1	641	#/texts/634	from datetime import datetime	code
+97533bafbf	1	642	#/texts/635		code
+91364c66ec	1	643	#/texts/636	import mlflow	code
+342ee05f04	1	644	#/texts/637		code
+b886838f7c	1	645	#/texts/638	from mlflow import MlflowClient	code
+3c59e4264a	1	646	#/texts/639		code
+48ecec3494	1	647	#/texts/640	from mlflow.models import infer_signature	code
+0500aec31b	1	648	#/texts/641		code
+935b4fa308	1	649	#/texts/642	from pyspark.sql import SparkSession	code
+fb23d4e5fd	1	650	#/texts/643		code
+5352b3efe1	1	651	#/texts/644	from hotel_booking.config import ProjectConfig , T	code
+d2d7c15a9b	1	652	#/texts/645		code
+b10d272342	1	653	#/texts/646	from hotel_booking.data.data_loader import DataLoa	code
+038e2b9651	1	654	#/texts/647		code
+20590242d6	1	655	#/texts/648	from hotel_booking.models.lightgbm_model import Li	code
+758ee9e3e9	1	656	#/texts/649		code
+425ab4eff6	1	657	#/texts/650	from hotel_booking.utils.common import set_mlflow_	code
+0f8d694dde	1	658	#/texts/651		code
+ee9b11cef8	1	659	#/texts/652	set_mlflow_tracking_uri ()	code
+574e215824	1	660	#/texts/653		code
+f229ce5716	1	661	#/texts/654	cfg = ProjectConfig . from_yaml ( config_path = \".	code
+5e94c428ca	1	662	#/texts/655		code
+7586bde04c	1	663	#/texts/656	spark = SparkSession . builder . getOrCreate ()	code
+0f75532650	1	664	#/texts/657		code
+759b418301	1	665	#/texts/658	data_loader = DataLoader ( spark = spark , config 	code
+df03cf1640	1	666	#/texts/659		code
+aad15eeaa2	1	667	#/texts/660	X_train , y_train , X_test , y_test = data_loader 	code
+da133c3000	1	668	#/texts/661	Later on in the script, we use these:	text
+80fdd5c9d1	1	669	#/texts/662		list_item
+de0b8c3cb3	1	670	#/texts/663	train_query	code
+d161470372	1	671	#/texts/664	and	text
+2649eb5f8a	1	672	#/texts/665	test_query	code
+b3991236bb	1	673	#/texts/666	, which contain a query that's used to retrieve th	text
+58362d243b	1	674	#/texts/667		list_item
+d5686b3790	1	675	#/texts/668	The	text
+b926b4f626	1	676	#/texts/669	train_set_spark	code
+c252ae7fec	1	677	#/texts/670	and	text
+b5e53c37a3	1	678	#/texts/671	test_set_spark	code
+10c02c0e0e	1	679	#/texts/672	PySpark DataFrames (attributes of the data loader 	text
+d35afadd41	1	680	#/texts/673		list_item
+337cef2deb	1	681	#/texts/674	X_train	code
+0b1299dba5	1	682	#/texts/675	,	text
+64683fa170	1	683	#/texts/676	y_train	code
+c57ece56ec	1	684	#/texts/677	,	text
+33aecf1869	1	685	#/texts/678	X_test	code
+1e4e8875e0	1	686	#/texts/679	, and	text
+30adf7915c	1	687	#/texts/680	y_test	code
+0c5ece2f0f	1	688	#/texts/681	We begin by training the model, using the same met	text
+f83b30b698	1	689	#/texts/682	model = LightGBMModel ( config = cfg )	code
+03c1dde19f	1	690	#/texts/683		code
+5d89ae66ba	1	691	#/texts/684	model . train ( X_train = X_train , y_train = y_tr	code
+f9080b25c7	1	692	#/texts/685	Then, we set the MLflow experiment, start an MLflo	text
+4d83ba7c22	1	693	#/texts/686	mlflow . set_experiment ( \"/Shared/hotel-booking-t	code
+2b960fdb76	1	694	#/texts/687		code
+568169a062	1	695	#/texts/688	tags = Tags ( ** { \"git_sha\" : \"1234567890abcd\" , 	code
+631a664fe4	1	696	#/texts/689		code
+2a832fb834	1	697	#/texts/690	run = mlflow . start_run ( run_name = f \"lightgbm-	code
+6f76dc1f0e	1	698	#/texts/691		code
+cfae65824a	1	699	#/texts/692	)	code
+a81a99fbf0	1	700	#/texts/693		code
+f549df8d12	1	701	#/texts/694	run_id = run . info . run_id	code
+40cb2269f4	1	702	#/texts/695		code
+2f6a4ecba2	1	703	#/texts/696	mlflow . log_params ( cfg . parameters )	code
+46110d7327	1	704	#/texts/697	Next, we want to proceed with logging the model, a	text
+ad810c6420	1	705	#/texts/698	infer_signature	code
+44f3924dc1	1	706	#/texts/699	function from the	text
+bb667cab1b	1	707	#/texts/700	mlflow.models	code
+00e8c05093	1	708	#/texts/701	module:	text
+ed644039f0	1	709	#/texts/702	3	text
+9975d21152	1	710	#/texts/703	signature = infer_signature ( model_input = X_test	code
+ed9c2b6760	1	711	#/texts/704		code
+2a40fa0fed	1	712	#/texts/705	)	code
+3ce0c36f07	1	713	#/texts/706	To ensure full traceability and reproducibility, w	text
+318b2b116e	1	714	#/texts/707	training = mlflow . data . from_spark ( df = data_	code
+481a1ab902	1	715	#/texts/708		code
+7d096199f0	1	716	#/texts/709	)	code
+43505c41c7	1	717	#/texts/710		code
+97f1ae573d	1	718	#/texts/711	testing = mlflow . data . from_spark ( df = data_l	code
+c98d120bf6	1	719	#/texts/712		code
+9c8cddeb9f	1	720	#/texts/713	)	code
+31dce4ffb6	1	721	#/texts/714		code
+318d5f7891	1	722	#/texts/715	mlflow . log_input ( training , context = \"trainin	code
+9cd2900cc0	1	723	#/texts/716		code
+ad6f1083f5	1	724	#/texts/717	mlflow . log_input ( testing , context = \"testing\"	code
+a5df555465	1	725	#/texts/718	Now, we can finally log the model. Here, we also p	text
+40090c0437	1	726	#/texts/719	model_info = mlflow . sklearn . log_model ( sk_mod	code
+660f076287	1	727	#/texts/720	Notice that we have not computed and logged any mo	text
+d2b6f2d164	1	728	#/texts/721	mlflow.models.evaluate()	code
+ccbb113fe3	1	729	#/texts/722	function takes the model URI, evaluation data, tar	text
+f09e68583d	1	730	#/texts/723	\"regressor\"	code
+b34b22e8bd	1	731	#/texts/724	and	text
+386db44c19	1	732	#/texts/725	\"classifier\"	code
+4b3275917d	1	733	#/texts/726	are supported values), and evaluators as inputs. H	text
+4d5e87d30d	1	734	#/texts/727	The	text
+7df7ce50ef	1	735	#/texts/728	mlflow.models.evaluate()	code
+7df48c4a68	1	736	#/texts/729	function uses an active run to log metrics (or sta	text
+07230c66d5	1	737	#/texts/730	eval_data = X_test . copy ()	code
+834b0659ef	1	738	#/texts/731		code
+10b7cbc4e2	1	739	#/texts/732	eval_data [ project_config . target ] = y_test	code
+8cdfff4008	1	740	#/texts/733		code
+9e331793a9	1	741	#/texts/734	result = mlflow . models . evaluate ( model_info .	code
+312643b4a9	1	742	#/texts/735		code
+1e07a90f1a	1	743	#/texts/736	mlflow . end_run ()	code
+462219e020	1	744	#/texts/737	For a regression task, the following default metri	text
+5dc22ef582	1	745	#/texts/738	score	list_item
+d3d21a4a95	1	746	#/texts/739	example_count	list_item
+f6b0a740ce	1	747	#/texts/740	mean_absolute_error	list_item
+9d42a11b6f	1	748	#/texts/741	mean_squared_error	list_item
+a82df84995	1	749	#/texts/742	root_mean_squared_error	list_item
+767b058e9e	1	750	#/texts/743	sum_on_target	list_item
+bc292bbcba	1	751	#/texts/744	mean_on_target	list_item
+0a0b035db1	1	752	#/texts/745	r2_score, max_error	list_item
+26d1cf406e	1	753	#/texts/746	mean_absolute_percentage_error	list_item
+16c027c1fd	1	754	#/texts/747	For classification tasks, a different set of defau	text
+4d567046a0	1	755	#/texts/748	precision_score	list_item
+fd12557eb1	1	756	#/texts/749	recall_score	list_item
+75b4da0d24	1	757	#/texts/750	f1_score	list_item
+f34b87bc16	1	758	#/texts/751	roc_auc	list_item
+433e2dd180	1	759	#/texts/752	In this book, we focus on demonstrating a regressi	text
+ba7831e8bd	1	760	#/texts/753	Viewing the Logged Model	section_header
+089d99e6f3	1	761	#/texts/754	We can now view our logged model that belongs to t	text
+45ef378c92	1	762	#/texts/755	hotel-booking-training	code
+b9d971a36a	1	763	#/texts/756	experiment in the Models tab in the UI . We can vi	text
+863fabf469	1	764	#/texts/757	Figure 3-8	text
+abbcecbad0	1	765	#/texts/758	).	text
+50dc9cf61b	1	766	#/pictures/7	The screenshot shows the Overview tab of the light	picture
+107a1b15df	1	767	#/texts/760	We can find logged artifacts in the Artifacts tab.	text
+12623dfb8e	1	768	#/texts/761	MLmodel	text
+7108bb452f	1	769	#/texts/762	file that defines the flavors we can use the model	text
+7ad2fc2741	1	770	#/texts/763	python_function	code
+ecb050c807	1	771	#/texts/764	flavor that describes how to run the model as a Py	text
+1851925918	1	772	#/texts/765	sklearn	code
+b39017bcda	1	773	#/texts/766	flavor. The	text
+ce34c607fc	1	774	#/texts/767	python_function	code
+9e99f5397a	1	775	#/texts/768	flavor is used for Model Serving. In our case, her	text
+fefa584467	1	776	#/texts/769	MLmodel	text
+fe284b5b57	1	777	#/texts/770	file:	text
+a256de2793	1	778	#/texts/771	flavors : python_function : code : code env : cond	code
+6bc201f8af	1	779	#/texts/772	Fields in the	text
+cd047a3eb4	1	780	#/texts/773	MLmodel	text
+d8acf4b9f3	1	781	#/texts/774	file include	text
+3d1eb9a82d	1	782	#/texts/775	artifact_path	code
+db055bc001	1	783	#/texts/776	, runtime information (if available), the MLflow v	text
+e2ed6ca21a	1	784	#/texts/777	model_id	code
+e69ac5abec	1	785	#/texts/778	, the MLflow	text
+3b0503b64e	1	786	#/texts/779	run_id	code
+8f2955f7ad	1	787	#/texts/780	, the model signature in JSON format, and the time	text
+64b682011e	1	788	#/texts/781	ModelInfo	code
+ef44f5cbac	1	789	#/texts/782	object that gets returned when we run the	text
+3d8919b95a	1	790	#/texts/783	mlflow.log_model	code
+6a610a705e	1	791	#/texts/784	command.	text
+7e16a8de30	1	792	#/texts/785	Next to the	text
+8f38f51f15	1	793	#/texts/786	MLmodel	text
+903646b8a4	1	794	#/texts/787	files, we'll find the following logged artifacts:	text
+3b63271886	1	795	#/texts/788	model.pkl	list_item
+9b343123ca	1	796	#/texts/789	This is the serialized model object.	list_item
+f9d3443d1a	1	797	#/texts/790	conda.yaml	list_item
+71a1e857b8	1	798	#/texts/791	This file defines the conda environment: when logg	list_item
+47e5e0de3e	1	799	#/texts/792	python_env.yaml	list_item
+cd892a3c12	1	800	#/texts/793	This file contains information that we need to res	list_item
+6cfadc3a34	1	801	#/texts/794	requirements.txt	list_item
+5514f27583	1	802	#/texts/795		list_item
+d50a0c51d8	1	803	#/texts/796	This file contains inferred project requirements. 	text
+aeaebeaf3d	1	804	#/texts/797	conda.yml	text
+b0b86c4b02	1	805	#/texts/798	file.	text
+81d130ca8c	1	806	#/texts/799	input_example.json	list_item
+9eeee1938c	1	807	#/texts/800	This file contains a model input example.	list_item
+fda531cda1	1	808	#/texts/801	serving_input_example.json	list_item
+9543a73075	1	809	#/texts/802	This file contains a sample payload that we can us	list_item
+ab9d5af8e4	1	810	#/texts/803	LoggedModel	list_item
+afb9c7537c	1	811	#/texts/804	mlflow.get_logged_model()	list_item
+2088767dab	1	812	#/texts/805	This allows us to retrieve a logged model by its m	list_item
+9e29cf2a73	1	813	#/texts/806	mlflow.last_logged_model()	list_item
+edcd8bf79a	1	814	#/texts/807	This allows us to retrieve the most recently logge	list_item
+d74d7514c8	1	815	#/texts/808	mlflow.search_logged_models()	list_item
+ae259487cd	1	816	#/texts/809	This allows us to search for logged models, in muc	list_item
+87251f7dbf	1	817	#/texts/810	Let's retrieve the model using the	text
+7e3e85ff76	1	818	#/texts/811	mlflow.get_logged_model()	code
+42c57afc72	1	819	#/texts/812	function:	text
+e760ce6ca0	1	820	#/texts/813	logged_model = mlflow . get_logged_model ( model_i	code
+d7c351b096	1	821	#/texts/814	We can now inspect the	text
+6a95da6131	1	822	#/texts/815	LoggedModel	code
+c981df955c	1	823	#/texts/816	object by saving all class attributes in a JSON fi	text
+3efc820896	1	824	#/texts/817	import json	code
+c93e848d41	1	825	#/texts/818		code
+d5a5e1aef4	1	826	#/texts/819	logged_model_dict = logged_model . to_dictionary (	code
+33bc4eb45c	1	827	#/texts/820		code
+680922178c	1	828	#/texts/821	logged_model_dict [ \"metrics\" ] = [ x . __dict__ f	code
+25c9394441	1	829	#/texts/822		code
+9491ea9b58	1	830	#/texts/823	with open ( \"../demo_artifacts/logged_model.json\" 	code
+715b0305d9	1	831	#/texts/824	And then, we can visualize it with JSON Lens or a 	text
+3643d9878a	1	832	#/texts/825	Figure 3-9	text
+946a0be4c5	1	833	#/texts/826	).	text
+01259e42bf	1	834	#/pictures/8	Diagram showing the attributes of the LoggedModel 	picture
+7e60855227	1	835	#/texts/828	Notice that model metrics and model parameters are	text
+baa69e43e2	1	836	#/texts/829	LoggedModel	code
+8273440533	1	837	#/texts/830	class, so we can access it in the following way:	text
+24ad48333f	1	838	#/texts/831	logged_model . params	code
+fc09131c1e	1	839	#/texts/832		code
+17e99a73a4	1	840	#/texts/833	logged_model . metrics	code
+546ed2a5b3	1	841	#/texts/834	Previously, it was only possible to retrieve metri	text
+ff3a419350	1	842	#/texts/835	model_id	code
+a8ed8e5e1f	1	843	#/texts/836	in the model URI (which we could previously only d	text
+9b7a4b601d	1	844	#/texts/837	run_id	code
+58e34b710f	1	845	#/texts/838	):	text
+d4fb36c4fc	1	846	#/texts/839	model = mlflow . sklearn . load_model ( f \"models:	code
+bc3bb6261b	1	847	#/texts/840	While logging the model, we've also logged the inp	text
+ec4570080b	1	848	#/texts/841	run = mlflow . get_run ( run_id )	code
+c316d9b385	1	849	#/texts/842		code
+24aaa82a9d	1	850	#/texts/843	inputs = run . inputs . dataset_inputs	code
+2a6d040b46	1	851	#/texts/844		code
+7dcf39358b	1	852	#/texts/845	training_input = next ( ( x for x in inputs if len	code
+8839ad9b00	1	853	#/texts/846		code
+1937552279	1	854	#/texts/847	training_source = mlflow . data . get_source ( tra	code
+0888b242d4	1	855	#/texts/848		code
+76447a0710	1	856	#/texts/849	training_source . load ()	code
+da3e92d2dc	1	857	#/texts/850		code
+d6975a4684	1	858	#/texts/851	testing_input = next ( ( x for x in inputs if len 	code
+17af79d5e6	1	859	#/texts/852		code
+f298a73c63	1	860	#/texts/853	testing_source = mlflow . data . get_source ( test	code
+afb930eb9d	1	861	#/texts/854		code
+fe8937c615	1	862	#/texts/855	testing_source . load ()	code
+8b8727557a	1	863	#/texts/856	Registering the Model	section_header
+38d0c4901d	1	864	#/texts/857	To use the logged model for Model Serving on Datab	text
+d630d2b8dd	1	865	#/texts/858	We can do this by providing the	text
+1ebce4f58b	1	866	#/texts/859	registered_model	code
+54f8e7180a	1	867	#/texts/860	argument to the	text
+cb414b235d	1	868	#/texts/861	log_model()	code
+be943ad6ea	1	869	#/texts/862	function. In that case, the	text
+1b8b873f22	1	870	#/texts/863	ModelInfo	code
+3da641785c	1	871	#/texts/864	object will also have a	text
+7187eba65e	1	872	#/texts/865	registered_model_version	code
+6785acd18a	1	873	#/texts/866	attribute. However, we may not want to register th	text
+c17f5db56f	1	874	#/texts/867	mlflow.register_model()	code
+ba7d24c40b	1	875	#/texts/868	function:	text
+cabccd641a	1	876	#/texts/869	model_name = ( f \" { cfg . catalog } . { cfg . sch	code
+41b5d12798	1	877	#/texts/870		code
+583af0d1bc	1	878	#/texts/871	)	code
+81685279f4	1	879	#/texts/872		code
+c65ac32305	1	880	#/texts/873	registered_model = mlflow . register_model ( model	code
+8b277c2c26	1	881	#/texts/874		code
+12cba8a363	1	882	#/texts/875	)	code
+26932c8945	1	883	#/texts/876	We'll demonstrate the evaluation process in the ne	text
+307178ff33	1	884	#/texts/877	We can also register the model using the MLflow cl	text
+580b34a810	1	885	#/texts/878	deployment_job_id	code
+9bf6203f08	1	886	#/texts/879	as an argument for the	text
+fb87968bfe	1	887	#/texts/880	create_registered_model	code
+be5d8a4a21	1	888	#/texts/881	function, which can facilitate a model approval fl	text
+8a7935885f	1	889	#/texts/882	MLflow 3 deployment jobs functionality	text
+e5657ffff4	1	890	#/texts/883	:	text
+83cab3718d	1	891	#/texts/884	from mlflow.tracking.client import MlflowClient	code
+451838cbfa	1	892	#/texts/885		code
+0e4cc9d311	1	893	#/texts/886	client = MlflowClient ()	code
+3fade9991a	1	894	#/texts/887		code
+95dd00f55e	1	895	#/texts/888	job_id = \"1234567890abcdef\" # Example job ID	code
+c1c37fa861	1	896	#/texts/889		code
+ab657f9916	1	897	#/texts/890	registered_model = client . create_registered_mode	code
+fe54fc2cf4	1	898	#/texts/891	Passing a non-existing	text
+9fde6a2fd6	1	899	#/texts/892	job_id	code
+670e181d3e	1	900	#/texts/893	will result in an error, as the MLflow client chec	text
+6fa0ad53b7	1	901	#/texts/894	After we register the model, we can assign an alia	text
+0fbd1d5830	1	902	#/texts/895	We also find it convenient to assign the	text
+f5c168066d	1	903	#/texts/896	\"latest-model\"	code
+6807f5a6f4	1	904	#/texts/897	tag to the most recently registered model. We can'	text
+9720e1f1cb	1	905	#/texts/898	\"latest\"	code
+33ea312b13	1	906	#/texts/899	alias directly because it's reserved, nor can we u	text
+4752e17ad3	1	907	#/texts/900	\"latest\"	code
+a29f09fc2b	1	908	#/texts/901	in the model URI:	text
+50c0c2b663	1	909	#/texts/902	client . set_registered_model_alias ( name = model	code
+d13208bbb5	1	910	#/texts/903		code
+0249dad4c8	1	911	#/texts/904	)	code
+6430abf4d0	1	912	#/texts/905		code
+d43bb9561d	1	913	#/texts/906	model = mlflow . sklearn . load_model ( f \"models:	code
+8dc3be790e	1	914	#/texts/907	It's a good idea to use aliases, as model registry	text
+47076129bb	1	915	#/texts/908	v = mlflow . search_model_versions ( filter_string	code
+ffde79151d	1	916	#/texts/909	We also can't search for model versions using filt	text
+ab78853920	1	917	#/texts/910	# not supported	code
+01bda1967d	1	918	#/texts/911		code
+9d97e8e41b	1	919	#/texts/912	v = mlflow . search_model_versions ( filter_string	code
+0d41f5f767	1	920	#/texts/913	However, we can get the model version by using an 	text
+1f7a81bb84	1	921	#/texts/914	model_version = client . get_model_version_by_alia	code
+099de972c5	1	922	#/texts/915	Wrapping the Model Using pyfunc	section_header
+8cb51afff1	1	923	#/texts/916	The model signature in MLflow defines the way diff	text
+e9819a2592	1	924	#/texts/917	Chapter 4	text
+b87b7dc4f7	1	925	#/texts/918	.)	text
+b175f3be3a	1	926	#/texts/919	We previously registered a	text
+b511c49f5e	1	927	#/texts/920	sklearn	code
+77d958941a	1	928	#/texts/921	pipeline. If we deploy it behind an endpoint now, 	text
+4ae0aff3ac	1	929	#/texts/922	{\"Predictions\": [120.1234567]}	code
+0886fb50b8	1	930	#/texts/923	. We may want to have a custom output, if so, and 	text
+2a15f54e9f	1	931	#/texts/924	pyfunc	code
+1431889704	1	932	#/texts/925	model flavor will come in handy.	text
+b4dffb24d3	1	933	#/texts/926	There are other situations in which	text
+ecdc4403d3	1	934	#/texts/927	pyfunc	code
+05abf4835d	1	935	#/texts/928	becomes important:	text
+442d3f22b5	1	936	#/texts/929	When we want to use an ensemble of models trained 	list_item
+8f9a3898fe	1	937	#/texts/930	When Model Serving requires a specific context (fo	list_item
+a9e3f3046a	1	938	#/texts/931	When we need to access other systems (for example,	list_item
+b07013bb5a	1	939	#/texts/932	Essentially, we are using	text
+e2e899c7fd	1	940	#/texts/933	pyfunc	code
+d0d6372354	1	941	#/texts/934	as a wrapper. Keeping the definition of the payloa	text
+ff56e2f0d6	1	942	#/texts/935	pyfunc	code
+c5c59ec3ea	1	943	#/texts/936	wrapper definition without touching the registered	text
+63efb1777c	1	944	#/texts/937	We defined the	text
+7495b7aca2	1	945	#/texts/938	HotelBookingModelWrapper	code
+8bf5676faa	1	946	#/texts/939	class under the	text
+f7b4e500fe	1	947	#/texts/940	models	code
+074a91dbac	1	948	#/texts/941	module of the	text
+b0c0af8b38	1	949	#/texts/942	hotel_booking	code
+1a561b49c2	1	950	#/texts/943	package. It loads a	text
+e67d1bab6e	1	951	#/texts/944	sklearn	code
+ea44361fc6	1	952	#/texts/945	pipeline as part of the	text
+be389d5349	1	953	#/texts/946	load_context()	code
+85449ab661	1	954	#/texts/947	method and modifies the predictions. Here, we are 	text
+cf98d7f3c6	1	955	#/texts/948	from datetime import datetime	code
+6e97faa0d2	1	956	#/texts/949		code
+c10bd0aea3	1	957	#/texts/950	import mlflow	code
+5f5dd0125e	1	958	#/texts/951		code
+602fbebd98	1	959	#/texts/952	import numpy as np	code
+0662a5c2f5	1	960	#/texts/953		code
+d02d489480	1	961	#/texts/954	import pandas as pd	code
+0c4f3dcf0d	1	962	#/texts/955		code
+de3a3a3a6e	1	963	#/texts/956	from mlflow import MlflowClient	code
+5b67ce9fa0	1	964	#/texts/957		code
+54c62d38b4	1	965	#/texts/958	from mlflow.models import infer_signature	code
+2e99fdab9d	1	966	#/texts/959		code
+a308e7aef1	1	967	#/texts/960	from mlflow.models.model import ModelInfo	code
+f29985d79d	1	968	#/texts/961		code
+8b871c9562	1	969	#/texts/962	from mlflow.pyfunc import PythonModelContext	code
+b93a7f8a9f	1	970	#/texts/963		code
+74363cc401	1	971	#/texts/964	from mlflow.utils.environment import _mlflow_conda	code
+b22b55189b	1	972	#/texts/965		code
+1bdbdb6625	1	973	#/texts/966	from hotel_booking.config import Tags	code
+42e7e76c19	1	974	#/texts/967		code
+f2b81971f3	1	975	#/texts/968	def adjust_price ( price : float ) -> float : \"\"\"A	code
+8cd1163255	1	976	#/texts/969		code
+ded2240001	1	977	#/texts/970	class HotelBookingModelWrapper ( mlflow . pyfunc .	code
+aae7e13fbf	1	978	#/texts/971	Notice that the	text
+975079ef2c	1	979	#/texts/972	adjust_price	code
+a64915409a	1	980	#/texts/973	function is defined outside of the class, and it w	text
+db82e874ad	1	981	#/texts/974	code_paths	code
+a390c8ffd3	1	982	#/texts/975	and	text
+664a6dd159	1	983	#/texts/976	conda_env	code
+07e6bb7ec1	1	984	#/texts/977	. This is the cleanest way to log the package and 	text
+db80403f55	1	985	#/texts/978	The	text
+e6b00e5bcf	1	986	#/texts/979	HotelBookingModelWrapper	code
+9ae8e0e4cf	1	987	#/texts/980	class has the	text
+f459fd61d8	1	988	#/texts/981	log_register_model()	code
+b835f4735c	1	989	#/texts/982	method. It requires the	text
+e9d5f7723c	1	990	#/texts/983	ModelInfo	code
+213cde1ac9	1	991	#/texts/984	object from the model we are going to wrap, the mo	text
+69262fc266	1	992	#/texts/985	pyfunc	code
+af0168ca33	1	993	#/texts/986	model, the experiment name, tags, and	text
+088dc3e825	1	994	#/texts/987	code_paths	code
+32e8b98b09	1	995	#/texts/988	:	text
+aa3de10738	1	996	#/texts/989	def log_register_model ( self , wrapped_model_info	code
+d0b91faed4	1	997	#/texts/990	There are a couple of points to pay attention to. 	text
+4e886ebc43	1	998	#/texts/991	code_paths	code
+0f26a76761	1	999	#/texts/992	and	text
+94d24d86c9	1	1000	#/texts/993	conda_env	code
+00bb959e8f	1	1001	#/texts/994	arguments. The	text
+4e1558adb8	1	1002	#/texts/995	code_paths	code
+d36ff9531d	1	1003	#/texts/996	list contains a local path to the	text
+129b750095	1	1004	#/texts/997	hotel_booking	code
+70a81d6430	1	1005	#/texts/998	package wheel, and	text
+f5deaa271b	1	1006	#/texts/999	conda_env	code
+84ce2e2cf0	1	1007	#/texts/1000	contains the location of the wheel in the artifact	text
+f9c2dfb766	1	1008	#/texts/1001	To provide the	text
+9b184d5e77	1	1009	#/texts/1002	code_paths	code
+17ab6192ee	1	1010	#/texts/1003	, we had to build a wheel using the	text
+4ee0b95917	1	1011	#/texts/1004	uv build	code
+aa1c2af199	1	1012	#/texts/1005	command first. We can pass the wheel's location as	text
+cf3ce8a624	1	1013	#/texts/1006	__version__ = version ( \"hotel_booking\" )	code
+82e21f4d17	1	1014	#/texts/1007		code
+a78113d13f	1	1015	#/texts/1008	code_paths = [ f \"../dist/hotel_booking- { __versi	code
+fd94544faa	1	1016	#/texts/1009	Finally, we introduced Pydantic validation for tag	text
+3ef42a2e24	1	1017	#/texts/1010	from hotel_booking.models.pyfunc_model_wrapper imp	code
+3085c265d1	1	1018	#/texts/1011		code
+2af529a685	1	1019	#/texts/1012	wrapper = HotelBookingModelWrapper ()	code
+045b1b1497	1	1020	#/texts/1013		code
+832aa798da	1	1021	#/texts/1014	pyfunc_model_name = f \" { cfg . catalog } . { cfg 	code
+d22ee80951	1	1022	#/texts/1015		code
+355e61fc90	1	1023	#/texts/1016	wrapper . log_register_model ( #Defined earlier wh	code
+182396b26a	1	1024	#/texts/1017		code
+a415c5fd9a	1	1025	#/texts/1018	)	code
+ecc561840c	1	1026	#/texts/1019	A	text
+46c819287a	1	1027	#/texts/1020	pyfunc	code
+6c3fdd3d4f	1	1028	#/texts/1021	wrapper works in the following way:	text
+3939e46fd9	1	1029	#/texts/1022	When logging the model, we provide an artifacts ar	list_item
+d1471206a6	1	1030	#/texts/1023		list_item
+faac2783a2	1	1031	#/texts/1024	The artifacts dictionary is used in the	text
+e639920b13	1	1032	#/texts/1025	load_context()	code
+9e1f669b2c	1	1033	#/texts/1026	method, which runs at the	text
+fc4e14ff55	1	1034	#/texts/1027	mlflow.pyfunc.log_model()	code
+47ca890e69	1	1035	#/texts/1028	step. The	text
+4ecb085942	1	1036	#/texts/1029	load_context()	code
+d38df75fe6	1	1037	#/texts/1030	method downloads the referenced artifacts and stor	text
+50ea53ffbf	1	1038	#/texts/1031	Figure 3-10	text
+ce88fd2e31	1	1039	#/texts/1032	).	text
+99f8e4c08f	1	1040	#/pictures/9	UI interface displaying the logged Pyfunc wrapper 	picture
+8a28a47f36	1	1041	#/texts/1034	The top-level	text
+6619b97cbc	1	1042	#/texts/1035	MLmodel	text
+bd95a1a6a7	1	1043	#/texts/1036	file has one flavor (pyfunc), and it includes a re	text
+dd848c5fd0	1	1044	#/texts/1037	flavors : python_function : artifacts : lightgbm -	code
+13d6355b10	1	1045	#/texts/1038	If we load the model, we will get back an object o	text
+3521d2a7c3	1	1046	#/texts/1039	PythonModel	code
+81cb9696b7	1	1047	#/texts/1040	type:	text
+0e4cdd7556	1	1048	#/texts/1041	loaded_pyfunc_model = mlflow . pyfunc . load_model	code
+515422231d	1	1049	#/texts/1042	When we load the model, we can use the	text
+f79a41b216	1	1050	#/texts/1043	predict	code
+91c660bdcb	1	1051	#/texts/1044	function without passing the context:	text
+726e9d0221	1	1052	#/texts/1045	loaded_pyfunc_model . predict ( X_test [ 0 : 1 ])	code
+af11325252	1	1053	#/texts/1046	However, this is not the	text
+370dd16d3c	1	1054	#/texts/1047	HotelBookingModelWrapper	code
+e76b44b661	1	1055	#/texts/1048	object we logged. To get our object back and be ab	text
+5641bc845b	1	1056	#/texts/1049	unwrapped_model = loaded_pyfunc_model . unwrap_pyt	code
+0b4a3625ce	1	1057	#/texts/1050	To run the	text
+e074a29099	1	1058	#/texts/1051	predict	code
+b101eca38c	1	1059	#/texts/1052	function, we need to pass context here (just with 	text
+d98602296a	1	1060	#/texts/1053	unwrapped_model . predict ( context = None , model	code
+63aefa797e	1	1061	#/texts/1054	Earlier in the chapter, we mentioned that we do no	text
+81f1e2f330	1	1062	#/texts/759	The screenshot shows the Overview tab of the light	caption
+1fc5a425a1	1	1063	#/texts/827	Diagram showing the attributes of the LoggedModel 	caption
+04b074d24c	1	1064	#/texts/1033	UI interface displaying the logged Pyfunc wrapper 	caption
+e8b39b2d98	1	1065	#/texts/1055	MLflow Evaluation	title
+130a8a686c	1	1066	#/texts/1056	To evaluate the impact of updated data and compare	text
+dbde70ec59	1	1067	#/texts/1057	The	text
+7d019b400e	1	1068	#/texts/1058	DataProcessor	code
+250c4a805f	1	1069	#/texts/1059	class includes a	text
+07e63c3403	1	1070	#/texts/1060	generate_synthetic_df()	code
+8110c9e673	1	1071	#/texts/1061	method, which takes the number of observations to 	text
+25254e8ce9	1	1072	#/texts/1062	max_date	code
+67790bfe0a	1	1073	#/texts/1063	parameter that indicates the timestamp after which	text
+5d83ebb7f4	1	1074	#/texts/1064	max_date	code
+26eb2ebeb7	1	1075	#/texts/1065	is not provided, it is retrieved from the	text
+5096774559	1	1076	#/texts/1066	hotel_booking	code
+dd2e48db9d	1	1077	#/texts/1067	table.	text
+d5cc2bca6a	1	1078	#/texts/1068	We use the	text
+c563a42e89	1	1079	#/texts/1069	sdv	code
+346ee2111d	1	1080	#/texts/1070	package and the	text
+49919e15cc	1	1081	#/texts/1071	GaussianCopulaSynthesizer	code
+c843b38009	1	1082	#/texts/1072	to generate data with a distribution similar to th	text
+16c3a5c604	1	1083	#/texts/1073	import calendar	code
+57d26deb08	1	1084	#/texts/1074		code
+7ac59ffb31	1	1085	#/texts/1075	import datetime	code
+aa98925ea0	1	1086	#/texts/1076		code
+7ad7caf161	1	1087	#/texts/1077	import random	code
+ad754146ed	1	1088	#/texts/1078		code
+b515828342	1	1089	#/texts/1079	from datetime import datetime , timedelta	code
+76cb20147f	1	1090	#/texts/1080		code
+7e40d633b3	1	1091	#/texts/1081	import pandas as pd	code
+0b9603220a	1	1092	#/texts/1082		code
+9c2d6b7b4e	1	1093	#/texts/1083	from dateutil.relativedelta import relativedelta	code
+9a06d13aa7	1	1094	#/texts/1084		code
+1072f78034	1	1095	#/texts/1085	from pyspark.sql import SparkSession	code
+9a3177c086	1	1096	#/texts/1086		code
+6a5b02653b	1	1097	#/texts/1087	from sdv.metadata import Metadata	code
+b90116e4b1	1	1098	#/texts/1088		code
+ff743aafa6	1	1099	#/texts/1089	from sdv.single_table import GaussianCopulaSynthes	code
+6152135281	1	1100	#/texts/1090		code
+406fa2925a	1	1101	#/texts/1091	from hotel_booking.config import ProjectConfig	code
+b5eeddb21d	1	1102	#/texts/1092		code
+996b66f54d	1	1103	#/texts/1093	class DataProcessor : \"\"\"A class for preprocessing	code
+3157f6858a	1	1104	#/texts/1094		code
+fc6761523c	1	1105	#/texts/1095	This class handles data preprocessing and saving t	code
+358d851b9e	1	1106	#/texts/1096		code
+ace2d044ae	1	1107	#/texts/1097	\"\"\" def __init__ ( self : \"DataProcessor\" , df : p	code
+5e83897651	1	1108	#/texts/1098		code
+b5bd2f5adc	1	1109	#/texts/1099	(delta.enableChangeDataFeed = true);\"\"\" )	code
+ac53d9f982	1	1110	#/texts/1100	For implementation details, refer to the	text
+d67e443b17	1	1111	#/texts/1101	hotel_booking.data.data_processor	code
+94140142d5	1	1112	#/texts/1102	module .	text
+e12de696aa	1	1113	#/texts/1103	Now, take a look at the notebook called	text
+2f193ef64f	1	1114	#/texts/1104	chapter3_4.model_evaluation.py	text
+fbf0056e7e	1	1115	#/texts/1105	. We start by generating synthetic data and storin	text
+c5ad2f94fb	1	1116	#/texts/1106	import pandas as pd	code
+134729c567	1	1117	#/texts/1107		code
+6bdf93e837	1	1118	#/texts/1108	from pyspark.sql import SparkSession	code
+298ecce170	1	1119	#/texts/1109		code
+1a8bcf16fb	1	1120	#/texts/1110	from hotel_booking.config import ProjectConfig , T	code
+bf497ce28b	1	1121	#/texts/1111		code
+e935137f6b	1	1122	#/texts/1112	from hotel_booking.data import DataLoader , DataPr	code
+acf4e42ff4	1	1123	#/texts/1113		code
+3cf78a9646	1	1124	#/texts/1114	from hotel_booking.utils.common import set_mlflow_	code
+33147c20f1	1	1125	#/texts/1115		code
+6ec804ab8c	1	1126	#/texts/1116	set_mlflow_tracking_uri ()	code
+aac8deffe6	1	1127	#/texts/1117		code
+3f7df60d48	1	1128	#/texts/1118	spark = SparkSession . builder . getOrCreate ()	code
+ca1a6ba4d8	1	1129	#/texts/1119		code
+46f4aae598	1	1130	#/texts/1120	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+1912fa3596	1	1131	#/texts/1121		code
+999cb8767f	1	1132	#/texts/1122	# Load and process the data	code
+e9b6cc98e1	1	1133	#/texts/1123		code
+8a90dc1644	1	1134	#/texts/1124	df = pd . read_csv ( \"../data/booking.csv\" )	code
+61dd3027de	1	1135	#/texts/1125		code
+acab48f6f1	1	1136	#/texts/1126	data_processor = DataProcessor ( df = df , config 	code
+33d06b041e	1	1137	#/texts/1127		code
+7afd8e269b	1	1138	#/texts/1128	data_processor . preprocess ()	code
+30a0000e01	1	1139	#/texts/1129		code
+ed948d09fd	1	1140	#/texts/1130	data_processor . generate_synthetic_df ( n = 1000 	code
+5d2ff79791	1	1141	#/texts/1131		code
+8577dfdba3	1	1142	#/texts/1132	data_processor . save_to_catalog ()	code
+15b2cbdc12	1	1143	#/texts/1133	Then, we load the data (where the test set include	text
+37729ca861	1	1144	#/texts/1134	from hotel_booking.models.lightgbm_model import Li	code
+afc8c7ccf5	1	1145	#/texts/1135		code
+e5f35d9c61	1	1146	#/texts/1136	data_loader = DataLoader ( spark = spark , config 	code
+ec24b13bdc	1	1147	#/texts/1137		code
+d70fa99fa7	1	1148	#/texts/1138	X_train , y_train , X_test , y_test = data_loader 	code
+0cf78ddab8	1	1149	#/texts/1139		code
+5fc0f7a69b	1	1150	#/texts/1140	model = LightGBMModel ( config = cfg )	code
+d7cd6a081e	1	1151	#/texts/1141		code
+0a272d13f9	1	1152	#/texts/1142	model . train ( X_train = X_train , y_train = y_tr	code
+f4655a7bcc	1	1153	#/texts/1143	The code for model logging will then be added to t	text
+a456478540	1	1154	#/texts/1144	LightGBMModel	code
+691b788b6f	1	1155	#/texts/1145	class. This is how we can be use it:	text
+8963f19e44	1	1156	#/texts/1146	tags = Tags ( ** { \"git_sha\" : \"1234567890abcd\" , 	code
+acb60306ad	1	1157	#/texts/1147		code
+94430d2cd7	1	1158	#/texts/1148	model_info = model . log_model ( experiment_name =	code
+480bcebdb0	1	1159	#/texts/1149	We can access metrics of the newly logged model th	text
+bc7dbae0ac	1	1160	#/texts/1150	metrics_new = model . metrics	code
+97307bddae	1	1161	#/texts/1151	Let's now evaluate the latest currently registered	text
+a3aedb4fb0	1	1162	#/texts/1152	import mlflow	code
+4afa700dcb	1	1163	#/texts/1153		code
+5851948006	1	1164	#/texts/1154	sklearn_model_name = f \" { cfg . catalog } . { cfg	code
+bf61ba5e18	1	1165	#/texts/1155		code
+c633a09938	1	1166	#/texts/1156	model_uri = f \"models:/ { sklearn_model_name } @la	code
+18c3650877	1	1167	#/texts/1157		code
+b951e1f177	1	1168	#/texts/1158	eval_data = X_test . copy ()	code
+3f4f946d83	1	1169	#/texts/1159		code
+dca727288d	1	1170	#/texts/1160	eval_data [ cfg . target ] = y_test	code
+4d034fa1c2	1	1171	#/texts/1161		code
+a7bf15e710	1	1172	#/texts/1162	result = mlflow . models . evaluate ( model_uri , 	code
+6b6f48cb14	1	1173	#/texts/1163		code
+38cc4e6313	1	1174	#/texts/1164	metrics_old = result . metrics	code
+bc1a5b049b	1	1175	#/texts/1165	Previously, we were evaluating model performance b	text
+6b8495ae41	1	1176	#/texts/1166	if metrics_new [ 'root_mean_squared_error' ] < met	code
+c912aa6fe3	1	1177	#/texts/1167	The logic for registering the model is then added 	text
+b882e4ea98	1	1178	#/texts/1168	LightGBMModel	code
+0a34cb6868	1	1179	#/texts/1169	class:	text
+5a6cd63fcc	1	1180	#/texts/1170	def register_model ( self : \"LightGBMModel\" , mode	code
+ac4cbb1e11	1	1181	#/texts/1171	Now that we've explored MLflow experiment tracking	text
+22fb8bc7f5	1	1182	#/texts/1172	Resource and API Limits	title
+302c9a181c	1	1183	#/texts/1173	As you scale your ML workflows on Databricks, you 	text
+828afdea59	1	1184	#/texts/1174	For instance, distributed hyperparameter tuning wi	text
+567bf04d34	1	1185	#/texts/1175	In retail demand forecasting scenarios, in which y	text
+5ec0e2045e	1	1186	#/texts/1176	Understanding these constraints helps you plan mor	text
+754310a7af	1	1187	#/texts/1177	Table 3-1	text
+307117a5b9	1	1188	#/texts/1178	outlines some of the key resource limits you shoul	text
+3a78c31009	1	1189	#/tables/0	| Resource                               | Limit  	table
+1422baaad0	1	1190	#/texts/1179	1,600 per MLflow run/ logged model;\n1,000 per expe	text
+f7fb531a3c	1	1191	#/texts/1180	Table 3-2	text
+9e7d4a3b4a	1	1192	#/texts/1181	outlines some of the key API limits you should be 	text
+d072d0b5dc	1	1193	#/tables/1	| API                                             	table
+480e941853	1	1194	#/texts/1182	/mlflow/experiments/*	text
+36667f4b92	1	1195	#/texts/1183	(except list and search)	text
+2595076b69	1	1196	#/texts/1184	mlflow/runs/	text
+ac0424d126	1	1197	#/texts/1185	(except search)	text
+0bc50a0f0e	1	1198	#/texts/1186	/mlflow/metrics/get-history	text
+7208b8625f	1	1199	#/texts/1187	/mlflow/artifacts/list	text
+c3d92e1ca3	1	1200	#/texts/1188	/mlflow/logged-models/	text
+9baa7d6289	1	1201	#/texts/1189	(except search and artifacts)	text
+79aed391b5	1	1202	#/texts/1190	/mlflow/experiments/list	text
+ab89409313	1	1203	#/texts/1191	/mlflow/experiments/search	text
+8d33561e75	1	1204	#/texts/1192	/mlflow/runs/search	text
+55a51beebd	1	1205	#/texts/1193	/mlflow/logged-models/search	text
+e3e7863329	1	1206	#/texts/1194	/mlflow/logged-models/{model_id}/artifacts/directo	text
+36d2a267cc	1	1207	#/texts/1195	For the full, up-to-date overview of the resource 	text
+0a8f56efdc	1	1208	#/texts/1196	Databricks documentation	text
+5747bc33f2	1	1209	#/texts/1197	.	text
+cd6d725423	1	1210	#/texts/1198	Conclusion	title
+5b418eb99e	1	1211	#/texts/1199	In this chapter, we went through the whole process	text
+b9d4ad10e5	1	1212	#/texts/1200	By the end of the chapter, we created three experi	text
+417f6eec9d	1	1213	#/texts/1201	hotel-booking-finetuning	list_item
+b726f4aa18	1	1214	#/texts/1202	hotel-booking-training	list_item
+d1dc1863c7	1	1215	#/texts/1203	hotel-booking-wrapper	list_item
+a3fa5d1c37	1	1216	#/texts/1204	Under each experiment, we created experiment runs 	text
+cf3176d745	1	1217	#/texts/1205	optuna-finetuning-yyyy-mm-dd	list_item
+afa637fca0	1	1218	#/texts/1206	lightgbm-training-yyyy-mm-dd	list_item
+6b4e0f7b05	1	1219	#/texts/1207	wrapper-lightgbm-yyyy-mm-dd	list_item
+a475d5ca48	1	1220	#/texts/1208	We tagged all the experiment runs and registered m	text
+55d441dab9	1	1221	#/texts/1209	git_sha	code
+88ce846002	1	1222	#/texts/1210	(for now, a dummy value) and branch, so we can fin	text
+85548dfb5d	1	1223	#/texts/1211	All this allows us to achieve full traceability an	text
+a8cc0d4596	1	1224	#/texts/1212	Chapter 5	text
+75b17add07	1	1225	#/texts/1213	will show you how to pass actual	text
+06694af826	1	1226	#/texts/1214	git_sha	code
+06eee7fb70	1	1227	#/texts/1215	,	text
+567aa7daa6	1	1228	#/texts/1216	job_id	code
+7a3bff070f	1	1229	#/texts/1217	, and	text
+73c92b6097	1	1230	#/texts/1218	run_id	code
+296e5dd64e	1	1231	#/texts/1219	as parameters to the scripts running in a producti	text
+c54684fdfa	1	1232	#/texts/1220	But before we can go into deployment, we need to t	text
+3e90c77d74	1	1233	#/texts/1221	1	text
+2ad3c155be	1	1234	#/texts/1222	For more details, check out the	text
+7b5cd07a35	1	1235	#/texts/1223	Ray documentation	text
+27c625a66b	1	1236	#/texts/1224	.	text
+6b7021d018	1	1237	#/texts/1225	2	text
+7a15a9a69e	1	1238	#/texts/1226	You can find the full list in	text
+3573dfbe35	1	1239	#/texts/1227	the	text
+458d652376	1	1240	#/texts/1228	mlflow.models	code
+5807cade19	1	1241	#/texts/1229	documentation	text
+a70a3f7ac7	1	1242	#/texts/1230	.	text
+a742a62978	1	1243	#/texts/1231	3	text
+b3c860a09f	1	1244	#/texts/1232	To explore more detailed information about model s	text
+6397e5cd26	1	1245	#/texts/1233	the documentation	text
+d5e20c9df3	1	1246	#/texts/1234	.	text

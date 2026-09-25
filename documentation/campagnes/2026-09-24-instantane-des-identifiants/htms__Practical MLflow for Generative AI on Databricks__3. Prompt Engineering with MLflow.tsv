@@ -1,0 +1,867 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+e065b4edc6	1	0	#/texts/0	Chapter 3. Prompt Engineering with MLflow	title
+704d566f3f	1	1	#/texts/1	Prompt engineering is often introduced as a creati	text
+7067ffa944	1	2	#/texts/2	That is why prompts deserve to be treated as first	text
+9c8efa32af	1	3	#/texts/3	We will keep the scope intentionally focused.	text
+107d7721f3	1	4	#/texts/4	Chapter 1	text
+cd3b1a03e7	1	5	#/texts/5	established the core GenAI building blocks and our	text
+6c0c3279bc	1	6	#/texts/6	Chapter 2	text
+34d543af87	1	7	#/texts/7	expanded that into a lifecycle mindset across deve	text
+de6b2b88fd	1	8	#/texts/8	Chapter 3	text
+9dbe062ecb	1	9	#/texts/9	, we zoom in on the prompt itself and answer the p	text
+384cc03027	1	10	#/texts/10	How do we write prompts that are clear, constraine	list_item
+6ef61a6f13	1	11	#/texts/11	How do we avoid the \"copy, paste, and pray\" workfl	list_item
+19a828f709	1	12	#/texts/12	How do we update prompt behavior without redeployi	list_item
+9fc656edda	1	13	#/texts/13	How do we compare prompt versions objectively, ins	list_item
+525139a6f9	1	14	#/texts/14	How do we use automatic prompt tuning without turn	list_item
+6069362c35	1	15	#/texts/15	To do this, we lean on capabilities in MLflow on D	text
+827363ebdc	1	16	#/texts/16	Figure 3-1	text
+eb1f810561	1	17	#/texts/17	). The thread running through all of these topics 	text
+a9de6b27ea	1	18	#/pictures/0	Diagram illustrating the prompt lifecycle process,	picture
+803fbaa47e	1	19	#/texts/19	This chapter is structured as a progression from c	text
+b4fc148443	1	20	#/texts/20	If you take away one idea from this chapter, let i	text
+24d8124fbb	1	21	#/texts/18	Diagram illustrating the prompt lifecycle process,	caption
+797511830f	1	22	#/texts/21	Fundamentals of Prompt Engineering	title
+2071097a4d	1	23	#/texts/22	Prompt engineering is about designing instructions	text
+af35372975	1	24	#/texts/23	In the Unity Airways use case we discussed in Chap	text
+af7a5204e4	1	25	#/texts/24	1	text
+047fb5dac6	1	26	#/texts/25	and	text
+35bad2db25	1	27	#/texts/26	2	text
+9ac58571e1	1	28	#/texts/27	, the difference between a \"good\" and \"bad\" prompt	text
+22752fc4ef	1	29	#/texts/28	This section gives you the foundations you will us	text
+ef69abe5e9	1	30	#/texts/29	Core Prompting Techniques	section_header
+2f4481b462	1	31	#/texts/30	You will see many naming conventions for different	text
+75f1447806	1	32	#/texts/31	Zero-shot prompting	section_header
+576f7745d2	1	33	#/texts/32	Zero-shot prompting is the simplest form: you ask 	text
+15f5701912	1	34	#/texts/33	The risk is that zero-shot prompts leave too much 	text
+719c09b6d4	1	35	#/texts/34	Zero-shot works best when you do three things at o	text
+d413e7a621	1	36	#/texts/35	Define the role and scope (what the assistant is a	list_item
+7d8a70a209	1	37	#/texts/36	Give clear constraints (length, tone, format).	list_item
+aead210092	1	38	#/texts/37	Define what to do when information is missing.	list_item
+b67b0e17fd	1	39	#/texts/38	A simple Unity Airways example might look like thi	text
+dc0c616b16	1	40	#/texts/39	template = \"\"\"\nYou are a customer support assistan	code
+4df007c111	1	41	#/texts/40	Tip	section_header
+c39550c505	1	42	#/texts/41	Notice the use of	text
+77045a204b	1	43	#/texts/42	{{question}}	code
+bf7c065eaa	1	44	#/texts/43	. When you later store prompts in the Prompt Regis	text
+6ecd2e0e06	1	45	#/texts/44	Few-shot prompting	section_header
+a080ebfb39	1	46	#/texts/45	Few-shot prompting adds a small number of examples	text
+66f0b96d13	1	47	#/texts/46	You need the model to consistently match a particu	list_item
+0cd815a7da	1	48	#/texts/47	You need a structured output format that is easy t	list_item
+aa99d8a77c	1	49	#/texts/48	The task has tricky edge cases that users phrase i	list_item
+4e30c46767	1	50	#/texts/49	For Unity Airways, few-shot can be helpful for \"po	text
+e1e43e963e	1	51	#/texts/50	The trick is to keep examples short and representa	text
+4f7d39a587	1	52	#/texts/51	A good few-shot pattern is:	text
+f7f751528e	1	53	#/texts/52	One example where the answer is direct	list_item
+167ff42f32	1	54	#/texts/53	One example where the assistant must ask for missi	list_item
+102872bd33	1	55	#/texts/54	One example where the assistant must decline to sp	list_item
+be7e98a899	1	56	#/texts/55	Keep the examples realistic. If your examples soun	text
+c16dbc974a	1	57	#/texts/56	template = \"\"\"\nYou are a customer support assistan	code
+8a3715ca59	1	58	#/texts/57	Reasoning prompts	section_header
+0b3bf76ffd	1	59	#/texts/58	You will often see \"chain-of-thought\" (CoT) used t	text
+9c60094cf3	1	60	#/texts/59	A safer pattern is to ask for a brief rationale th	text
+78457cb6c2	1	61	#/texts/60	\"Consider what information is missing before answe	list_item
+5b8a868835	1	62	#/texts/61	\"If eligibility depends on policy details, ask a c	list_item
+3dda6d8fbc	1	63	#/texts/62	\"Use cautious language when policy is not provided	list_item
+8a5d8af0bf	1	64	#/texts/63	You are not asking for a novel. You are asking for	text
+aaf76bbbeb	1	65	#/texts/64	template = \"\"\"\nYou are a customer support assistan	code
+99184e8688	1	66	#/texts/65	Self-correction and reflection	section_header
+2dc699df28	1	67	#/texts/66	Models can contradict themselves, especially when 	text
+e6ee20468d	1	68	#/texts/67	Two practical self-correction strategies:	text
+92a14d09f7	1	69	#/texts/68	Checklist pass	list_item
+002a00ba8f	1	70	#/texts/69	Ask the model to verify that it complied with cons	list_item
+4787e8143b	1	71	#/texts/70	Error-focused revision	list_item
+2b2f6126ec	1	72	#/texts/71	If you know common failure modes, tell the model t	list_item
+8079a46447	1	73	#/texts/72	Here is a lightweight example:	text
+9d5bc65454	1	74	#/texts/73	template = \"\"\"\nYou are a customer support assistan	code
+42bc1b9bf4	1	75	#/texts/74	This keeps the reflection internal and keeps the c	text
+ceb1c10484	1	76	#/texts/75	Prompt Engineering Best Practices	section_header
+6334856950	1	77	#/texts/76	A prompt that works once is not the goal. A prompt	text
+0ebded83e1	1	78	#/texts/77	Let's next look at some prompt practices that tend	text
+f55284946f	1	79	#/texts/78	Be explicit about the job, scope, and boundaries	section_header
+87c50cf8a2	1	80	#/texts/79	Start by defining what the assistant is doing. If 	text
+d60a5888b6	1	81	#/texts/80	Here are some Unity Airways examples of boundary s	text
+4cabd47f21	1	82	#/texts/81	\"If policy details are not provided, do not claim 	list_item
+f0ca188845	1	83	#/texts/82	\"If the question is about refunds, be cautious and	list_item
+a850d312fe	1	84	#/texts/83	\"If you are unsure, state what information is miss	list_item
+cf4520b57f	1	85	#/texts/84	This keeps tone specific and reduces drift.	text
+be74bac87a	1	86	#/texts/85	Use constraints that are measurable	section_header
+e69068929e	1	87	#/texts/86	The model cannot reliably follow vague instruction	text
+62f579e172	1	88	#/texts/87	Maximum word count (or maximum sentences)	list_item
+e915721828	1	89	#/texts/88	Output structure (e.g., sections with headings)	list_item
+73c2d53259	1	90	#/texts/89	Output format (e.g., JSON with specific keys)	list_item
+05e8177249	1	91	#/texts/90	For customer support answers, limits on word count	text
+390bbe2244	1	92	#/texts/91	Use labels to separate inputs from instructions	section_header
+66e60c5e0e	1	93	#/texts/92	Delimiters are one of the easiest and most underus	text
+0e267d3a83	1	94	#/texts/93	Here is a simple approach that works well for user	text
+43f415cc75	1	95	#/texts/94	template = \"\"\"\nYou are a customer support assistan	code
+7bca66397b	1	96	#/texts/95	Even if a user says \"Ignore previous instructions,	text
+86fd0e69c3	1	97	#/texts/96	Treat output format as a contract	section_header
+5571f309f2	1	98	#/texts/97	If your application needs to parse the output, you	text
+ee39910755	1	99	#/texts/98	template = \"\"\"\nYou are a customer support assistan	code
+603f7086e7	1	100	#/texts/99	This does not guarantee perfect JSON every time, b	text
+f25b0d68c3	1	101	#/texts/100	Keep tone consistent, but do not let tone override	section_header
+414ec0ceec	1	102	#/texts/101	Tone matters, but tone is not the mission. For cus	text
+a42c4b1c7e	1	103	#/texts/102	Safety and correctness	list_item
+80684be996	1	104	#/texts/103	Policy compliance	list_item
+ec27c71c63	1	105	#/texts/104	Clarity and helpfulness	list_item
+6d1a8d4bee	1	106	#/texts/105	Tone and brand voice	list_item
+db8ac7a4c5	1	107	#/texts/106	If you promote \"be cheerful and friendly\" above \"d	text
+7f1e64ce38	1	108	#/texts/107	A practical way to prevent that drift is to treat 	text
+d59426574b	1	109	#/texts/108	Table 3-1	text
+233dcbf797	1	110	#/texts/109	shows how to translate vague tone requests into sp	text
+bf408a09bb	1	111	#/tables/0	| Instead of this (abstract tone instruction)   | 	table
+a4799b1b00	1	112	#/texts/110	Instead of this\n(abstract tone instruction)	text
+d36ab0e354	1	113	#/texts/111	Use this\n(specific, testable wording constraints)	text
+cfe232bc46	1	114	#/texts/112	Antipatterns and Debugging Habits	section_header
+921e5c5ddb	1	115	#/texts/113	Prompt failures are often predictable. They fall i	text
+8b1565d658	1	116	#/texts/114	The \"kitchen sink\" prompt	section_header
+172516269c	1	117	#/texts/115	This is the prompt that tries to do everything at 	text
+fae8d45362	1	118	#/texts/116	Symptoms:	text
+19e39f810b	1	119	#/texts/117	The model satisfies a few constraints and quietly 	list_item
+9b61013893	1	120	#/texts/118	The output grows long, repetitive, or uneven.	list_item
+355457d4e0	1	121	#/texts/119	The model sounds more certain than it should, beca	list_item
+c8868bf534	1	122	#/texts/120	Fix:	text
+dbaebd7366	1	123	#/texts/121	Define one primary task and write the prompt aroun	list_item
+858de64cfa	1	124	#/texts/122	Convert secondary requirements into short, testabl	list_item
+f6780d76e4	1	125	#/texts/123	Use structured output when fields must be present 	list_item
+78fff70917	1	126	#/texts/124	A good prompt should be a set of clear directives,	text
+e1b96c50ed	1	127	#/texts/125	Vague instructions and untestable constraints	section_header
+cafee65707	1	128	#/texts/126	\"Be accurate.\" \"Be professional.\" \"Be concise.\" Th	text
+0a0918d0fb	1	129	#/texts/127	If the prompt cannot be tested, it cannot be impro	text
+bd42ab957d	1	130	#/texts/128	Unchecked assumptions	section_header
+d783c91d9b	1	131	#/texts/129	If your prompt does not tell the model what to do 	text
+3fdd42fef5	1	132	#/texts/130	Overreliance on negative instructions	section_header
+b36a1cb564	1	133	#/texts/131	Negative instructions like \"do not hallucinate\" ar	text
+77bed0c375	1	134	#/texts/132	Instead of \"Do not invent fees,\" use \"If fees are 	list_item
+2b00d9bc0c	1	135	#/texts/133	Instead of \"Do not be verbose,\" use \"Use at most 1	list_item
+0bb5209a4b	1	136	#/texts/134	Changing multiple things at once	section_header
+02340b79e3	1	137	#/texts/135	This is the fastest way to confuse yourself. If yo	text
+ee850760f1	1	138	#/texts/136	A better iteration habit is to change one thing pe	text
+ff9e9c7b92	1	139	#/texts/137	Managing Prompts with the MLflow Prompt Registry	title
+7abe150037	1	140	#/texts/138	If prompts are part of your production surface are	text
+28f6f6b032	1	141	#/texts/139	The MLflow Prompt Registry fixes this by giving yo	text
+fd70f38dac	1	142	#/texts/140	The \"Why\" Behind the Registry	section_header
+3106f26bb8	1	143	#/texts/141	Teams adopt a registry when they hit a familiar pa	text
+16c0f306ef	1	144	#/texts/142	Which exact prompt is running in production right 	list_item
+0ac4e1270c	1	145	#/texts/143	Who changed it, and why?	list_item
+1fcf8e1484	1	146	#/texts/144	If the behavior regressed, what was the last known	list_item
+2a122493c7	1	147	#/texts/145	Can a domain expert update wording without opening	list_item
+1b641b1ff3	1	148	#/texts/146	MLflow Prompt Registry is built for these workflow	text
+a796498c5f	1	149	#/texts/147	production	code
+1efb33ca3a	1	150	#/texts/148	and	text
+4b30b0b6d9	1	151	#/texts/149	staging	code
+782a76ba80	1	152	#/texts/150	for gradual rollout and rollbacks, and it allows c	text
+b9a7000761	1	153	#/texts/151	Tip	section_header
+d76d0d15f4	1	154	#/texts/152	One practical implication matters early: you need 	text
+c4a02bb26e	1	155	#/texts/153	CREATE FUNCTION	code
+d1c7e28645	1	156	#/texts/154	,	text
+cfea07ff7e	1	157	#/texts/155	EXECUTE	code
+b21eec5b35	1	158	#/texts/156	, and	text
+3bb5842308	1	159	#/texts/157	MANAGE	code
+05b019577b	1	160	#/texts/158	privileges on the schema that stores prompts.	text
+46f4b08cdf	1	161	#/texts/159	Prompt Registry SDK Overview	section_header
+6dff1b00e3	1	162	#/texts/160	The registry exposes a small set of functions that	text
+3ae7696592	1	163	#/texts/161	register_prompt()	code
+2bc4f55089	1	164	#/texts/162	to create prompts or add new versions,	text
+ec0caacf2c	1	165	#/texts/163	load_prompt()	code
+f401724105	1	166	#/texts/164	to retrieve versions or aliases,	text
+ab9c279216	1	167	#/texts/165	search_prompts()	code
+907496af95	1	168	#/texts/166	to find prompts,	text
+0fa9f5575a	1	169	#/texts/167	set_prompt_alias()	code
+b454abcc6d	1	170	#/texts/168	and	text
+9c0c89d659	1	171	#/texts/169	delete_prompt_alias()	code
+13a3ab4020	1	172	#/texts/170	to manage alias pointers, and deletion APIs for cl	text
+bac216589d	1	173	#/texts/171	You do not need to memorize the API surface. You d	text
+66a1cbc252	1	174	#/texts/172	Figure 3-2	text
+cabf2cc04f	1	175	#/texts/173	illustrates how MLflow Prompt Registry functions m	text
+dc7d2926a4	1	176	#/pictures/1	Diagram illustrating the MLflow Prompt Registry li	picture
+d36d835a26	1	177	#/texts/175	A Tour of Prompt Lifecycle with Prompt Registry	section_header
+957b4e8718	1	178	#/texts/176	The MLflow Prompt Registry provides a governed lif	text
+54109de3a6	1	179	#/texts/177	Naming prompts and choosing a location	section_header
+7844831e17	1	180	#/texts/178	A prompt name is a Unity Catalog identifier, so th	text
+4d6ac1c20e	1	181	#/texts/179	catalog.schema.prompt_name	code
+3d6f4afee2	1	182	#/texts/180	. This is worth treating like a standard. It makes	text
+8e40f41fea	1	183	#/texts/181	Databricks also provides a convenient mechanism to	text
+06097c6ea9	1	184	#/texts/182	mlflow.promptRegistryLocation	code
+1a2550edab	1	185	#/texts/183	with the value	text
+99756d80c1	1	186	#/texts/184	catalog.schema	code
+89978a6c88	1	187	#/texts/185	. When set, MLflow GenAI APIs treat that Unity Cat	text
+5f44e81347	1	188	#/texts/186	Here is a simple setup pattern you can reuse:	text
+c4353afab0	1	189	#/texts/187	import mlflow\n# Configure MLflow tracking and choo	code
+bb4bf4909a	1	190	#/texts/188	That tag does not magically solve governance, but 	text
+24ed415764	1	191	#/texts/189	Creating prompts	section_header
+1e5c681795	1	192	#/texts/190	Databricks supports creating prompts via the MLflo	text
+287fdbaa92	1	193	#/texts/191	Creating prompts in the Databricks MLflow UI	section_header
+d0002814e2	1	194	#/texts/192	The UI path is ideal when you want quick iteration	text
+62acc432c7	1	195	#/texts/193	Navigate to an MLflow experiment.	list_item
+3eae1f36d5	1	196	#/texts/194	Open the Prompts tab.	list_item
+8095a2e3ee	1	197	#/texts/195	Select the catalog and schema.	list_item
+e4c9042ea4	1	198	#/texts/196	Create a prompt name.	list_item
+900d6ca064	1	199	#/texts/197	Create the first version and save it.	list_item
+8f9dc26cd5	1	200	#/texts/198	Note	section_header
+03b4017167	1	201	#/texts/199	Prompt Registry uses the	text
+f55e329900	1	202	#/texts/200	{{variable_name}}	code
+b94c7a3814	1	203	#/texts/201	syntax for template variables in the UI. That keep	text
+fc35c638a6	1	204	#/texts/202	.format(...)	code
+fb2a792bba	1	205	#/texts/203	.	text
+079d2d208d	1	206	#/texts/204	Creating prompts programmatically with the Python 	section_header
+20f413e944	1	207	#/texts/205	The SDK approach is ideal when you want repeatabil	text
+78ed5e0fb8	1	208	#/texts/206	Databricks' quick start shows the essential workfl	text
+9564e2cacb	1	209	#/texts/207	register_prompt()	code
+80918450b4	1	210	#/texts/208	creates version 1, then	text
+04dbe0eb67	1	211	#/texts/209	set_prompt_alias()	code
+c5c321305e	1	212	#/texts/210	assigns a production alias, and then	text
+484579aa4d	1	213	#/texts/211	load_prompt()	code
+7d5814738f	1	214	#/texts/212	retrieves it for use. The same example also highli	text
+57126b8535	1	215	#/texts/213	Here's a Unity Airways example:	text
+935e7e4d22	1	216	#/texts/214	import mlflow\n\nuc_prompt = \"main.default.unity_air	code
+a68dcacaf2	1	217	#/texts/215	Note that	text
+79168af1ab	1	218	#/texts/216	register_prompt()	code
+8d40d9b32b	1	219	#/texts/217	creates a new prompt if the name does not exist; o	text
+970fb3aebc	1	220	#/texts/218	register_prompt()	code
+5d47317f0a	1	221	#/texts/219	accepts several parameters:	text
+71b8b43d0b	1	222	#/texts/220		list_item
+685dcb30f0	1	223	#/texts/221	name	code
+ec30dedb6d	1	224	#/texts/222	(required)	text
+82532127a5	1	225	#/texts/223		list_item
+e29332d640	1	226	#/texts/224	The registry identifier for the prompt. On Databri	text
+e9e35a2a3a	1	227	#/texts/225	catalog.schema.prompt_name	code
+b1895b475a	1	228	#/texts/226	, which keeps ownership and permissions explicit.	text
+6ba3edc6a4	1	229	#/texts/227		list_item
+4c260a1cf4	1	230	#/texts/228	template	code
+4712b48e5f	1	231	#/texts/229	(required)	text
+68a86d5d91	1	232	#/texts/230		list_item
+f2e6ecd4c6	1	233	#/texts/231	The prompt content you want to version. This can b	text
+99f239dce8	1	234	#/texts/232	{{question}}	code
+ef9ff7b79c	1	235	#/texts/233	, or a structured chat template represented as a l	text
+9bcb1b4c0f	1	236	#/texts/234		list_item
+ec36efdd46	1	237	#/texts/235	commit_message	code
+37322c528e	1	238	#/texts/236	(optional)	text
+63c4aec2fe	1	239	#/texts/237	A short, human-readable note describing the intent	list_item
+f160bf0d3e	1	240	#/texts/238		list_item
+4be06fb736	1	241	#/texts/239	tags	code
+65293820d8	1	242	#/texts/240	(optional)	text
+1716f9b5e5	1	243	#/texts/241	Key-value metadata attached to the prompt version.	list_item
+db50063642	1	244	#/texts/242		list_item
+64790a93e1	1	245	#/texts/243	response_format	code
+700a5f7c74	1	246	#/texts/244	(optional)	text
+6d84140ea3	1	247	#/texts/245	A schema describing the structure of the expected 	list_item
+5adb61c89d	1	248	#/texts/246		list_item
+0ddc9d53b7	1	249	#/texts/247	model_config	code
+e9a8e84fe4	1	250	#/texts/248	(optional)	text
+fac8ffa90a	1	251	#/texts/249	Generation settings stored alongside the prompt ve	list_item
+37275a3947	1	252	#/texts/250	In practice, you will not use all the parameters a	text
+081b15fd04	1	253	#/texts/251	commit_message	code
+81e8971882	1	254	#/texts/252	and	text
+b4146162bb	1	255	#/texts/253	tags	code
+f04eade382	1	256	#/texts/254	to provide more information about the prompt versi	text
+b5c75b0402	1	257	#/texts/255	After executing the previous Unity Airways code, y	text
+dad98acf7e	1	258	#/texts/256	Figure 3-3	text
+c49f825a1b	1	259	#/texts/257	.	text
+8f754ef33e	1	260	#/pictures/2	Screenshot of the MLflow Prompt Registry showing t	picture
+ef9d7624a9	1	261	#/texts/259	This is intentionally simple. The prompt text itse	text
+7eec4eac07	1	262	#/texts/260	Note	section_header
+ddce17d4b7	1	263	#/texts/261	Prompt templates include placeholders written as	text
+417742e632	1	264	#/texts/262	{{variable}}	code
+f32ce033f8	1	265	#/texts/263	. When your GenAI application uses the prompt, you	text
+22a1c1ae41	1	266	#/texts/264	to_single_brace_format()	code
+46c44c09e4	1	267	#/texts/265	to convert templates to	text
+3b002396e7	1	268	#/texts/266	{variable}	code
+caf1e0296c	1	269	#/texts/267	for frameworks such as LangChain or LlamaIndex tha	text
+523d1160f0	1	270	#/texts/268	Once you have multiple versions, the UI also suppo	text
+53b6dea8aa	1	271	#/texts/269	Figure 3-4	text
+fd3d716495	1	272	#/texts/270	). In Databricks, you can click the Compare button	text
+b2f1e429b7	1	273	#/pictures/3	A screenshot of the MLflow UI showing a side-by-si	picture
+63eda4575e	1	274	#/texts/272	Versioning prompts	section_header
+01026772f5	1	275	#/texts/273	The registry is deliberately strict about version 	text
+35e0dc8875	1	276	#/texts/274	At first, this can feel inconvenient. Then you rea	text
+de3f6fa15f	1	277	#/texts/275	Immutability makes comparisons meaningful.	list_item
+5166983f80	1	278	#/texts/276	It prevents accidental retroactive changes to what	list_item
+0c74e3c235	1	279	#/texts/277	It turns rollback into a deterministic operation: 	list_item
+206c034135	1	280	#/texts/278	Creating a new version programmatically simply inv	text
+503b34f3b3	1	281	#/texts/279	register_prompt()	code
+b78dd6284c	1	282	#/texts/280	again with the same prompt name and a new template	text
+b64dafa5a7	1	283	#/texts/281	mlflow.genai.register_prompt()	code
+df617d9218	1	284	#/texts/282	with an existing prompt name.	text
+679430e7a5	1	285	#/texts/283	Here is what a \"small, intentional change\" looks l	text
+7d52042b6c	1	286	#/texts/284	import mlflow\n\nuc_prompt = f\"{CATALOG}.{SCHEMA}.un	code
+62c3dd2b79	1	287	#/texts/285	After executing this code, you should be able to s	text
+317e9abe32	1	288	#/texts/286	Figure 3-5	text
+7d22a955fe	1	289	#/texts/287	.	text
+afd9e7018f	1	290	#/texts/288	Two habits make prompt versioning work long-term:	text
+b8b046071b	1	291	#/texts/289	Commit messages should include intent. \"Fix prompt	list_item
+a426f3dba8	1	292	#/texts/290	Change one major thing per version. If you change 	list_item
+96d4d5c11c	1	293	#/pictures/4	Screenshot showing two prompt versions in the MLfl	picture
+1714e59bbc	1	294	#/texts/292	To keep the practice disciplined, standardize a fe	text
+374f25bb7a	1	295	#/texts/293	Use the format \"behavior change | context | expect	list_item
+84ca69fdab	1	296	#/texts/294	Keep the version focused so you can attribute impr	list_item
+7e4e655320	1	297	#/texts/295	Tag the change as micro, medium, or major so revie	list_item
+5888cd6590	1	298	#/texts/296	Record a one-line hypothesis and tag operational r	list_item
+b900df5cdf	1	299	#/texts/297		list_item
+be2f30da43	1	300	#/texts/298	Note whether the evaluation passed, which dataset 	text
+0dd3cb0632	1	301	#/texts/299	clarify_missing_details	code
+d48f5bc5f2	1	302	#/texts/300	or	text
+2e1d8ced2f	1	303	#/texts/301	no_speculation	code
+9d08177d03	1	304	#/texts/302	.	text
+31818248be	1	305	#/texts/303		list_item
+5c875d7b7a	1	306	#/texts/304	Keep consistent tags for use case, domain, languag	text
+e9f6fceb3b	1	307	#/texts/305	target_alias=staging	code
+56485e21d7	1	308	#/texts/306	or	text
+4fb2be0ea2	1	309	#/texts/307	release_candidate=true	code
+dc9b8898ef	1	310	#/texts/308	.	text
+d6b6e28df0	1	311	#/texts/309	Tag it explicitly as a breaking change and list ex	list_item
+0a72d01078	1	312	#/texts/310	Capture a brief before/after note if latency or to	list_item
+518d858e37	1	313	#/texts/311	Finally, keep prompt names stable and descriptive,	text
+73516eaf23	1	314	#/texts/312	Promoting via aliases	section_header
+3b02d1051c	1	315	#/texts/313	Aliases are how you turn \"versioned artifacts\" int	text
+3ba6980662	1	316	#/texts/314	production	code
+dedc9ed365	1	317	#/texts/315	or	text
+2f38304eb5	1	318	#/texts/316	staging	code
+a6b5015fb4	1	319	#/texts/317	.	text
+df8bcf3ee6	1	320	#/texts/318	Unlike prompt versions, aliases are mutable. You c	text
+70ee07de63	1	321	#/texts/319	Setting an alias is a simple operation:	text
+5dfe34a5e7	1	322	#/texts/320	import mlflow\nmlflow.genai.set_prompt_alias(\n    n	code
+a64250e8f6	1	323	#/texts/321	This example mirrors the common pattern shown in t	text
+84b8d8f823	1	324	#/texts/322	staging	code
+df34cd9531	1	325	#/texts/323	and	text
+4eb9702ceb	1	326	#/texts/324	production	code
+ce484d8be6	1	327	#/texts/325	aliases appear in prompt versions 2 and 1, respect	text
+dad33f2da3	1	328	#/texts/326	set_prompt_alias()	code
+b056c16175	1	329	#/texts/327	takes three parameters:	text
+5532f4722f	1	330	#/texts/328	name	list_item
+3cfce75140	1	331	#/texts/329		list_item
+2e6a1f98ff	1	332	#/texts/330	The name of the prompt in the registry. In Databri	text
+451cc8bc77	1	333	#/texts/331	main.default.unity_airways_customer_support	code
+dd3f8534ec	1	334	#/texts/332	, which keeps the prompt unambiguous across catalo	text
+aa2a2beb14	1	335	#/texts/333	alias	list_item
+66fd6faf7a	1	336	#/texts/334		list_item
+a7814ac9c4	1	337	#/texts/335	The alias label you want to manage, such as	text
+8f55dbeb51	1	338	#/texts/336	staging	code
+d6979fa537	1	339	#/texts/337	or	text
+5a10f6da33	1	340	#/texts/338	production	code
+912367c6d5	1	341	#/texts/339	. Think of this as the stable handle your applicat	text
+4ea6fe74b2	1	342	#/texts/340	version	list_item
+8f8d4b390f	1	343	#/texts/341	The integer prompt version that the alias should p	list_item
+147b85057d	1	344	#/texts/342	Because aliases are mutable, you can promote a new	text
+82f7f060a3	1	345	#/texts/343	prompts:/...@production	code
+b59ef7019c	1	346	#/texts/344	) without redeployment.	text
+4e0bc09ea2	1	347	#/texts/345	In this section, we keep the alias idea simple: it	text
+245d8e0fd3	1	348	#/texts/346	Making prompts discoverable	section_header
+40c3888fa1	1	349	#/texts/347	Versioning tells you what changed. Tags tell you w	text
+60c6a646bb	1	350	#/texts/348	Databricks defines tags as version-specific, key-v	text
+3020865b8e	1	351	#/texts/349	A useful tagging strategy should incorporate two t	text
+9bffc43942	1	352	#/texts/350	Stable tags	list_item
+110d2ec419	1	353	#/texts/351		list_item
+209778a69a	1	354	#/texts/352	These are relevant across multiple versions and in	text
+aa655076e3	1	355	#/texts/353	use_case	code
+7e715ca31a	1	356	#/texts/354	,	text
+8ab3eff9d0	1	357	#/texts/355	owner	code
+21f4e0d09d	1	358	#/texts/356	, and	text
+74a22650ae	1	359	#/texts/357	language	code
+675706d057	1	360	#/texts/358	.	text
+fe7e8c20c2	1	361	#/texts/359	Change tags	list_item
+534b285804	1	362	#/texts/360		list_item
+0f2a93fe37	1	363	#/texts/361	These describe the specific changes in a particula	text
+7e0bd184ff	1	364	#/texts/362	improvement	code
+e2d1d2b5bd	1	365	#/texts/363	,	text
+39188fc02e	1	366	#/texts/364	risk	code
+74c786e63a	1	367	#/texts/365	,	text
+e0ea82117d	1	368	#/texts/366	tested_with	code
+e07b762f9c	1	369	#/texts/367	, or a brief hypothesis.	text
+4c28d859fb	1	370	#/texts/368	Tags are ideal for capturing the operational chara	text
+8c4b750bc1	1	371	#/texts/369	tested_with	code
+5252963a32	1	372	#/texts/370	,	text
+478a3026d3	1	373	#/texts/371	avg_latency_ms	code
+535990371d	1	374	#/texts/372	,	text
+f89f39e000	1	375	#/texts/373	team	code
+01795d7422	1	376	#/texts/374	, and	text
+d5bbaaf245	1	377	#/texts/375	project	code
+f0be584b02	1	378	#/texts/376	. While not mandatory, these examples illustrate t	text
+d4f8b29251	1	379	#/texts/377	Searching prompts in Unity Catalog	section_header
+b88f47638f	1	380	#/texts/378	You cannot manage what you cannot find. The regist	text
+ac301bd414	1	381	#/texts/379	search_prompts()	code
+6df7037976	1	382	#/texts/380	for discovery.	text
+d2c773245b	1	383	#/texts/381	While using a UC-backed registry, you must specify	text
+292196ce53	1	384	#/texts/382	The only supported filter format is specifying the	list_item
+adfee9e01a	1	385	#/texts/383	Name pattern filters are not supported.	list_item
+c36bf2986e	1	386	#/texts/384	Direct tag filtering is not supported.	list_item
+1d491acfc0	1	387	#/texts/385	That sounds restrictive, but it leads to a simple 	text
+06f7999353	1	388	#/texts/386	List prompts in a schema.	list_item
+982281cce9	1	389	#/texts/387	Filter the returned list programmatically.	list_item
+8e7463b906	1	390	#/texts/388	Here is an example:	text
+dcd911a0b3	1	391	#/texts/389	import mlflow\n\n# Required format: list all prompts	code
+c2dff5a4c0	1	392	#/texts/390	This approach is explicitly recommended: get the l	text
+4e6d15ed29	1	393	#/texts/391	search_prompts(...)	code
+5ab301ec51	1	394	#/texts/392	, then filter in Python.	text
+89adb9f13d	1	395	#/texts/393	search_prompts()	code
+12898b4132	1	396	#/texts/394	takes two arguments,	text
+f7d488838c	1	397	#/texts/395	filter_string	code
+476c3eb684	1	398	#/texts/396	and	text
+e548747eab	1	399	#/texts/397	max_results	code
+4ee05bbeb3	1	400	#/texts/398	:	text
+6c88383527	1	401	#/texts/399		list_item
+80d39999ec	1	402	#/texts/400	filter_string	code
+944ecdc423	1	403	#/texts/401	(optional)	text
+207540eead	1	404	#/texts/402		list_item
+fefad7b953	1	405	#/texts/403	A SQL-like filter expression that tells MLflow whi	text
+c71154853e	1	406	#/texts/404	task='summarization'	code
+24c554b917	1	407	#/texts/405	. In a Unity Catalog-backed Prompt Registry on Dat	text
+b4f5a65314	1	408	#/texts/406	catalog = '...' AND schema = '...'	code
+044115a2fc	1	409	#/texts/407	pattern is the only supported filter format. This 	text
+48354154b6	1	410	#/texts/408	unity_airways_	code
+35c3f94415	1	411	#/texts/409	, discovery becomes simple even without advanced s	text
+ef610e5769	1	412	#/texts/410		list_item
+f7b7e59361	1	413	#/texts/411	max_results	code
+f36e44c9c2	1	414	#/texts/412	(optional)	text
+3713312669	1	415	#/texts/413	The maximum number of prompts to return from the s	list_item
+6d0cea81ac	1	416	#/texts/414	Deleting prompts	section_header
+ba693b7709	1	417	#/texts/415	In Unity Catalog registries, you cannot delete a p	text
+cb6a37d2f2	1	418	#/texts/416	delete_prompt_version()	code
+0e5fd2cc2d	1	419	#/texts/417	, and only then can you delete the prompt itself.	text
+635f65c586	1	420	#/texts/418	That means cleanup typically looks like this:	text
+433770db7f	1	421	#/texts/419	from mlflow import MlflowClient\nclient = MlflowCli	code
+7cb05e7482	1	422	#/texts/420	delete_prompt_version()	code
+76c7071c8e	1	423	#/texts/421	deletes one specific version of a prompt from the 	text
+b409b58756	1	424	#/texts/422	name	list_item
+5c60b96727	1	425	#/texts/423		list_item
+35ebb3ca63	1	426	#/texts/424	The prompt's registry name to operate on. In a UC-	text
+573602c2bf	1	427	#/texts/425	catalog.schema.prompt_name	code
+e68bcee589	1	428	#/texts/426	, so the client can unambiguously locate the promp	text
+91a152fec4	1	429	#/texts/427	version	list_item
+a778c8caa8	1	430	#/texts/428		list_item
+2c8b728608	1	431	#/texts/429	The version identifier to delete. MLflow expects t	text
+e16af38039	1	432	#/texts/430	\"1\"	code
+92033eb01a	1	433	#/texts/431	), and the method deletes only that single version	text
+422f6d27d1	1	434	#/texts/432	The API is intentionally conservative. You delete 	text
+5d3ad5a42f	1	435	#/texts/174	Diagram illustrating the MLflow Prompt Registry li	caption
+343bef73cb	1	436	#/texts/258	Screenshot of the MLflow Prompt Registry showing t	caption
+d83d45a979	1	437	#/texts/271	A screenshot of the MLflow UI showing a side-by-si	caption
+1c9a4e67ba	1	438	#/texts/291	Screenshot showing two prompt versions in the MLfl	caption
+5f5bc6ce3a	1	439	#/texts/433	Using Prompts in Code	title
+112a619e1c	1	440	#/texts/434	Storing prompts in the registry is only half the b	text
+5b6b4ab3c8	1	441	#/texts/435	This section shows a simple, production-friendly p	text
+47a7f01837	1	442	#/texts/436	Figure 3-6	text
+a678a6761c	1	443	#/texts/437	). The goals are practical:	text
+dbed93327f	1	444	#/texts/438	You can reproduce behavior during development by p	list_item
+d2208ed737	1	445	#/texts/439	You can update behavior in production by switching	list_item
+7330ed8cc3	1	446	#/texts/440	You render template variables safely and fail when	list_item
+5a6c8d2eb8	1	447	#/pictures/5	Diagram of a prompt consumption pipeline showing t	picture
+6fb1ebe57c	1	448	#/texts/442	Loading a Prompt	section_header
+17687082df	1	449	#/texts/443	To enable dynamic updates without needing to redep	text
+fdf4fd6fd8	1	450	#/texts/444	production	code
+87b9811d21	1	451	#/texts/445	, and update the deployed behavior by reassigning 	text
+2ea3c02205	1	452	#/texts/446	Use a specific version when you are developing, te	list_item
+e4edc46e91	1	453	#/texts/447	Use an alias when you are running in production or	list_item
+652f755038	1	454	#/texts/448	This is the same mindset you use for software depe	text
+13ad83915e	1	455	#/texts/449	Loading a prompt by alias	section_header
+afc33fadcb	1	456	#/texts/450	The production path is defined by aliases. Databri	text
+f07fe0e061	1	457	#/texts/451	prompts:/{catalog}.{schema}.{prompt_name}@{alias}	code
+a923a76d3b	1	458	#/texts/452	.	text
+4afeea5174	1	459	#/texts/453	Here is a short example:	text
+8b5182f426	1	460	#/texts/454	import mlflow\n\nprompt_name = \"main.default.unity_a	code
+f45a844844	1	461	#/texts/455	A deployed application should not hardcode the ali	text
+d16b303ee9	1	462	#/texts/456	PROMPT_URI	code
+654628d5c3	1	463	#/texts/457	and	text
+f904e3c4b7	1	464	#/texts/458	PROMPT_ALIAS	code
+9032adb7d9	1	465	#/texts/459	from environment variables and then constructs the	text
+3fde175119	1	466	#/texts/460	Here is that pattern, adapted to the Unity Airways	text
+6865368d49	1	467	#/texts/461	import os\nmlflow.set_registry_uri(\"databricks-uc\")	code
+4ceac53a92	1	468	#/texts/462	This gives you a clean operational knob: deploy th	text
+71e55a1b29	1	469	#/texts/463	Loading a prompt by version	section_header
+b5e6d30ae3	1	470	#/texts/464	There are two common ways to load a specific versi	text
+fe40d22f3a	1	471	#/texts/465	prompts:/.../version	code
+6fd4b993be	1	472	#/texts/466	) or by providing name and version.	text
+1438552110	1	473	#/texts/467	The URI form is easy to standardize:	text
+ad36613090	1	474	#/texts/468	import mlflow\n\nprompt_name = f\"{CATALOG}.{SCHEMA}.	code
+e20bfc0fc3	1	475	#/texts/469	load_prompt()	code
+6c6cbb6080	1	476	#/texts/470	loads a prompt version from the Prompt Registry. Y	text
+e0d129cac2	1	477	#/texts/471	name_or_uri	list_item
+0fda56673b	1	478	#/texts/472	The prompt identifier to load. This can be either:	list_item
+7cd1769fbb	1	479	#/texts/473		list_item
+98838c4afb	1	480	#/texts/474	A prompt name (for example, a fully qualified Unit	text
+1344a42f7e	1	481	#/texts/475	main.default.unity_airways_customer_support	code
+14d73d5a0a	1	482	#/texts/476	)	text
+0780ca0efe	1	483	#/texts/477		list_item
+813c0632b8	1	484	#/texts/478	A prompt URI, such as	text
+d2b15871d0	1	485	#/texts/479	prompts:/my_prompt/1	code
+7dc0c4bcd9	1	486	#/texts/480	for a specific version, or an alias URI like	text
+f18b28e50c	1	487	#/texts/481	prompts:/main.default.unity_airways_customer_suppo	code
+35f6615ac3	1	488	#/texts/482	. Databricks documents the alias URI format as	text
+de1178f9a8	1	489	#/texts/483	prompts:/{catalog}.{schema}.{prompt_name}@{alias}	code
+b6942adcd8	1	490	#/texts/484	.	text
+a518d9c2ac	1	491	#/texts/485	version	list_item
+6d88d5268d	1	492	#/texts/486		list_item
+3d8e64dd7f	1	493	#/texts/487	The version to load when	text
+d64b97fba0	1	494	#/texts/488	name_or_uri	code
+05e5ab0413	1	495	#/texts/489	is a name. It is required if you want a specific v	text
+7106b4bc84	1	496	#/texts/490	allow_missing	list_item
+5d1e10e1bf	1	497	#/texts/491		list_item
+8d82816c44	1	498	#/texts/492	If	text
+b8601ddce6	1	499	#/texts/493	allow_missing=True	code
+a4f503194c	1	500	#/texts/494	,	text
+b67588feb8	1	501	#/texts/495	load_prompt	code
+ff36407725	1	502	#/texts/496	returns None instead of raising an exception when 	text
+efa4bdc3c2	1	503	#/texts/497	cache_ttl_seconds	list_item
+4c74080123	1	504	#/texts/498	Controls client-side caching for loaded prompts. I	list_item
+db371fa67b	1	505	#/texts/499	Rendering Template Variables with format()	section_header
+a5a5a32075	1	506	#/texts/500	Loading a prompt gives you a template. Using it re	text
+120d061b3a	1	507	#/texts/501	prompt.format(...)	code
+96026b724a	1	508	#/texts/502	with keyword arguments for each variable.	text
+c3b3f942b9	1	509	#/texts/503	Here's a simple example:	text
+43a249fd3e	1	510	#/texts/504	formatted = prompt.format(question=\"Can I change m	code
+529b31e436	1	511	#/texts/505	This looks harmless, but it is where many producti	text
+26f5c9f74b	1	512	#/texts/506	A small wrapper makes this safer:	text
+c3b7b663bb	1	513	#/texts/507	from typing import Any, Dict\n\ndef render_prompt(pr	code
+a66e872905	1	514	#/texts/508	The execution of this code prints the following ou	text
+8c3cd8befa	1	515	#/texts/509	You are a customer support assistant for Unity Air	code
+5f0c83b958	1	516	#/texts/510	This is not fancy, but it turns a confusing runtim	text
+a7bfd1a242	1	517	#/texts/511	Making the Model Call: A Minimal Databricks Patter	section_header
+ad1cfefd45	1	518	#/texts/512	Once you have a formatted prompt, you send it to a	text
+70111c614f	1	519	#/texts/513	Here is a minimal end-to-end call:	text
+9fa7b50c86	1	520	#/texts/514	from databricks.sdk import WorkspaceClient\n\nw = Wo	code
+a8e4a5e865	1	521	#/texts/515	Here are a few operational defaults to consider fo	text
+88598b1ecc	1	522	#/texts/516		list_item
+5b2ce35aeb	1	523	#/texts/517	Keep the	text
+51b8d330be	1	524	#/texts/518	temperature	code
+29e10b0552	1	525	#/texts/519	low for consistency.	text
+649fa8bea8	1	526	#/texts/520		list_item
+8082b972fa	1	527	#/texts/521	Set	text
+a4f0703c87	1	528	#/texts/522	max_tokens	code
+695b5401ca	1	529	#/texts/523	to prevent unexpectedly long outputs.	text
+622cfec17c	1	530	#/texts/524	Log the prompt name and version so you can correla	list_item
+5c144d5667	1	531	#/texts/525	Error-Handling Patterns and Gotchas	section_header
+a29c6a4a9a	1	532	#/texts/526	A registry makes changes easier, and that also mea	text
+b9fd3e1aa3	1	533	#/texts/527	At runtime, always record which prompt was used. I	text
+8bd749ae8c	1	534	#/texts/528	print(f\"Prompt used: {prompt.name} v{prompt.versio	code
+3cc2c0b28d	1	535	#/texts/529	Also avoid loading prompts on every request unless	text
+8d83643549	1	536	#/texts/530	If you use	text
+95c9f31f79	1	537	#/texts/531	allow_missing=True	code
+900c3d2aa0	1	538	#/texts/532	with	text
+19c18195d5	1	539	#/texts/533	load_prompt	code
+a3238fa39c	1	540	#/texts/534	, only do it when you have a conservative fallback	text
+d12ef7b2cc	1	541	#/texts/535	Finally, watch out for a few common gotchas that c	text
+dff3963278	1	542	#/texts/536	Hardcoding versions in production: it works, but i	list_item
+d941a595d3	1	543	#/texts/537	Changing prompt variables without updating callers	list_item
+67a25230f1	1	544	#/texts/538	Assuming a prompt is \"just text\": once prompts aff	list_item
+efecaa1331	1	545	#/texts/539	With these patterns, prompts become a managed depe	text
+24f93236a3	1	546	#/texts/441	Diagram of a prompt consumption pipeline showing t	caption
+b6e836941b	1	547	#/texts/540	Evaluating and Comparing Prompt Versions	title
+f323a5fa69	1	548	#/texts/541	Now you are familiar with versioning and aliases. 	text
+a8676823e5	1	549	#/texts/542	On Databricks, evaluating and comparing prompt ver	text
+5654d20784	1	550	#/texts/543	Chapter 6	text
+630301c613	1	551	#/texts/544	. Here, we focus on one question: which prompt ver	text
+e9ecfeb2a5	1	552	#/texts/545	The process has three moving parts:	text
+6d617c30e3	1	553	#/texts/546	A fixed evaluation dataset that represents real qu	list_item
+745d827da5	1	554	#/texts/547	A repeatable way to run a prompt version	list_item
+77a6058e8a	1	555	#/texts/548	A comparison step that summarizes results so you c	list_item
+99ca2408a9	1	556	#/texts/549	What matters is consistency. If you change both th	text
+8e0911c025	1	557	#/texts/550	Building a Prompt Evaluation Dataset	section_header
+c90348a12a	1	558	#/texts/551	A prompt evaluation dataset is not meant to be hug	text
+b2ef05d263	1	559	#/texts/552	For the Unity Airways example, the \"gotcha\" questi	text
+5839284383	1	560	#/texts/553	A dataset should have the following fields:	text
+797c7c775d	1	561	#/texts/554	inputs	list_item
+b493beeb72	1	562	#/texts/555	What your prompt receives (for this chapter, we wi	list_item
+a4bcc1be5e	1	563	#/texts/556	expectations	list_item
+ab8ee47d26	1	564	#/texts/557	What a good answer should include, expressed as a 	list_item
+de1a280495	1	565	#/texts/558	That expected-facts approach works well for custom	text
+3884889639	1	566	#/texts/559	Here is a dataset creation pattern that stores the	text
+31ac82771b	1	567	#/texts/560	EVAL_DATASET_NAME = f\"{CATALOG}.{SCHEMA}.ua_suppor	code
+9477b197d7	1	568	#/texts/561	This code helps to create a small evaluation datas	text
+06253b74a9	1	569	#/texts/562	Figure 3-7	text
+2871e56195	1	570	#/texts/563	.	text
+444df744db	1	571	#/pictures/6	A table in the Databricks Unity Catalog displays a	picture
+0cd0fcf288	1	572	#/texts/565	This dataset is deliberately small so you can vali	text
+19c0c179a4	1	573	#/texts/566	Write facts as checkable statements, not aspiratio	list_item
+5566b9a15b	1	574	#/texts/567	Example (good): \"If refund eligibility depends on 	list_item
+9e1407e71a	1	575	#/texts/568	Example (good): \"When the user asks for compensati	list_item
+3023a3ad03	1	576	#/texts/569	Example (bad): \"Be clear and friendly.\"	list_item
+07e325187f	1	577	#/texts/570	Example (bad): \"Give the best answer you can.\"	list_item
+f92d14e675	1	578	#/texts/571	Include hard cases where the model is tempted to g	list_item
+f37e6fc544	1	579	#/texts/572	Example (refund temptation): \"My flight is tomorro	list_item
+7cc6b34615	1	580	#/texts/573	Example (compensation temptation): \"My flight was 	list_item
+c375f74225	1	581	#/texts/574	Over time, treat this dataset as a living artifact	text
+6b964dbcc0	1	582	#/texts/575	Creating Prompt Versions to Compare	section_header
+bd2d7857d1	1	583	#/texts/576	When you have multiple prompt versions, you can re	text
+49851ee494	1	584	#/texts/577	v1: Short prompt, low instruction	list_item
+47a499840f	1	585	#/texts/578	v2: Clear constraints around missing details, spec	list_item
+aa9563b5c2	1	586	#/texts/579	Here we will use the same prompts that we register	text
+c384c8383f	1	587	#/texts/580	prompt_name	code
+0f1c5d7d12	1	588	#/texts/581	earlier in this chapter. Now that we have the vers	text
+083f667002	1	589	#/texts/582	Running Comparative Evaluation	section_header
+42402b0ea3	1	590	#/texts/583	We need a consistent way to run each prompt versio	text
+db48344a36	1	591	#/texts/584	Load a specific prompt version from Prompt Registr	list_item
+5ae4476f32	1	592	#/texts/585		list_item
+8d5729cc09	1	593	#/texts/586	Render variables with	text
+dc9b85c673	1	594	#/texts/587	.format(...)	code
+8b7f18f7c7	1	595	#/texts/588	.	text
+b7589e6117	1	596	#/texts/589	Send rendered text to an LLM hosted by the Databri	list_item
+a21a0a3491	1	597	#/texts/590	Return the output in a consistent shape so evaluat	list_item
+f2906d5440	1	598	#/texts/591	We will use Databricks Model Serving exclusively v	text
+191b90f4ee	1	599	#/texts/592	client = w.serving_endpoints.get_open_ai_client()\n	code
+fe0c2d12b1	1	600	#/texts/593	Next, run evaluation for each version. The evaluat	text
+74672bc7bb	1	601	#/texts/594	from mlflow.genai.scorers import Correctness\n\nchec	code
+1a1b3f29a6	1	602	#/texts/595	After executing this code, you should be able to s	text
+f5b77e49f3	1	603	#/texts/596	Figure 3-8	text
+7549c50d60	1	604	#/texts/597	.	text
+df02b562f8	1	605	#/pictures/7	MLflow experiments UI displaying two evaluation ru	picture
+c912e2b6a5	1	606	#/texts/599	This gives you a like-for-like comparison: same da	text
+bf7fde5552	1	607	#/texts/600	Comparing Results and Choosing a Winner	section_header
+67b0c71dde	1	608	#/texts/601	Once you have evaluation runs for multiple prompt 	text
+340b49d814	1	609	#/texts/602	Compare in the MLflow UI	section_header
+35c76a2688	1	610	#/texts/603	After your evaluation runs are logged, open the ML	text
+969f4194c5	1	611	#/texts/604	prompt_version	code
+34da9dceac	1	612	#/texts/605	parameter so the candidates sit next to each other	text
+83701ae8ad	1	613	#/texts/606	Figure 3-9	text
+4056681aeb	1	614	#/texts/607	.	text
+7259da6513	1	615	#/pictures/8	MLflow interface showing evaluation runs filtered 	picture
+5e0abc2e32	1	616	#/texts/609	Once you select the runs for the versions you are 	text
+f9ac386bc7	1	617	#/texts/610	Figure 3-10	text
+6c7fc21585	1	618	#/texts/611	shows this comparison.	text
+96dfeaa1eb	1	619	#/pictures/9	Interface showing a side-by-side comparison of cor	picture
+372c9b9106	1	620	#/texts/613	Compare programmatically	section_header
+64f18c6dad	1	621	#/texts/614	If you want a quick numeric summary in notebooks o	text
+87864f6e12	1	622	#/texts/615	print(\"\\n=== Version Comparison ===\")\nfor version_	code
+f6f4047549	1	623	#/texts/616	After executing this code, you should be able to s	text
+1942c8be30	1	624	#/texts/617	=== Version Comparison ===\nv1: correctness=0.33\nv2	code
+6a0f0d303f	1	625	#/texts/618	As you may have already noticed, it's aligned with	text
+4608dca6db	1	626	#/texts/619	Decide promotion with a clear rule	section_header
+e5da0a2ca3	1	627	#/texts/620	Whether you compare in the UI or in code, the prom	text
+c4fbf09f5d	1	628	#/texts/621	Interpreting the results is still a product decisi	text
+08d73fe593	1	629	#/texts/622	If v2 improves correctness but gets too long, tigh	list_item
+632782d869	1	630	#/texts/623	If v2 improves correctness but starts asking unnec	list_item
+f4cdf3e7be	1	631	#/texts/624	If v2 regresses, do not promote; instead, iterate.	list_item
+c9bd25a2bc	1	632	#/texts/625	Once you have a winner, you can move the	text
+b1e62df5dc	1	633	#/texts/626	staging	code
+0e1fa7d91c	1	634	#/texts/627	alias first, validate quickly, then move the alias	text
+946c13e3da	1	635	#/texts/628	production	code
+ba51e1ff5d	1	636	#/texts/629	.	text
+ae039cbe8d	1	637	#/texts/564	A table in the Databricks Unity Catalog displays a	caption
+89b3231e30	1	638	#/texts/598	MLflow experiments UI displaying two evaluation ru	caption
+9ff2a59016	1	639	#/texts/608	MLflow interface showing evaluation runs filtered 	caption
+592fcd6718	1	640	#/texts/612	Interface showing a side-by-side comparison of cor	caption
+e0bddbb3eb	1	641	#/texts/630	Prompt Optimization	title
+2b8f3cddf8	1	642	#/texts/631	Prompt optimization is an automated way to improve	text
+9b92d22f21	1	643	#/texts/632	This section shows how to run optimization in a di	text
+0889231060	1	644	#/texts/633	When Optimization Helps	section_header
+a877250b6b	1	645	#/texts/634	Optimization is most useful when you can define \"b	text
+ff9cdfd1b2	1	646	#/texts/635	Include required facts, such as \"eligibility depen	list_item
+05532d8bbf	1	647	#/texts/636	Avoid speculation about fees and waivers.	list_item
+eeb519b27b	1	648	#/texts/637	Ask for missing booking details when needed.	list_item
+1972ce9e5a	1	649	#/texts/638	Keep answers concise and consistent in structure.	list_item
+abafeb5661	1	650	#/texts/639	Optimization is less useful when the root issue is	text
+f6ccf810b5	1	651	#/texts/640	Multiple Techniques Through a Single MLflow Interf	section_header
+3b80f98965	1	652	#/texts/641	MLflow exposes prompt optimization through a unifi	text
+d1ceeaa7be	1	653	#/texts/642	mlflow.genai.optimize_prompts	code
+1771c272c9	1	654	#/texts/643	) and supports multiple built-in optimizers, while	text
+ede9bdd58e	1	655	#/texts/644	As of this writing, MLflow supports two first-clas	text
+ff71ba44a6	1	656	#/texts/645	GEPA (via GepaPromptOptimizer)	list_item
+514c249493	1	657	#/texts/646	An iterative approach that refines prompts using r	list_item
+069ae179a8	1	658	#/texts/647	Metaprompting (via MetaPromptOptimizer)	list_item
+e2ba208d75	1	659	#/texts/648	Restructures prompts to be more systematic. It can	list_item
+e398dc09c0	1	660	#/texts/649	Under the hood, these optimizers build on open sou	text
+dc5d507172	1	661	#/texts/650	mlflow.genai.optimize_prompts()	code
+ca2a7c7506	1	662	#/texts/651	. Later we will discuss how to use a GEPA prompt o	text
+da9c4e342f	1	663	#/texts/652	In practice, you can treat MLflow as the integrati	text
+23343013ea	1	664	#/texts/653	How prompts are versioned and swapped (Prompt Regi	list_item
+dc95db4a28	1	665	#/texts/654	How candidates are scored (scorers and evaluation 	list_item
+2483160ec5	1	666	#/texts/655	How results are tracked and compared (runs, metric	list_item
+c43353e2ca	1	667	#/texts/656	How winners move to staging or production (aliases	list_item
+3ab58534f4	1	668	#/texts/657	A Unity Airways Optimization Workflow	section_header
+720fa28ace	1	669	#/texts/658	The optimization workflow has four steps:	text
+dd32889957	1	670	#/texts/659	Register a baseline prompt in the Prompt Registry.	list_item
+a7be3ce4c3	1	671	#/texts/660	Define a predict function that loads the prompt fr	list_item
+c8e26f78bb	1	672	#/texts/661	Provide training examples with inputs and expected	list_item
+6f820ededd	1	673	#/texts/662	Run optimization to produce an improved prompt tem	list_item
+dceb8a39b6	1	674	#/texts/663	Step 1: Register a baseline prompt	section_header
+9a6cb0def8	1	675	#/texts/664	Establish a simple, baseline prompt version to ser	text
+1acb24a88d	1	676	#/texts/665	PROMPT_NAME = f\"{CATALOG}.{SCHEMA}.unity_airways_s	code
+1f13f57952	1	677	#/texts/666	Note	section_header
+faefa42f21	1	678	#/texts/667	A requirement is that the prediction function must	text
+adec6ce46d	1	679	#/texts/668	PromptVersion.format()	code
+20aa425b09	1	680	#/texts/669	. If you hardcode the prompt string inside the fun	text
+ea67afe323	1	681	#/texts/670	Step 2: Define a prediction function	section_header
+63a25455ee	1	682	#/texts/671	This function loads a specific prompt version, for	text
+7567fc64bd	1	683	#/texts/672	from databricks_openai import DatabricksOpenAI\n\nop	code
+e4c2a620aa	1	684	#/texts/673	Step 3: Provide training examples with expected fa	section_header
+e06e03d0e6	1	685	#/texts/674	Training examples should look like the questions y	text
+f82457ddf2	1	686	#/texts/675	train_dataset = [\n    {\n        \"inputs\": {\"questi	code
+ad0f958915	1	687	#/texts/676	Step 4: Run optimization and inspect the candidate	section_header
+2ff3344a93	1	688	#/texts/677	Now that you have a baseline prompt, a prediction 	text
+6eccda2e30	1	689	#/texts/678	When the optimization finishes, you should inspect	text
+25f2948823	1	690	#/texts/679	Quality hat	list_item
+18be1dcfed	1	691	#/texts/680	Does the candidate read like something you would a	list_item
+005f620233	1	692	#/texts/681	Risk hat	list_item
+baf7d0a6c5	1	693	#/texts/682	Did it become overly verbose, overly cautious, or 	list_item
+29be9ae32f	1	694	#/texts/683	It is common for the candidate to become more expl	text
+e385a98329	1	695	#/texts/684	Run optimization and extract the candidate templat	text
+9fcc74e3d6	1	696	#/texts/685	from mlflow.genai.optimize import GepaPromptOptimi	code
+4e1934dde3	1	697	#/texts/686	What the	text
+fd44f76d73	1	698	#/texts/687	GepaPromptOptimizer	code
+c60401864d	1	699	#/texts/688	parameters do:	text
+270a9b1307	1	700	#/texts/689	reflection_model	list_item
+168da256a0	1	701	#/texts/690	The model GEPA uses to propose edits to your templ	list_item
+c87abda8e7	1	702	#/texts/691	max_metric_calls	list_item
+493cb08d5a	1	703	#/texts/692	Your optimization budget. It caps how many evaluat	list_item
+26f02e9ff1	1	704	#/texts/693		list_item
+695643e32b	1	705	#/texts/694	display_progress_bar	code
+d2b3b5fd53	1	706	#/texts/695	(optional)	text
+d563c7b2cd	1	707	#/texts/696	Shows a progress bar while optimization runs. Usef	list_item
+00ed56bf5a	1	708	#/texts/697		list_item
+b1928fe750	1	709	#/texts/698	gepa_kwargs	code
+d747554fb2	1	710	#/texts/699	(optional)	text
+311b71e640	1	711	#/texts/700	Advanced pass-through settings for the underlying 	list_item
+29903c9a83	1	712	#/texts/701	After printing the template, do a quick \"sanity sc	text
+20ec01fd94	1	713	#/texts/702	Does it still enforce \"ask exactly one clarifying 	list_item
+492a82ee25	1	714	#/texts/703	Does it still avoid inventing fees, waivers, or el	list_item
+932f7fdb27	1	715	#/texts/704	Does it still keep the response concise, or did it	list_item
+a78353feb0	1	716	#/texts/705	At this stage, a quick UI review is also helpful b	text
+0c2b546df0	1	717	#/texts/706	If the candidate looks reasonable, the next step i	text
+d17f40248c	1	718	#/texts/707	staging	code
+998373208e	1	719	#/texts/708	, and eventually	text
+a11d460b89	1	720	#/texts/709	production	code
+706dc30111	1	721	#/texts/710	.	text
+1a07388193	1	722	#/texts/711	Figure 3-11	text
+dc2f425f88	1	723	#/texts/712	illustrates this prompt optimization flow.	text
+084a7dedf8	1	724	#/pictures/10	Diagram illustrating the prompt optimization flow,	picture
+76e7cdf454	1	725	#/texts/714	How Optimization Works Under the Hood	section_header
+30f0b5054b	1	726	#/texts/715	At a high level, prompt optimization is a search l	text
+8c149a22de	1	727	#/texts/716		list_item
+4e09c4f30f	1	728	#/texts/717	You define the target behavior and how to measure 	text
+ee552c9c77	1	729	#/texts/718	You provide an evaluation dataset (inputs plus exp	text
+110a4f359f	1	730	#/texts/719		list_item
+bde7ba8f79	1	731	#/texts/720	You run your predict function.	text
+f34152870b	1	732	#/texts/721	MLflow asks you for a	text
+0897079436	1	733	#/texts/722	predict_fn	code
+a785b9f48e	1	734	#/texts/723	that executes your chain or agent. That function l	text
+d920e8836c	1	735	#/texts/724	PromptVersion.format()	code
+d8a859b7dd	1	736	#/texts/725	, so the optimizer can swap in candidate templates	text
+fe3a31bee3	1	737	#/texts/726		list_item
+271b0f59c6	1	738	#/texts/727	The optimizer proposes candidate prompt edits with	text
+46f462ad5a	1	739	#/texts/728	Each algorithm has its own strategy, but they all 	text
+575654d5fc	1	740	#/texts/729		list_item
+784e7b6124	1	741	#/texts/730	Candidates are evaluated, compared, and selected.	text
+ce4a96d36b	1	742	#/texts/731	MLflow runs the candidates against your dataset us	text
+9cab396e85	1	743	#/texts/732	predict_fn	code
+578e3f1482	1	744	#/texts/733	, computes scores, aggregates them, and picks the 	text
+8fef05a910	1	745	#/texts/734	The point is that optimization does not replace yo	text
+7e4d49f354	1	746	#/texts/735	Keeping Optimization Practical	section_header
+8be185a044	1	747	#/texts/736	Optimization can get slow or expensive if you feed	text
+b9ae49814a	1	748	#/texts/737	Two common failure modes are worth watching for:	text
+52f963b307	1	749	#/texts/738	The candidate prompt becomes more complicated but 	list_item
+728f8f5f83	1	750	#/texts/739		list_item
+db498fa934	1	751	#/texts/740	The optimizer appears to run but the prompt never 	text
+c99ebc3cf2	1	752	#/texts/741	predict_fn	code
+f9a672a528	1	753	#/texts/742	that does not load the prompt from the registry an	text
+68a64fff29	1	754	#/texts/743	.format()	code
+810a6987c5	1	755	#/texts/744	, leaving nothing real to optimize.	text
+6ac6fb90a8	1	756	#/texts/745	When you do get a promising candidate, keep the fi	text
+629b42da57	1	757	#/texts/746	Compare the optimized version against the current 	list_item
+1d02f6b887	1	758	#/texts/747		list_item
+03287eb845	1	759	#/texts/748	Assign the winner to	text
+ccf4a3a6c5	1	760	#/texts/749	staging	code
+7b745fc39f	1	761	#/texts/750	first.	text
+87a1879a8e	1	762	#/texts/751		list_item
+cbf5e1ff1f	1	763	#/texts/752	Promote to	text
+7260d79451	1	764	#/texts/753	production	code
+bec15e43de	1	765	#/texts/754	only after	text
+8465f360b7	1	766	#/texts/755	staging	code
+9c72e8d988	1	767	#/texts/756	validation.	text
+9637f5b15c	1	768	#/texts/757		list_item
+43837ab658	1	769	#/texts/758	Keep rollback trivial by knowing the previous	text
+fda6ab79ff	1	770	#/texts/759	production	code
+133fc11360	1	771	#/texts/760	version.	text
+806bd76cd8	1	772	#/texts/761	Optimization can generate candidates faster, but r	text
+fb4796fc52	1	773	#/texts/713	Diagram illustrating the prompt optimization flow,	caption
+b94a231816	1	774	#/texts/762	Integrating Prompts into Applications	title
+7a672144ba	1	775	#/texts/763	Prompts become operational the moment they affect 	text
+5f83b0c1b8	1	776	#/texts/764	A reliable integration pattern has two ideas:	text
+430b637c8f	1	777	#/texts/765		list_item
+f714f2b4d2	1	778	#/texts/766	Immutable prompt versions	text
+dd3026c073	1	779	#/texts/767	capture exactly what changed and when.	text
+aa76906658	1	780	#/texts/768		list_item
+96b9a302dc	1	781	#/texts/769	Aliases	text
+8e20c49f52	1	782	#/texts/770	(like	text
+f45024a3c5	1	783	#/texts/771	staging	code
+d67eec9376	1	784	#/texts/772	and	text
+d596bf30c8	1	785	#/texts/773	production	code
+5ff1ec4a06	1	786	#/texts/774	) act as stable pointers that your application can	text
+ff6c76fc1f	1	787	#/texts/775	Your application should load prompts by alias, not	text
+b04a2b4737	1	788	#/texts/776	A practical release workflow for prompts looks lik	text
+0d43550d50	1	789	#/texts/777	Publish a new prompt version (manual edit or optim	list_item
+81f27676db	1	790	#/texts/778		list_item
+7b72499aa9	1	791	#/texts/779	Point	text
+d171ea49b6	1	792	#/texts/780	staging	code
+d017483e27	1	793	#/texts/781	to the candidate version.	text
+1b71700bc4	1	794	#/texts/782	Validate using your evaluation workflow and a quic	list_item
+7334697669	1	795	#/texts/783		list_item
+b585a38459	1	796	#/texts/784	Move	text
+4e53cd4e35	1	797	#/texts/785	production	code
+9f2b098910	1	798	#/texts/786	to the candidate version.	text
+fbe5fe2a4e	1	799	#/texts/787	Keep rollback trivial by remembering the previous 	list_item
+803a6a5c45	1	800	#/texts/788	This is the same safety model you use for applicat	text
+5c4d1364d7	1	801	#/texts/789	Publishing Versions and Assigning Aliases	section_header
+45c71f7dd8	1	802	#/texts/790	Start by registering a baseline prompt and then cr	text
+6f027379c6	1	803	#/texts/791	The following snippet creates two versions of a Un	text
+056e4e5a76	1	804	#/texts/792	PROMPT = f\"{CATALOG}.{SCHEMA}.unity_airways_custom	code
+e067257ec9	1	805	#/texts/793	At this point, you have created a clean separation	text
+8c46f57442	1	806	#/texts/794	Referencing Aliases in Your Application	section_header
+a145754ce3	1	807	#/texts/795	Now we make the application consume prompts in a w	text
+4f3fa7f69e	1	808	#/texts/796	PROMPT_URI	list_item
+ef2f8dd25e	1	809	#/texts/797		list_item
+91a77d739e	1	810	#/texts/798	Unity Catalog prompt name (e.g.,	text
+9a5b74d0c6	1	811	#/texts/799	main.default.unity_airways_customer_support	code
+8b7277b60d	1	812	#/texts/800	)	text
+1a34e105af	1	813	#/texts/801	PROMPT_ALIAS	list_item
+8101ffb19a	1	814	#/texts/802		list_item
+8d4d853ea6	1	815	#/texts/803	Which alias to load (default to	text
+735ad8d6ea	1	816	#/texts/804	production	code
+54987978cf	1	817	#/texts/805	)	text
+b51f5cd31c	1	818	#/texts/806	This lets you deploy the same code everywhere and 	text
+1ea56b664c	1	819	#/texts/807	PROMPT_ALIAS=production	code
+05c670fb2b	1	820	#/texts/808	. In staging, you set	text
+dc91d94213	1	821	#/texts/809	PROMPT_ALIAS=staging	code
+085d3e9199	1	822	#/texts/810	. Everything else remains identical.	text
+294877dcaa	1	823	#/texts/811	End-to-End \"Thin Slice\"	section_header
+16547ff66a	1	824	#/texts/812	Once you have a prompt object, you render it with	text
+7f47ba358b	1	825	#/texts/813	.format(...)	code
+0fe2aa8e21	1	826	#/texts/814	and send the resulting text to an LLM. In this cha	text
+3bbde7c21d	1	827	#/texts/815	The example that follows shows an end-to-end funct	text
+4e972f6950	1	828	#/texts/816	from databricks_openai import DatabricksOpenAI\n\nop	code
+ec40f385a2	1	829	#/texts/817	This \"thin slice\" is intentionally simple. It prov	text
+fe676e5c56	1	830	#/texts/818	Promoting to Production and Rolling Back Safely	section_header
+68c32eef42	1	831	#/texts/819	Once your evaluation results look good and staging	text
+89d6d803b6	1	832	#/texts/820	First, promote by moving the	text
+fc33adb6ca	1	833	#/texts/821	production	code
+2e892fe6e2	1	834	#/texts/822	alias to the candidate version:	text
+3b8d470648	1	835	#/texts/823	mlflow.genai.set_prompt_alias(\n    name=f\"{CATALOG	code
+0ababb66a0	1	836	#/texts/824	If anything unexpected happens, rollback is equall	text
+92dc44f051	1	837	#/texts/825	production	code
+ef987459ce	1	838	#/texts/826	back to the previous version:	text
+0db0c32d72	1	839	#/texts/827	mlflow.genai.set_prompt_alias(\n    name=f\"{CATALOG	code
+d448bcf03e	1	840	#/texts/828	Two operational habits make this safer:	text
+cfba85f80e	1	841	#/texts/829	Record the previous production version before prom	list_item
+688abefd86	1	842	#/texts/830		list_item
+30a624b4f5	1	843	#/texts/831	Keep the promotion from	text
+ddedc0c765	1	844	#/texts/832	staging	code
+96dac8c7e8	1	845	#/texts/833	to	text
+ac9950ee0a	1	846	#/texts/834	production	code
+0e29411410	1	847	#/texts/835	explicit, even if your team is small. It prevents 	text
+ec7912c508	1	848	#/texts/836	A small amount of discipline prevents most prompt 	text
+559ef47306	1	849	#/texts/837	Conclusion and Key Takeaways	title
+7ac72ac99c	1	850	#/texts/838	Prompt engineering is an engineering problem requi	text
+b5a129e037	1	851	#/texts/839	This chapter outlined the end-to-end prompt lifecy	text
+d69e9294eb	1	852	#/texts/840	We then covered prompt management using the MLflow	text
+0d41db9421	1	853	#/texts/841	Next, we made prompt usage predictable by loading 	text
+87f0482889	1	854	#/texts/842	Finally, we discussed tightening the feedback loop	text
+d75658d682	1	855	#/texts/843	The core theme is making prompt changes routine, m	text
+b468a5de6c	1	856	#/texts/844	Key takeaways from this chapter include:	text
+3b4471a740	1	857	#/texts/845	Treat prompts as production assets, not notebook t	list_item
+23e70f53d9	1	858	#/texts/846	Write prompts as contracts with clear scope, expli	list_item
+70a6bbb43c	1	859	#/texts/847	Use the MLflow Prompt Registry as the source of tr	list_item
+de31506f0c	1	860	#/texts/848	Embrace immutability. Every meaningful edit is a n	list_item
+7ba709cb7f	1	861	#/texts/849	Use aliases for deployment. Application code shoul	list_item
+5d040842b0	1	862	#/texts/850	Load and format prompts consistently in code, and 	list_item
+5284567fa8	1	863	#/texts/851	Compare prompt versions on a stable evaluation dat	list_item
+115f7724f7	1	864	#/texts/852	Use automatic prompt optimization to propose impro	list_item
+b5d162df34	1	865	#/texts/853	Keep releases reversible. Promoting and rolling ba	list_item

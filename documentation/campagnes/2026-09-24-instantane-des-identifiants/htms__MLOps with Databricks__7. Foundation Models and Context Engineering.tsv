@@ -1,0 +1,1271 @@
+element_id	page_no	position_in_page	self_ref	text50	label
+e60fb9e52c	1	0	#/texts/0	Chapter 7. Foundation Models and Context Engineeri	title
+36b259be97	1	1	#/texts/1	The number of Generative AI (GenAI) use cases has 	text
+fa351ad5c0	1	2	#/texts/2	For example,	text
+c83418b2ca	1	3	#/texts/3	Airbnb completed a large-scale LLM-driven code mig	text
+f15197852f	1	4	#/texts/4	to update nearly 3,500 React component test files.	text
+2377ca5949	1	5	#/texts/5	Similarly,	text
+4319a966b9	1	6	#/texts/6	DoorDash built AutoEval	text
+c68a4ec486	1	7	#/texts/7	, an LLM-powered, human-in-the-loop system for eva	text
+6162641f7e	1	8	#/texts/8	These examples illustrate a broader shift: organiz	text
+db76e5fb82	1	9	#/texts/9	if	text
+57cea45f5e	1	10	#/texts/10	they should use LLMs but	text
+ba67d272f3	1	11	#/texts/11	how	text
+b25d2296b8	1	12	#/texts/12	to operationalize them effectively. From my consul	text
+146d863ac1	1	13	#/texts/13	Introduction to LLMOps	title
+1a32faaf57	1	14	#/texts/14	Many teams are eager to build \"agents\" and experim	text
+fd42b54a87	1	15	#/texts/15	2	text
+adbb9846c6	1	16	#/texts/16	through	text
+74ac688a89	1	17	#/texts/17	6	text
+9262799c24	1	18	#/texts/18	.	text
+7fc1beecac	1	19	#/texts/19	Rather than optimizing for the \"best\" possible mod	text
+bef23f9658	1	20	#/texts/20	operational excellence	text
+64adc4182e	1	21	#/texts/21	: how to build systems that are observable, mainta	text
+9b0374b33f	1	22	#/texts/22	This field goes by several names, including LLMOps	text
+88210dcb5a	1	23	#/texts/23	Chapter 1	text
+d182500e6e	1	24	#/texts/24	, what sets these systems apart from traditional M	text
+f40a66fc45	1	25	#/texts/25	Before we go further, however, it is important to 	text
+2da7cb7087	1	26	#/texts/26	agent	text
+6cd3c57d95	1	27	#/texts/27	.	text
+56ffe21e74	1	28	#/texts/28	What Is an Agent?	section_header
+9ae6923bc5	1	29	#/texts/29	The term	text
+a8a63dd578	1	30	#/texts/30	agent	text
+71eac97bd5	1	31	#/texts/31	is used extensively across the AI landscape, often	text
+068b435e9a	1	32	#/texts/32	In this book, we adopt a pragmatic definition insp	text
+121209403c	1	33	#/texts/33	1	text
+43f9a5f3ae	1	34	#/texts/34	An agent is a large language model (LLM) configure	text
+ed503d4433	1	35	#/texts/35	This definition keeps things grounded in how syste	text
+72df12d435	1	36	#/texts/36	Instructions	list_item
+2650bf46c7	1	37	#/texts/37	These define the role and behavior of the model.	list_item
+a7973a8095	1	38	#/texts/38	A model	list_item
+7780a7081b	1	39	#/texts/39	This determines the agent's underlying capabilitie	list_item
+4e9cdaec16	1	40	#/texts/40	Tools	list_item
+c6ef432b18	1	41	#/texts/41	These extend the model's abilities through externa	list_item
+ec5b911701	1	42	#/texts/42	Even within this setup, developers retain control 	text
+a2426cbd1a	1	43	#/texts/43	It is worth noting that not all organizations defi	text
+f09670c470	1	44	#/texts/44	\"Building Effective Agents\"	text
+7381c285f0	1	45	#/texts/45	, Anthropic distinguishes between an augmented LLM	text
+cb413be112	1	46	#/texts/46	augmented LLM	text
+b421812fec	1	47	#/texts/47	is simply a model with access to tools and memory,	text
+60954ec866	1	48	#/texts/48	agent	text
+66515c2192	1	49	#/texts/49	is a system that operates in a loop of	text
+1f67735227	1	50	#/texts/50	decide \u2192 act \u2192 observe.	text
+5ee9478745	1	51	#/texts/51	While this perspective is useful, especially when 	text
+0019741b8c	1	52	#/texts/52	who is making decisions	text
+df0b32073f	1	53	#/texts/53	.	text
+75a789a005	1	54	#/texts/54	Here are two simple rules of thumb:	text
+0b33d86987	1	55	#/texts/55		list_item
+a0c5f476f5	1	56	#/texts/56	If	text
+95e97ab356	1	57	#/texts/57	your code	text
+56d6f39c5d	1	58	#/texts/58	determines what actions are taken, the system is n	text
+59fd153257	1	59	#/texts/59		list_item
+831f973844	1	60	#/texts/60	If	text
+d6bd1bc696	1	61	#/texts/61	the LLM	text
+21e0a226fb	1	62	#/texts/62	determines what actions are taken, the system is a	text
+b2f909b05a	1	63	#/texts/63	This distinction helps clarify common patterns. A 	text
+9520f0ba0a	1	64	#/texts/64	This leads to an important conclusion:	text
+72ddbb35a9	1	65	#/texts/65	not every system that uses an LLM is an agent	text
+47cca61786	1	66	#/texts/66	. From this perspective, agents are best understoo	text
+2a9823bb99	1	67	#/texts/67	In this chapter, the system we'll build sits at th	text
+9a19cb5627	1	68	#/texts/68	Structure of the LLMOps Chapters	section_header
+141d584d15	1	69	#/texts/69	In this and the next few chapters, we will build a	text
+acb8cf7799	1	70	#/texts/70	Here is a list of the LLM system components we are	text
+1adfce548d	1	71	#/texts/71		list_item
+bd74c87002	1	72	#/texts/72	Foundation models on Databricks (in	text
+2b37610c6a	1	73	#/texts/73	Chapter 7	text
+4800fb1ad5	1	74	#/texts/74	)	text
+48173ca625	1	75	#/texts/75	When you build these, you will be selecting and ho	list_item
+170e6b6932	1	76	#/texts/76		list_item
+9d80020cc2	1	77	#/texts/77	Context engineering (in	text
+f0e180be46	1	78	#/texts/78	Chapter 7	text
+c4810931e9	1	79	#/texts/79	)	text
+ddf6b847f4	1	80	#/texts/80	Getting from raw data to an agent context	list_item
+2a438f5135	1	81	#/texts/81	You'll do this to ingest and process external docu	list_item
+fa36fab850	1	82	#/texts/82	Using Model Context Protocol servers on Databricks	list_item
+990f16dddb	1	83	#/texts/83	You'll do this to standardize tool access.	list_item
+c366e3446c	1	84	#/texts/84	Using agent memory with Lakebase	list_item
+1e4040a662	1	85	#/texts/85	You'll use this to maintain state across conversat	list_item
+71df58f68a	1	86	#/texts/86		list_item
+cb42b49a1a	1	87	#/texts/87	MLflow for AI agents (in	text
+75221645b8	1	88	#/texts/88	Chapter 8	text
+47529d149c	1	89	#/texts/89	)	text
+f1f5b82ff4	1	90	#/texts/90	Logging and registering an agent	list_item
+3df5e86d06	1	91	#/texts/91	This includes defining the logic of an agent, logg	list_item
+3ca1c4e291	1	92	#/texts/92	MLflow tracing	list_item
+229ecc2166	1	93	#/texts/93	This includes recording reasoning chains and tool 	list_item
+a96a63e6dd	1	94	#/texts/94	Agent evaluation	list_item
+8cd8ce6465	1	95	#/texts/95	This involves systematically measuring output qual	list_item
+8ee4973be3	1	96	#/texts/96		list_item
+87a2546f0a	1	97	#/texts/97	LLM system deployment (in	text
+976744f84c	1	98	#/texts/98	Chapter 9	text
+8d34e4ad6c	1	99	#/texts/99	)	text
+ae9206444f	1	100	#/texts/100	You'll do this to operationalize the workflow.	list_item
+5fa490fc97	1	101	#/texts/101		list_item
+32bccd4874	1	102	#/texts/102	LLM system monitoring (	text
+23a42cb31b	1	103	#/texts/103	Chapter 9	text
+1ae0bee83b	1	104	#/texts/104	)	text
+5c8718f0f2	1	105	#/texts/105	You'll do this to monitor safety and performance i	list_item
+4c3dfecca1	1	106	#/texts/106	Figure 7-1	text
+87bde8a204	1	107	#/texts/107	provides a visual representation of these componen	text
+2a7752b211	1	108	#/pictures/0	Diagram illustrating the system components of a la	picture
+5758cf3bd3	1	109	#/texts/109	Let's go through these components one by one, star	text
+cf0ff03345	1	110	#/texts/108	Diagram illustrating the system components of a la	caption
+4642524f40	1	111	#/texts/110	Foundation Models on Databricks	title
+800b25cf40	1	112	#/texts/111	Working with foundation models on Databricks gives	text
+ad6d6c017c	1	113	#/texts/112	Hosting Options	section_header
+76991ba2f6	1	114	#/texts/113	The Databricks platform hosts a variety of ready-t	text
+dadc8f399b	1	115	#/texts/114	Regardless of which option you choose, all models 	text
+2e76e8d145	1	116	#/texts/115	llm/v1/chat	list_item
+2272972f34	1	117	#/texts/116	This corresponds to the OpenAI Chat Completions AP	list_item
+5e2f723abf	1	118	#/texts/117	llm/v1/embeddings	list_item
+d8e890ea71	1	119	#/texts/118	This corresponds to the OpenAI Embeddings API.	list_item
+d01f0d948b	1	120	#/texts/119	llm/v1/completions	list_item
+480b5aea57	1	121	#/texts/120	This follows the legacy OpenAI Completions API.	list_item
+bcf035ad0f	1	122	#/texts/121	This unified interface lets you query foundation m	text
+9842a2ae9d	1	123	#/texts/122	Here is an example of how we can interact with the	text
+0ccd299fcf	1	124	#/texts/123	databricks-gpt-oss-120b	code
+eae2ae30a2	1	125	#/texts/124	model:	text
+35326aa4df	1	126	#/texts/125	from databricks.sdk import WorkspaceClient	code
+ace9c640a9	1	127	#/texts/126		code
+497c45dedf	1	128	#/texts/127	from openai import OpenAI	code
+5c732dae79	1	129	#/texts/128		code
+590fbc6e13	1	130	#/texts/129	w = WorkspaceClient ()	code
+1854a1a095	1	131	#/texts/130		code
+402f149ef6	1	132	#/texts/131	host = w . config . host	code
+94da9a03cb	1	133	#/texts/132		code
+05d26941c4	1	134	#/texts/133	token = w . tokens . create ( lifetime_seconds = 1	code
+825e2fe56b	1	135	#/texts/134		code
+33d02e5a36	1	136	#/texts/135	client = OpenAI ( api_key = token , base_url = f \"	code
+a7586dd3fe	1	137	#/texts/136		code
+f07bfbe51d	1	138	#/texts/137	)	code
+1a7b2e68f0	1	139	#/texts/138		code
+38e0c1bea3	1	140	#/texts/139	response = client . chat . completions . create ( 	code
+fc22813ec5	1	141	#/texts/140		code
+1a2dac91d5	1	142	#/texts/141	)	code
+2db214e0d6	1	143	#/texts/142	Another benefit of using foundation models on Data	text
+d88483c750	1	144	#/texts/143	Figure 7-2	text
+98a5c58e16	1	145	#/texts/144	). We deployed an AI gateway for our Model Serving	text
+a9139c26bd	1	146	#/pictures/1	Diagram illustrating the Databricks AI Gateway, sh	picture
+867e1ca1e7	1	147	#/texts/146	We can also use foundation model APIs in batch mod	text
+ad65695fc6	1	148	#/texts/147	ai_query	code
+3480f78cd5	1	149	#/texts/148	.	text
+1666019ff7	1	150	#/texts/149	2	text
+95313591d7	1	151	#/texts/150	Some Databricks-hosted models are optimized for ba	text
+6c18e139b1	1	152	#/texts/151	ai_query	code
+b3464bf7fc	1	153	#/texts/152	works for any endpoint deployed through Databricks	text
+317b55d770	1	154	#/texts/153	As we mentioned earlier, Databricks offers ready-t	text
+2b61552e49	1	155	#/texts/154	Databricks-hosted models (pay-per-token)	section_header
+dd89e4e071	1	156	#/texts/155	These models are ideal for experimentation and exp	text
+d2750971de	1	157	#/texts/156	3	text
+ac3ec08c66	1	158	#/texts/157	However, they are subject to workspace-level rate 	text
+dd2f0944cc	1	159	#/texts/158	Provisioned throughput endpoints	section_header
+a922b5332f	1	160	#/texts/159	These endpoints are recommended for production, an	text
+0f9381ca5e	1	161	#/texts/160	system.ai	code
+eabdfae671	1	162	#/texts/161	schema. You can also bring your own model (perhaps	text
+0ea288e067	1	163	#/texts/162	Provisioned throughput works only for selected fou	text
+60867df374	1	164	#/texts/163	4	text
+828e083453	1	165	#/texts/164	If you choose to bring your own model and its meta	text
+71b6880aaf	1	166	#/texts/165	5	text
+16fe19b079	1	167	#/texts/166	For some models, provisioned throughput is express	text
+7033e668d5	1	168	#/texts/167	tokens per second	text
+1a9bc53bde	1	169	#/texts/168	(input and output tokens combined), rather than re	text
+b05b03fe5c	1	170	#/texts/169	Optimizing LLM inference performance is not an eas	text
+cce137b0ab	1	171	#/texts/170	6	text
+a59269c0c9	1	172	#/texts/171	You can also scale the endpoint to 0 to avoid unne	text
+daad46966a	1	173	#/texts/172	For other models, provisioned throughput is expres	text
+94ef65bcd6	1	174	#/texts/173	model units	text
+edf91519b9	1	175	#/texts/174	, which is an abstraction layer on top of tokens p	text
+59808a6ef2	1	176	#/texts/175	External models	section_header
+59d0010837	1	177	#/texts/176	External models	text
+084b0bad06	1	178	#/texts/177	are hosted outside of Databricks, which means you 	text
+c21b1b8061	1	179	#/texts/178	7	text
+7399ee5dff	1	180	#/texts/179	Various providers are supported, and you can also 	text
+990c17bdbd	1	181	#/texts/180	Even though you could access external models direc	text
+06cf47581b	1	182	#/texts/181	You can also use the custom provider option when y	text
+0c20659236	1	183	#/texts/182	8	text
+771146e4fe	1	184	#/texts/183	Types of Foundation Models	section_header
+d989b2eec7	1	185	#/texts/184	Foundation models on Databricks are categorized in	text
+03121d3df2	1	186	#/texts/185	General purpose models	list_item
+92c617b871	1	187	#/texts/186		list_item
+54f4d4b3a6	1	188	#/texts/187	These models are fine-tuned on large datasets of h	text
+03bda49703	1	189	#/texts/188	9	text
+9cec5f4c20	1	190	#/texts/189	Embedding models	list_item
+e09543ae4e	1	191	#/texts/190	These models transform complex data, such as text,	list_item
+1b1ed804a5	1	192	#/texts/191	Vision models	list_item
+d09f0e156f	1	193	#/texts/192	These models are designed to analyze visual data, 	list_item
+57b97a5429	1	194	#/texts/193	Reasoning models	list_item
+ea5948edd8	1	195	#/texts/194	These models excel at breaking down complex tasks 	list_item
+ce632344ff	1	196	#/texts/195	In this book, we are going to use the	text
+7ada12ddfa	1	197	#/texts/196	databricks-gte-large-en	code
+7380d18022	1	198	#/texts/197	embedding model to generate embeddings and store t	text
+0986715b80	1	199	#/texts/198	databricks-gpt-oss-120b	code
+aec05de34f	1	200	#/texts/199	.	text
+a73e7d6fff	1	201	#/texts/200	Now that we have a better understanding of foundat	text
+bce287e756	1	202	#/texts/145	Diagram illustrating the Databricks AI Gateway, sh	caption
+f507e92ce2	1	203	#/texts/201	Context Engineering	title
+9704124718	1	204	#/texts/202	In the early days of AI engineering, it was all ab	text
+8e663ac458	1	205	#/texts/203	context state	text
+e12809566e	1	206	#/texts/204	, which includes external data, available tools, c	text
+a80e8252b6	1	207	#/texts/205	Figure 7-3	text
+49e13a69b5	1	208	#/texts/206	).	text
+06b475a733	1	209	#/pictures/2	Diagram comparing prompt engineering for single-tu	picture
+1f00e57178	1	210	#/texts/208	Consider an agent running in a loop. Each	text
+41accfb381	1	211	#/texts/209	turn	text
+90f4f7dd45	1	212	#/texts/210	of the loop generates new information (tool output	text
+5d355a9c9e	1	213	#/texts/211	getting	text
+34d82f8c67	1	214	#/texts/212	information to the model; it's about shaping more 	text
+c2e6cdcaf7	1	215	#/texts/213	curating	text
+7adb917f72	1	216	#/texts/214	what goes in,	text
+4a1755e5b4	1	217	#/texts/215	when	text
+b1bc35fdf7	1	218	#/texts/216	, and	text
+12d314677b	1	219	#/texts/217	how.	text
+c3cd50cbbb	1	220	#/texts/218	This is what modern	text
+cb1f77749a	1	221	#/texts/219	context engineering	text
+e2eed6d6fd	1	222	#/texts/220	is all about.	text
+4c761f3070	1	223	#/texts/221	In this section, we'll explore three core aspects 	text
+623edaf37b	1	224	#/texts/222	Getting from raw data to agent context	list_item
+75d5635b8d	1	225	#/texts/223	This is how agents access and retrieve information	list_item
+0ca2ea59bb	1	226	#/texts/224	Model Context Protocol servers on Databricks	list_item
+e1b835d6d7	1	227	#/texts/225	This is a standardized protocol for exposing tools	list_item
+e4c6366f42	1	228	#/texts/226	Using agent memory with Lakebase	list_item
+d73bccdff2	1	229	#/texts/227	This is how you maintain state and conversation hi	list_item
+61b1e775a4	1	230	#/texts/228	Reference Architecture: The arXiv Curator	section_header
+77cadda65b	1	231	#/texts/229	To make these concepts concrete, we'll build a sys	text
+73bace6768	1	232	#/texts/230	Download and process full paper PDFs by extracting	list_item
+d3d1a8e947	1	233	#/texts/231	Chunk and embed the content by storing vector repr	list_item
+8aced02d6d	1	234	#/texts/232	Track paper metadata in a Delta table by recording	list_item
+80a68ea9f7	1	235	#/texts/233	Expose these resources via Model Context Protocol 	list_item
+d7986d316e	1	236	#/texts/234	Now, we could take a simpler approach: the arXiv A	text
+89ab4cf95f	1	237	#/texts/235	I intentionally made the architecture more sophist	text
+e80ae311c6	1	238	#/texts/236	For a real production system, though, I encourage 	text
+47aac7ec37	1	239	#/texts/237	blog by Anthropic on building effective agents	text
+e66b518e00	1	240	#/texts/238	to learn about using different complexity levels w	text
+76de65a0bb	1	241	#/texts/239	Now, let's dive into the details of how we can get	text
+f48c6af812	1	242	#/texts/240	Getting from Raw Data to Chunks	section_header
+8093a7f742	1	243	#/texts/241	Before we dive into the ingestion and data process	text
+e4845fc98c	1	244	#/texts/242	Project configuration	section_header
+f4c366c998	1	245	#/texts/243	The code for this LLMOps chapter is organized like	text
+4575fbae33	1	246	#/texts/244	GitHub repository	text
+cbac432f18	1	247	#/texts/245	under the	text
+f27a986918	1	248	#/texts/246	llmops	text
+2dbb564083	1	249	#/texts/247	folder.	text
+26338ac2d8	1	250	#/texts/248	This is what the	text
+c456d067d2	1	251	#/texts/249	project-config.yml	text
+c791c1b20e	1	252	#/texts/250	file looks like:	text
+44687ef18d	1	253	#/texts/251	system_prompt : |	code
+108633225e	1	254	#/texts/252		code
+24f8344cf4	1	255	#/texts/253	You are a LinkedIn content creation assistant spec	code
+bf8152343b	1	256	#/texts/254		code
+1bf801347d	1	257	#/texts/255	in generating engaging posts about AI and machine 	code
+97d1c0b173	1	258	#/texts/256		code
+014d0c89cb	1	259	#/texts/257	Your role is to:	code
+7a5911e6b4	1	260	#/texts/258		code
+509b54ac29	1	261	#/texts/259	1. Search for relevant arXiv papers using the AI S	code
+1daf922f41	1	262	#/texts/260		code
+e562355d59	1	263	#/texts/261	based on the user's topic	code
+3a7bbe12ba	1	264	#/texts/262		code
+4accf3b0da	1	265	#/texts/263	2. Query the Genie agent for additional context an	code
+1ed6551b94	1	266	#/texts/264		code
+73ab7663a1	1	267	#/texts/265	about the research area	code
+ffb0bbf5e4	1	268	#/texts/266		code
+20186770b6	1	269	#/texts/267	3. Generate a LinkedIn post in a professional yet 	code
+a427e51dd0	1	270	#/texts/268		code
+e19063dc40	1	271	#/texts/269	- Highlights key findings or innovations from rece	code
+f7f85c7ab4	1	272	#/texts/270		code
+f4a13155be	1	273	#/texts/271	- Makes complex technical concepts accessible to a	code
+0955bdffb8	1	274	#/texts/272		code
+5c46599cf3	1	275	#/texts/273	- Includes relevant paper citations and IDs	code
+9ec9475a5e	1	276	#/texts/274		code
+d2b363aa52	1	277	#/texts/275	- Uses a conversational tone appropriate for Linke	code
+2710fb6a44	1	278	#/texts/276		code
+c856a720f0	1	279	#/texts/277	- Incorporates 2-3 relevant hashtags	code
+9657323705	1	280	#/texts/278		code
+f2d2c4b5bc	1	281	#/texts/279	- Keeps the post concise (150-250 words)	code
+e5f52bce9b	1	282	#/texts/280		code
+fe6c610938	1	283	#/texts/281	Always ground your posts in actual research findin	code
+ac2e25f4e7	1	284	#/texts/282		code
+7576b1cb20	1	285	#/texts/283	available to you.	code
+5420de7a56	1	286	#/texts/284		code
+531f4c07a8	1	287	#/texts/285	If conversation history is provided, use it to mai	code
+42f938a7b2	1	288	#/texts/286		code
+d8647ed5f6	1	289	#/texts/287	with the user's previous requests - refer back to 	code
+4c327a7b29	1	290	#/texts/288		code
+dcf8b0231f	1	291	#/texts/289	refine previous suggestions, and avoid repeating y	code
+8e93ce02d3	1	292	#/texts/290		code
+35adb68808	1	293	#/texts/291	experiment_path : /Shared/genai-arxiv-agent	code
+8e42497aef	1	294	#/texts/292		code
+ca37dd0ea7	1	295	#/texts/293	usage_policy_id : 686c435d-90af-4c40-9ca4-442d4a3d	code
+4d30912907	1	296	#/texts/294		code
+932b9a6b33	1	297	#/texts/295	lakebase_project_id : arxiv-agent-lakebase	code
+6399cc0077	1	298	#/texts/296		code
+6ec6426d00	1	299	#/texts/297	dev :	code
+650439b226	1	300	#/texts/298		code
+a8963d67a4	1	301	#/texts/299	catalog : mlops_dev	code
+119fff63c4	1	302	#/texts/300		code
+7e89007f3a	1	303	#/texts/301	schema : arxiv	code
+1f5e907fa5	1	304	#/texts/302		code
+9293873613	1	305	#/texts/303	volume : arxiv_papers	code
+098ff5a990	1	306	#/texts/304		code
+af43a2d4c9	1	307	#/texts/305	genie_space_id : 01f12f9b759a1da0807c0ae7366ee04d	code
+d5257218c5	1	308	#/texts/306		code
+0bb0aff775	1	309	#/texts/307	llm_endpoint : databricks-gpt-oss-120b	code
+6bc91da41e	1	310	#/texts/308		code
+fb38122725	1	311	#/texts/309	warehouse_id : 1883724c3376103a	code
+54eb9581d4	1	312	#/texts/310		code
+ca2b8efa62	1	313	#/texts/311	acc :	code
+58395d16f9	1	314	#/texts/312		code
+eff70235d2	1	315	#/texts/313	catalog : mlops_acc	code
+5dba5997a9	1	316	#/texts/314		code
+046d3f401c	1	317	#/texts/315	schema : arxiv	code
+12fa2887ba	1	318	#/texts/316		code
+a921c7acff	1	319	#/texts/317	volume : arxiv_papers	code
+8431989586	1	320	#/texts/318		code
+3750a9e34a	1	321	#/texts/319	genie_space_id : 01f12f9b759a1da0807c0ae7366ee04d	code
+d5771eeae2	1	322	#/texts/320		code
+001042031e	1	323	#/texts/321	llm_endpoint : databricks-gpt-oss-120b	code
+2c1f8c6c62	1	324	#/texts/322		code
+66facb457c	1	325	#/texts/323	warehouse_id : 1883724c3376103a	code
+a8a260a6b5	1	326	#/texts/324		code
+3da7c1dbd5	1	327	#/texts/325	prd :	code
+9c7bd7ca21	1	328	#/texts/326		code
+d3e722b3be	1	329	#/texts/327	catalog : mlops_prd	code
+90cfc4b2c7	1	330	#/texts/328		code
+83ffb26c5b	1	331	#/texts/329	schema : arxiv	code
+5760806e4c	1	332	#/texts/330		code
+2acb57581c	1	333	#/texts/331	volume : arxiv_papers	code
+426e3ce320	1	334	#/texts/332		code
+7c0e5f4b09	1	335	#/texts/333	genie_space_id : 01f12f9b759a1da0807c0ae7366ee04d	code
+2740952cf3	1	336	#/texts/334		code
+ab6ce0b755	1	337	#/texts/335	llm_endpoint : databricks-gpt-oss-120b	code
+afddf3458f	1	338	#/texts/336		code
+b25b3d910c	1	339	#/texts/337	warehouse_id : 1883724c3376103a	code
+84683e84ed	1	340	#/texts/338	Notice the usage policy ID in the	text
+f9f5a787a3	1	341	#/texts/339	project_config.yml	text
+056bc40f20	1	342	#/texts/340	file. It differs from the one we used earlier. For	text
+4f313ba665	1	343	#/texts/341	Figure 7-4	text
+2d38a6c64b	1	344	#/texts/342	). When we apply the LLMOps usage policy, it autom	text
+22382131c8	1	345	#/texts/343	project=arxiv_curator	code
+714d3abdf6	1	346	#/texts/344	tag, rather than	text
+5ee137baf5	1	347	#/texts/345	project=hotel_booking	code
+2a148dbf17	1	348	#/texts/346	, which we used previously.	text
+310a68b0ee	1	349	#/pictures/3	A screenshot showing serverless usage policies for	picture
+5b0de6628b	1	350	#/texts/348	You may notice that the policy again includes thre	text
+55f563dc35	1	351	#/texts/349	Just as when we were processing data for our ML us	text
+6f53426c7a	1	352	#/texts/350	ProjectConfig	code
+f943aef560	1	353	#/texts/351	class under the config module:	text
+f32e1fe210	1	354	#/texts/352	import yaml	code
+da7493d991	1	355	#/texts/353		code
+739ffe6104	1	356	#/texts/354	from pydantic import BaseModel	code
+c68885f15a	1	357	#/texts/355		code
+8ea6aba326	1	358	#/texts/356	class ProjectConfig ( BaseModel ): \"\"\"Configuratio	code
+9c2524b1a3	1	359	#/texts/357		code
+fb607e8f6c	1	360	#/texts/358	Load configuration from YAML file.	code
+143e4534d5	1	361	#/texts/359		code
+52b09c4fe5	1	362	#/texts/360	Args:	code
+a2b7fccf0e	1	363	#/texts/361		code
+514fa38c27	1	364	#/texts/362	config_path: Path to the project_config.yml file	code
+333422c5c7	1	365	#/texts/363		code
+ef1b0d9f7f	1	366	#/texts/364	env: Environment name (dev, acc, prd)	code
+887f0a0bbb	1	367	#/texts/365		code
+9d843db001	1	368	#/texts/366	Returns:	code
+8575383a02	1	369	#/texts/367		code
+d6d60236af	1	370	#/texts/368	ProjectConfig instance	code
+45291e1a35	1	371	#/texts/369		code
+f6e63c7eda	1	372	#/texts/370	\"\"\" if env not in [ \"prd\" , \"acc\" , \"dev\" ]: raise	code
+2414c52237	1	373	#/texts/371	Now that we understand the project configuration, 	text
+bde9379f5c	1	374	#/texts/372	Data ingestion	section_header
+bbeada7b44	1	375	#/texts/373	We will utilize the	text
+d6998275bd	1	376	#/texts/374	arXiv Python package	text
+d9051fcdea	1	377	#/texts/375	to search for the latest papers in the AI category	text
+ca81907e54	1	378	#/texts/376	arxiv_papers	code
+78f6c10f09	1	379	#/texts/377	table within the configured catalog and schema. Th	text
+8252aa1266	1	380	#/texts/378	notebooks/chapter7_1.arxiv_process_docs.py	text
+c2a0ff7258	1	381	#/texts/379	in the	text
+3e60ec4219	1	382	#/texts/380	llmops	text
+f764688ec5	1	383	#/texts/381	folder. The packaged version of the code can be fo	text
+cfdf9b326c	1	384	#/texts/382	src/arxiv_curator	text
+b1f6368f6a	1	385	#/texts/383	folder under the	text
+713869ac3e	1	386	#/texts/384	data_processor	code
+019da5aa08	1	387	#/texts/385	module.	text
+7fc0a816b2	1	388	#/texts/386	Here, we use incremental processing based on times	text
+e8fda6ac8c	1	389	#/texts/387	arxiv_papers	code
+ae588d8ec8	1	390	#/texts/388	table exists, the system queries the timestamp of 	text
+989eaef699	1	391	#/texts/389	Note	section_header
+e5f8b7bf6b	1	392	#/texts/390	Databricks Free Edition has network restrictions t	text
+ea4c8dc7fa	1	393	#/texts/391	First, let's load the project configuration and re	text
+6410e77763	1	394	#/texts/392	from loguru import logger	code
+47fe85e5ae	1	395	#/texts/393		code
+10a7a55af0	1	396	#/texts/394	from pyspark.sql import SparkSession	code
+feb507cb6f	1	397	#/texts/395		code
+f9535ccd05	1	398	#/texts/396	from arxiv_curator.config import ProjectConfig	code
+c796709149	1	399	#/texts/397		code
+b8c87e5d41	1	400	#/texts/398	spark = SparkSession . builder . getOrCreate ()	code
+009ba3b90f	1	401	#/texts/399		code
+cb304cb3ae	1	402	#/texts/400	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+8e7c989919	1	403	#/texts/401		code
+3e1a031d46	1	404	#/texts/402	catalog = cfg . catalog	code
+639c7dc9e3	1	405	#/texts/403		code
+ca51fe3eb2	1	406	#/texts/404	schema = cfg . schema	code
+3ddb0291d9	1	407	#/texts/405		code
+f581437d63	1	408	#/texts/406	volume = cfg . volume	code
+2753659a65	1	409	#/texts/407	Next, we need to make sure the schema and volume e	text
+61f9beb65f	1	410	#/texts/408	spark . sql ( f \"CREATE SCHEMA IF NOT EXISTS { cat	code
+22471b08bf	1	411	#/texts/409		code
+a59693653f	1	412	#/texts/410	spark . sql ( f \"CREATE VOLUME IF NOT EXISTS { cat	code
+a58aacff2b	1	413	#/texts/411	For initial runs in which the	text
+e4458439c3	1	414	#/texts/412	arxiv_papers	code
+50191fda73	1	415	#/texts/413	table does not yet exist, the system retrieves pap	text
+ffd8bcbd1b	1	416	#/texts/414	import time	code
+8598358578	1	417	#/texts/415		code
+e1436c1148	1	418	#/texts/416	import arxiv	code
+e2adc94d36	1	419	#/texts/417		code
+5712f22458	1	420	#/texts/418	client = arxiv . Client ()	code
+9930a8f9a9	1	421	#/texts/419		code
+a7efcf04a1	1	422	#/texts/420	metadata_table = f \" { catalog } . { schema } .arx	code
+b6ac1a8234	1	423	#/texts/421		code
+4a04c63370	1	424	#/texts/422	if spark . catalog . tableExists ( metadata_table 	code
+897fcc5a5c	1	425	#/texts/423		code
+ec0cab42f0	1	426	#/texts/424	SELECT max(processed)	code
+14b19f297c	1	427	#/texts/425		code
+5ef83ad4f9	1	428	#/texts/426	FROM { metadata_table }	code
+a0bd23a1be	1	429	#/texts/427		code
+6963c6db49	1	430	#/texts/428	\"\"\" ) . collect ()[ 0 ][ 0 ] )	code
+e44bd61da8	1	431	#/texts/429		code
+30df16d245	1	432	#/texts/430	else : start = time . strftime ( \" %Y%m%d%H%M \" , 	code
+7a884264de	1	433	#/texts/431		code
+39c0045fc1	1	434	#/texts/432	end = time . strftime ( \" %Y%m%d%H%M \" , time . gm	code
+3a32b2668f	1	435	#/texts/433		code
+a571580dc5	1	436	#/texts/434	search = arxiv . Search ( query = f \"cat:cs.AI AND	code
+7a108fc8ef	1	437	#/texts/435		code
+02abdfaaab	1	438	#/texts/436	papers = client . results ( search )	code
+f787f1fc35	1	439	#/texts/437	Once the system retrieves the search results, it p	text
+ba3f6d6194	1	440	#/texts/438	10	text
+7051c42d34	1	441	#/texts/439	import os	code
+89f5bdef61	1	442	#/texts/440		code
+6cac3c13ae	1	443	#/texts/441	records = []	code
+1c022169e7	1	444	#/texts/442		code
+b65a9829c6	1	445	#/texts/443	pdf_dir = f \"/Volumes/ { catalog } / { schema } / 	code
+b8c47b013c	1	446	#/texts/444		code
+2887957af5	1	447	#/texts/445	os . makedirs ( pdf_dir , exist_ok = True )	code
+1f6a75f827	1	448	#/texts/446		code
+3039c63279	1	449	#/texts/447	for paper in papers : paper_id = paper . get_short	code
+8ee258b2d2	1	450	#/texts/448	Finally, we write the retrieved metadata into the	text
+d7f1a9907c	1	451	#/texts/449	arxiv_papers	code
+b683c91129	1	452	#/texts/450	table:	text
+57de360ba3	1	453	#/texts/451	from pyspark.sql import functions as F	code
+e2f0ef0789	1	454	#/texts/452		code
+0de12f593f	1	455	#/texts/453	from pyspark.sql import types as T	code
+a30cbe763e	1	456	#/texts/454		code
+f004d944f8	1	457	#/texts/455	if len ( records ) > 0 : metadata_schema = T . Str	code
+632331af93	1	458	#/texts/456	Now that the papers are stored in the volume and a	text
+f7b25700e4	1	459	#/texts/457	PDF processing	section_header
+cb725f559f	1	460	#/texts/458	PDFs are everywhere in enterprise environments, an	text
+532ea67195	1	461	#/texts/459	PDFs are built for visual presentation, but they l	text
+0fed8ffb45	1	462	#/texts/460	You may find several options when it comes to PDF 	text
+e32bce5665	1	463	#/texts/461	Docling	text
+e8ffbae08d	1	464	#/texts/462	, or perhaps solutions provided by cloud vendors l	text
+0a107bc4a4	1	465	#/texts/463	Databricks also provides an	text
+647eab4a0c	1	466	#/texts/464	ai_parse_document	code
+24b176574a	1	467	#/texts/465	function that significantly simplifies the PDF pro	text
+8b6c2d9b53	1	468	#/texts/466	competitive price	text
+0c21669143	1	469	#/texts/467	. Let's see how it works in practice.	text
+c49695af50	1	470	#/texts/468	Note	section_header
+104902ff39	1	471	#/texts/469	The	text
+f4eb1e0d82	1	472	#/texts/470	ai_parse_document	code
+9d95cad806	1	473	#/texts/471	function is not supported while executing code loc	text
+17fc35e44e	1	474	#/texts/472	First, let's create a table called	text
+d651cec39f	1	475	#/texts/473	ai_parsed_docs	code
+b586309c88	1	476	#/texts/474	to store our extraction results. We'll insert the 	text
+76f338118d	1	477	#/texts/475	ai_parse_document	code
+1d1e0bd304	1	478	#/texts/476	function running against all the PDF files we down	text
+471898e46f	1	479	#/texts/477	spark . sql ( f \"\"\"	code
+e34e2d6d41	1	480	#/texts/478		code
+3e8ec14d8a	1	481	#/texts/479	CREATE TABLE IF NOT EXISTS	code
+7ff75fb315	1	482	#/texts/480		code
+3baee90e39	1	483	#/texts/481	{ catalog } . { schema } .ai_parsed_docs (	code
+463e2bc37e	1	484	#/texts/482		code
+6237f74a69	1	485	#/texts/483	path STRING,	code
+32d528d023	1	486	#/texts/484		code
+48d66f8638	1	487	#/texts/485	parsed_content STRING,	code
+b0426bfa1e	1	488	#/texts/486		code
+9067293b2f	1	489	#/texts/487	processed LONG)	code
+27349e29a3	1	490	#/texts/488		code
+a54aea9351	1	491	#/texts/489	\"\"\"	code
+7d14dedd8f	1	492	#/texts/490		code
+354b5d2f6d	1	493	#/texts/491	)	code
+4f6abda27a	1	494	#/texts/492		code
+b57d6bf24a	1	495	#/texts/493	spark . sql ( f \"\"\"	code
+bcfb7db437	1	496	#/texts/494		code
+64d76ad255	1	497	#/texts/495	INSERT INTO { catalog } . { schema } .ai_parsed_do	code
+6585aea4ce	1	498	#/texts/496		code
+89dca48218	1	499	#/texts/497	SELECT	code
+5caae7e508	1	500	#/texts/498		code
+6251088537	1	501	#/texts/499	path,	code
+9ee8d239bb	1	502	#/texts/500		code
+1718001d78	1	503	#/texts/501	ai_parse_document(content) AS parsed_content,	code
+fcc7d2f913	1	504	#/texts/502		code
+112a06079d	1	505	#/texts/503	{ end } AS processed	code
+76d8649555	1	506	#/texts/504		code
+a8926d796f	1	507	#/texts/505	FROM READ_FILES(	code
+739a4b10ea	1	508	#/texts/506		code
+2625e6629f	1	509	#/texts/507	\" { pdf_dir } \",	code
+67fd8f50b4	1	510	#/texts/508		code
+6defa1cb4d	1	511	#/texts/509	format => 'binaryFile')	code
+a5b5dec15a	1	512	#/texts/510		code
+82f68a8385	1	513	#/texts/511	\"\"\"	code
+ee3fa78efe	1	514	#/texts/512		code
+cb7901d3db	1	515	#/texts/513	)	code
+87a3d04e76	1	516	#/texts/514	The output of the	text
+5a19ffa00c	1	517	#/texts/515	ai_parse_document	code
+5fbb2227db	1	518	#/texts/516	function consists of elements (chunks) of the foll	text
+12f3376764	1	519	#/texts/517	caption	list_item
+74a28c7165	1	520	#/texts/518	This includes image and figure captions.	list_item
+652c592a9b	1	521	#/texts/519	figure	list_item
+2be359ef2f	1	522	#/texts/520	This includes figures and images.	list_item
+11a263b4b9	1	523	#/texts/521	footnote	list_item
+fc36ef1631	1	524	#/texts/522	This includes footnotes.	list_item
+1bcfa4f90b	1	525	#/texts/523	page_header	list_item
+e37b15584a	1	526	#/texts/524	This includes page headers (like page numbers).	list_item
+f153e440c1	1	527	#/texts/525	section_header	list_item
+f5b3bcf16d	1	528	#/texts/526	This includes section headings.	list_item
+8ae0e65782	1	529	#/texts/527	table	list_item
+fddfb33b77	1	530	#/texts/528	This includes tables.	list_item
+25681fdc59	1	531	#/texts/529	text	list_item
+cb4929762a	1	532	#/texts/530	This includes regular text content.	list_item
+259c11bf3a	1	533	#/texts/531	title	list_item
+ada3b92e0b	1	534	#/texts/532	This includes the document title.	list_item
+a311c625d9	1	535	#/texts/533	Figure 7-5	text
+a71dbe6cef	1	536	#/texts/534	shows this output.	text
+98d82f9295	1	537	#/texts/535	The	text
+7925b8887f	1	538	#/texts/536	ai_parse_document()	code
+8cf63d0371	1	539	#/texts/537	function returns a document that's already broken 	text
+4b6048664d	1	540	#/texts/538	text	code
+701bfac8ae	1	541	#/texts/539	, since that is where the answerable content sits.	text
+747d625972	1	542	#/texts/540	In this chapter, we go with the chunking that	text
+84ebdbdec5	1	543	#/texts/541	ai_parse_document()	code
+c8417d93f8	1	544	#/texts/542	produces, to keep things simple. However, it is st	text
+6785bb1eb1	1	545	#/pictures/4	Screenshot showing the JSON output of the ai\\_pars	picture
+6e58c443cd	1	546	#/texts/544	Chunking	section_header
+23d10ed8de	1	547	#/texts/545	Chunking	text
+ee6b930ec4	1	548	#/texts/546	decides what the retriever can find. A	text
+67ca951668	1	549	#/texts/547	chunk	text
+3d77cfd060	1	550	#/texts/548	is the unit that gets embedded and later returned,	text
+d46f4f8c6b	1	551	#/texts/549	Chunking strategies	section_header
+ce368ff12a	1	552	#/texts/550	The simplest approach splits documents into equal-	text
+50a8d022fa	1	553	#/texts/551	Overlap is the usual fix. With 2,048-character chu	text
+14bfd1596a	1	554	#/texts/552	A recursive split respects structure more directly	text
+3afdec41bd	1	555	#/texts/553	Embedding window considerations	section_header
+4b1d79b83a	1	556	#/texts/554	Chunk size is not entirely your choice. It is boun	text
+19b678190f	1	557	#/texts/555	These limits are measured in tokens, not character	text
+72ccf61dd6	1	558	#/texts/556	token	text
+38ca629098	1	559	#/texts/557	can be a word, a subword, or a punctuation mark, d	text
+d3f1d926f5	1	560	#/texts/558	\"MLOps\"	code
+3bc6bbf0f5	1	561	#/texts/559	,	text
+872a49b6bc	1	562	#/texts/560	\"is\"	code
+7546c9adc3	1	563	#/texts/561	,	text
+0a6bb5c985	1	564	#/texts/562	\"awesome\"	code
+7bc0a33e08	1	565	#/texts/563	, and	text
+20cbaef3a0	1	566	#/texts/564	\"!\"	code
+c3d7d52b4d	1	567	#/texts/565	. When you set a chunk size in characters, keep th	text
+0e42923bea	1	568	#/texts/566	Processing chunks	section_header
+d8b63c0bb0	1	569	#/texts/567	To make the data usable for vector search, we need	text
+677806165b	1	570	#/texts/568	text	code
+88bdcf9d8f	1	571	#/texts/569	:	text
+55b9e0cab7	1	572	#/texts/570	import json	code
+ac3bee7b58	1	573	#/texts/571		code
+6246266e58	1	574	#/texts/572	import re	code
+f28210c7fe	1	575	#/texts/573		code
+f48523e7e8	1	576	#/texts/574	from pyspark.sql.functions import ( col , concat_w	code
+a0eece607a	1	577	#/texts/575		code
+f5c4f2a7fc	1	578	#/texts/576	from pyspark.sql.types import ( ArrayType , String	code
+4b37eb4fbf	1	579	#/texts/577		code
+fd9be1f533	1	580	#/texts/578	def extract_chunks ( parsed_content_json : str ) -	code
+292b94752c	1	581	#/texts/579		code
+f744c4d49b	1	582	#/texts/580	chunk_schema = ArrayType ( StructType ( [ StructFi	code
+41bce5b4f3	1	583	#/texts/581		code
+2acd6369b3	1	584	#/texts/582	)	code
+6216743c37	1	585	#/texts/583		code
+8f6fb5848c	1	586	#/texts/584	extract_chunks_udf = udf ( extract_chunks , chunk_	code
+013ce3aba8	1	587	#/texts/585	We also want to extract the paper ID from the path	text
+8e66d3156e	1	588	#/texts/586	def extract_paper_id ( path ): return path . repla	code
+3a738e96b5	1	589	#/texts/587		code
+927197b537	1	590	#/texts/588	extract_paper_id_udf = udf ( extract_paper_id , St	code
+f56c48a2b2	1	591	#/texts/589		code
+ea00a5354f	1	592	#/texts/590	def clean_chunk ( text : str ) -> str : # fix hyph	code
+fd1fb3b3ee	1	593	#/texts/591		code
+7c4528e2b0	1	594	#/texts/592	clean_chunk_udf = udf ( clean_chunk , StringType (	code
+8c9c23cc2a	1	595	#/texts/593	Finally, we can create the	text
+63f08bdf98	1	596	#/texts/594	arxiv_chunks	code
+2b82cf2e75	1	597	#/texts/595	table and enable	text
+b4d250aec2	1	598	#/texts/596	ChangeDataFeed	code
+96bdaba427	1	599	#/texts/597	so that we can use the table to create and increme	text
+b1a31d9b2b	1	600	#/texts/598	df = spark . table ( f \" { catalog } . { schema } 	code
+56d5aeba35	1	601	#/texts/599		code
+82004a0920	1	602	#/texts/600	# Load metadata table	code
+69007746a2	1	603	#/texts/601		code
+9067fe1620	1	604	#/texts/602	metadata_df = spark . table ( metadata_table ) . s	code
+481b735fd1	1	605	#/texts/603		code
+fa42a2cbdd	1	606	#/texts/604	)	code
+0cd4dcf3ec	1	607	#/texts/605		code
+6fd0528a5a	1	608	#/texts/606	# Create the transformed table	code
+723564913f	1	609	#/texts/607		code
+f53a682262	1	610	#/texts/608	chunks_df = ( df . withColumn ( \"paper_id\" , extra	code
+e6f70da97f	1	611	#/texts/609		code
+24ce18be24	1	612	#/texts/610	# Write to table	code
+17283da4ca	1	613	#/texts/611		code
+658c6d72c3	1	614	#/texts/612	chunks_table = f \" { catalog } . { schema } .arxiv	code
+b260e51536	1	615	#/texts/613		code
+ef3aa8ffed	1	616	#/texts/614	chunks_df . write . mode ( \"append\" ) . saveAsTabl	code
+2f6c9c7e04	1	617	#/texts/615		code
+5a20d60139	1	618	#/texts/616	spark . sql ( f \"\"\"ALTER TABLE { chunks_table }	code
+70295b38d0	1	619	#/texts/617		code
+918ce93c4b	1	620	#/texts/618	SET TBLPROPERTIES (delta.enableChangeDataFeed = tr	code
+589d7eb901	1	621	#/texts/619		code
+363a76f0d6	1	622	#/texts/620	\"\"\"	code
+c3b652ba3b	1	623	#/texts/621		code
+b59d11c61b	1	624	#/texts/622	)	code
+363fff90ba	1	625	#/texts/623	At this point in the pipeline, we have the arXiv p	text
+3a956e19a4	1	626	#/texts/624	ai_parse_document()	code
+057f24ee77	1	627	#/texts/625	, and the chunks stored in a Delta table. What we 	text
+f99edec039	1	628	#/texts/626	Databricks AI Search Index	section_header
+cc203a908d	1	629	#/texts/627	Vector search is fundamentally different from trad	text
+9da29feecd	1	630	#/texts/628	embeddings	text
+47a077547a	1	631	#/texts/629	-mathematical representations (vectors) of semanti	text
+9f6e65000e	1	632	#/texts/630	For example, in scientific papers, researchers don	text
+3a2f821e0d	1	633	#/texts/631	Creating the endpoint and index	section_header
+ac504bce1c	1	634	#/texts/632	To get started, we must first create an AI Search 	text
+a8bccfa10d	1	635	#/texts/633	11	text
+e6fbf28f02	1	636	#/texts/634	We can create an AI Search endpoint programmatical	text
+7b6c843fb0	1	637	#/texts/635	VectorSearchClient	code
+9fa1e2108e	1	638	#/texts/636	. Notice that here, we pass the usage policy ID th	text
+c1fffa91c0	1	639	#/texts/637	from databricks.vector_search.client import Vector	code
+34eda72be4	1	640	#/texts/638		code
+260e851c08	1	641	#/texts/639	from arxiv_curator.config import ProjectConfig	code
+45e6f235e0	1	642	#/texts/640		code
+c87b2df603	1	643	#/texts/641	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+022c8e17f5	1	644	#/texts/642		code
+45255de42d	1	645	#/texts/643	catalog = cfg . catalog	code
+e377eb33d2	1	646	#/texts/644		code
+6436ca3b5e	1	647	#/texts/645	schema = cfg . schema	code
+a4237491ad	1	648	#/texts/646		code
+46fbcedfda	1	649	#/texts/647	vsc = VectorSearchClient ()	code
+2d95a0f0d6	1	650	#/texts/648		code
+8591be67c3	1	651	#/texts/649	vector_search_endpoint_name = \"vector-search-arxiv	code
+20009cbfa2	1	652	#/texts/650		code
+1953982514	1	653	#/texts/651	if not vsc . endpoint_exists ( name = vector_searc	code
+99f9e4c51f	1	654	#/texts/652	Once the endpoint is active, we can proceed with c	text
+a9200a95c5	1	655	#/texts/653	create_delta_sync_index	code
+d3c27f9dc0	1	656	#/texts/654	function from the	text
+ef0d046ce6	1	657	#/texts/655	VectorSearchClient	code
+a9e3695e7b	1	658	#/texts/656	. This function takes the following arguments:	text
+96ab3e4ff6	1	659	#/texts/657	12	text
+510822e0d0	1	660	#/texts/658	columns_to_sync	list_item
+0586766a99	1	661	#/texts/659	These are the columns to transfer from the source 	list_item
+2a46e96a70	1	662	#/texts/660	endpoint_name	list_item
+ee5d4f006a	1	663	#/texts/661	This is the name of the AI Search endpoint where t	list_item
+73ed4258c2	1	664	#/texts/662	source_table_name	list_item
+79bea021e8	1	665	#/texts/663	This is the Delta table that contains the input da	list_item
+0dfa6f20ff	1	666	#/texts/664	index_name	list_item
+252d8e9323	1	667	#/texts/665	This is the full name for the new index.	list_item
+b55509dc65	1	668	#/texts/666	primary_key	list_item
+347b2e3799	1	669	#/texts/667	This is the unique identifier (in our case, the ID	list_item
+d1f95df775	1	670	#/texts/668	embedding_source_column	list_item
+0730fe307a	1	671	#/texts/669	This is the column that contains the text to be em	list_item
+27178641c4	1	672	#/texts/670	embedding_model_endpoint_name	list_item
+06dc3e28a3	1	673	#/texts/671	This is the foundation model API that is used to g	list_item
+7fe3a5171a	1	674	#/texts/672	pipeline_type	list_item
+0cdd723965	1	675	#/texts/673	This is the type of Lakeflow SDPthat is used for s	list_item
+120be78a32	1	676	#/texts/674	Notice that here, we pass the usage policy ID that	text
+71add10bdd	1	677	#/texts/675	vs_index_fullname = f \" { catalog } . { schema } .	code
+cc1191f008	1	678	#/texts/676		code
+a3942bb6c3	1	679	#/texts/677	embedding_model_endpoint = \"databricks-gte-large-e	code
+153bd20edd	1	680	#/texts/678		code
+ebd72cba32	1	681	#/texts/679	if not vsc . index_exists ( endpoint_name = vector	code
+757eef77bf	1	682	#/texts/680		code
+470247103a	1	683	#/texts/681	): index = vsc . create_delta_sync_index ( endpoin	code
+9f1b32b7ce	1	684	#/texts/682		code
+34c5dd503a	1	685	#/texts/683	else : index = vsc . get_index ( index_name = vs_i	code
+68477ad92f	1	686	#/texts/684	When the new data is available in the source table	text
+0e17e6fe0c	1	687	#/texts/685	index = vsc . get_index ( index_name = vs_index_fu	code
+7272d55c02	1	688	#/texts/686		code
+75f8862302	1	689	#/texts/687	index . sync ()	code
+644a917617	1	690	#/texts/688	As we discussed in earlier chapters regarding Feat	text
+00620293e9	1	691	#/texts/689	TRIGGERED	code
+3b76c568cb	1	692	#/texts/690	mode unless we consistently need fresh data. For l	text
+8b66059502	1	693	#/texts/691	CONTINUOUS	code
+ea388849ef	1	694	#/texts/692	mode ensures that updates arrive within seconds.	text
+4f3251cdb7	1	695	#/texts/693	In the Catalog Explorer, you can view which Lakefl	text
+858ea177eb	1	696	#/texts/694	Figure 7-6	text
+6cea6931b4	1	697	#/texts/695	).	text
+ab57a511f0	1	698	#/pictures/5	The Databricks AI Search index view in the Catalog	picture
+aa99a42c6d	1	699	#/texts/697	It's important to mention here that the	text
+4b0d963590	1	700	#/texts/698	create_delta_sync_index()	code
+9b08a82634	1	701	#/texts/699	command does not just create the AI Search Index b	text
+b760f3ced9	1	702	#/texts/700	You can also bring your own embeddings. In this ca	text
+6bbb8afeb4	1	703	#/texts/701	Figure 7-7	text
+6cdcde629f	1	704	#/texts/702	demonstrates the differences between Databricks-ma	text
+fd1ea2d0e5	1	705	#/pictures/6	Diagram comparing Databricks-managed and self-mana	picture
+2963c44b20	1	706	#/texts/704	Querying and retrieval quality	section_header
+184b0ff22d	1	707	#/texts/705	Databricks AI Search supports natural language que	text
+63db1e9c11	1	708	#/texts/706	similarity_search()	code
+64c3518aeb	1	709	#/texts/707	function, we need to provide the following argumen	text
+2ef1cbc14a	1	710	#/texts/708	columns	list_item
+870a3fc96d	1	711	#/texts/709	These are the fields to return in the results.	list_item
+386b2db614	1	712	#/texts/710	query_text or query_vector	list_item
+385a5c68c9	1	713	#/texts/711	Here, we designate whether we want to make queries	list_item
+95fc8102f3	1	714	#/texts/712	filters	list_item
+5eb94266cd	1	715	#/texts/713		list_item
+552cb3f870	1	716	#/texts/714	These are SQL-like filters that restrict results b	text
+69a382e6ee	1	717	#/texts/715	=	code
+5c7e4509bf	1	718	#/texts/716	,	text
+f242fc1305	1	719	#/texts/717	>=	code
+13986adbd9	1	720	#/texts/718	,	text
+eea9ec08a5	1	721	#/texts/719	<=	code
+97e7656a02	1	722	#/texts/720	,	text
+26b9ab61cf	1	723	#/texts/721	IN	code
+1b28892656	1	724	#/texts/722	,	text
+1823efd0a1	1	725	#/texts/723	LIKE	code
+01a4fc8a47	1	726	#/texts/724	,	text
+a13c288056	1	727	#/texts/725	NOT	code
+6023d12b8b	1	728	#/texts/726	, and	text
+48eb407d38	1	729	#/texts/727	OR	code
+f5c5303df7	1	730	#/texts/728	are supported. Syntax varies by endpoint type.	text
+7edc9b76a7	1	731	#/texts/729	13	text
+209603803e	1	732	#/texts/730	num_results	list_item
+4f82271603	1	733	#/texts/731	This is the number of chunks to retrieve.	list_item
+8101805a18	1	734	#/texts/732	score_threshold	list_item
+9284ebdaf2	1	735	#/texts/733		list_item
+cb9b161d9d	1	736	#/texts/734	This is where we define a minimum similarity score	text
+15f3950783	1	737	#/texts/735	K	text
+aec7da5804	1	738	#/texts/736	results.	text
+b117562168	1	739	#/texts/737	query_type (ANN or HYBRID)	list_item
+5558e561d7	1	740	#/texts/738		list_item
+0da73e41d1	1	741	#/texts/739	Databricks AI Search uses the HNSW algorithm for i	text
+98f973f055	1	742	#/texts/740	14	text
+d07cb55392	1	743	#/texts/741	The hybrid keyword-similarity option matches exact	text
+d913ef3b4f	1	744	#/texts/742	reranker	list_item
+451dbea9ad	1	745	#/texts/743		list_item
+56e146d47c	1	746	#/texts/744	Reranking	text
+7c2a41ed05	1	747	#/texts/745	is a technique that improves retrieval quality by 	text
+11efb1a52b	1	748	#/texts/746	paper.summary	code
+54a3d7b456	1	749	#/texts/747	and	text
+6808a55470	1	750	#/texts/748	title	code
+25014ce69f	1	751	#/texts/749	.	text
+23f10fbe61	1	752	#/texts/750	The function also accepts operational arguments th	text
+285c505cec	1	753	#/texts/751	This is how we can use the	text
+c8b31dd680	1	754	#/texts/752	similarity_search()	code
+305d84fec2	1	755	#/texts/753	function:	text
+3949c1f170	1	756	#/texts/754	from databricks.vector_search.reranker import Data	code
+ee3e78f33a	1	757	#/texts/755		code
+ba0dd9f8e4	1	758	#/texts/756	results = index . similarity_search ( query_text =	code
+58aea32269	1	759	#/texts/757	Optimizing search quality	section_header
+e8ba504198	1	760	#/texts/758	To help you understand the impact of configuration	text
+7b7d8e9cd2	1	761	#/texts/759	For a test dataset, you can use existing labeled q	text
+8d60d02805	1	762	#/texts/760	When it comes to evaluation metrics, you should pi	text
+39a4b80d68	1	763	#/texts/761	Key metrics include the following:	text
+e7eb512380	1	764	#/texts/762	Recall@K	list_item
+a3a7bcc8d5	1	765	#/texts/763	This measures how many relevant items were success	list_item
+fc225207d1	1	766	#/texts/764	Precision@K	list_item
+1fbada9cc8	1	767	#/texts/765	This measures what percentage of retrieved items a	list_item
+89f07ba2b7	1	768	#/texts/766	F1-score@K	list_item
+0cfc8bf077	1	769	#/texts/767	This balances precision and recall.	list_item
+948ec002eb	1	770	#/texts/768	The Databricks guide on vector search retrieval qu	text
+bcedb3d54d	1	771	#/texts/769	15	text
+056024220b	1	772	#/texts/770		list_item
+45b0efd37a	1	773	#/texts/771	Enable hybrid search	text
+23b028c570	1	774	#/texts/772	. One-line code change may improve recall by catch	text
+b5aa09c710	1	775	#/texts/773		list_item
+5e6d3ab5a0	1	776	#/texts/774	Use metadata filtering	text
+4d53098541	1	777	#/texts/775	. This reduces the search space, improves recall w	text
+269b2e32d8	1	778	#/texts/776		list_item
+95a65d6720	1	779	#/texts/777	Add reranking	text
+b86a75c502	1	780	#/texts/778	. Databricks' built-in reranker is a great solutio	text
+eb29112bd4	1	781	#/texts/779		list_item
+07519bd51f	1	782	#/texts/780	Improve data preparation.	text
+a4a67ef070	1	783	#/texts/781	Refine document parsing and chunking strategies.	text
+3dd9a9091d	1	784	#/texts/782		list_item
+f53a8ca366	1	785	#/texts/783	Optimize queries	text
+993e9d2f55	1	786	#/texts/784	. Generate multiple query variations to improve re	text
+5d8a6a33ea	1	787	#/texts/785		list_item
+fe9a492606	1	788	#/texts/786	Optimize prompts	text
+ae8440235c	1	789	#/texts/787	. Use automatic prompt optimization techniques to 	text
+bb33c6c06c	1	790	#/texts/788		list_item
+b655845835	1	791	#/texts/789	Implement adaptive retrieval strategies	text
+8fb1fa0470	1	792	#/texts/790	. Build agents that can reformulate queries or dec	text
+0cca7cffe6	1	793	#/texts/791		list_item
+13f8b56da1	1	794	#/texts/792	Fine-tune embedding models	text
+3895a12ae1	1	795	#/texts/793	.	text
+4de6041e83	1	796	#/texts/794	This is a final option if standard models do not p	text
+ca2184bac9	1	797	#/texts/795	So far, we've created an AI Search endpoint, built	text
+8d41397d45	1	798	#/texts/796	Genie Agent (Formerly, Genie Space)	section_header
+1d89c3b7ae	1	799	#/texts/797	Genie	text
+1b3d53eb0e	1	800	#/texts/798	is a Databricks tool that lets business users get 	text
+d4302985d3	1	801	#/texts/799	How well Genie performs depends almost entirely on	text
+c98839b51c	1	802	#/texts/800	When that context is thin, or when Genie is pointe	text
+5a56c012f2	1	803	#/texts/801	Curate the datasets you expose	list_item
+23fb1a89f5	1	804	#/texts/802	Genie chooses which tables and columns to use for 	list_item
+98874ce8fb	1	805	#/texts/803	Aggregate upfront	list_item
+ce809c1a74	1	806	#/texts/804	Against raw data, Genie has to reconstruct the gro	list_item
+42d75e41c4	1	807	#/texts/805	Guide Genie with instructions and example SQL quer	list_item
+eadf555ecf	1	808	#/texts/806	Examples show Genie the join paths, filters, and c	list_item
+089ebcd73a	1	809	#/texts/807	Genie was originally built for people working thro	text
+f27e40465d	1	810	#/texts/808	Databricks AI Search versus Genie	section_header
+0748a4fb34	1	811	#/texts/809	Databricks AI Search and Genie serve complementary	text
+6af75f2503	1	812	#/texts/810	What are recent approaches to efficient attention 	list_item
+e38d5b0c17	1	813	#/texts/811	Databricks AI Search is the best fit here, as it r	list_item
+71fc535591	1	814	#/texts/812	How many papers were published in each category in	list_item
+410813d1f4	1	815	#/texts/813	Genie is ideal for this as it translates this to S	list_item
+deebb05412	1	816	#/texts/814	Who are the most prolific authors in our collectio	list_item
+535e53acaa	1	817	#/texts/815	Genie can easily count and rank authors by queryin	list_item
+4dc1e3a969	1	818	#/texts/816	For the arXiv pipeline, we will create a Genie age	text
+d4614b0835	1	819	#/texts/817	Provisioning the SQL warehouse	section_header
+ef5b8bee12	1	820	#/texts/818	Before creating a Genie agent, we must provision a	text
+87187416bf	1	821	#/texts/819	While we used DABs to create a warehouse in	text
+ca0cf164eb	1	822	#/texts/820	Chapter 6	text
+161e195332	1	823	#/texts/821	, we are using the SDK here for a specific reason:	text
+b1f0554c25	1	824	#/texts/822	from databricks.sdk import WorkspaceClient	code
+ff6a7408a1	1	825	#/texts/823		code
+b58816d10a	1	826	#/texts/824	from databricks.sdk.service import sql	code
+c86ecaa27b	1	827	#/texts/825		code
+9f0dd4c2ea	1	828	#/texts/826	from databricks.sdk.service.sql import CreateWareh	code
+bb5c5084c1	1	829	#/texts/827		code
+431d026239	1	830	#/texts/828	w = WorkspaceClient ()	code
+db091d301d	1	831	#/texts/829		code
+5a04630bb4	1	832	#/texts/830	created = w . warehouses . create ( name = \"2XS_ar	code
+b717e814c8	1	833	#/texts/831		code
+ecbdc72393	1	834	#/texts/832	) . result ()	code
+64e7360021	1	835	#/texts/833		code
+4ad4711390	1	836	#/texts/834	warehouse_id = created . id	code
+f8af75db07	1	837	#/texts/835	Creating the Genie agent	section_header
+07a7343b60	1	838	#/texts/836	We can create a Genie agent via the UI, API, or Da	text
+20254af991	1	839	#/texts/837	arxiv_papers	code
+82da8d4eaa	1	840	#/texts/838	) under the defined catalog and schema:	text
+62560918f0	1	841	#/texts/839	import json	code
+3a6e66efeb	1	842	#/texts/840		code
+64df504359	1	843	#/texts/841	from arxiv_curator.config import ProjectConfig	code
+1c4949c859	1	844	#/texts/842		code
+aa99fc3e4c	1	845	#/texts/843	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+ecd5922dae	1	846	#/texts/844		code
+783b1da1fa	1	847	#/texts/845	catalog = cfg . catalog	code
+b35bc8b074	1	848	#/texts/846		code
+75f1f63a31	1	849	#/texts/847	schema = cfg . schema	code
+bfd9802755	1	850	#/texts/848		code
+7357565720	1	851	#/texts/849	serialized_space = { \"version\" : 1 , \"data_sources	code
+cbddbfe189	1	852	#/texts/850		code
+a020c159f7	1	853	#/texts/851	}	code
+8b1cf96a62	1	854	#/texts/852		code
+926036350e	1	855	#/texts/853	space = w . genie . create_space ( warehouse_id = 	code
+98d3cd3f05	1	856	#/texts/854		code
+a785d9824c	1	857	#/texts/855	)	code
+9bf5d68d06	1	858	#/texts/856	We can retrieve the serialized space definition fo	text
+8243b59663	1	859	#/texts/857	get_space()	code
+cf6fa5810e	1	860	#/texts/858	function:	text
+7dd056e313	1	861	#/texts/859	space_id = space . space_id	code
+a9bf4a6d7a	1	862	#/texts/860		code
+e096f5ed5e	1	863	#/texts/861	space = w . genie . get_space ( space_id = space_i	code
+a3d093ada3	1	864	#/texts/862		code
+5dc7b4c6f1	1	865	#/texts/863	json . loads ( space . serialized_space )	code
+7eb6812772	1	866	#/texts/864	Interacting with Genie	section_header
+7d8a89d1f2	1	867	#/texts/865	We can interact with the Genie agent by using SDK.	text
+380dd4d8f6	1	868	#/texts/866	conversation = w . genie . start_conversation_and_	code
+d83dafa984	1	869	#/texts/867	We can then inspect what the returned object looks	text
+1fefeb7985	1	870	#/texts/868	Figure 7-8	text
+2867557bd3	1	871	#/texts/869	) and notice that Genie translated the original qu	text
+ac76ac6cb0	1	872	#/pictures/7	Screenshot of Genie's SQL query output, showing a 	picture
+65b90e8df3	1	873	#/texts/871	Now, let's ask a question within the same conversa	text
+3828c58191	1	874	#/texts/872	message = w . genie . create_message_and_wait ( sp	code
+f14e09ff0c	1	875	#/texts/873	We'll see in the output that Genie was able to suc	text
+7bb61d3f05	1	876	#/texts/874	Figure 7-9	text
+86f211c11a	1	877	#/texts/875	).	text
+087d573bd6	1	878	#/pictures/8	Genie successfully generates the list of authors a	picture
+418b2e2693	1	879	#/texts/877	Having established our AI Search index for semanti	text
+691f805c74	1	880	#/texts/878	sources of context	text
+920c60886f	1	881	#/texts/879	for our agent.	text
+4d03a358a8	1	882	#/texts/880	The next challenge is exposing these capabilities 	text
+0f074732e4	1	883	#/texts/881	MCP Servers on Databricks and Tool Calling	section_header
+17e96ebe6d	1	884	#/texts/882	The Model Context Protocol (MCP) is an open standa	text
+c4e8a2a4b7	1	885	#/texts/883	16	text
+f94d7852f6	1	886	#/texts/884	Since MCP's release, its adoption has grown fast, 	text
+7b8abc1aca	1	887	#/texts/885	Hugging Face	text
+37b34e77bc	1	888	#/texts/886	,	text
+89eb4006b5	1	889	#/texts/887	GitHub	text
+e401cf5977	1	890	#/texts/888	,	text
+0601ac57d5	1	891	#/texts/889	Postman	text
+c9e1163986	1	892	#/texts/890	, and many more.	text
+c991aab3c6	1	893	#/texts/891	Managed MCP ecosystems on Databricks	section_header
+51d0a9b2bd	1	894	#/texts/892	You may have noticed that both the vector search i	text
+0b780fd670	1	895	#/texts/893	Figure 7-10	text
+ebb460d5c3	1	896	#/texts/894	) without any configuration from our side, alongsi	text
+0f5440df0e	1	897	#/texts/895	Chapter 4	text
+c23be81520	1	898	#/texts/896	. That's because all these functionalities are tre	text
+86ac08df6d	1	899	#/pictures/9	Screenshot of the Databricks interface showing a l	picture
+244b28be85	1	900	#/texts/898	Table 7-1	text
+bb9baeda13	1	901	#/texts/899	outlines the available managed servers.	text
+b92f8af84d	1	902	#/tables/0	| MCP server              | URL pattern           	table
+8e71571049	1	903	#/texts/900	https://{host}/api/2.0/mcp/vector-search/{catalog}	code
+e4b6dfbfb7	1	904	#/texts/901	{catalog}__{schema}__{index}: query(str)	code
+667b3cdce0	1	905	#/texts/902	https://{host}/api/2.0/mcp/genie/{genie_space_id}	code
+4ffd31c499	1	906	#/texts/903	query_space_{space_id}: query (str), conversation_	code
+a17211f04e	1	907	#/texts/904	poll_response_{space_id}: conversation_id (str); m	code
+e42093361e	1	908	#/texts/905	https://{host}/api/2.0/mcp/functions/{catalog}/{sc	code
+b82f731d79	1	909	#/texts/906	{catalog}__{schema}__{fn}	code
+c398689e4a	1	910	#/texts/907	; parameters are defined by users when functions g	text
+c21ac2d39a	1	911	#/texts/908	https://{host}/api/2.0/mcp/sql	code
+c26a1239f0	1	912	#/texts/909	execute_sql: query(str);	code
+1b4b7e0c68	1	913	#/texts/910	execute_sql_read_only: query(str);	code
+c841e9954b	1	914	#/texts/911	poll_sql_result: statement_id (str)	code
+ab60fc98bb	1	915	#/texts/912	One of the known limitations for AI Search index i	text
+644817f6fd	1	916	#/texts/913	We can also set up an external MCP server on Datab	text
+ae9a871bb9	1	917	#/texts/914	17	text
+5990ed4724	1	918	#/texts/915	Implementing tool calling	section_header
+826e5f1f6d	1	919	#/texts/916	To use the MCP servers on Databricks, we first nee	text
+49d4cd1b8f	1	920	#/texts/917	ToolInfo	code
+a526e5d73e	1	921	#/texts/918	model holds the three things the agent needs for e	text
+11f214d978	1	922	#/texts/919	name	code
+514b4aeefb	1	923	#/texts/920	, the	text
+30f29701b8	1	924	#/texts/921	spec	code
+0dca4d4add	1	925	#/texts/922	that describes the tool to the model, and the	text
+3cbcab1323	1	926	#/texts/923	exec_fn	code
+aef20a12ce	1	927	#/texts/924	that runs it when the model decides to call it:	text
+68f15e996c	1	928	#/texts/925	from collections.abc import Callable	code
+bf64b1cd9e	1	929	#/texts/926		code
+4fea4f9b96	1	930	#/texts/927	from pydantic import BaseModel	code
+8553aa2cd4	1	931	#/texts/928		code
+1e52ea8ad8	1	932	#/texts/929	class ToolInfo ( BaseModel ): name : str spec : di	code
+5f5c044278	1	933	#/texts/930	We can call tools we define in Databricks MCPs by 	text
+4d707247f4	1	934	#/texts/931	DatabricksMCPClient	code
+f6626c5598	1	935	#/texts/932	. To initialize it, we need to provide a server UR	text
+4034b3b620	1	936	#/texts/933	WorkspaceClient	code
+26a04e33cc	1	937	#/texts/934	. Here, we create a	text
+41248ab5c3	1	938	#/texts/935	create_managed_exec_fn()	code
+5619dc720a	1	939	#/texts/936	function, which is a wrapper around tool calling:	text
+d1e4df752c	1	940	#/texts/937	from databricks.sdk import WorkspaceClient	code
+23ec002bf0	1	941	#/texts/938		code
+14b627a9ad	1	942	#/texts/939	from databricks_mcp import DatabricksMCPClient	code
+27e6018efe	1	943	#/texts/940		code
+73b0fbf61e	1	944	#/texts/941	def create_managed_exec_fn ( server_url : str , to	code
+afff83ddc7	1	945	#/texts/942		code
+5c149613d6	1	946	#/texts/943	) -> Callable : def exec_fn ( ** kwargs ): client 	code
+cd59b802b5	1	947	#/texts/944	Finally, we implement the	text
+aea2f5b2fe	1	948	#/texts/945	create_mcp_tools()	code
+40ce3a9a77	1	949	#/texts/946	function, which takes a list of MCP server URLs an	text
+523cc36ae7	1	950	#/texts/947	ToolInfo	code
+4dbfaef460	1	951	#/texts/948	objects we defined earlier. We must declare the fu	text
+937b8ca45c	1	952	#/texts/949	DatabricksMCPClient	code
+4f2085b43d	1	953	#/texts/950	exposes an asynchronous API. MCP clients are async	text
+d55f8f7b20	1	954	#/texts/951	async def create_mcp_tools ( w : WorkspaceClient ,	code
+3f0e63c2c1	1	955	#/texts/952	This code is defined under the	text
+4c4d52d5ed	1	956	#/texts/953	mcp	code
+a8a0242b12	1	957	#/texts/954	module of the	text
+75531aa25d	1	958	#/texts/955	arxiv_curator	code
+175cda06bb	1	959	#/texts/956	package. We'll use the	text
+7015cb2343	1	960	#/texts/957	create_mcp_tools()	code
+a17ef6861b	1	961	#/texts/958	function later in	text
+20a66da3d3	1	962	#/texts/959	Chapter 8	text
+c6e1de6248	1	963	#/texts/960	.	text
+a387bde923	1	964	#/texts/961	We've covered how agents access external data and 	text
+9baaa1c092	1	965	#/texts/962	Agent Memory with Lakebase	section_header
+a1d544f462	1	966	#/texts/963	When you deploy an agent behind a serving endpoint	text
+f71c9943ad	1	967	#/texts/964	Session persistence	text
+c981febcc9	1	968	#/texts/965	solves this problem. The caller passes a session i	text
+20381c92c9	1	969	#/texts/966	This is where Lakebase comes in. We already used i	text
+59d3e7863b	1	970	#/texts/967	Chapter 4	text
+7edcfdf09a	1	971	#/texts/968	for Feature Serving and Model Serving with feature	text
+1e2760be8f	1	972	#/texts/969	The core pattern is straightforward: you store mes	text
+3570c5a0ea	1	973	#/texts/970	summarization step	text
+7924b25e9f	1	974	#/texts/971	that periodically compresses earlier turns into a 	text
+64b2253b36	1	975	#/texts/972	For simplicity's sake, we'll leave summarization o	text
+0c3cee7af9	1	976	#/texts/973	Lakebase Autoscaling for agent workloads	section_header
+0b45cad4c1	1	977	#/texts/974	In	text
+0bacd34e32	1	978	#/texts/975	Chapter 4	text
+94cce205e3	1	979	#/texts/976	, we introduced Lakebase for Feature Serving and c	text
+cad88af2d6	1	980	#/texts/977	Lakebase Autoscaling's capabilities	text
+751ba4f6f0	1	981	#/texts/978	in detail.	text
+7c3c2f0ded	1	982	#/texts/979	Its key features include the following:	text
+39575ea9e1	1	983	#/texts/980	Autoscaling	list_item
+5c5be16406	1	984	#/texts/981	Compute resources scale dynamically with demand, s	list_item
+c72bc5b031	1	985	#/texts/982	Scaling to zero	list_item
+7442a89a94	1	986	#/texts/983	Inactive compute scales to 0 after timeout to mini	list_item
+f995e5e535	1	987	#/texts/984	Branches	list_item
+ebb12dc94d	1	988	#/texts/985	These allow you to create isolated database branch	list_item
+daba2ef4a1	1	989	#/texts/986	Read replicas	list_item
+055db3f32f	1	990	#/texts/987	You can use dedicated read-only replicas for read 	list_item
+a1163540d4	1	991	#/texts/988	Instant restore	list_item
+f79dc7ec06	1	992	#/texts/989	You can create a new branch from any point in time	list_item
+bf09bb4935	1	993	#/texts/990	Lakebase Autoscaling project structure	section_header
+a7ead917c9	1	994	#/texts/991	Understanding the Lakebase Autoscaling project str	text
+e2a4bc5818	1	995	#/texts/992	project	text
+124b430074	1	996	#/texts/993	is the top-level organizational unit in Lakebase A	text
+47825fc83d	1	997	#/texts/994	A project groups together your databases, branches	text
+a04d7501a7	1	998	#/texts/995	At the top level, a project contains one or more b	text
+a6464a56bc	1	999	#/texts/996	Project	code
+ce1ce13a16	1	1000	#/texts/997		code
+4f6eabb3af	1	1001	#/texts/998	\u2514\u2500\u2500 Branches ( main , development , staging , etc 	code
+9b694b8061	1	1002	#/texts/999	Creating a Lakebase Autoscaling project	section_header
+cf7f5bd269	1	1003	#/texts/1000	We'll start by creating a Lakebase Autoscaling pro	text
+e50614ff35	1	1004	#/texts/1001	In this example, we configure a new project with a	text
+efaac2a527	1	1005	#/texts/1002	import json	code
+e485e06b90	1	1006	#/texts/1003		code
+4a1711a025	1	1007	#/texts/1004	import urllib.parse	code
+aca91ed6f7	1	1008	#/texts/1005		code
+3df2a5c1e3	1	1009	#/texts/1006	from uuid import uuid4	code
+676204a4be	1	1010	#/texts/1007		code
+251d8b4497	1	1011	#/texts/1008	import psycopg	code
+a9691a627b	1	1012	#/texts/1009		code
+e80211408b	1	1013	#/texts/1010	from databricks.sdk import WorkspaceClient	code
+c91063d24b	1	1014	#/texts/1011		code
+92d4548676	1	1015	#/texts/1012	from databricks.sdk.service.postgres import ( Post	code
+4f337edd17	1	1016	#/texts/1013		code
+6ea7e0c3fc	1	1017	#/texts/1014	)	code
+cad8efb669	1	1018	#/texts/1015		code
+001dbebbcd	1	1019	#/texts/1016	from google.protobuf.duration_pb2 import Duration	code
+41a8b8dd28	1	1020	#/texts/1017		code
+00b0a121ca	1	1021	#/texts/1018	from loguru import logger	code
+498f276269	1	1022	#/texts/1019		code
+ac53f2fd54	1	1023	#/texts/1020	from arxiv_curator.config import ProjectConfig	code
+42ff8084b3	1	1024	#/texts/1021		code
+29e1cb3ce1	1	1025	#/texts/1022	cfg = ProjectConfig . from_yaml ( \"../project_conf	code
+503a209874	1	1026	#/texts/1023		code
+e2f44f3b85	1	1027	#/texts/1024	w = WorkspaceClient ()	code
+3967640419	1	1028	#/texts/1025		code
+3f4151afe6	1	1029	#/texts/1026	pg_api = PostgresAPI ( w . api_client )	code
+ac718c5761	1	1030	#/texts/1027		code
+9a20467949	1	1031	#/texts/1028	project_id = \"arxiv-agent-lakebase\"	code
+4ed7178e67	1	1032	#/texts/1029		code
+299939776b	1	1033	#/texts/1030	try : project = pg_api . get_project ( name = f \"p	code
+1cc429c86b	1	1034	#/texts/1031		code
+a2ef4af2dd	1	1035	#/texts/1032	except Exception : project = pg_api . create_proje	code
+0352804d1f	1	1036	#/texts/1033	Now that we have set up the Lakebase project, let'	text
+688e331354	1	1037	#/texts/1034	Interacting with Lakebase	section_header
+5a85480b8f	1	1038	#/texts/1035	To create a connection, we need a host. Due to Lak	text
+29f7466d63	1	1039	#/texts/1036	default_branch = next ( iter ( pg_api . list_branc	code
+e6405df382	1	1040	#/texts/1037		code
+374541a068	1	1041	#/texts/1038	endpoint = next ( iter ( pg_api . list_endpoints (	code
+840312878f	1	1042	#/texts/1039		code
+bf3ed6e1a1	1	1043	#/texts/1040	host = endpoint . status . hosts . host	code
+50dc1c4c57	1	1044	#/texts/1041	We then can use the Postgres API again to generate	text
+788f1fff14	1	1045	#/texts/1042	user = w . current_user . me ()	code
+d38203dda6	1	1046	#/texts/1043		code
+f6f67c6382	1	1047	#/texts/1044	pg_credential = pg_api . generate_database_credent	code
+de0180b3d3	1	1048	#/texts/1045		code
+d7e7066348	1	1049	#/texts/1046	username = urllib . parse . quote_plus ( user . us	code
+28f138ac2c	1	1050	#/texts/1047		code
+abc7939482	1	1051	#/texts/1048	conn_string = ( f \"postgresql:// { username } : { 	code
+7ff15baf24	1	1052	#/texts/1049		code
+754cb7d169	1	1053	#/texts/1050	)	code
+927f7c69c8	1	1054	#/texts/1051	Because Lakebase is a Postgres database, we can wo	text
+d5e6c01099	1	1055	#/texts/1052	psycopg3	text
+370c40c664	1	1056	#/texts/1053	, the modern PostgreSQL adapter for Python, to ope	text
+8e5958cf4a	1	1057	#/texts/1054	import psycopg	code
+576cb8a304	1	1058	#/texts/1055		code
+a8f4dc4c23	1	1059	#/texts/1056	with psycopg . connect ( conn_string ) as conn : #	code
+6660755e9e	1	1060	#/texts/1057		code
+b9c4d3b3cf	1	1061	#/texts/1058	CREATE TABLE IF NOT EXISTS session_messages (	code
+dbcce9b956	1	1062	#/texts/1059		code
+025534b31f	1	1063	#/texts/1060	id SERIAL PRIMARY KEY,	code
+2b71e4013c	1	1064	#/texts/1061		code
+8d46fd7420	1	1065	#/texts/1062	session_id TEXT NOT NULL,	code
+fd631abbb1	1	1066	#/texts/1063		code
+47a78753ac	1	1067	#/texts/1064	message_data JSONB NOT NULL,	code
+655a533ee0	1	1068	#/texts/1065		code
+3a7a9466d2	1	1069	#/texts/1066	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP	code
+2673696cd9	1	1070	#/texts/1067		code
+941490ab2c	1	1071	#/texts/1068	)	code
+299aa7659a	1	1072	#/texts/1069		code
+e92820e104	1	1073	#/texts/1070	\"\"\" ) conn . execute ( \"\"\"	code
+9cfc8f4f67	1	1074	#/texts/1071		code
+c3c46cc49a	1	1075	#/texts/1072	CREATE INDEX IF NOT EXISTS idx_session_messages_se	code
+9b22959d16	1	1076	#/texts/1073		code
+ff76b333fe	1	1077	#/texts/1074	ON session_messages(session_id)	code
+8514ca4e59	1	1078	#/texts/1075		code
+4eda886985	1	1079	#/texts/1076	\"\"\" )	code
+ebb3cd40b9	1	1080	#/texts/1077		code
+4b1154c7ca	1	1081	#/texts/1078	After we create the table, we can insert messages 	text
+900864efc7	1	1082	#/texts/1079	test_session_id = f \"test-session- { uuid4 () } \"	code
+b6b2f0b985	1	1083	#/texts/1080		code
+2229f60615	1	1084	#/texts/1081	test_messages = [ { \"role\" : \"user\" , \"content\" : 	code
+e2d0cfe9de	1	1085	#/texts/1082		code
+f4ecba9176	1	1086	#/texts/1083	]	code
+0bbee18ca6	1	1087	#/texts/1084		code
+267b4e1d01	1	1088	#/texts/1085	with psycopg . connect ( conn_string ) as conn : f	code
+3d7f24c31b	1	1089	#/texts/1086	And then, we can successfully read them back:	text
+92c2cfdbe5	1	1090	#/texts/1087	with psycopg . connect ( conn_string ) as conn : r	code
+a2e80ab913	1	1091	#/texts/1088		code
+a7464496d1	1	1092	#/texts/1089	SELECT message_data, created_at FROM session_messa	code
+a874314af0	1	1093	#/texts/1090		code
+635b9e3b74	1	1094	#/texts/1091	WHERE session_id = %s	code
+186288466b	1	1095	#/texts/1092		code
+b03d071c00	1	1096	#/texts/1093	ORDER BY created_at ASC	code
+e26a726d5e	1	1097	#/texts/1094		code
+473532a15d	1	1098	#/texts/1095	\"\"\" , ( test_session_id ,), ) . fetchall () logger	code
+1923bf3563	1	1099	#/texts/1096	The agent can use this mechanism to load the messa	text
+5b3fd95b19	1	1100	#/texts/1097	So far, we have worked with a single database conn	text
+d23e38a0a9	1	1101	#/texts/1098	Utilizing a connection pool	section_header
+896b2a446a	1	1102	#/texts/1099	A	text
+7a22dfe151	1	1103	#/texts/1100	connection pool	text
+8e03559bd1	1	1104	#/texts/1101	maintains a set of reusable database connections. 	text
+2a4d0a455f	1	1105	#/texts/1102	In the memory module of our custom package, we def	text
+b9740b2f38	1	1106	#/texts/1103	LakebaseMemory	code
+3e2572bce2	1	1107	#/texts/1104	class that uses a connection pool to interact with	text
+f0d41b4376	1	1108	#/texts/1105	The class takes a host and instance name during in	text
+3e8c41ca83	1	1109	#/texts/1106	import json	code
+b1bf4cdcc8	1	1110	#/texts/1107		code
+86cdcff3d3	1	1111	#/texts/1108	import os	code
+73827e4262	1	1112	#/texts/1109		code
+196728c82e	1	1113	#/texts/1110	import urllib.parse	code
+7e084e5cab	1	1114	#/texts/1111		code
+645928952e	1	1115	#/texts/1112	from typing import Any	code
+6f8b519e12	1	1116	#/texts/1113		code
+c0379b7ce9	1	1117	#/texts/1114	import psycopg	code
+d7f89f6a9d	1	1118	#/texts/1115		code
+296d3a191b	1	1119	#/texts/1116	from databricks.sdk import WorkspaceClient	code
+a44193d53b	1	1120	#/texts/1117		code
+f9c704e60b	1	1121	#/texts/1118	from databricks.sdk.service.postgres import Postgr	code
+b8d386d7ba	1	1122	#/texts/1119		code
+48abfeaba7	1	1123	#/texts/1120	from loguru import logger	code
+eb4711b59c	1	1124	#/texts/1121		code
+5c5b4f4e5c	1	1125	#/texts/1122	from psycopg_pool import ConnectionPool	code
+e3f615ef55	1	1126	#/texts/1123		code
+c90024ec6d	1	1127	#/texts/1124	class LakebaseMemory : \"\"\"Handles session message 	code
+6166d65f5a	1	1128	#/texts/1125	Connecting to Lakebase requires exchanging Databri	text
+623b83bc19	1	1129	#/texts/1126	service principal	text
+9315175ffb	1	1130	#/texts/1127	for production use and	text
+c6fb8b597a	1	1131	#/texts/1128	user credentials	text
+036a44972a	1	1132	#/texts/1129	for local development and testing.	text
+23ff993e7e	1	1133	#/texts/1130	In production, we must add the service principal t	text
+32a3e0310a	1	1134	#/texts/1131	def _get_connection_string ( self ) -> str : \"\"\"Bu	code
+77a012fde1	1	1135	#/texts/1132		code
+7f07e43ef1	1	1136	#/texts/1133	Supports two authentication modes:	code
+8b6937061f	1	1137	#/texts/1134		code
+fc221f59e8	1	1138	#/texts/1135	- SPN (production): Needs LAKEBASE_SP_CLIENT_ID,	code
+925cdfc8bc	1	1139	#/texts/1136		code
+e4acc4866d	1	1140	#/texts/1137	LAKEBASE_SP_CLIENT_SECRET, LAKEBASE_SP_HOST	code
+8efc74bb9e	1	1141	#/texts/1138		code
+4017779683	1	1142	#/texts/1139	- User (local testing): Uses default WorkspaceClie	code
+e0c13eaa1d	1	1143	#/texts/1140		code
+d975e053bd	1	1144	#/texts/1141	\"\"\" # Use dedicated Lakebase SPN env vars to avoid	code
+ce91d242a7	1	1145	#/texts/1142	Notice that our implementation uses	text
+54fd2e841f	1	1146	#/texts/1143	Lakebase-specific environment variables	text
+95f9d65ffb	1	1147	#/texts/1144	(	text
+68efd789b8	1	1148	#/texts/1145	LAKEBASE_SP_CLIENT_ID	code
+c20a923f2e	1	1149	#/texts/1146	,	text
+fee769491f	1	1150	#/texts/1147	LAKEBASE_SP_CLIENT_SECRET	code
+7b972bd500	1	1151	#/texts/1148	, and	text
+475f79d89d	1	1152	#/texts/1149	LAKEBASE_SP_HOST	code
+ecca258b7c	1	1153	#/texts/1150	) instead of the standard Databricks variables (	text
+2626000c9a	1	1154	#/texts/1151	DATABRICKS_HOST	code
+4e09c6528d	1	1155	#/texts/1152	,	text
+a31280a24f	1	1156	#/texts/1153	DATABRICKS_CLIENT_ID	code
+f4ec75f985	1	1157	#/texts/1154	, and	text
+613b819132	1	1158	#/texts/1155	DATABRICKS_CLIENT_SECRET	code
+7badf3d437	1	1159	#/texts/1156	). This avoids conflicts with other components, pa	text
+186b9e0352	1	1160	#/texts/1157	The connection pool is created on the first use wi	text
+9c77e067de	1	1161	#/texts/1158	_get_pool()	code
+37e95de6aa	1	1162	#/texts/1159	function. Since database tokens are short lived, c	text
+468098a62a	1	1163	#/texts/1160	_reset_pool()	code
+d37f842dd1	1	1164	#/texts/1161	method handles this. If we hit an	text
+e39744b186	1	1165	#/texts/1162	OperationalError	code
+16a4a4ec5c	1	1166	#/texts/1163	, we close the pool so the next request gets fresh	text
+293c1e6b83	1	1167	#/texts/1164	def _get_pool ( self ) -> ConnectionPool : \"\"\"Get 	code
+d20dc8aa1e	1	1168	#/texts/1165		code
+009bbb4e08	1	1169	#/texts/1166	def _reset_pool ( self ) -> None : \"\"\"Reset pool t	code
+5ed9b3ab1a	1	1170	#/texts/1167	The core functionality is straightforward: we load	text
+80e502d026	1	1171	#/texts/1168	def load_messages ( self , session_id : str ) -> l	code
+54b70b6470	1	1172	#/texts/1169		code
+5dec58b39a	1	1173	#/texts/1170	SELECT message_data FROM session_messages	code
+b46f1002b5	1	1174	#/texts/1171		code
+ce70e7f50f	1	1175	#/texts/1172	WHERE session_id = %s	code
+0b8088aa97	1	1176	#/texts/1173		code
+2cd917a826	1	1177	#/texts/1174	ORDER BY created_at ASC	code
+74a48842bd	1	1178	#/texts/1175		code
+2155d99b6e	1	1179	#/texts/1176	\"\"\" , ( session_id ,), ) . fetchall () return [ ro	code
+342e59528f	1	1180	#/texts/1177	When saving, we append new messages to the session	text
+66cce387ca	1	1181	#/texts/1178	def save_messages ( self , session_id : str , mess	code
+07eb980989	1	1182	#/texts/1179		code
+3ae19d12ef	1	1183	#/texts/1180	) -> None : \"\"\"Append messages to a session.\"\"\" tr	code
+41cd245bf4	1	1184	#/texts/1181	We'll use the	text
+f342f500da	1	1185	#/texts/1182	LakebaseMemory	code
+8422811268	1	1186	#/texts/1183	class when defining the agent in	text
+fff1527a15	1	1187	#/texts/1184	Chapter 8	text
+37edb13da0	1	1188	#/texts/1185	.	text
+6f18b9266f	1	1189	#/texts/207	Diagram comparing prompt engineering for single-tu	caption
+6f6782ff4e	1	1190	#/texts/347	A screenshot showing serverless usage policies for	caption
+4290dfd377	1	1191	#/texts/543	Screenshot showing the JSON output of the ai_parse	caption
+27615c1305	1	1192	#/texts/696	The Databricks AI Search index view in the Catalog	caption
+8149ec5135	1	1193	#/texts/703	Diagram comparing Databricks-managed and self-mana	caption
+d458fe38d9	1	1194	#/texts/870	Screenshot of Genie's SQL query output, showing a 	caption
+b4552b9775	1	1195	#/texts/876	Genie successfully generates the list of authors a	caption
+ca2d111ebe	1	1196	#/texts/897	Screenshot of the Databricks interface showing a l	caption
+29be4876a7	1	1197	#/texts/1186	Conclusion	title
+48fdca7a34	1	1198	#/texts/1187	In this chapter, we built up the context an agent 	text
+d51f5ec403	1	1199	#/texts/1188	So far, we have assembled the context and tools an	text
+d11bcfb82a	1	1200	#/texts/1189	1	text
+27f220750e	1	1201	#/texts/1190	You can find the definition in the	text
+605b6023f7	1	1202	#/texts/1191	OpenAI SDK guides	text
+3eac4eba51	1	1203	#/texts/1192	.	text
+5f69f79ffc	1	1204	#/texts/1193	2	text
+5f012361fb	1	1205	#/texts/1194	See	text
+537abfd260	1	1206	#/texts/1195	the Databricks documentation on AI functions	text
+dd0343072f	1	1207	#/texts/1196	.	text
+25065cfde5	1	1208	#/texts/1197	3	text
+dd061dfdac	1	1209	#/texts/1198	Consult your cloud-specific documentation for more	text
+681903e631	1	1210	#/texts/1199	the AWS documentation	text
+d229e98bec	1	1211	#/texts/1200	.	text
+ebdec89afe	1	1212	#/texts/1201	4	text
+db83d3e2f0	1	1213	#/texts/1202	You can find supported models in	text
+ba44203404	1	1214	#/texts/1203	the documentation	text
+899e293b8f	1	1215	#/texts/1204	.	text
+f1c1722a76	1	1216	#/texts/1205	5	text
+95a90544db	1	1217	#/texts/1206	For further details, consult	text
+a5c1488e78	1	1218	#/texts/1207	the community discussion	text
+2b855a9ec3	1	1219	#/texts/1208	.	text
+5110b36250	1	1220	#/texts/1209	6	text
+aec08c8a50	1	1221	#/texts/1210	For further details, consult	text
+272d46a8eb	1	1222	#/texts/1211	the documentation on benchmarking	text
+0df0a6d736	1	1223	#/texts/1212	.	text
+2c39523b9d	1	1224	#/texts/1213	7	text
+3f90ec1e08	1	1225	#/texts/1214	For further details, consult	text
+15dd51048f	1	1226	#/texts/1215	the documentation on networking	text
+3715585b52	1	1227	#/texts/1216	.	text
+f69de84117	1	1228	#/texts/1217	8	text
+a68b57f618	1	1229	#/texts/1218	Databricks solution architects Sara Dooley and Aus	text
+62e318756e	1	1230	#/texts/1219	a blog that explains how to achieve the Custom Pro	text
+795ee01e04	1	1231	#/texts/1220	.	text
+821a8c0716	1	1232	#/texts/1221	9	text
+a74e529f70	1	1233	#/texts/1222	Notice that we refer to model families rather than	text
+0cf4e30e73	1	1234	#/texts/1223	the foundation model overview documentation	text
+19c6f8573e	1	1235	#/texts/1224	.	text
+0a4ee1d8da	1	1236	#/texts/1225	10	text
+d1e1a4f4ca	1	1237	#/texts/1226	Note that we use the	text
+0144b71d29	1	1238	#/texts/1227	time.sleep(3)	code
+7819b3abea	1	1239	#/texts/1228	command to suspend the execution for three seconds	text
+8f4deaa29f	1	1240	#/texts/1229	https://oreil.ly/Na6hZ	text
+acbb4f8ceb	1	1241	#/texts/1230	.	text
+b3e406d0a2	1	1242	#/texts/1231	11	text
+294b7804b4	1	1243	#/texts/1232	For details on AI Search, consult	text
+985a4a1961	1	1244	#/texts/1233	the Databricks documentation	text
+472f0b5de4	1	1245	#/texts/1234	.	text
+f3e2fd77d5	1	1246	#/texts/1235	12	text
+fdb9d21631	1	1247	#/texts/1236	Consult	text
+a1575c2a41	1	1248	#/texts/1237	Vector Search Python SDK documentation	text
+8bd4e97b0d	1	1249	#/texts/1238	for exact details.	text
+83d6d67d42	1	1250	#/texts/1239	13	text
+41d41974d8	1	1251	#/texts/1240	For more details, consult	text
+b620a096e5	1	1252	#/texts/1241	the documentation on querying the AI Search index	text
+88afb03a00	1	1253	#/texts/1242	.	text
+5096ab11c2	1	1254	#/texts/1243	14	text
+cf93e5efc0	1	1255	#/texts/1244	This	text
+6fb574d692	1	1256	#/texts/1245	blog by Redis	text
+9484c6bff2	1	1257	#/texts/1246	explains how this algorithm can improve search.	text
+a3d0681fa5	1	1258	#/texts/1247	15	text
+1dd8c541d5	1	1259	#/texts/1248	For more information, consult	text
+15de3cfd8b	1	1260	#/texts/1249	the Databricks documentation	text
+4716b0572d	1	1261	#/texts/1250	.	text
+829a121ba9	1	1262	#/texts/1251	16	text
+80dc0d8d68	1	1263	#/texts/1252	Anthropic, \"Introducing the Model Context Protocol	text
+f285997a0f	1	1264	#/texts/1253	https://oreil.ly/Hh0UK	text
+9edcbe34c2	1	1265	#/texts/1254	.	text
+2ba394e873	1	1266	#/texts/1255	17	text
+97f5714507	1	1267	#/texts/1256	For more information, consult	text
+0ddcd3549b	1	1268	#/texts/1257	the Databricks documentation on external MCPs	text
+82aa5f2409	1	1269	#/texts/1258	.	text
