@@ -199,6 +199,17 @@ services:
       DAGSTER_POSTGRES_HOST: ${DAGSTER_POSTGRES_HOST}
       DAGSTER_TELEMETRY_DISABLED: 1
       HOME: /tmp
+      # DAGSTER TELEVERSE LUI-MEME LES IMAGES HTML (`src/pipeline/media.py`) :
+      # il lui faut donc les memes identifiants que `docling-service`, derives
+      # du meme jeu RW (voir le commentaire de ce service). `env_file: .env`
+      # ne les porte pas — le `.env` ne declare que `SEAWEEDFS_RW_*` — et sans
+      # ces lignes le client partait aux identifiants VIDES : 403 a chaque
+      # televersement, images absentes, aucune erreur au demarrage (§4.28.b).
+      # Les reglages refusent desormais un identifiant vide au demarrage.
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${SEAWEEDFS_RW_ACCESS_KEY}
+      S3_SECRET_KEY: ${SEAWEEDFS_RW_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
     volumes:
       - ./src:/opt/dagster/app/src
       - ./Datas:/opt/dagster/app/Datas
@@ -222,6 +233,12 @@ services:
       DAGSTER_POSTGRES_HOST: ${DAGSTER_POSTGRES_HOST}
       DAGSTER_TELEMETRY_DISABLED: 1
       HOME: /tmp
+      # Memes identifiants que `dagster-webserver`, pour la meme raison : les
+      # runs lances par le demon televersent les images HTML.
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${SEAWEEDFS_RW_ACCESS_KEY}
+      S3_SECRET_KEY: ${SEAWEEDFS_RW_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
     volumes:
       - ./src:/opt/dagster/app/src
       - ./Datas:/opt/dagster/app/Datas

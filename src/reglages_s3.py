@@ -29,8 +29,18 @@ il ait sa place.
 
 from __future__ import annotations
 
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings
+
+MESSAGE_IDENTIFIANT_MANQUANT = (
+    "{variable} n'est pas defini, ou vide. Les identifiants du stockage objet "
+    "n'ont AUCUNE valeur par defaut : un client aux identifiants vides demarre "
+    "sans erreur puis rend 403 a chaque televersement, et les images manquent "
+    "sans que rien ne le dise. docker-compose.yml derive S3_ACCESS_KEY et "
+    "S3_SECRET_KEY de SEAWEEDFS_RW_ACCESS_KEY / SEAWEEDFS_RW_SECRET_KEY : "
+    "verifie que le service les recoit, puis recree-le "
+    "(« docker compose up -d --force-recreate --no-deps <service> »)."
+)
 
 MESSAGE_ENDPOINT_MANQUANT = (
     "S3_ENDPOINT n'est pas defini. Le stockage objet n'a AUCUNE adresse par "
@@ -46,9 +56,12 @@ MESSAGE_ENDPOINT_MANQUANT = (
 class ReglagesDuStockageObjet(BaseSettings):
     """Les quatre variables du stockage objet, partagees par les deux reglages.
 
-    Les valeurs d'identifiants sont vides par defaut : un secret n'a pas de
-    defaut, et un client construit sans identifiants echoue a l'appel, la ou le
-    serveur peut dire pourquoi. Le bucket, lui, garde le sien : c'est un nom de
+    Les identifiants n'ont AUCUN defaut non plus. Ils valaient la chaine vide,
+    au motif qu'un client sans identifiants echoue a l'appel ; mais il echoue
+    TARD, en 403, un televersement apres l'autre, et c'est ainsi que
+    `dagster-webserver` et `dagster-daemon` — qui ne recevaient pas ces deux
+    variables — auraient perdu les images HTML sans une erreur au demarrage
+    (livraison §4.28.b). Le bucket, lui, garde son defaut : c'est un nom de
     convention du depot, pas un secret et pas une adresse.
     """
 
@@ -57,8 +70,8 @@ class ReglagesDuStockageObjet(BaseSettings):
     # sans le declencher. Le champ serait alors « sans defaut » de nom et
     # « defaut vide » de fait — exactement ce que ce lot ferme.
     s3_endpoint: str = Field(default="", validate_default=True)
-    s3_access_key: str = ""
-    s3_secret_key: str = ""
+    s3_access_key: str = Field(default="", validate_default=True)
+    s3_secret_key: str = Field(default="", validate_default=True)
     s3_bucket: str = "documents"
 
     @field_validator("s3_endpoint")
@@ -78,4 +91,25 @@ class ReglagesDuStockageObjet(BaseSettings):
         """
         if not valeur.strip():
             raise ValueError(MESSAGE_ENDPOINT_MANQUANT)
+        return valeur
+
+    @field_validator("s3_access_key", "s3_secret_key")
+    @classmethod
+    def _exiger_des_identifiants(cls, valeur: str, info: ValidationInfo) -> str:
+        """Refuse un identifiant absent ou vide, et nomme la variable en cause.
+
+        Args:
+            valeur: Ce que l'environnement a rendu, ou la chaine vide.
+            info: Le contexte de validation, qui porte le nom du champ.
+
+        Returns:
+            L'identifiant, inchange.
+
+        Raises:
+            ValueError: Si l'identifiant est absent ou vide. Le message ne
+                cite jamais la valeur, seulement le nom de la variable.
+        """
+        if not valeur.strip():
+            variable = (info.field_name or "").upper()
+            raise ValueError(MESSAGE_IDENTIFIANT_MANQUANT.format(variable=variable))
         return valeur

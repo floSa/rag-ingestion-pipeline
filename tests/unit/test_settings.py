@@ -139,6 +139,56 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
             assert restes == [], f"{chemin} porte encore {restes}"
 
 
+class TestLesIdentifiantsDuStockageObjetNOntAucunDefaut:
+    """Le meme garde que l'adresse, pour les deux identifiants (livraison §4.28.b).
+
+    `s3_access_key` et `s3_secret_key` valaient « "" » par defaut. Un service
+    qui ne recoit pas les variables — c'etait le cas de `dagster-webserver` et
+    `dagster-daemon`, qui n'avaient que `env_file: .env` alors que le `.env` ne
+    porte pas ces deux noms — construisait donc un client aux identifiants
+    VIDES. Rien n'echouait au demarrage : les televersements d'images HTML
+    rendaient 403 plus tard, un par un, et les images manquaient au corpus.
+
+    Un identifiant absent doit faire echouer le demarrage, comme l'adresse.
+    """
+
+    CLASSES = TestLAdresseDuStockageObjetNAAucunDefaut.CLASSES
+    CHAMPS = (("S3_ACCESS_KEY", "s3_access_key"), ("S3_SECRET_KEY", "s3_secret_key"))
+
+    @pytest.mark.parametrize("chemin", CLASSES)
+    @pytest.mark.parametrize(("variable", "champ"), CHAMPS)
+    def test_sans_identifiant_la_construction_echoue(self, chemin, variable, champ, monkeypatch):
+        """LE GARDE. Un defaut vide remis ici rend ce test vert et le televersement muet."""
+        monkeypatch.delenv(variable, raising=False)
+
+        with pytest.raises(ValidationError) as leve:
+            TestLAdresseDuStockageObjetNAAucunDefaut._classe(chemin)(_env_file=None)
+
+        message = str(leve.value)
+        assert champ in message.lower(), f"l'echec ne nomme pas le champ : {message}"
+        assert variable in message, f"le message ne nomme pas la variable : {message}"
+
+    @pytest.mark.parametrize("chemin", CLASSES)
+    @pytest.mark.parametrize(("variable", "champ"), CHAMPS)
+    def test_un_identifiant_vide_echoue_aussi(self, chemin, variable, champ, monkeypatch):
+        """« S3_ACCESS_KEY= » dans un environnement est le meme defaut."""
+        monkeypatch.setenv(variable, "  ")
+
+        with pytest.raises(ValidationError):
+            TestLAdresseDuStockageObjetNAAucunDefaut._classe(chemin)(_env_file=None)
+
+    @pytest.mark.parametrize("chemin", CLASSES)
+    def test_des_identifiants_declares_passent(self, chemin, monkeypatch):
+        """LE TEMOIN. Sans lui, une classe inconstructible rendrait tout vert."""
+        monkeypatch.setenv("S3_ACCESS_KEY", "cle-temoin")
+        monkeypatch.setenv("S3_SECRET_KEY", "secret-temoin")  # pragma: allowlist secret
+
+        reglages = TestLAdresseDuStockageObjetNAAucunDefaut._classe(chemin)(_env_file=None)
+
+        assert reglages.s3_access_key == "cle-temoin"
+        assert reglages.s3_secret_key == "secret-temoin"  # pragma: allowlist secret
+
+
 class TestLesDeuxClassesDeReglagesSAccordentSurLeStockageObjet:
     """Registre 4.29.b — DEUX classes de reglages decident du MEME objet.
 

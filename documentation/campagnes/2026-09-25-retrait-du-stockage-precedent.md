@@ -110,6 +110,14 @@ docker compose up -d --force-recreate --no-deps dagster-daemon dagster-webserver
 docker compose up -d --force-recreate --no-deps docling-service
 ```
 
+**Les trois services reçoivent `S3_ACCESS_KEY` et `S3_SECRET_KEY`, et pas le
+seul `docling-service`.** Dagster téléverse lui-même les images HTML
+(`src/pipeline/media.py`) ; dans la première version de cette branche, seul le
+service d'extraction recevait la dérivation, et les deux services Dagster
+seraient partis aux identifiants vides — 403 à chaque téléversement, 199 images
+absentes, et aucune erreur au démarrage (§4.28.b). Les réglages refusent
+désormais un identifiant absent ou vide, comme l'adresse.
+
 - **`--force-recreate` et non `restart`** : un `restart` ne relit pas le `.env`.
 - **`--no-deps`** : sans lui, `docker compose up -d <service>` redémarre aussi
   ce dont il dépend — `postgres-dagster`, qui porte **les curseurs des capteurs
@@ -131,12 +139,12 @@ INFO [src.docling_service.images] Bucket 'documents' pret sur seaweedfs:8333.
 ## 5. La purge
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  -v "$PWD/Datas":/opt/dagster/app/Datas \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.wipe_stores
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.wipe_stores
 ```
+
+Par `docker compose run`, et non par `docker run --env-file .env` : le `.env`
+ne porte pas les deux identifiants, que seul `docker-compose.yml` dérive.
 
 **Elle doit annoncer, dans cet ordre :**
 

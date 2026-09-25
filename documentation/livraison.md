@@ -254,13 +254,18 @@ C'est le §4.42.a du registre.
 > non après : `--- Stockage objet (seaweedfs:8333) ---`. Ce bloc disait le nom
 > d'un produit, écrit dans le code ; il l'aurait dit à l'identique en vidant un
 > tout autre serveur.
+>
+> **Les instruments se lancent par `docker compose run --no-deps`, et non par
+> `docker run --env-file .env`.** Le `.env` ne porte pas `S3_ACCESS_KEY` ni
+> `S3_SECRET_KEY` : c'est `docker-compose.yml` qui les dérive du jeu RW. Un
+> `docker run --env-file .env` les laissait vides — la purge rendait 403 sur le
+> stockage objet — et, depuis que les réglages refusent un identifiant vide,
+> il ne démarre plus. `compose run` reçoit la même dérivation que le service ;
+> `--no-deps` ne démarre rien d'autre, et `--rm` efface le conteneur.
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  -v "$PWD/Datas":/opt/dagster/app/Datas \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.wipe_stores
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.wipe_stores
 ```
 
 **Puis, obligatoirement :**
@@ -397,16 +402,14 @@ L'instantané fige les `element_id` des trois stores dans un fichier versionné.
 `comparer` confronte l'état vivant à cet instantané, **dans les deux sens**.
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \
+docker compose run --rm --no-deps -T \
+  -v "$PWD/scripts":/app/scripts:ro \
   -v "$PWD/documentation/campagnes":/app/documentation/campagnes:ro \
   -v "$PWD/Datas":/corpus:ro \
   -v /tmp/sp-comparer:/sp \
   -v "$PWD/Datas/.cleaned":/sp/cleaned:ro \
-  -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache:ro \
-  --env-file "$PWD/.env" -e COMMIT_MESURE="$(git rev-parse HEAD)" \
-  -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service \
+  -e COMMIT_MESURE="$(git rev-parse HEAD)" -e PYTHONPATH=/app -w /app \
+  docling-service \
   python scripts/campagne/verifier-l-equivalence-des-identifiants.py \
     comparer documentation/campagnes/2026-09-24-instantane-des-identifiants
 ```
@@ -461,10 +464,8 @@ script : il se mesure sur le store réel, au [§4.2](#42-les-huit-comptes-et-lem
 ### 4.5 `verify_contract` — le contrat avec l'agent
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.verify_contract
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.verify_contract
 ```
 
 `mesuré le 25 septembre 2026 à 09:01 UTC`, derrière SeaweedFS, **`rc=1`** :
@@ -504,10 +505,8 @@ eux dirait qu'un chemin d'image en a oublié un.
 ### 4.6 `index_report` — l'index vectoriel
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.index_report
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.index_report
 ```
 
 `mesuré le 25 septembre 2026 à 09:01 UTC`, **`rc=0`**, et **identique à la
@@ -523,12 +522,11 @@ Les deux scripts se lancent avec le même montage — `src`, `scripts`,
 `documentation` en lecture seule, plus le volume des modèles :
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \
+docker compose run --rm --no-deps -T \
+  -v "$PWD/scripts":/app/scripts:ro \
   -v "$PWD/documentation":/app/documentation:ro \
-  -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache:ro \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service \
+  -e PYTHONPATH=/app -w /app \
+  docling-service \
   python scripts/campagne/verifier-le-jeu-de-questions.py \
     documentation/campagnes/2026-09-02-jeu-de-questions.yaml
 ```
