@@ -55,7 +55,7 @@ class TestEscapeNgql:
 
     def test_single_quote_left_alone(self):
         # Une apostrophe n'a aucun sens special entre guillemets doubles ;
-        # l'echapper injectait un antislash parasite dans le texte stocke.
+        # l'echapper injecterait un antislash parasite dans le texte stocke.
         assert escape_ngql("l'ecart-type") == "l'ecart-type"
 
     def test_newline_and_tab_escaped(self):
@@ -207,10 +207,9 @@ class TestDocumentVid:
 class TestElementVertexValue:
     """Le sommet ecrit dans le graphe doit porter le niveau du titre.
 
-    L'agent peut remonter les aretes PARENT_OF, mais il ne pouvait lire aucun
-    niveau declare : ni depth, ni rien d'autre n'etait ecrit sur le sommet
-    (registre 4.11). Ces tests font regresser l'ecriture de la propriete, et
-    non la seule presence de son nom dans une constante.
+    L'agent peut remonter les aretes PARENT_OF ; ``depth`` lui donne le niveau
+    sans les compter (registre 4.11). Ces tests verifient la valeur ecrite, et
+    non la seule presence du nom dans une constante.
     """
 
     ELEMENT = {
@@ -229,7 +228,7 @@ class TestElementVertexValue:
         assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", "", 2)'
 
     def test_page_no_end_falls_back_on_page_no_and_not_on_zero(self):
-        """Un element d'une seule page FINIT sur elle.
+        """Un element d'une seule page finit sur elle.
 
         Un 0 y dirait « page inconnue », et c'est le meme piege que `depth = 0`
         pris par l'autre bout : la valeur nominale ressemblerait a une absence.
@@ -244,11 +243,11 @@ class TestElementVertexValue:
         assert rendu == '"0011223344":("section_header", 7, 8, "Chunking", "", "", 2)'
 
     def test_l_adresse_et_la_cle_atteignent_toutes_deux_l_expression(self):
-        """Le contrat publie DEUX champs de media, et le graphe doit porter les deux.
+        """Le contrat publie deux champs de media, et le graphe doit porter les deux.
 
         Un element visuel dont seule l'adresse serait ecrite est a demi
         renseigne, et rien ne le rattrape : le graphe est ecrit une fois. Ce
-        test asserte les VALEURS, et non la presence des noms dans
+        test verifie les valeurs, et non la presence des noms dans
         `VERTEX_PROPERTIES` — une colonne declaree et jamais ecrite reste vide.
         """
         rendu = element_vertex_value(
@@ -264,7 +263,7 @@ class TestElementVertexValue:
         assert '"images/l/a.png"' in rendu
 
     def test_un_element_sans_visuel_ecrit_deux_valeurs_vides(self):
-        """L'absence se lit comme une absence des DEUX cotes, jamais comme un decalage."""
+        """L'absence se lit comme une absence des deux cotes, jamais comme un decalage."""
         sans = {
             cle: valeur
             for cle, valeur in self.ELEMENT.items()
@@ -305,7 +304,7 @@ class TestTagSchemaStatements:
         assert all("depth int" in s for s in creations)
 
     def test_every_tag_gets_an_alter_for_the_spaces_that_already_exist(self):
-        """CREATE TAG IF NOT EXISTS n'ajoute RIEN a un tag deja cree.
+        """CREATE TAG IF NOT EXISTS n'ajoute rien a un tag deja cree.
 
         Sans cet ALTER, un space peuple par une version anterieure garde le
         schema d'avant et les INSERT sont rejetes pour colonne inconnue.
@@ -326,7 +325,7 @@ class TestTagSchemaStatements:
         """Une migration limitee a « la colonne du jour » est une liste a tenir.
 
         Le tag Document a deja ce patron : un ALTER par colonne, tous toleres.
-        Une colonne ajoutee demain migre donc sans qu'on y pense.
+        Une colonne ajoutee plus tard migre donc sans liste a mettre a jour.
         """
         statements = tag_schema_statements(["Paragraph"])
         alterations = [s for s in statements if s.startswith("ALTER TAG")]
@@ -334,39 +333,24 @@ class TestTagSchemaStatements:
 
 
 class TestChaqueColonneRecoitSonTYPE:
-    """Registre 4.29.c — LA LONGUEUR ETAIT GARDEE, LA CORRESPONDANCE NON.
+    """Registre 4.29.c : chaque colonne recoit son type.
 
-    `VERTEX_PROPERTIES` et `VERTEX_TYPES` sont lus ENSEMBLE par
-    `tag_schema_statements` : les desaligner produit un `CREATE TAG` qui n'a pas
-    les colonnes que les `INSERT` ecrivent. L'invariant etait ecrit au site, et
-    reproduit de mes mains le 2 septembre 2026 sur le code livre par le lot 4 :
+    `VERTEX_PROPERTIES` et `VERTEX_TYPES` sont lus ensemble par
+    `tag_schema_statements`. Leur longueur est controlee par le `strict=True`
+    des deux `zip`, qui leve. La correspondance colonne -> type, elle, est
+    verifiee ici : c'est elle qui decide que `page_no_end` est un `int`.
 
-    ==================================== =========================
-    mutation                             suite entiere
-    ==================================== =========================
-    un type RETIRE — longueur 5 pour 6   ROUGE, 5 tests
-    `page_no_end` passe a `string`       **VERTE, 838 tests**
-    ==================================== =========================
-
-    La longueur est donc gardee, et pas par un test : par le `strict=True` des
-    deux `zip`, qui leve. C'est un garde reel et il est au site. Ce que RIEN ne
-    gardait est la correspondance colonne -> type, celle qui decide qu'un
-    `page_no_end` est un `int`.
-
-    L'echec est bruyant quand le graphd rejette un `INSERT`, d'ou la severite
-    basse. Mais **un `int` declare `string` ne rejette pas forcement** : il
-    accepte et stocke la mauvaise forme, et un agent qui compare `page_no_end` a
+    Un `int` declare `string` ne fait pas forcement rejeter l'`INSERT` : le
+    graphd stocke la mauvaise forme, et un agent qui compare `page_no_end` a
     `page_no` compare alors un entier a une chaine.
 
-    Ces tests assertent le couple ATTENDU pour chaque colonne, contre le
-    `CREATE TAG` que la fonction rend — pas contre les tuples, qui sont ce qu'on
-    veut voir bouger.
+    Ces tests comparent le couple attendu pour chaque colonne au `CREATE TAG`
+    que la fonction rend, et non aux tuples, qui sont ce qui peut changer.
     """
 
-    # Le schema attendu, ecrit ICI et non derive des tuples : un test qui relit
-    # sa source ne garde rien. Une colonne ajoutee demain fait rougir le temoin
-    # de completude ci-dessous, ce qui est le comportement voulu — c'est le
-    # moment de decider son type.
+    # Le schema attendu, ecrit ici et non derive des tuples : un test qui relit
+    # sa source ne verifie rien. Une colonne ajoutee au schema fait echouer le
+    # test de completude ci-dessous : c'est le moment de decider son type.
     TYPE_ATTENDU = {
         "label": "string",
         "page_no": "int",
@@ -378,11 +362,10 @@ class TestChaqueColonneRecoitSonTYPE:
     }
 
     def test_le_temoin_les_colonnes_attendues_sont_bien_celles_du_schema(self) -> None:
-        """LE TEMOIN, ET IL PASSE EN PREMIER.
+        """Contre-epreuve, placee en premier : la table couvre tout le schema.
 
-        Sans lui, une colonne ajoutee au schema echapperait a la table ci-dessus
-        et son type ne serait garde par rien — le defaut de depart, un cran plus
-        loin.
+        Sans ce test, une colonne ajoutee au schema echapperait a la table
+        ci-dessus et son type ne serait verifie par rien.
         """
         assert set(self.TYPE_ATTENDU) == set(VERTEX_PROPERTIES), (
             "le schema a gagne ou perdu une colonne sans que son type soit "
@@ -391,7 +374,7 @@ class TestChaqueColonneRecoitSonTYPE:
 
     @pytest.mark.parametrize("colonne", sorted(TYPE_ATTENDU))
     def test_chaque_colonne_est_declaree_avec_son_type(self, colonne: str) -> None:
-        """LE GARDE. Un type change rougit ici, colonne par colonne."""
+        """Un type change fait echouer ce test, colonne par colonne."""
         creation = next(
             s for s in tag_schema_statements(["Paragraph"]) if s.startswith("CREATE TAG")
         )
@@ -404,15 +387,13 @@ class TestChaqueColonneRecoitSonTYPE:
         )
 
     def test_une_permutation_des_types_est_vue(self) -> None:
-        """LE SECOND TEMOIN, et c'est lui que le registre reclamait.
+        """Une permutation des types est detectee.
 
-        Un test qui n'asserterait que « les types declares sont les bons, dans
-        l'ordre » serait vert sur deux colonnes de MEME type echangees. Le vrai
-        risque est une permutation qui deplace un `string` dans un emplacement
-        `int` : ce test la voit, parce qu'il asserte le couple NOM-TYPE et non
-        la suite des types.
+        Le risque est une permutation qui deplace un `string` dans un
+        emplacement `int` : ce test la voit, parce qu'il verifie le couple
+        nom-type et non la suite des types.
 
-        Il asserte aussi qu'aucune colonne ne recoit DEUX types, ce qu'une
+        Il verifie aussi qu'aucune colonne ne recoit deux types, ce qu'une
         permutation partielle pourrait produire.
         """
         creation = next(
@@ -431,8 +412,8 @@ class TestChaqueColonneRecoitSonTYPE:
 
         `CREATE TAG IF NOT EXISTS` ne fait rien sur un space existant : c'est
         l'`ALTER` qui decide du type reellement ajoute a un space peuple. Un
-        garde qui n'aurait vu que le `CREATE` aurait ete vert sur un `ALTER`
-        errone, c'est-a-dire sur tout poste deja en service.
+        controle limite au `CREATE` laisserait passer un `ALTER` errone, donc
+        une erreur sur tout poste deja en service.
         """
         alterations = [s for s in tag_schema_statements(["Paragraph"]) if s.startswith("ALTER TAG")]
 
@@ -443,14 +424,14 @@ class TestChaqueColonneRecoitSonTYPE:
 
 
 class TestMissingVertexColumns:
-    """Le garde qui manquait : une migration peut echouer et se taire.
+    """Une migration peut echouer en silence : ce controle la detecte.
 
     Mesure le 31 aout 2026 sur ``rag_space`` : ``init_schema()`` a rendu
-    **True** alors que le tag SectionHeader n'avait PAS gagne sa colonne. Nebula
+    True alors que le tag SectionHeader n'avait pas gagne sa colonne. Nebula
     avait refuse l'ALTER avec « Schema exisited before! » — la trace d'un DROP
     anterieur de la meme colonne, qu'il n'autorise jamais a revenir. L'echec
-    etant tolere (``required=False``), rien ne l'a signale, et le defaut ne se
-    serait vu qu'a la premiere ecriture, sur un rejet du graphd.
+    etant tolere (``required=False``), rien ne le signalait avant la premiere
+    ecriture, rejetee par le graphd.
     """
 
     def test_a_complete_tag_reports_nothing(self):
@@ -461,12 +442,12 @@ class TestMissingVertexColumns:
         assert missing_vertex_columns(lues) == ("depth",)
 
     def test_a_space_written_before_page_no_end_is_reported_as_incomplete(self):
-        """La migration du schema est en place, celle des DONNEES non.
+        """La migration du schema est en place, celle des donnees non.
 
-        Un space ecrit avant ce lot n'a pas la colonne : `ALTER TAG ... ADD` la
-        cree, et `_verifier_les_tags` doit rougir si l'ALTER a ete refuse. C'est
-        exactement le piege que le lot 3 a subi sur `depth` — un `init_schema()`
-        qui rend True alors que onze tags sur douze ont migre.
+        Un space ecrit avant l'ajout de `page_no_end` n'a pas la colonne :
+        `ALTER TAG ... ADD` la cree, et `_verifier_les_tags` doit echouer si
+        l'ALTER a ete refuse. Cas deja mesure sur `depth` : `init_schema()` a
+        rendu True alors que onze tags sur douze seulement avaient migre.
         """
         avant_ce_lot = ("label", "page_no", "text", "media_url", "object_key", "depth")
         assert missing_vertex_columns(avant_ce_lot) == ("page_no_end",)
@@ -481,12 +462,12 @@ class TestMissingVertexColumns:
 
 
 class TestTextesCoupes:
-    """graph_text_max_chars coupait quatre elements sans un mot.
+    """Le compte des textes coupes a graph_text_max_chars.
 
-    `mesure` le 31 aout 2026 sur le corpus complet : **18 elements** du graphe
-    font exactement 2 000 caracteres. ChromaDB, lui, n'est pas coupe — le
-    decoupeur repart du document Docling — donc graphe et vecteurs divergent en
-    silence sur ces elements-la (registre 4.23).
+    Mesure le 31 aout 2026 sur le corpus complet : 18 elements du graphe font
+    exactement 2 000 caracteres. ChromaDB n'est pas coupe (le decoupeur repart
+    du document Docling) : graphe et vecteurs divergent sur ces elements
+    (registre 4.23).
     """
 
     def test_nothing_is_cut_below_the_limit(self):
@@ -509,15 +490,14 @@ class TestTextesCoupes:
 
 
 class TestLeCreateSpaceNAQuUnSiteEtIlTientLeCorpus:
-    """Registre : le `CREATE SPACE` avait DEUX sites, a des valeurs differentes.
+    """Le `CREATE SPACE` a un seul site, et sa longueur de VID couvre le corpus.
 
-    `nebula._create_space` declarait `FIXED_STRING(VID_MAX_BYTES)`, soit 256 ;
-    `init_nebula.py` declarait `FIXED_STRING(64)` en dur. Les deux passent par
-    `CREATE SPACE IF NOT EXISTS`, donc le premier a tourner gagne — et
-    `init_nebula.py` prescrit d'etre lance avant le service.
+    `nebula._create_space` et `init_nebula.py` passent tous deux par
+    `create_space_statement`. Comme la requete est `CREATE SPACE IF NOT EXISTS`,
+    le premier a tourner fixe le `vid_type`.
 
-    `mesure` le 1er septembre 2026 sur un space jetable en `FIXED_STRING(64)` :
-    l'insertion des deux documents reels ci-dessous est REFUSEE par le graphd.
+    Mesure le 1er septembre 2026 sur un space jetable en `FIXED_STRING(64)` :
+    l'insertion des deux documents reels ci-dessous est refusee par le graphd.
     """
 
     # Les deux plus longs identifiants que le corpus produit reellement, mesures
@@ -539,11 +519,11 @@ class TestLeCreateSpaceNAQuUnSiteEtIlTientLeCorpus:
             )
 
     def test_les_identifiants_du_corpus_depassent_bien_64_octets(self):
-        """LE TEMOIN, et c'est lui qui fait du test precedent autre chose qu'une
-        tautologie : `document_vid` tronque a `VID_MAX_BYTES`, donc le premier
-        test resterait vert pour toute valeur, 64 comprise. Celui-ci asserte le
-        FAIT independant — ces deux cles depassent 64 octets — et rougit donc
-        si `VID_MAX_BYTES` retombe a 64, l'identifiant etant alors tronque.
+        """Contre-epreuve : ces deux cles depassent reellement 64 octets.
+
+        `document_vid` tronque a `VID_MAX_BYTES`, donc le test precedent
+        passerait pour toute valeur, 64 comprise. Celui-ci verifie le fait
+        independant, et echoue si `VID_MAX_BYTES` retombe a 64.
         """
         for cle in self.CLES_REELLES:
             brut = len(f"doc_{cle}".encode())

@@ -33,8 +33,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
-# Parties ecartees par defaut. La regle : on ne garde pas ce qui n'a pas de
-# phrases. Preface, glossaire et annexes n'y figurent pas volontairement — ce
+# Parties ecartees par defaut. La regle : ce qui n'a pas de phrases est
+# ecarte. Preface, glossaire et annexes n'y figurent pas volontairement — ce
 # sont de la prose, et un glossaire repond meme tres bien aux questions
 # « c'est quoi X ? ».
 FRONT_BACK_MATTER_TITLES: frozenset[str] = frozenset(
@@ -85,7 +85,7 @@ _SPACES = re.compile(r"\s+")
 _INDEX_LINE = re.compile(r"\d+\s*(?:[,\-–]\s*\d+\s*)*$")
 
 # Au-dela, une section « a ecarter » est forcement une erreur de lecture des
-# signets (un signet parent qui couvre tout l'ouvrage) : on l'ignore.
+# signets (un signet parent qui couvre tout l'ouvrage) : elle est ignoree.
 MAX_SKIP_RATIO = 0.35
 
 # Un index vit dans la derniere partie du livre. Restreindre la detection par
@@ -116,7 +116,7 @@ def normalize_title(title: str) -> str:
     minuscule = sans_accent.lower().strip()
     sans_numero = _LEADING_NUMBER.sub("", minuscule)
     # Si le titre n'etait qu'un numero, la suppression laisse le champ vide :
-    # on repart du titre complet plutot que de renvoyer une chaine vide.
+    # le titre complet est repris plutot que de renvoyer une chaine vide.
     candidat = sans_numero or minuscule
     return _SPACES.sub(" ", _PUNCTUATION.sub(" ", candidat)).strip()
 
@@ -224,8 +224,8 @@ def looks_like_index_page(text: str) -> bool:
 def detect_index_pages(page_texts: dict[int, str], total_pages: int) -> set[int]:
     """Repere l'index d'un PDF sans signets, par la forme de ses dernieres pages.
 
-    On remonte depuis la fin tant que les pages ont le profil d'un index, et on
-    s'arrete au premier texte normal. Seule la queue du document est examinee :
+    Les pages sont parcourues depuis la fin tant qu'elles ont le profil d'un
+    index ; le parcours s'arrete au premier texte normal. Seule la queue du document est examinee :
     un tableau de resultats en plein chapitre ne doit pas etre pris pour un index.
 
     Args:
@@ -325,22 +325,19 @@ def kept_ranges(total_pages: int, skipped: set[int]) -> list[tuple[int, int]]:
 
 
 def page_batches(ranges: list[tuple[int, int]], taille: int) -> list[tuple[int, int]]:
-    """Decoupe des plages de pages en lots de conversion qui NE SE CHEVAUCHENT PAS.
+    """Decoupe des plages de pages en lots de conversion qui ne se chevauchent pas.
 
-    C'est le contrat que ``_extract_pdf`` realisait sans qu'aucun test ne le
-    garde : remplacer son ``start_page = end_page + 1`` par ``= end_page``
-    laissait toute la suite verte (registre 4.14).
+    Ce decoupage est isole ici pour etre teste (registre 4.14).
 
-    **Un chevauchement n'est pas inoffensif.** ``compute_id`` derive
-    l'identifiant d'un element de ``(document, page, rang dans la page, texte)``,
-    donc convertir une page deux fois REECRIT les memes sommets — rien ne
-    duplique, et c'est ce qui rend la chose invisible. Mais l'ordre de lecture,
-    lui, a avance : ``DocumentAccumulator._global_order`` est un compteur global
+    Un chevauchement n'est pas inoffensif. ``compute_id`` derive l'identifiant
+    d'un element de ``(document, page, rang dans la page, texte)`` : convertir
+    une page deux fois reecrit les memes sommets, sans doublon visible. Mais
+    l'ordre de lecture a avance : ``DocumentAccumulator._global_order`` est un compteur global
     au document, donc ``sequence`` se decale sur tout ce qui suit. L'exigence 4
     du contrat casse sans qu'aucune erreur ne le signale.
 
-    L'erreur symetrique — un pas de deux — sauterait une page en silence, ce que
-    les tests gardent aussi.
+    L'erreur symetrique (un pas de deux) sauterait une page en silence ; les
+    tests couvrent les deux cas.
 
     Chaque plage produit ses propres lots : un lot ne franchit jamais la
     frontiere de deux plages, puisque les pages entre elles ont ete ecartees.
@@ -365,7 +362,7 @@ def page_batches(ranges: list[tuple[int, int]], taille: int) -> list[tuple[int, 
         while debut <= fin_plage:
             fin = min(debut + taille - 1, fin_plage)
             lots.append((debut, fin))
-            # Le « + 1 » est LE contrat : sans lui, la derniere page d'un lot
+            # Le « + 1 » est le contrat : sans lui, la derniere page d'un lot
             # ouvre le suivant et se convertit deux fois.
             debut = fin + 1
     return lots

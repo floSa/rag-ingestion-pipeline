@@ -1,15 +1,15 @@
 """Ecriture du graphe de connaissances dans NebulaGraph.
 
-Deux changements structurants par rapport a la version initiale :
+Deux choix de conception :
 
-- **un pool partage** au lieu d'une connexion recreee a chaque flush (soit
-  toutes les cinq pages, avec sa sequence de retry) ;
-- **des INSERT groupes** au lieu de deux aller-retours par element : sur un
-  livre de 400 pages, cela fait passer les dizaines de milliers de requetes a
-  quelques centaines.
+- **un pool partage**, plutot qu'une connexion (et sa sequence de retry) a
+  chaque flush, soit toutes les cinq pages ;
+- **des INSERT groupes**, plutot que deux aller-retours par element : sur un
+  livre de 400 pages, quelques centaines de requetes au lieu de dizaines de
+  milliers.
 
-Les echecs d'ecriture ne sont plus silencieux : ils remontent et font echouer
-le job, plutot que de laisser un run au vert sur un graphe incomplet.
+Les echecs d'ecriture remontent et font echouer le job, plutot que de laisser
+un run reussi sur un graphe incomplet.
 """
 
 from __future__ import annotations
@@ -56,9 +56,8 @@ logger = logging.getLogger(__name__)
 # — `wipe_stores`, `verify_contract` — le lisent depuis ce module.
 __all__ = ["SPACE", "NebulaError", "NebulaWriter", "get_writer"]
 
-# VERTEX_PROPERTIES et DOCUMENT_PROPERTIES vivaient ici ET dans ngql.py, avec
-# des valeurs differentes, celle d'ici etant la vraie. Elles n'ont plus qu'un
-# site, ngql.py, qui est aussi le seul des deux modules testable sans graphd.
+# VERTEX_PROPERTIES et DOCUMENT_PROPERTIES sont definies dans ngql.py seul,
+# testable sans graphd.
 
 
 class NebulaError(RuntimeError):
@@ -77,15 +76,11 @@ class NebulaWriter:
     def _connect(self, max_attempts: int, wait_seconds: float) -> ConnectionPool:
         """Ouvre un pool, avec retry (le graphd met du temps a etre pret).
 
-        ``nebula3`` est importe ICI et non au niveau du module, et ce n'est pas
-        un detail de style. Il n'est pas dans le venv du depot — les deps
-        lourdes d'extraction vivent dans ``Dockerfile.docling`` — donc un import
-        de module rendait ``src.docling_service.nebula`` INIMPORTABLE cote hote,
-        et tout ce qu'il porte intestable : c'est ainsi que la mutation
-        ``document_vid(identity.key)`` -> ``document_vid(identity.filename)``
-        laissait la suite entierement verte (registre 4.28.d). C'est le meme
-        geste que ``vectors.get_collection``, sur le cinquieme et dernier module
-        dans ce cas. *Ce qu'un test n'importe pas, il ne teste pas.*
+        ``nebula3`` est importe ici et non au niveau du module : il n'est pas dans
+        le venv du depot (les dependances lourdes d'extraction sont dans
+        ``Dockerfile.docling``). Un import de module rendrait
+        ``src.docling_service.nebula`` inimportable cote hote, donc intestable
+        (registre 4.28.d). Meme choix que ``vectors.get_collection``.
         """
         from nebula3.Config import Config
         from nebula3.gclient.net import ConnectionPool
@@ -137,7 +132,7 @@ class NebulaWriter:
         Raises:
             NebulaError: Si la connexion echoue ou si ``USE rag_space`` echoue.
                 Cet echec doit etre bruyant : sinon tous les INSERT suivants
-                echouent en silence et le run se termine au vert sur un graphe vide.
+                echouent en silence et le run reussit sur un graphe vide.
         """
         settings = get_settings()
         session = self._get_pool().get_session(settings.nebula_user, settings.nebula_password)
@@ -232,10 +227,9 @@ class NebulaWriter:
             len(vertices_by_tag),
         )
 
-        # La coupe a graph_text_max_chars ne disait rien, et ChromaDB n'est pas
-        # coupe : le graphe et les vecteurs divergent en silence sur ces
-        # elements-la. Un avertissement plutot qu'un info — c'est une perte de
-        # texte, meme bornee et voulue.
+        # ChromaDB n'est pas coupe a graph_text_max_chars : le graphe et les
+        # vecteurs divergent sur ces elements. Avertissement plutot qu'info :
+        # c'est une perte de texte, meme bornee et voulue.
         coupes = compter_les_textes_coupes(elements, max_chars)
         if coupes:
             logger.warning(
@@ -318,8 +312,8 @@ class NebulaWriter:
             time.sleep(3)
 
             # CREATE SPACE echoue tant que storaged n'a pas fini son heartbeat :
-            # on retente jusqu'a ce que le space existe VRAIMENT, sinon tous les
-            # flushs partent dans le vide en silence.
+            # la creation est retentee jusqu'a ce que le space existe vraiment,
+            # sinon tous les flushs partent dans le vide en silence.
             for attempt in range(1, settings.nebula_space_attempts + 1):
                 execute(session, create_space_statement(SPACE), required=False)
                 time.sleep(5)
@@ -353,10 +347,10 @@ class NebulaWriter:
             ):
                 execute(session, f"ALTER TAG Document ADD ({ajout});", required=False)
 
-            # Les CREATE puis les ALTER : le second est ce qui fait migrer un
-            # space DEJA PEUPLE, ou CREATE TAG IF NOT EXISTS ne fait rien. Un
-            # ALTER dont la colonne existe deja echoue en « Existed! » : c'est
-            # attendu, d'ou required=False, exactement comme pour Document.
+            # Les CREATE puis les ALTER : les ALTER font migrer un space deja
+            # peuple, ou CREATE TAG IF NOT EXISTS ne fait rien. Un ALTER dont
+            # la colonne existe deja echoue en « Existed! » : c'est attendu,
+            # d'ou required=False, comme pour Document.
             for statement in tag_schema_statements(sorted(set(TAG_MAP.values()))):
                 execute(session, statement, required=statement.startswith("CREATE"))
 
@@ -366,7 +360,7 @@ class NebulaWriter:
 
         # NebulaGraph propage les changements de schema de maniere asynchrone :
         # ecrire immediatement apres un CREATE/ALTER expose a un rejet pour tag
-        # inconnu. On laisse passer quelques heartbeats.
+        # inconnu. L'attente laisse passer quelques heartbeats.
         time.sleep(10)
         self._verifier_les_tags(sorted(set(TAG_MAP.values())))
         logger.info("Schema semantique NebulaGraph pret.")
@@ -375,11 +369,11 @@ class NebulaWriter:
         """Constate que la migration a eu lieu, au lieu de la supposer.
 
         Un ALTER est tolere en echec — « la colonne existe deja » est son cas
-        nominal — donc une migration REELLEMENT refusee ne dit rien. `mesure` le
+        nominal — donc une migration reellement refusee ne dit rien. Mesure le
         31 aout 2026 : onze tags sur douze avaient migre, le douzieme avait ete
-        refuse avec « Schema exisited before! », et cette methode rendait la
-        main au vert. Le defaut ne se serait vu qu'a la premiere ecriture, sur
-        un rejet du graphd pour colonne inconnue — un document a moitie ecrit.
+        refuse avec « Schema exisited before! ». Sans ce controle, le defaut ne
+        se verrait qu'a la premiere ecriture, sur un rejet du graphd pour
+        colonne inconnue : un document a moitie ecrit.
 
         Raises:
             NebulaError: Si un tag ne porte pas toutes les colonnes du schema.

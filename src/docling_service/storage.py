@@ -1,8 +1,8 @@
 """Persistance d'un lot d'elements : graphe puis index vectoriel.
 
 Point d'entree unique des ecritures, pour que les deux stores restent
-coherents : si NebulaGraph refuse le lot, on n'indexe pas les vecteurs
-correspondants, et l'erreur remonte jusqu'au job.
+coherents : si NebulaGraph refuse le lot, les vecteurs correspondants ne sont
+pas indexes, et l'erreur remonte jusqu'au job.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ class PurgeIncompleteError(RuntimeError):
 
 
 def forget_document(identity: DocumentIdentity) -> None:
-    """Retire un document des DEUX stores, ou dit lequel a resiste.
+    """Retire un document des deux stores, ou dit lequel a resiste.
 
     **Point d'appel unique de la purge**, comme `persist` l'est de l'ecriture, et
     pour la meme raison : les deux stores doivent rester coherents. Purger le
@@ -38,13 +38,13 @@ def forget_document(identity: DocumentIdentity) -> None:
     Deux appelants, et un seul mecanisme (registre 4.1 et 4.2) :
 
     - **avant de reecrire un document** : les identifiants derivent du texte, donc
-      un texte modifie produit de NOUVEAUX identifiants et les anciens survivent.
-      Le capteur declenchant sur ``mtime``, c'est le chemin NOMINAL qui casse ;
+      un texte modifie produit de nouveaux identifiants et les anciens
+      survivraient. Le capteur declenchant sur ``mtime``, c'est le cas nominal ;
     - **apres l'echec d'un lot PDF** : sans cette purge, l'ouvrage reste dans
-      l'index, tronque, sur une partition rouge — et `verify_contract` ne peut pas
+      l'index, tronque, sur une partition en echec — et `verify_contract` ne peut pas
       le voir, les `element_id` ecrits etant valides.
 
-    Les deux stores sont TENTES meme si le premier echoue : s'arreter au premier
+    Les deux purges sont tentees meme si la premiere echoue : s'arreter au premier
     echec laisserait precisement l'etat mixte a eviter.
 
     Args:
@@ -59,7 +59,7 @@ def forget_document(identity: DocumentIdentity) -> None:
     try:
         get_writer().delete_document(identity.key)
     except Exception as exc:
-        # LARGEUR VOULUE : l'index vectoriel doit etre tente quand meme, sans
+        # Exception large voulue : l'index vectoriel doit etre tente quand meme, sans
         # quoi une panne du graphd laisse la moitie du document en place. Le
         # graphd leve `NebulaError`, et son pool leve ses propres types de
         # transport avant d'y arriver. L'echec n'est pas avale : il est nomme
@@ -69,7 +69,7 @@ def forget_document(identity: DocumentIdentity) -> None:
     try:
         retires = vectors.delete_document(identity)
     except Exception as exc:
-        # LARGEUR VOULUE, meme motif : le bilan doit se former meme si ChromaDB
+        # Exception large voulue, meme motif : le bilan doit se former meme si ChromaDB
         # est a terre. `chromadb` leve selon la couche qui echoue — HTTP,
         # protocole, collection absente — sans base commune utile.
         echecs.append(f"ChromaDB ({exc})")
@@ -89,7 +89,7 @@ def validate_elements(elements: Sequence[dict[str, Any]]) -> None:
 
     Garde-fou contre la derive de contrat : ``DocumentElement`` est le format
     documente cote ``rag-agent-chat``, et le service construit des dicts. Sans
-    cette validation, un champ renomme ou oublie ne se voyait qu'a l'usage,
+    cette validation, un champ renomme ou oublie ne se verrait qu'a l'usage,
     dans les reponses de l'agent.
 
     Args:

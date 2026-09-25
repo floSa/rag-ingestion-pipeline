@@ -1,8 +1,7 @@
 """Reconstruction de la hierarchie des titres d'un document.
 
-Jusqu'ici, tout titre etait rattache au document : la chaine s'arretait a
-``element -> titre -> document``, quelle que soit la source. Un sous-titre et
-le chapitre qui le contient etaient freres.
+Chaque titre est rattache a son titre parent, et non directement au document :
+un sous-titre est l'enfant du chapitre qui le contient.
 
 **Une seule regle, tous les formats.** Le parent d'un titre est le titre
 precedent de *rang superieur*. Le rang est un petit entier ou 0 designe le
@@ -20,27 +19,17 @@ document. Un ouvrage compose en 24/22/20 points produit exactement les memes
 niveaux qu'un ouvrage en 20/18/16.
 
 Quand aucun signal n'est disponible, tous les titres recoivent le meme rang et
-l'on retombe sur le comportement anterieur — tout sous le document. Jamais de
-hierarchie inventee.
+sont rattaches au document. Aucune hierarchie n'est inventee.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Il n'y a plus de profondeur maximale, et c'est une correction, pas un
-# relachement. Un plafond MAX_DEPTH = 3 vivait ici, justifie par « au-dela, un
-# RAG n'y gagne rien : l'objectif est de reconstruire un bloc avec ses titres
-# parents, pas de reproduire une arborescence complete ». Ce motif decrit une
-# limitation de l'ARBRE qui n'a jamais existe : le plafond ne bornait que la
-# valeur rendue, jamais ``parent_id``, donc les aretes ecrites dans le graphe
-# etaient les memes avec ou sans lui.
-#
-# Son seul effet mesurable etait de rendre ``depth`` non injectif : la valeur 4
-# de ChromaDB recouvrait les profondeurs reelles 4 ET 5 (registre 4.24). Il ne
-# tenait meme pas sa propre promesse — un element qui n'est pas un titre recoit
-# ``profondeur_du_titre + 1``, sans plafond, donc la valeur 4 existait deja
-# alors que le maximum annonce etait 3.
+# La profondeur n'a pas de plafond. Un plafond ne bornait que la valeur rendue,
+# jamais ``parent_id`` : il rendait ``depth`` non injectif (la valeur 4 de
+# ChromaDB recouvrait les profondeurs reelles 4 et 5, registre 4.24) sans
+# changer les aretes du graphe.
 
 
 def dense_ranks(values: list[float]) -> dict[float, int]:

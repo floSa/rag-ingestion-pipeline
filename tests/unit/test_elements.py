@@ -1,8 +1,7 @@
 """Tests unitaires pour la construction des elements de document.
 
-Ces tests importent les fonctions reelles du service. La version precedente en
-recopiait une replique dans le fichier de test — le code de production n'etait
-donc pas couvert, et une divergence serait passee inapercue.
+Ces tests importent les fonctions reelles du service, et non une copie : une
+divergence avec le code de production ne peut pas passer inapercue.
 """
 
 from __future__ import annotations
@@ -295,8 +294,8 @@ class TestIdentiteDuDocument:
         assert propre.collection == origine.collection
 
     def test_deux_chapitres_homonymes_ont_des_cles_distinctes(self):
-        # Le defaut de fond : sans le chemin, deux « Preface » de deux
-        # ouvrages produisaient les memes identifiants d'elements.
+        # Sans le chemin, deux « Preface » de deux ouvrages produiraient les
+        # memes identifiants d'elements.
         a = document_identity("htms/Livre A/Preface.html")
         b = document_identity("htms/Livre B/Preface.html")
         assert a.filename == b.filename
@@ -395,30 +394,23 @@ class TestAccumulatorHierarchy:
 
 
 class TestUnElementQuiEnjambeUnePageLeDit:
-    """Registre 4.22 : six pages du PDF n'ont AUCUN element dans le graphe.
+    """Registre 4.22 : un element qui enjambe une page le dit par `page_no_end`.
 
-    `mesure` : les pages **8, 18, 19, 25, 68, 69** sur 71 sont vides du cote du
-    graphe, alors que PyMuPDF y lit 1 181 a 1 472 caracteres. Le texte n'est pas
-    perdu — 72 316 caracteres ecrits sur 72 326 — il est **attribue a la page
-    PRECEDENTE** : le debut de la page 8 se retrouve dans un element de la page 7.
-    Consequence : toute citation « page 7 » couvre en realite 7 ET 8. Run vert,
-    aucun compteur, aucun signal.
+    Mesure sur le PDF du corpus : les pages 8, 18, 19, 25, 68 et 69 sur 71 ne
+    sont la page de debut d'aucun element, alors que PyMuPDF y lit 1 181 a
+    1 472 caracteres. Le texte n'est pas perdu (72 316 caracteres ecrits sur
+    72 326) : Docling fusionne un paragraphe qui enjambe une page et l'attribue
+    a la page precedente. Une citation « page 7 » peut donc couvrir 7 et 8.
 
-    **LA MESURE QUI A DECIDE, et le registre ne la porte pas.** La cause ecrite
-    est que `page_no` vient de la PREMIERE provenance de l'item et que Docling
-    fusionne un paragraphe qui enjambe une page. Vrai — mais la seconde page
-    n'est pas perdue pour autant : `mesure` le 1er septembre 2026, conversion
-    reelle du PDF du corpus en `page_range=(7, 8)`, l'item `#/texts/3` porte
-    **DEUX provenances, pages [7, 8]**. L'information existe et etait JETEE.
+    L'information existe : mesure le 1er septembre 2026, conversion reelle du
+    PDF du corpus en `page_range=(7, 8)`, l'item `#/texts/3` porte deux
+    provenances, pages [7, 8].
 
-    D'ou la correction : `page_no` garde son sens — la premiere page, celle ou la
-    lecture commence — et `page_no_end` dit ou l'element FINIT.
-
-    **ET C'EST CE QUI REND LA CORRECTION NEUTRE POUR LES `element_id`.**
-    `compute_id` derive de `(cle, page_no, position_in_page, texte[:50])`. Ne pas
-    toucher a `page_no` etait donc la condition pour que ce constat ne tue pas le
-    jeu de questions du lot 6 — ce que le mandat et le registre 4.28.e supposaient
-    inevitable.
+    `page_no` garde son sens (la premiere page, ou la lecture commence) et
+    `page_no_end` dit ou l'element finit. `compute_id` derive de
+    `(cle, page_no, position_in_page, texte[:50])` : ne pas toucher a `page_no`
+    laisse les `element_id` inchanges, donc le jeu de questions de l'agent
+    reste valide (registre 4.28.e).
     """
 
     @staticmethod
@@ -460,11 +452,11 @@ class TestUnElementQuiEnjambeUnePageLeDit:
         )
 
     def test_page_no_reste_la_premiere_page(self):
-        """LE TEMOIN, et il porte tout le poids de la correction.
+        """`page_no` reste la premiere page.
 
-        Deplacer `page_no` vers la derniere page — ou vers une moyenne — changerait
-        `compute_id`, donc TOUS les `element_id` du corpus, donc le jeu de
-        questions du lot 6. La correction est additive precisement pour cela.
+        La deplacer vers la derniere page, ou vers une moyenne, changerait
+        `compute_id`, donc tous les `element_id` du corpus et le jeu de
+        questions de l'agent. `page_no_end` s'ajoute sans y toucher.
         """
         accumulateur = DocumentAccumulator(IDENTITY)
         element = accumulateur.add_item(self._item([7, 8, 9]), None)
@@ -473,11 +465,10 @@ class TestUnElementQuiEnjambeUnePageLeDit:
         assert element["page_no_end"] == 9
 
     def test_l_identifiant_ne_bouge_pas_quand_un_element_enjambe(self):
-        """LE SECOND TEMOIN : l'identifiant d'un element qui enjambe est le MEME
-        que celui du meme element vu sur sa seule premiere page.
+        """L'identifiant d'un element qui enjambe est le meme que celui du meme
+        element vu sur sa seule premiere page.
 
-        C'est la propriete qui rend ce constat compatible avec le lot 6, et elle
-        s'asserte plutot que se raisonne.
+        C'est ce qui garde le jeu de questions de l'agent valide.
         """
         seul = DocumentAccumulator(IDENTITY).add_item(self._item([7]), None)
         enjambe = DocumentAccumulator(IDENTITY).add_item(self._item([7, 8]), None)
@@ -500,12 +491,11 @@ class TestUnElementQuiEnjambeUnePageLeDit:
 
 
 class TestLesPagesCouvertesParAucunElement:
-    """Le COMPTEUR la ou il y a perte : quelles pages n'ont aucun element ?
+    """Le compteur de pages perdues : quelles pages n'ont aucun element ?
 
-    Avec `page_no_end`, une page enjambee cesse d'etre un trou : elle est
-    couverte par un element qui commence avant elle. Ce qui reste apres ce
-    changement est la VRAIE perte — une page que personne ne couvre, ni comme
-    page d'entree ni comme page de fin — et c'est elle qu'il faut compter.
+    Une page enjambee est couverte par un element qui commence avant elle.
+    La perte reelle est une page que personne ne couvre, ni comme page
+    d'entree ni comme page de fin : c'est elle qui est comptee.
     """
 
     # Le cas mesure du corpus, reduit : la page 8 n'a aucun element propre parce
@@ -520,11 +510,11 @@ class TestLesPagesCouvertesParAucunElement:
         assert pages_sans_element(self.ENJAMBE, total_pages=9, ecartees={1, 2, 3, 4, 5}) == []
 
     def test_une_page_que_personne_ne_couvre_est_signalee(self):
-        """LE TEMOIN du precedent, et il est indispensable.
+        """Contre-epreuve du precedent.
 
-        Sans lui, un compteur qui rend toujours la liste vide passerait le test
-        ci-dessus. C'est le cas ou la page 8 est REELLEMENT perdue : aucun
-        element ne commence dessus, et aucun ne l'enjambe.
+        Sans ce test, un compteur qui rend toujours la liste vide passerait le
+        test ci-dessus. Ici la page 8 est reellement perdue : aucun element ne
+        commence dessus, et aucun ne l'enjambe.
         """
         sans_enjambement = [
             {"page_no": 6, "page_no_end": 6},
@@ -535,9 +525,8 @@ class TestLesPagesCouvertesParAucunElement:
         assert pages_sans_element(sans_enjambement, total_pages=9, ecartees={1, 2, 3, 4, 5}) == [8]
 
     def test_les_pages_ecartees_ne_sont_pas_comptees_comme_perdues(self):
-        """Le front/back matter est ECARTE volontairement : le compter comme une
-        perte rendrait le compteur bavard sur chaque PDF, et personne ne lirait
-        plus la ligne."""
+        """Le front/back matter est ecarte volontairement : le compter comme une
+        perte rendrait le compteur bruyant sur chaque PDF."""
         elements = [{"page_no": 3, "page_no_end": 3}]
 
         assert pages_sans_element(elements, total_pages=5, ecartees={1, 2, 4, 5}) == []
@@ -555,14 +544,12 @@ class TestLesPagesCouvertesParAucunElement:
 
 
 class TestLAllerRetourDuSousRepertoireNettoye:
-    """L'INVARIANT QUE `CLEANED_SUBDIR` CASSAIT QUAND C'ETAIT UN REGLAGE.
+    """L'aller-retour entre copie nettoyee et identite du document (registre 4.29.a).
 
-    Deux sites decidaient du meme nom de repertoire : `PipelineSettings.
-    cleaned_subdir`, selon lequel l'asset `cleaned_html` ECRIVAIT, et la
-    constante de ce module, selon laquelle `document_identity` RETIRE le segment
-    pour retrouver le chemin source. Rien ne gardait leur accord.
-
-    `mesure` le 1er septembre 2026, avec `CLEANED_SUBDIR=.propre`, sur le chemin
+    Deux sites dependent du nom du sous-repertoire : l'asset `cleaned_html`
+    y ecrit, et `document_identity` retire ce segment pour retrouver le chemin
+    source. S'ils divergent, l'identite change sans erreur. Mesure le
+    1er septembre 2026 avec un sous-repertoire `.propre`, sur le chemin
     nettoye de `htms/MLOps with Databricks/Preface.html` :
 
     ======================= ================================== =================
@@ -573,22 +560,20 @@ class TestLAllerRetourDuSousRepertoireNettoye:
     `element_id`            `fab608f4eb`                       `9d6460cded`
     ======================= ================================== =================
 
-    **L'exigence 2 du contrat rompue, et l'exigence 3 avec elle, sans qu'aucune
-    erreur ne soit levee.** Le reglage a disparu (registre 4.29.a) ; ce qui reste
-    a garder est l'aller-retour lui-meme, parce qu'un second site peut toujours
-    reapparaitre. Ces tests l'assertent depuis les DEUX cotes : le chemin que la
-    production ECRIT, et l'identite que la production en DEDUIT.
+    Les exigences 2 et 3 du contrat sont rompues sans erreur. Ces tests
+    verifient l'aller-retour des deux cotes : le chemin que la production
+    ecrit, et l'identite qu'elle en deduit.
     """
 
     RACINE = "/opt/dagster/app/Datas"
     SOURCE = "htms/MLOps with Databricks/Preface.html"
 
     def test_la_copie_nettoyee_rend_l_identite_du_document(self) -> None:
-        """LE GARDE. Un second site qui derive rougit ici.
+        """Une seconde derivation divergente fait echouer ce test.
 
         `_deduce_source_path` est la voie que suit un appel manuel a l'API, ou le
         pipeline ne passe pas `source_path` : le service part alors du chemin du
-        FICHIER, qui est celui de la copie nettoyee.
+        fichier, qui est celui de la copie nettoyee.
         """
         from src.docling_service.extraction import _deduce_source_path
 
@@ -605,7 +590,7 @@ class TestLAllerRetourDuSousRepertoireNettoye:
         )
 
     def test_l_element_id_est_le_meme_par_les_deux_chemins(self) -> None:
-        """LE TEMOIN QUI PORTE LA CONSEQUENCE, et c'est elle qui coute.
+        """La consequence : le meme `element_id` par les deux chemins.
 
         Le test precedent compare des chaines ; celui-ci compare ce que le
         contrat designe. Un jeu de questions de l'agent nomme des `element_id` :
@@ -628,11 +613,11 @@ class TestLAllerRetourDuSousRepertoireNettoye:
         )
 
     def test_les_deux_derivations_partent_de_la_meme_constante(self) -> None:
-        """Le second temoin : `cleaned_path` passe bien par `cleaned_root`.
+        """`cleaned_path` passe bien par `cleaned_root`.
 
-        Sans lui, les deux fonctions pourraient porter deux litteraux — le defaut
-        d'origine, reduit d'un cran — et les tests ci-dessus resteraient verts si
-        `document_identity` lisait celui de `cleaned_path`.
+        Sans ce test, les deux fonctions pourraient porter deux litteraux, et
+        les tests ci-dessus passeraient encore si `document_identity` lisait
+        celui de `cleaned_path`.
         """
         assert cleaned_path(self.RACINE, self.SOURCE).is_relative_to(cleaned_root(self.RACINE))
         assert cleaned_root(self.RACINE).name == CLEANED_SUBDIR

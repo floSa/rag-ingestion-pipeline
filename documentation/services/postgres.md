@@ -29,7 +29,7 @@ Volume : `./Datas/database/postgres:/var/lib/postgresql/data`
 ## Healthcheck
 
 ```bash
-pg_isready -h postgres-dagster -U dagster
+docker compose exec postgres-dagster pg_isready -U dagster
 ```
 
 ## Notes

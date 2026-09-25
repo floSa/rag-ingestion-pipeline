@@ -1,30 +1,24 @@
-"""Gardes sur le jeu de questions de la premiere campagne de reference.
+"""Tests du jeu de questions de la premiere campagne de reference.
 
-**CE QUE CES TESTS GARDENT, ET CE QU'ILS NE GARDENT PAS.** La distinction est le
-sujet de ce fichier, et l'ecrire ici est ce qui l'empeche d'etre lu plus large
-qu'il n'est.
+Ce que ces tests verifient : la **forme** du jeu, contre la specification du
+registre (section 1, « La conception du jeu d'evaluation ») — les cinq strates
+et leurs effectifs, le format des `element_id`, et les trois proprietes sans
+lesquelles une strate ne mesure pas ce que son nom annonce. Les effectifs
+attendus sont ecrits en litteraux, volontairement : les deriver du fichier
+rendrait chaque assertion vraie par construction.
 
-Ils gardent la **FORME** du jeu contre la specification du registre, section 1
-« La conception du jeu d'evaluation » : les cinq strates et leurs effectifs, le
-format des `element_id`, et les trois proprietes sans lesquelles une strate ne
-mesure pas ce que son nom annonce. Les effectifs attendus sont ecrits ici en
-**litteraux**, et c'est delibere : les deriver du fichier rendrait chaque
-assertion vraie par construction — le motif des treize gardes creux de ce
-chantier, *le test observe ce qu'il a lui-meme fourni*.
+Ce qu'ils ne verifient pas :
 
-Ils ne gardent **pas** la VERITE de la carte `ancrages`, c'est-a-dire que
-l'`element_id` `4b1d79b83a` designe bien la section « Embedding window
-considerations » du chapitre 7. Cette verite se mesure contre l'index vivant, ce
-qu'aucun test de ce depot ne peut faire — `chromadb` n'est pas dans le venv du
-depot. Le geste qui la garde est
-`scripts/campagne/verifier-le-jeu-de-questions.py`, qui relit chaque ancrage
-dans le store et sort en 1 au premier desaccord. **Les deux sont necessaires et
-aucun ne remplace l'autre** : la forme rougit ici, la provenance rougit la-bas.
-
-Ils ne gardent pas non plus la QUALITE des questions — qu'une question soit
-dure, qu'une reponse attendue soit juste. Cela demande une relecture humaine, et
-c'est precisement le motif pour lequel la specification reporte les questions
-pieges au second tour.
+- la **justesse** de la carte `ancrages`, par exemple que l'`element_id`
+  `4b1d79b83a` designe bien la section « Embedding window considerations » du
+  chapitre 7. Elle se verifie contre l'index vivant, et `chromadb` n'est pas
+  dans l'environnement virtuel du depot. C'est le role de
+  `scripts/campagne/verifier-le-jeu-de-questions.py`, qui relit chaque ancrage
+  dans le store et sort en 1 au premier desaccord. Les deux controles sont
+  complementaires ;
+- la **qualite** des questions (difficulte, justesse des reponses attendues),
+  qui demande une relecture humaine. C'est pourquoi la specification reporte
+  les questions pieges au second tour.
 """
 
 from __future__ import annotations
@@ -36,15 +30,14 @@ from typing import Any
 import pytest
 import yaml
 
-# Le chemin du jeu, relatif a la racine du depot. Un test qui construit son
-# chemin depuis `__file__` survit a un deplacement du fichier de test ; un test
-# qui le prend d'un reglage survivrait a la disparition du jeu.
+# Chemin du jeu, construit depuis `__file__` et relatif a la racine du depot.
+# Un chemin lu dans un reglage laisserait passer la disparition du jeu.
 #
-# LE JEU EST EN YAML ET NON EN JSON, et le motif est mesure : `detect-secrets`
-# lit l'empreinte du corpus comme une « Hex High Entropy String » et refuse le
-# commit tant que le faux positif n'est pas declare AU SITE par un pragma
-# justifie. JSON n'admet pas de commentaire. C'est l'arbitrage du registre
-# section 3.6 bis, deja pris pour `tests/fixtures/arbres_docling.yaml`.
+# Le jeu est en YAML et non en JSON : `detect-secrets` prend l'empreinte du
+# corpus pour une « Hex High Entropy String » et refuse le commit tant que le
+# faux positif n'est pas declare sur place par un commentaire pragma, ce que
+# JSON ne permet pas (registre section 3.6 bis, meme choix que
+# `tests/fixtures/arbres_docling.yaml`).
 JEU = (
     Path(__file__).resolve().parents[2]
     / "documentation"
@@ -52,11 +45,10 @@ JEU = (
     / "2026-09-02-jeu-de-questions.yaml"
 )
 
-# LES EFFECTIFS DE LA SPECIFICATION, EN LITTERAUX. Registre, section 1 : douze
-# multi-passages « rend l'ablation lisible », huit simples « plancher de
-# controle », quatre sans reponse « teste l'abstention », quatre de suivi « il
-# n'y en avait AUCUNE », deux reformulees « echantillon ». Trente au total, et
-# non trente-six : « a 4 par strate, aucune ne dit rien ».
+# Effectifs de la specification (registre, section 1), en litteraux : douze
+# multi-passages (rendent l'ablation lisible), huit simples (plancher de
+# controle), quatre sans reponse (testent l'abstention), quatre de suivi, deux
+# reformulees (echantillon). Trente au total.
 EFFECTIFS_ATTENDUS = {
     "multi_passages": 12,
     "simple": 8,
@@ -82,10 +74,9 @@ def questions(jeu: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 class TestLeJeuExisteEtEstLisible:
-    """Le temoin des autres classes : sans lui, un jeu vide les rendrait vertes.
+    """Le jeu n'est pas vide : sans ce controle, les autres classes passeraient sur un jeu vide.
 
-    Une liste vide satisfait tout `for q in questions: assert ...`. C'est la
-    forme la plus courante du garde creux, et elle se ferme par un compte.
+    Une liste vide satisfait tout `for q in questions: assert ...`.
     """
 
     def test_le_fichier_existe(self):
@@ -100,12 +91,7 @@ class TestLeJeuExisteEtEstLisible:
 
 
 class TestLesCinqStratesEtLeursEffectifs:
-    """Convertit en garde la table du registre section 1.
-
-    Cette table est une **phrase d'exhaustivite** dans un document : elle clot
-    une enumeration que personne ne rouvre. Le chantier en a paye assez pour ne
-    plus en laisser une decider d'une mesure sans qu'un test la tienne.
-    """
+    """Verifie les effectifs par strate de la table du registre, section 1."""
 
     def test_les_effectifs_sont_ceux_de_la_specification(self, questions):
         compte: dict[str, int] = {}
@@ -117,11 +103,11 @@ class TestLesCinqStratesEtLeursEffectifs:
         assert {q["strate"] for q in questions} == set(EFFECTIFS_ATTENDUS)
 
     def test_le_total_declare_dans_le_jeu_ne_derive_pas_des_litteraux(self, jeu):
-        """Le jeu declare ses propres effectifs : ils doivent coincider ICI.
+        """Les effectifs declares par le jeu coincident avec la specification.
 
-        Sans cette assertion, editer les questions ET la declaration du meme
-        geste laisserait le fichier coherent avec lui-meme et faux contre la
-        specification. C'est le seul endroit ou les deux se rencontrent.
+        Sans cette assertion, modifier a la fois les questions et leur
+        declaration laisserait le fichier coherent avec lui-meme mais faux
+        par rapport a la specification.
         """
         assert jeu["strates_attendues"] == EFFECTIFS_ATTENDUS
 
@@ -150,10 +136,10 @@ class TestLesElementIdDesignentQuelqueChose:
         assert cites == set(jeu["ancrages"])
 
     def test_aucun_ancrage_ne_traine_sans_question_qui_le_cite(self, jeu, questions):
-        """Le temoin du precedent, par l'autre bout.
+        """Complete le precedent dans l'autre sens.
 
-        Une carte d'ancrages plus large que les citations resterait verte sur
-        l'egalite si l'assertion ne portait que dans un sens.
+        Une carte d'ancrages plus large que les citations passerait si la
+        comparaison ne portait que dans un sens.
         """
         cites = {e for q in questions for e in q["element_ids"]}
         orphelins = sorted(set(jeu["ancrages"]) - cites)
@@ -161,10 +147,10 @@ class TestLesElementIdDesignentQuelqueChose:
 
 
 class TestCeQuiRendChaqueStrateMesurable:
-    """Trois proprietes de SERRAGE, une par strate qui en depend.
+    """Trois proprietes, une par strate qui en depend.
 
-    Ce ne sont pas des controles de forme : chacune est la condition sans
-    laquelle la strate ne mesure pas ce que son nom annonce.
+    Chacune est la condition sans laquelle la strate ne mesure pas ce que son
+    nom annonce.
     """
 
     def test_toute_question_a_reponse_porte_au_moins_un_ancrage(self, questions):
@@ -178,10 +164,10 @@ class TestCeQuiRendChaqueStrateMesurable:
         assert fautifs == []
 
     def test_les_questions_sans_reponse_n_en_portent_aucun(self, questions):
-        """Le temoin du precedent, et il n'est pas symetrique.
+        """Une question « sans reponse » ne cite aucun passage.
 
-        Une question « sans reponse » qui citerait un passage punirait une
-        abstention CORRECTE : elle mesurerait l'inverse de ce qu'elle pretend.
+        Sinon, elle penaliserait une abstention correcte et mesurerait l'inverse
+        de ce qu'elle annonce.
         """
         fautifs = [q["id"] for q in questions if q["strate"] == "sans_reponse" and q["element_ids"]]
         assert fautifs == []
@@ -189,11 +175,10 @@ class TestCeQuiRendChaqueStrateMesurable:
     def test_les_multi_passages_couvrent_au_moins_deux_sections_distinctes(self, jeu, questions):
         """« 2 ou 3 sections differentes » — c'est ce qui rend l'ablation lisible.
 
-        Deux ancrages de la MEME section ne demandent aucune reconstruction :
-        la question redeviendrait un `simple` deguise, et l'ablation du graphe
-        conclurait « le graphe ne sert a rien » sur une population de questions
-        incapable de le voir. Le compte porte sur les SECTIONS, pas sur les
-        ancrages, et c'est la le serrage.
+        Deux ancrages de la meme section ne demandent aucune reconstruction :
+        la question serait un `simple` deguise, et l'ablation du graphe
+        conclurait a tort qu'il ne sert a rien. Le compte porte donc sur les
+        sections, pas sur les ancrages.
         """
         ancrages = jeu["ancrages"]
         fautifs = []
@@ -210,8 +195,8 @@ class TestCeQuiRendChaqueStrateMesurable:
     def test_les_questions_de_suivi_portent_un_historique_non_vide(self, questions):
         """Sans `chat_history`, une question de suivi est une question tronquee.
 
-        La strate existe parce qu'« il n'y en avait AUCUNE » dans l'ancien jeu :
-        livrer quatre questions de suivi sans historique la recreerait vide.
+        Une question de suivi sans historique ne teste pas le suivi de
+        conversation.
         """
         fautifs = [
             q["id"] for q in questions if q["strate"] == "de_suivi" and not q.get("chat_history")
@@ -219,7 +204,7 @@ class TestCeQuiRendChaqueStrateMesurable:
         assert fautifs == []
 
     def test_un_historique_de_suivi_alterne_utilisateur_et_assistant(self, questions):
-        """Le temoin du precedent : une liste non vide ne suffit pas.
+        """Complete le precedent : une liste non vide ne suffit pas.
 
         Un historique qui ne porterait que des tours `user` ne donnerait aucun
         antecedent a resoudre, et la question resterait tronquee.
@@ -240,9 +225,9 @@ class TestLesProprietesQueLaCAMPAGNEDoitPouvoirLIRE:
     def test_la_moitie_survivante_de_la_mesure_translinguistique_est_echantillonnee(
         self, questions
     ):
-        """Le corpus est ENTIEREMENT anglais : « question fr -> document en »
-        reste possible, l'inverse disparait. Le jeu doit donc porter au moins une
-        question francaise, sans quoi l'axe n'est pas echantillonne du tout.
+        """Le corpus est entierement anglais : seul l'axe « question fr ->
+        document en » existe. Le jeu doit donc porter au moins une question
+        francaise, sans quoi cet axe n'est pas echantillonne.
 
         Un `>= 1` et non une egalite : ajouter des questions francaises est une
         amelioration, et une egalite l'interdirait.
@@ -256,9 +241,9 @@ class TestLesProprietesQueLaCAMPAGNEDoitPouvoirLIRE:
     def test_les_chapitres_echantillonnes_sont_ceux_que_les_ancrages_citent(self, jeu):
         """Le perimetre declare et le perimetre reel doivent coincider.
 
-        Un jeu qui declare echantillonner quatre chapitres et cite un cinquieme
-        ment sur son perimetre, et « on echantillonne les questions, jamais le
-        corpus » deviendrait inverifiable.
+        Un jeu qui declare echantillonner quatre chapitres et en cite un
+        cinquieme annonce un perimetre faux, et le principe « on echantillonne
+        les questions, jamais le corpus » deviendrait inverifiable.
         """
         declares = set(jeu["echantillonnage"]["chapitres"])
         declares.add(jeu["echantillonnage"]["pages_pdf"]["source_path"])

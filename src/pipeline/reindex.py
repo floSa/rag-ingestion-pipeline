@@ -1,51 +1,39 @@
 """L'appel ``POST /reindex`` sur rag-agent-chat : ce qu'il fait, et rien d'autre.
 
-QUAND il part est une autre question, et elle a son module : ``reindex_job.py``.
-Les avoir confondus est ce qui a fait poster une fois par document une route
-que le contrat veut en fin d'ingestion.
+Le moment ou il part est decide ailleurs, dans ``reindex_job.py`` (une fois par
+rafale d'ingestion, pas une fois par document).
 
-C'est **l'une des exigences dures** du contrat d'interface, et la seule que ce
-module-ci porte. Ce n'est pas la seule que le contrat impose au pipeline : le
-modele d'embedding en est une autre, verifiee au demarrage du service par
-``main.py:93`` via ``embedding.verify_model_name``, et le contrat en enonce
-d'autres encore, portees ailleurs dans la chaine. La liste qui fait foi est
-tenue hors du code, dans le registre du chantier : elle n'est pas recopiee ici,
-parce qu'une enumeration recopiee se ferme et que personne ne la rouvre.
+C'est l'une des exigences dures du contrat d'interface, et la seule que ce
+module porte. Le contrat en impose d'autres au pipeline, par exemple le modele
+d'embedding, verifie au demarrage du service Docling (``main.py``, via
+``embedding.verify_model_name``). La liste qui fait foi est tenue dans le
+registre du chantier et n'est pas recopiee ici.
 
-Ce qui etait vrai et qui justifie ce module : cette exigence-la etait absente,
-aucun appel, aucune configuration, nulle part.
+Pourquoi cet appel. L'agent tient son index lexical BM25 en memoire, construit
+au premier appel. La recherche dense, elle, interroge ChromaDB a chaque requete
+et suit donc le corpus. Sans cet appel, un document ingere apres le demarrage de
+l'agent est trouvable en dense mais invisible en lexical jusqu'au prochain
+redemarrage, et aucune sonde ne le voit.
 
-Ce qu'elle repare. L'agent tient son index lexical BM25 **en memoire**,
-construit au premier appel. La recherche dense, elle, part a ChromaDB a chaque
-requete et suit donc le corpus sans effort. Un document ingere apres le
-demarrage de l'agent etait donc trouvable en dense et invisible en lexical
-jusqu'au prochain redemarrage : la recherche devenait silencieusement
-asymetrique, ce qui ne se voit dans aucune sonde.
+**Le filet de l'agent ne suffit pas.** L'agent compare le nombre de chunks de sa
+collection au nombre qu'il a indexe, et se reconstruit s'ils different. Une
+re-ingestion qui retire autant de chunks qu'elle en ajoute garde le meme compte,
+et le filet ne voit rien. C'est le cas de toute re-ingestion d'un corpus deja
+present.
 
-**Le filet de l'agent ne nous couvre pas.** L'agent compare le nombre de chunks
-de sa collection au nombre qu'il a indexe, et se reconstruit s'ils different.
-Mais une re-ingestion qui retire autant de chunks qu'elle en ajoute affiche le
-meme compte : le filet ne voit rien, et c'est exactement ce que produit une
-re-ingestion d'un corpus deja present. D'ou un contrat, et non une option.
+Trois choix deliberes :
 
-Trois choix, tous les trois deliberes :
-
-1. **Cette fonction-ci ne leve jamais.** Elle rend ce qu'il est advenu de
-   l'appel, y compris l'echec, et laisse son appelant decider ce qu'il en fait.
-   La separation compte : quand l'appel vivait dans le run d'une partition,
-   rougir aurait declenche des reprises qui reconvertissent des centaines de
-   pages. Il vit desormais dans son propre run, ou une reprise coute UN appel
-   HTTP — et c'est ``reindex_job.py`` qui tranche, en connaissance de sa
-   hauteur. Dans les deux cas, une ingestion reussie reste verte.
-2. **Un echec ne passe pas inapercu.** L'appelant a tout ce qu'il faut pour le
-   dire : ``ok``, ``detail``, et un rendu court pour les metadonnees. Ce que
-   ``reindex_job.py`` en fait — faire rougir son run et le retenter jusqu'a ce
-   qu'il passe — est decrit la-bas.
-3. **L'absence d'URL est un choix explicite, annonce au chargement**, pas une
-   surprise en fin de course. L'URL a une valeur par defaut qui marche sur le
-   reseau ``rag_network`` ; la vider revient a desactiver l'appel, et
-   ``definitions.py`` le dit alors au demarrage. ``called`` distingue ce choix
-   d'une panne : un appel non tente n'est pas un appel echoue.
+1. **Cette fonction ne leve jamais.** Elle rend ce qu'il est advenu de l'appel,
+   echec compris, et laisse l'appelant decider. ``reindex_job.py``, qui fait
+   l'appel dans son propre run, choisit de lever en cas d'echec : une reprise
+   n'y coute qu'un appel HTTP. Une ingestion reussie reste reussie.
+2. **Un echec ne passe pas inapercu.** L'appelant dispose de ``ok``, de
+   ``detail`` et d'un rendu court pour les metadonnees. ``reindex_job.py`` fait
+   alors echouer son run et le retente jusqu'a ce qu'il reussisse.
+3. **L'absence d'URL est un choix explicite, annonce au chargement.** L'URL a
+   une valeur par defaut valable sur le reseau ``rag_network`` ; la vider
+   desactive l'appel, et ``definitions.py`` l'annonce au demarrage. ``called``
+   distingue ce choix d'une panne : un appel non tente n'est pas un appel echoue.
 """
 
 from __future__ import annotations
@@ -62,10 +50,9 @@ REINDEX_PATH = "/reindex"
 # En-tete attendu par l'agent quand il est protege par une cle. Sans cle
 # configuree de son cote, la dependance ne fait rien et l'en-tete est ignore.
 #
-# `pragma: allowlist secret` : c'est un NOM d'en-tete HTTP, pas une valeur.
-# `detect-secrets` leve un « Secret Keyword » parce que le nom de la constante
-# contient `API_KEY`, sans regarder ce qu'elle vaut. La cle elle-meme n'est
-# jamais ecrite ici : elle arrive par `settings`.
+# `pragma: allowlist secret` : c'est un nom d'en-tete HTTP, pas une valeur.
+# `detect-secrets` signale un « Secret Keyword » des que le nom de la constante
+# contient `API_KEY`. La cle elle-meme arrive par `settings`.
 API_KEY_HEADER = "X-API-Key"  # pragma: allowlist secret
 
 
@@ -76,7 +63,7 @@ class ReindexOutcome:
     Attributes:
         called: L'appel a-t-il ete tente. Faux si l'appel est desactive.
         ok: L'agent a-t-il reconstruit son index.
-        chunks_indexed: Taille de l'index APRES reconstruction, telle que
+        chunks_indexed: Taille de l'index apres reconstruction, telle que
             l'agent la rapporte. ``None`` si l'appel n'a pas abouti. C'est le
             nombre a confronter aux chunks que l'ingestion vient d'ecrire.
         detail: Message lisible, destine au journal et aux metadonnees.
@@ -91,38 +78,20 @@ class ReindexOutcome:
     def metadata_value(self) -> str:
         """Rendu court pour les metadonnees d'asset Dagster.
 
-        **LA BRANCHE « ECHEC » N'EST PLUS ATTEIGNABLE EN PRODUCTION, ET ELLE
-        RESTE. Tranche au lot 5, contre son propre mandat, et voici pourquoi.**
+        La branche « ECHEC » n'est pas atteinte en production, et elle reste
+        volontairement (registre 5.7). `reindex_job.lexical_index` leve quand
+        l'appel a ete tente sans aboutir, donc n'appelle jamais
+        `add_output_metadata` avec `called=True, ok=False`.
 
-        Le registre 5.7 la range dans le code mort : `reindex_job.lexical_index`
-        LEVE quand l'appel a ete tente et n'a pas abouti, donc il n'atteint
-        jamais `add_output_metadata` avec `called=True, ok=False`. C'est exact, et
-        ce n'est pas un accident : cette levee est gardee par TROIS tests
-        (`mesure`, la remplacer par `if False:` les rougit).
-
-        Mais l'etat, lui, est REEL et atteignable : `request_reindex` le construit
-        (voir plus bas, sur exception), et son contrat ecrit est « ne leve jamais,
-        dit ce qui s'est passe ». Amputer le rendu de cet objet parce que son
-        unique consommateur d'aujourd'hui leve d'abord le coupleraient a ce
-        consommateur.
-
-        **Et la mesure tranche mieux que l'argument.** Sans cette branche, l'etat
-        d'echec tombe sur le cas nominal et se rend `"ok — None chunks indexes"` :
+        L'etat existe pourtant : `request_reindex` le construit sur exception,
+        et cet objet doit dire ce qui s'est passe quel que soit son
+        consommateur. Sans cette branche, un echec s'afficherait comme un
+        succes :
 
             ReindexOutcome(called=True, ok=False, chunks_indexed=None,
                            detail="agent injoignable")
-              rendu actuel     ->  "ECHEC — agent injoignable"
-              apres amputation ->  "ok — None chunks indexes"
-
-        Un echec qui s'affiche « ok » dans une metadonnee que l'operateur lit est
-        strictement pire qu'une branche que la production n'atteint pas. Le
-        chantier a passe cinq lots a fermer des pannes qui se presentaient comme
-        des succes : en ouvrir une pour retirer trois lignes serait le geste
-        inverse de ce lot.
-
-        Le developpeur de la reparation du lot 0 avait refuse de l'amputer en
-        donnant l'argument de couplage. Il avait raison, et la mesure ci-dessus
-        est ce qui manquait pour le dire sans discuter.
+              avec la branche  ->  "ECHEC — agent injoignable"
+              sans la branche  ->  "ok — None chunks indexes"
         """
         if not self.called:
             return f"non appele — {self.detail}"
@@ -139,20 +108,18 @@ def request_reindex(
 ) -> ReindexOutcome:
     """Demande a l'agent de reconstruire son index lexical.
 
-    Ne leve jamais : une ingestion reussie ne doit pas rougir parce que l'agent
-    est arrete. Tout echec ressort dans l'objet rendu.
+    Ne leve jamais : l'appelant decide quoi faire d'un echec. Tout echec
+    ressort dans l'objet rendu.
 
     Args:
         base_url: Racine de l'API de l'agent. Vide, l'appel est desactive.
         api_key: Cle d'API de l'agent, si le sien en exige une.
         timeout: Plafond de l'appel. La reconstruction parcourt tout le corpus
             et l'agent la fait de maniere synchrone : elle est lente par nature.
-        post: Fonction d'envoi. Injectee par les tests. Laissee vide, elle est
-            resolue A L'APPEL sur ``requests.post`` — et non figee en valeur par
-            defaut a l'import. Une valeur par defaut capture l'objet fonction :
-            aucun test ne peut alors intercepter l'appel sans se substituer a
-            ``request_reindex`` elle-meme, c'est-a-dire sans bouchonner
-            au-dessus de ce qu'il pretend verifier.
+        post: Fonction d'envoi, injectee par les tests. Laissee vide, elle est
+            resolue a l'appel sur ``requests.post``, et non figee en valeur par
+            defaut a l'import : un test peut ainsi remplacer ``requests.post``
+            sans remplacer ``request_reindex`` elle-meme.
 
     Returns:
         Le resultat de l'appel.

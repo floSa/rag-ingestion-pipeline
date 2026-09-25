@@ -1,16 +1,14 @@
 """La purge d'un document, sur ses deux chemins d'appel.
 
-Deux constats, une seule mecanique — `NebulaWriter.delete_document` existait et
-n'avait AUCUN appelant, et son pendant ChromaDB n'existait pas :
+Une seule mecanique, `storage.forget_document`, pour deux cas :
 
-- **registre 4.2** — une reingestion d'un document modifie laisse des
-  ORPHELINS. Les identifiants derivent du texte, donc un texte modifie produit
-  de nouveaux identifiants et les anciens survivent dans les deux stores. Le
-  capteur Dagster declenchant sur `mtime`, **c'est le chemin nominal qui casse** ;
-- **registre 4.1** — un lot PDF en echec laisse un document PARTIEL ecrit dans
-  les stores. La partition est rouge, l'ouvrage est dans l'index, tronque, et
-  rien ne l'en retire. `verify_contract` ne peut pas le voir : les `element_id`
-  ecrits sont valides.
+- **registre 4.2** — sans purge, une reingestion d'un document modifie
+  laisserait des orphelins. Les identifiants derivent du texte, donc un texte
+  modifie produit de nouveaux identifiants et les anciens survivraient dans les
+  deux stores. Le capteur Dagster declenchant sur `mtime`, c'est le cas nominal ;
+- **registre 4.1** — sans purge, un lot PDF en echec laisserait un document
+  partiel dans les stores : partition en echec, ouvrage tronque dans l'index.
+  `verify_contract` ne peut pas le voir : les `element_id` ecrits sont valides.
 
 L'invariant que ces deux appels installent : **un document est entierement dans
 les stores, ou pas du tout.**
@@ -80,8 +78,8 @@ class TestLaPurgeToucheLesDeuxStores:
     def test_les_deux_stores_sont_purges_par_un_seul_appel(
         self, stores_espionnes: tuple[EcrivainEspion, list[Any]]
     ) -> None:
-        """LE TEMOIN. Purger un seul store laisse l'autre en orphelins, et le
-        graphe et les vecteurs divergent sans qu'aucune erreur ne le dise."""
+        """Purger un seul store laisserait l'autre en orphelins, et le graphe et
+        les vecteurs divergeraient sans erreur."""
         ecrivain, purges = stores_espionnes
         storage.forget_document(IDENTITE)
 
@@ -92,8 +90,8 @@ class TestLaPurgeToucheLesDeuxStores:
     ) -> None:
         """Le cas qui compte : un store a terre ne doit pas laisser l'autre sale.
 
-        Sans cela, une purge qui s'arrete au premier echec laisse exactement
-        l'etat qu'elle existe pour eviter — la moitie du document.
+        Une purge qui s'arreterait au premier echec laisserait l'etat qu'elle
+        doit eviter : la moitie du document.
         """
         purges: list[Any] = []
 
@@ -134,6 +132,6 @@ class TestLaPurgeToucheLesDeuxStores:
     def test_une_purge_reussie_ne_leve_pas(
         self, stores_espionnes: tuple[EcrivainEspion, list[Any]]
     ) -> None:
-        """LE TEMOIN du precedent : sans lui, une purge qui leve toujours
-        passerait les deux tests d'echec."""
+        """Contre-epreuve des tests d'echec : une purge qui leverait toujours
+        les passerait."""
         storage.forget_document(IDENTITE)

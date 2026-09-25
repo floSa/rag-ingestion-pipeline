@@ -1,67 +1,44 @@
 """Les hooks ne doivent pas toucher au corpus versionne.
 
-Depuis `a005172` — « data: versionner le corpus, il fait partie de l'identite du
-projet » — `Datas/htms/` et `Datas/pdfs/` sont dans le depot : 25 fichiers,
-55 Mo de HTML capture et un PDF (``mesure`` sur le resultat d'une fusion d'essai
-`--no-ff` avec `a005172`, 0 conflit). La porte qualite et le corpus se sont
-rencontres a ce moment-la, et le corpus a perdu trois fois :
+`Datas/htms/` et `Datas/pdfs/` sont versionnes (commit `a005172`) : 25
+fichiers, 55 Mo de HTML capture et un PDF. Sans exclusion, quatre hooks
+posaient probleme sur le corpus (``mesure`` sur une fusion d'essai) :
 
-1. `detect-secrets` REFUSE un commit touchant deux fichiers du corpus — deux
+1. `detect-secrets` refuse un commit touchant deux fichiers du corpus (deux
    ``Hex High Entropy String``, faux positifs, dans
    ``Datas/htms/MLOps with Databricks/3. MLflow for Traditional ML.html:94`` et
-   ``…/4. Model Serving： …html:330`` (``mesure``). **On ne peut pas y poser de
-   pragma** : le contenu du fichier entre dans le calcul de ``element_id``
-   (contrat, exigences 2 et 3), donc y ajouter un commentaire change les
-   identifiants de tout ce qui en sort ;
-2. `trailing-whitespace` et `end-of-file-fixer` ECRIVENT dans le corpus —
-   24 fichiers sur 25, 240 lignes reecrites (``mesure`` : 216 pour le premier,
-   24 pour le second). Et au commit, le geste naturel — `git add` puis recommit
-   — fait entrer le fichier ALTERE, au-dela de ce que l'humain a ecrit, sans
-   aucune erreur. C'est le sinistre du mandat §2.2 applique au contenu au lieu du
-   nom, et c'est le plus grave des trois : `source_path` ET le contenu entrent
-   dans `element_id` ;
-3. `check-added-large-files --maxkb=500` laisse passer un fichier du corpus
-   DEJA SUIVI qu'on modifie, et REFUSE un fichier NOUVEAU (``mesure`` : un
-   chapitre de 661 ko, `rc=1`). Le corpus ne pouvait donc plus etre ETENDU.
+   ``…/4. Model Serving： …html:330``). Aucun pragma n'y est possible : le
+   contenu du fichier entre dans le calcul de ``element_id`` (contrat,
+   exigences 2 et 3), et un commentaire changerait les identifiants ;
+2. `trailing-whitespace` et `end-of-file-fixer` reecrivent 240 lignes dans 24
+   fichiers sur 25. Un `git add` suivi d'un nouveau commit ferait entrer le
+   fichier altere sans erreur, et le contenu entre dans `element_id` : c'est
+   le cas le plus grave ;
+3. `check-added-large-files --maxkb=500` refuse un nouveau fichier du corpus
+   (un chapitre de 661 ko, `rc=1`) : le corpus ne pourrait plus etre etendu.
 
-**La reparation est un `exclude` au niveau RACINE**, et non un `exclude` par
-hook. `pre-commit` applique les motifs `files`/`exclude` de la racine a la liste
-de fichiers AVANT de la distribuer aux hooks : un seul site couvre donc les
-quatre hooks fautifs, et aussi tous ceux qu'on ajoutera. Un `exclude` par hook
-aurait demande de se souvenir de le reporter sur le hook suivant — un garde-fou
-qui repose sur la memoire du suivant n'est pas un garde-fou.
+La correction est un `exclude` a la racine de `.pre-commit-config.yaml`, et non
+par hook : `pre-commit` applique `files`/`exclude` de la racine avant de
+distribuer les fichiers aux hooks. Un seul motif couvre donc les hooks actuels
+et futurs.
 
-CE QUE CE FICHIER TESTE, ET CE QU'IL NE TESTE PAS. Il reproduit le filtrage de
-`pre-commit`, qui est un ``re.search`` du motif sur le chemin, et il asserte le
-motif LIVRE contre des chemins representatifs. Il ne fait pas tourner les hooks :
-cela demanderait le corpus — absent d'un arbre de travail qui n'a pas encore
-fusionne `main` — et l'installation d'environnements de hook, donc le reseau. La
-mesure de bout en bout est prise a la main sur le resultat de la fusion d'essai
-et consignee au registre.
-
-Ce qu'il attrape, en revanche, est le defaut reel : la disparition du motif, ou
-son affaiblissement. ``^Datas`` sans barre oblique finale, par exemple, exclurait
-aussi un futur ``Datastore/`` — et ``Datas/`` sans ancre exclurait
+Ce fichier reproduit le filtrage de `pre-commit` (un ``re.search`` du motif sur
+le chemin) et verifie le motif livre sur des chemins representatifs. Il ne fait
+pas tourner les hooks, ce qui demanderait le corpus et le reseau. Il detecte la
+disparition ou l'affaiblissement du motif : ``^Datas`` sans barre oblique
+finale exclurait aussi ``Datastore/``, et ``Datas/`` sans ancre exclurait
 ``src/Datas/``.
 
-IL Y A DEUX CLES A LA RACINE, PAS UNE. `pre-commit` filtre la liste de fichiers
-par ``files`` PUIS par ``exclude`` : un fichier est vu par les hooks si
-``re.search(files, chemin)`` est vrai ET ``re.search(exclude, chemin)`` est faux.
-``files`` vaut ``''`` par defaut, ce qui matche tout. Ce fichier n'en lisait
-qu'une, ``exclude``, et deux mutations lui survivaient (``mesure`` le 31 aout
-2026, suite entiere verte a 550 dans les deux cas) :
+Il y a deux cles a la racine. `pre-commit` filtre par ``files`` puis par
+``exclude`` : un fichier est vu par les hooks si ``re.search(files, chemin)``
+est vrai et ``re.search(exclude, chemin)`` est faux. ``files`` vaut ``''`` par
+defaut, ce qui correspond a tout. Les tests couvrent donc aussi :
 
-- ajouter ``files: '^Datas/'`` a la RACINE desarme les SEPT hooks — « no files to
-  check » sur chacun — et fait passer en ``rc=0`` un commit portant un ``.py``
-  volontairement sale. La porte entiere disparait, et l'``exclude`` livre, lui,
-  ne bouge pas : les trois tests restaient verts ;
-- elargir l'exclusion a ``'^Datas/|^scripts/'`` soustrait a TOUS les hooks
-  ``scripts/git-hooks/pre-commit`` — le controle d'identite lui-meme — et
-  ``scripts/installer-les-garde-fous.sh``. La liste temoin ne couvrait aucun
-  chemin sous ``scripts/``.
-
-Les deux sont fermees ici : le temoin modelise les DEUX cles, et il couvre les
-deux scripts dont depend tout le montage.
+- ``files: '^Datas/'`` a la racine, qui ne laisserait aucun fichier aux hooks
+  (« no files to check » sur chacun) ;
+- ``exclude: '^Datas/|^scripts/'``, qui soustrairait aux hooks
+  ``scripts/git-hooks/pre-commit`` (le controle d'identite) et
+  ``scripts/installer-les-garde-fous.sh``.
 """
 
 from __future__ import annotations
@@ -85,9 +62,9 @@ CHEMINS_DU_CORPUS = [
     "Datas/pdfs/Un_ouvrage_de_plus.pdf",
 ]
 
-# Ce que l'exclusion ne doit PAS emporter. Sans cette liste, un motif trop large
-# — `.` par exemple — rendrait tout ce fichier vert en desarmant la porte
-# entiere : les tests seraient verts des deux cotes du defaut.
+# Ce que l'exclusion ne doit pas emporter. Sans cette liste, un motif trop large
+# (`.` par exemple) ferait passer ce fichier tout en retirant tous les fichiers
+# aux hooks.
 CHEMINS_A_GARDER_SOUS_CONTROLE = [
     "src/pipeline/factory.py",
     "src/docling_service/extraction.py",
@@ -96,9 +73,9 @@ CHEMINS_A_GARDER_SOUS_CONTROLE = [
     "documentation/pilotage_du_chantier.md",
     ".pre-commit-config.yaml",
     "docker-compose.yml",
-    # Les deux scripts dont depend TOUT le montage des garde-fous. Sans eux,
-    # une exclusion elargie a `^scripts/` soustrairait le controle d'identite
-    # lui-meme a la porte, en restant verte ici.
+    # Les deux scripts dont depend l'installation des hooks. Sans eux, une
+    # exclusion elargie a `^scripts/` soustrairait le controle d'identite aux
+    # hooks sans qu'aucun test n'echoue.
     "scripts/git-hooks/pre-commit",
     "scripts/installer-les-garde-fous.sh",
     # Les deux pieges d'un motif mal ancre ou mal termine.
@@ -121,9 +98,9 @@ def _exclusion_racine() -> str:
 def _inclusion_racine() -> str:
     """Le motif `files` de la racine, `''` par defaut — qui matche tout.
 
-    `pre-commit` applique `files` AVANT `exclude`. Un `files` pose a la racine
-    reduit donc la liste distribuee a TOUS les hooks, et un motif etroit les
-    desarme tous d'un coup, sans toucher a l'`exclude` que ce fichier garde.
+    `pre-commit` applique `files` avant `exclude`. Un `files` pose a la racine
+    reduit la liste distribuee a tous les hooks : un motif etroit les rendrait
+    tous inactifs, sans changer l'`exclude`.
     """
     config = yaml.safe_load(CONFIG.read_text())
     return str(config.get("files", ""))
@@ -150,31 +127,28 @@ class TestLeCorpusEstHorsDePorteeDesHooks:
         )
 
     def test_un_chapitre_neuf_peut_entrer(self):
-        # Le cas du point 3 : `check-added-large-files` refusait tout fichier
-        # NOUVEAU au-dela de 500 ko, donc le corpus ne pouvait plus grandir. Ce
-        # test le nomme a part parce que la consequence est differente des deux
-        # autres — ce n'etait pas une alteration, c'etait une impossibilite.
+        # Le point 3 : sans exclusion, `check-added-large-files` refuse tout
+        # nouveau fichier au-dela de 500 ko, et le corpus ne peut plus grandir.
+        # Teste a part : ce n'est pas une alteration, mais un refus.
         exclusion = _exclusion_racine()
         assert re.search(exclusion, "Datas/htms/MLOps with Databricks/11. Un chapitre de plus.html")
         assert re.search(exclusion, "Datas/pdfs/Un_ouvrage_de_plus.pdf")
 
     def test_le_reste_du_depot_reste_sous_controle(self):
-        """Le temoin, sans lequel tout ce fichier serait vert sur une porte morte.
+        """Les fichiers hors corpus restent vus par les hooks.
 
-        Il modelise les DEUX cles de la racine, parce que deux mutations
-        distinctes desarment la porte en laissant l'`exclude` livre intact :
+        Le test modelise les deux cles de la racine, car deux modifications
+        rendraient les hooks inactifs sans toucher a l'`exclude` livre :
 
-        - un `files: '^Datas/'` a la racine ne laisse aux sept hooks que le
-          corpus, qui est ensuite exclu — donc plus rien du tout. `mesure` le
-          31 aout 2026 : « no files to check » sur les sept, un `.py`
-          volontairement sale commite en `rc=0`, et 550 tests verts ;
-        - un `exclude: '^Datas/|^scripts/'` soustrait `scripts/git-hooks/pre-commit`
-          — le controle d'identite lui-meme — et l'installeur. `mesure` : 550
-          tests verts.
+        - `files: '^Datas/'` a la racine ne laisserait aux hooks que le corpus,
+          ensuite exclu : plus aucun fichier (`mesure` le 31 aout 2026 : un
+          `.py` volontairement sale commite en `rc=0`) ;
+        - `exclude: '^Datas/|^scripts/'` soustrairait
+          `scripts/git-hooks/pre-commit` (le controle d'identite) et
+          l'installeur.
 
-        Les deux derniers chemins de la liste sont les pieges d'ancrage : un
-        motif `^Datas` emporterait `Datastore/`, un motif `Datas/` non ancre
-        emporterait `src/Datas/`.
+        Les deux derniers chemins de la liste testent l'ancrage : `^Datas`
+        emporterait `Datastore/`, `Datas/` non ancre emporterait `src/Datas/`.
         """
         inclusion, exclusion = _inclusion_racine(), _exclusion_racine()
         hors_de_portee = [

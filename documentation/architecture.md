@@ -19,12 +19,13 @@ déclaré en externe côté agent).
 | nebula-studio     | nebula-studio:v3.8.0   | 7001         | 7001             | UI de visualisation du graphe           |
 | seaweedfs         | seaweedfs:3.80         | 8333         | — (expose only)  | Stockage d'objets, passerelle S3        |
 | postgres-dagster  | postgres:15-alpine     | 5432         | — (expose only)  | Métadonnées Dagster                     |
-| dagster-webserver | Dockerfile.dagster     | 3000         | 3000             | UI Dagster                              |
+| dagster-webserver | Dockerfile.dagster     | 3000         | 3002             | UI Dagster                              |
 | dagster-daemon    | Dockerfile.dagster     | —            | —                | Exécution des sensors et runs           |
-| docling-service   | Dockerfile.docling     | 8000         | — (expose only)  | Extraction documentaire (GPU, FastAPI)  |
+| docling-service   | Dockerfile.docling     | 8000         | — (expose only)  | Extraction documentaire (FastAPI)       |
 
-Tous les services communiquent sur le réseau bridge `rag_network`.
-Pour le debug local, `docker-compose.override.yml` expose les ports internes.
+Tous les services communiquent sur le réseau bridge `rag_network`. Seuls
+Dagster (3002) et Nebula Studio (7001) sont publiés sur l'hôte ; les autres
+services se joignent depuis un conteneur du réseau (`docker compose exec …`).
 
 ## Workflow de bout en bout
 
@@ -40,18 +41,20 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 5. **Extraction** : Docling analyse le layout — les PDF par lots de pages, HTML et
    Markdown d'un seul tenant — et PyMuPDF crop les images et tableaux vers le
    stockage d'objets
-6. **Flush NebulaGraph** : nœuds et hiérarchie `Document → SectionHeader → Éléments`
-   (chaque élément rattaché au dernier en-tête rencontré), écrits par INSERT groupés ;
+6. **Flush NebulaGraph** : nœuds et hiérarchie `Document → titres → éléments`
+   (chaque titre rattaché au titre qui le domine, chaque élément au dernier titre
+   rencontré), écrits par INSERT groupés ;
    tout échec nGQL fait échouer le job — pas de perte silencieuse
-7. **Flush ChromaDB** : le découpage est confié à `HybridChunker` de Docling, qui respecte la structure du document et la fenêtre du modèle d'embedding — **mais pas
-   « aucune troncature »**. Une part des chunks dépasse la fenêtre et est tronquée par le modèle, pour deux causes distinctes et toutes deux structurelles : une table
-   sérialisée en Markdown est indivisible pour le découpeur, et le titre de section est préposé **après** le découpage, ce que le découpeur ne pouvait pas prévoir. **Le chiffre
-   et ses deux causes ont un seul site : `vectors.get_chunker`** — il vivait ici aussi, et un nombre à deux sites finit par diverger (registre §3.4 bis). Les chunks sont
-   encodés par lots avec `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), et upsertés avec les
-   **18** métadonnées du contrat d'interface, définies par `ChunkMetadata` dans
-   `src/pipeline/schemas.py`. *(Cette ligne en énumérait **9**. Une énumération close que
-   personne ne rouvre est le défaut lui-même : elle est retirée plutôt que complétée,
-   registre §6.3.)*
+7. **Flush ChromaDB** : le découpage est confié à `HybridChunker` de Docling, qui
+   respecte la structure du document et la fenêtre du modèle d'embedding. Une part
+   des chunks dépasse malgré tout la fenêtre et est tronquée par le modèle, pour
+   deux causes structurelles : une table sérialisée en Markdown est indivisible
+   pour le découpeur, et le titre de section est préposé **après** le découpage.
+   Le chiffre et ses deux causes sont documentés à un seul endroit,
+   `vectors.get_chunker` (registre §3.4 bis). Les chunks sont encodés par lots avec
+   `paraphrase-multilingual-MiniLM-L12-v2` (384 dim), puis upsertés avec les
+   **19** métadonnées du contrat d'interface, définies par `ChunkMetadata` dans
+   `src/pipeline/schemas.py` (liste non recopiée ici, registre §6.3).
 
 ## Décisions d'architecture
 
@@ -62,30 +65,34 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
   de gros fichiers PDF
 - **Docling, seul service à pouvoir prendre le GPU** : la charge lourde y est isolée. La
   réservation `nvidia` vit dans `docker-compose.gpu.yml` et n'est pas appliquée par
-  défaut — écrite en dur, elle rendait le service incréable sans runtime nvidia. Le cas
-  nominal est donc le processeur
-- **Embeddings locaux et multilingues** : `paraphrase-multilingual-MiniLM-L12-v2` via SentenceTransformers, pas d'appel API. Une question française retrouve les passages anglais, et réciproquement
-  externe (pas d'OpenAI)
+  défaut : écrite en dur, elle empêcherait de créer le service sans runtime nvidia. Le
+  cas nominal est le processeur
+- **Embeddings locaux et multilingues** : `paraphrase-multilingual-MiniLM-L12-v2` via
+  SentenceTransformers, sans appel à une API externe. Une question française retrouve
+  les passages anglais, et réciproquement
 - **Un sensor par source** : découplage des pipelines, chacun avec son job Dagster
 - **Extraction asynchrone** : une conversion de livre dure des heures, ce qui ne tient
   pas dans une requête HTTP. Le service met en file et rend un `job_id` ; Dagster suit
-  l'avancement. L'event loop reste libre, et une coupure réseau ne condamne plus un run
-- **Un seul worker d'extraction** : la conversion sature déjà le GPU. C'est la file
+  l'avancement. L'event loop reste libre, et une coupure réseau ne condamne pas un run
+- **Un seul worker d'extraction** : la conversion sature déjà la machine (le GPU s'il y
+  en a un, les cœurs sinon). C'est la file
   Dagster en amont qui cadence le débit, et elle le fait visiblement dans l'UI
 - **Écriture par lots** : INSERT nGQL groupés, pool NebulaGraph partagé et embeddings
-  encodés par batch. Un aller-retour par élément mettait les livres hors d'atteinte
+  encodés par batch. Un aller-retour par élément rendrait l'ingestion d'un livre
+  impraticable
 - **Le graphe garde tout, l'index vectoriel garde ce qui a du sens** : l'analyse de
-  layout produit quantité de fragments isolés (`x`, `and`, `Note`, `-`) — 36 % de
-  l'index sur le corpus de référence. Ils sont fusionnés avec leurs voisins de même
-  section, et les résidus sont écartés de la recherche sémantique tout en restant
-  dans NebulaGraph
+  layout produit quantité de fragments isolés (`x`, `and`, `Note`, `-`). `HybridChunker`
+  les regroupe avec leurs voisins selon la structure, et un chunk sans contenu
+  exploitable, seul pour son élément, est écarté de la recherche sémantique tout en
+  restant dans NebulaGraph
 - **Contextualisation des vecteurs** : le titre de section est préposé au texte envoyé
   au modèle d'embedding, pas au texte stocké. Le passage s'affiche tel quel côté agent,
   mais son vecteur porte le contexte qui lui manquait
-- **Découpage plutôt que troncature** : les textes longs sont fenêtrés avant
-  vectorisation. Tronquer à 1000 caractères amputait silencieusement les paragraphes
-- **Identifiants déterministes** : `sha256(filename|page|position_dans_la_page|texte)`,
-  ce qui rend la ré-ingestion idempotente (upsert, pas de doublon)
+- **Découpage plutôt que troncature** : les textes longs sont découpés en plusieurs
+  chunks avant vectorisation, plutôt que tronqués
+- **Identifiants déterministes** : `sha256(filename|page|position_dans_la_page|texte[:50])`
+  tronqué à 10 caractères hexadécimaux (`elements.compute_id`), ce qui rend la
+  ré-ingestion idempotente (upsert, pas de doublon)
 
 ## Dossiers de données
 

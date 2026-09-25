@@ -1,36 +1,27 @@
-"""Le controle d'identite ne doit dependre d'AUCUN arbre de travail.
+"""Le controle d'identite ne depend d'aucun arbre de travail.
 
-Ce fichier garde une propriete qui a vecu deux jours sans garde, et dont la
-perte est silencieuse : apres l'installation documentee, un commit portant une
-adresse hors liste blanche doit etre refuse **meme dans un arbre de travail dont
-`.pre-commit-config.yaml` ne declare pas le controle d'identite**. Sur les 111
-commits de `main`, aucun ne le declare (``mesure``, 31 aout 2026) : tout
-`git checkout` d'un commit ancien, tout `git bisect`, tout HEAD detache tombait
-dans ce cas.
+Apres ``scripts/installer-les-garde-fous.sh``, un commit portant une adresse
+hors liste blanche doit etre refuse meme dans un arbre de travail dont
+`.pre-commit-config.yaml` ne declare pas le controle d'identite : apres un
+`git checkout` d'un commit ancien, un `git bisect` ou un HEAD detache
+(``mesure`` le 31 aout 2026 : aucun des 111 commits de `main` d'alors ne le
+declarait).
 
-Le hook genere par `pre-commit` ouvre sa configuration en chemin RELATIF
-(``--config=.pre-commit-config.yaml``). Un controle declare la-dedans a donc
-change de nature en changeant de place : il est passe d'inconditionnel a
-conditionnel a la branche, et rien ne l'a note. C'est la lecon « une regle
-survit a son motif » appliquee a un fichier qui demenage.
-
-La seule couche independante de l'arbre de travail est ``<type>.legacy``, que
-`pre-commit install` cree quand un hook ecrit a la main est deja en place. C'est
-ce que ``scripts/installer-les-garde-fous.sh`` monte, et c'est ce que ce fichier
+Le hook genere par `pre-commit` lit sa configuration en chemin relatif
+(``--config=.pre-commit-config.yaml``), donc dans l'arbre de travail. La copie
+``<type>.legacy``, que `pre-commit install` cree quand un hook ecrit a la main
+est deja en place, vit hors de l'arbre de travail : c'est elle que ce fichier
 verifie.
 
-POURQUOI DES SOUS-PROCESSUS. Le sujet est le comportement de `git commit`, pas
-celui d'une fonction Python : rien de ce qui est teste ici n'est importable. On
-monte donc un depot git jetable, on y execute le script LIVRE, et on lit le code
-de retour et l'etat de HEAD separement — un refus se prouve par les deux, jamais
-par la sortie texte.
+Les tests passent par des sous-processus : le sujet est le comportement de
+`git commit`. Chaque test monte un depot git jetable, y execute le script
+livre, et lit separement le code de retour et l'etat de HEAD (jamais la seule
+sortie texte).
 
-CE QUI REND CES TESTS NON CREUX. La configuration du depot d'essai est
-``repos: []`` : elle ne porte pas le controle d'identite, exactement comme les
-111 commits de `main`. Un refus observe ici ne peut donc pas venir d'elle. Et
-``test_le_framework_tourne_aussi`` interdit la mutation qui rendrait les autres
-verts pour la mauvaise raison — inverser l'ordre des deux gestes laisse le
-controle d'identite en place et perd le framework.
+La configuration du depot d'essai est ``repos: []`` : elle ne porte pas le
+controle d'identite, donc un refus observe vient de la copie `.legacy`.
+``test_le_framework_tourne_aussi`` verifie en plus que les hooks du framework
+tournent : inverser l'ordre des deux etapes du script les perdrait.
 """
 
 from __future__ import annotations
@@ -50,7 +41,7 @@ HOOK_IDENTITE = RACINE / "scripts" / "git-hooks" / "pre-commit"
 ADRESSE_INTERDITE = "florian.horellou@aosis.net"
 ADRESSE_AUTORISEE = "florian.horellou@gmail.com"
 
-# La configuration d'un arbre de travail qui NE PORTE PAS le controle
+# La configuration d'un arbre de travail qui ne porte pas le controle
 # d'identite. `repos: []` evite toute installation d'environnement : le test ne
 # touche pas au reseau.
 CONFIG_SANS_CONTROLE = "repos: []\n"
@@ -86,10 +77,9 @@ def _monte_un_depot_jetable(
 ) -> subprocess.CompletedProcess[str]:
     """Monte un depot git jetable et y execute `contenu_installeur`.
 
-    Le depot recoit le hook d'identite LIVRE et une `.pre-commit-config.yaml`
-    qui ne declare AUCUN controle d'identite : c'est l'etat des 111 commits de
-    `main`. `repos: []` evite toute installation d'environnement de hook, donc
-    ce test ne touche pas au reseau.
+    Le depot recoit le hook d'identite livre et une `.pre-commit-config.yaml`
+    qui ne declare aucun controle d'identite. `repos: []` evite toute
+    installation d'environnement de hook, donc ce test ne touche pas au reseau.
     """
     scripts = depot / "scripts"
     (scripts / "git-hooks").mkdir(parents=True)
@@ -106,15 +96,13 @@ def _monte_un_depot_jetable(
     assert _git(depot, "commit", "-m", "initial").returncode == 0
 
     # `PRE_COMMIT` : le depot d'essai n'est pas un projet `uv`, donc le defaut
-    # `uv run pre-commit` du script ne s'y applique pas. On nomme l'interpreteur
-    # qui fait tourner ce test — le meme que celui de `uv run`, puisque c'est
-    # lui qui a lance pytest.
+    # `uv run pre-commit` du script ne s'y applique pas. L'interpreteur de ce
+    # test est nomme a la place : c'est celui qu'a lance `uv run`.
     environnement = dict(os.environ)
-    # Comme `_git()`, et pour la meme raison — mais ici elle mord plus fort :
-    # c'est le SEUL sous-processus de ce fichier qui ECRIT des hooks. Un
-    # `GIT_DIR` herite deporterait l'armement vers le depot qu'il designe, et ce
-    # depot est peut-etre celui que ce lot protege (`mesure` : quatre fichiers y
-    # partent).
+    # Comme dans `_git()`. C'est ici le seul sous-processus qui ecrit des
+    # hooks : un `GIT_DIR` herite ferait installer les hooks dans le depot
+    # qu'il designe, peut-etre le depot reel (`mesure` : quatre fichiers y
+    # etaient ecrits).
     environnement.pop("GIT_DIR", None)
     environnement.pop("GIT_WORK_TREE", None)
     environnement["PRE_COMMIT"] = f"{sys.executable} -m pre_commit"
@@ -129,10 +117,10 @@ def _monte_un_depot_jetable(
 
 @pytest.fixture(scope="module")
 def depot_arme(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Un depot jetable, arme par le script LIVRE, sans le hook dans sa config.
+    """Un depot jetable, installe par le script livre, sans le hook dans sa config.
 
-    Portee module : le montage coute quelques secondes et aucun test ne le laisse
-    modifie — chacun revoque ce qu'il a fait.
+    Portee module : le montage coute quelques secondes, et chaque test defait ce
+    qu'il a modifie.
     """
     depot = tmp_path_factory.mktemp("depot-arme")
     execution = _monte_un_depot_jetable(depot, INSTALLEUR.read_text())
@@ -140,7 +128,7 @@ def depot_arme(tmp_path_factory: pytest.TempPathFactory) -> Path:
         f"le script d'installation a echoue :\n{execution.stdout}\n{execution.stderr}"
     )
 
-    # Le depot d'essai ne declare PAS le controle d'identite : tout refus
+    # Le depot d'essai ne declare pas le controle d'identite : tout refus
     # observe ensuite vient donc de la couche `.legacy`, pas de la config.
     assert "identite" not in (depot / ".pre-commit-config.yaml").read_text()
 
@@ -164,8 +152,8 @@ class TestLaProtectionNeDependPasDeLArbreDeTravail:
         assert apres == avant, f"HEAD a bouge : {avant} -> {apres}"
 
     def test_l_adresse_de_committer_seule_est_refusee(self, depot_arme: Path):
-        # L'auteur est valide : c'est le cas que seul un controle portant sur les
-        # DEUX identites voit. `git commit --author` le produit sans effort.
+        # L'auteur est valide : seul un controle portant sur les deux identites
+        # (auteur et committer) voit ce cas. `git commit --author` le produit.
         avant = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
         resultat = _git(
             depot_arme,
@@ -196,9 +184,9 @@ class TestLaProtectionNeDependPasDeLArbreDeTravail:
         assert apres == avant, f"HEAD a bouge : {avant} -> {apres}"
 
     def test_une_adresse_de_la_liste_blanche_passe(self, depot_arme: Path):
-        # Sans ce test, tout ce qui precede serait vrai d'un hook qui refuse
-        # TOUT — y compris le montage casse, qui echoue faute de trouver son
-        # interpreteur.
+        # Une adresse autorisee passe. Sans ce test, les precedents seraient
+        # vrais d'un hook qui refuse tout, y compris d'un montage casse qui
+        # echoue faute de trouver son interpreteur.
         avant = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
         resultat = _git(
             depot_arme,
@@ -217,13 +205,12 @@ class TestLaProtectionNeDependPasDeLArbreDeTravail:
         _git(depot_arme, "reset", "--hard", avant)
 
     def test_le_framework_tourne_aussi(self, depot_arme: Path):
-        """Interdit l'inversion des deux gestes du script d'installation.
+        """Les hooks du framework tournent aussi (ordre des deux etapes).
 
-        Copier le controle d'identite APRES `pre-commit install` laisse tous les
-        tests ci-dessus VERTS — le script est bien en place — et perd
-        silencieusement les hooks du framework. Ce test asserte donc depuis
-        l'autre cote : une configuration dont un hook refuse tout doit refuser
-        un commit portant une adresse autorisee.
+        Copier le controle d'identite apres `pre-commit install` laisserait les
+        tests precedents passer et perdrait les hooks du framework. Ici, une
+        configuration dont un hook refuse tout doit refuser un commit portant
+        une adresse autorisee.
         """
         config = depot_arme / ".pre-commit-config.yaml"
         original = config.read_text()
@@ -261,31 +248,22 @@ class TestLaProtectionNeDependPasDeLArbreDeTravail:
 class TestLesCommitsDeFusionSontCouverts:
     """`git commit` n'est pas le seul chemin qui cree un commit.
 
-    `pre-commit install` n'installe que le type `pre-commit`. Une fusion sans
-    avance rapide declenche `pre-merge-commit`, et rien d'autre : `mesure` le
-    31 aout 2026, mouchards poses sur chaque hook de `.git/hooks`, un
-    `git merge --no-ff` fait tourner `pre-merge-commit`, `prepare-commit-msg` et
-    `commit-msg`, jamais `pre-commit`.
+    Par defaut, `pre-commit install` n'installe que le type `pre-commit`. Or un
+    `git merge --no-ff` declenche `pre-merge-commit`, `prepare-commit-msg` et
+    `commit-msg`, jamais `pre-commit` (`mesure` le 31 aout 2026).
 
-    Ce n'etait pas une regression du lot 0b — le script brut avait le meme trou —
-    mais le geste suivant du chantier est precisement `git merge --no-ff`, et ce
-    commit-la part sur GitHub, ou la liste des contributeurs ne se defait pas.
-
-    Le trou se ferme des DEUX cotes : le type est installe pour le framework, et
-    la copie manuelle est posee sur `pre-merge-commit` comme sur `pre-commit`,
-    pour que `pre-merge-commit.legacy` couvre les arbres dont la configuration ne
-    porte pas le hook. Sans cette seconde moitie, la fusion serait gardee sur la
-    branche du lot et nulle part ailleurs.
+    Le script installe donc aussi `pre-merge-commit` pour le framework, et copie
+    le controle d'identite sur ce type : `pre-merge-commit.legacy` couvre les
+    arbres dont la configuration ne porte pas le hook.
     """
 
     @staticmethod
     def _une_branche_a_fusionner(depot: Path, nom: str) -> None:
         """Cree une branche `nom` portant un fichier a elle, et revient.
 
-        Le nom du fichier derive de celui de la branche : deux appels ne se
-        marchent pas dessus. Un harnais non idempotent a rendu ces deux tests
-        rouges pour la mauvaise raison avant que celui-ci ne soit ecrit — le
-        second echouait sur « nothing to commit », pas sur son sujet.
+        Le nom du fichier derive de celui de la branche : deux appels
+        n'entrent pas en conflit (sinon le second echouerait sur « nothing to
+        commit »).
         """
         depuis = _git(depot, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
         assert _git(depot, "checkout", "-B", nom, depuis).returncode == 0
@@ -313,8 +291,8 @@ class TestLesCommitsDeFusionSontCouverts:
         assert apres == avant, f"HEAD a bouge : {avant} -> {apres}"
 
     def test_une_fusion_portant_une_adresse_autorisee_passe(self, depot_arme: Path):
-        # Le temoin. Sans lui, le test precedent serait vrai d'un montage qui
-        # refuse TOUTE fusion — un `pre-merge-commit` casse, par exemple.
+        # Une fusion autorisee passe. Sans ce cas, le test precedent serait vrai
+        # d'un montage qui refuse toute fusion (un `pre-merge-commit` casse).
         self._une_branche_a_fusionner(depot_arme, "fusion-autorisee")
         avant = _git(depot_arme, "rev-parse", "HEAD").stdout.strip()
         resultat = _git(
@@ -334,22 +312,17 @@ class TestLesCommitsDeFusionSontCouverts:
 
 
 class TestLeHarnaisResteDansSonBacASable:
-    """Ce fichier ecrit des hooks. Il ne doit les ecrire QUE dans son bac a sable.
+    """Les hooks ne sont ecrits que dans le depot jetable.
 
-    `_git()` purge explicitement `GIT_DIR` et `GIT_WORK_TREE` de
-    l'environnement, pour que les commits d'essai aillent bien au depot jetable.
-    Mais le seul sous-processus qui ECRIT des hooks — celui qui execute
-    l'installeur — ne les purgeait pas.
+    `_git()` et le sous-processus de l'installeur retirent `GIT_DIR` et
+    `GIT_WORK_TREE` de l'environnement. Sinon, avec un `GIT_DIR` dans
+    l'environnement de pytest, l'installeur resoudrait `--git-common-dir` sur
+    le depot designe et y ecrirait quatre fichiers (`pre-commit`,
+    `pre-commit.legacy`, `pre-merge-commit`, `pre-merge-commit.legacy`,
+    `mesure` le 31 aout 2026).
 
-    `mesure` le 31 aout 2026, avec un `GIT_DIR` dans l'environnement de pytest :
-    l'installeur resout `--git-common-dir` sur le depot DESIGNE, et quatre
-    fichiers y partent — `pre-commit`, `pre-commit.legacy`, `pre-merge-commit`,
-    `pre-merge-commit.legacy`. Les tests rougissent, donc ce n'etait pas un faux
-    vert ; mais le harnais ecrivait dans la ressource meme que ce lot protege,
-    et il aurait pu la trouver deja armee.
-
-    Ce test asserte depuis le cote qui produit le degat : on DESIGNE un depot par
-    `GIT_DIR`, on lance le harnais, et on exige que ce depot ressorte intact.
+    Le test designe un depot par `GIT_DIR`, lance le harnais, et exige que ce
+    depot reste intact.
     """
 
     def test_git_dir_dans_l_environnement_ne_deporte_pas_les_hooks(
@@ -372,9 +345,9 @@ class TestLeHarnaisResteDansSonBacASable:
         assert not poses, (
             f"le harnais a arme le depot designe par GIT_DIR au lieu du sien : {poses}"
         )
-        # Le temoin. Sans lui, l'assertion ci-dessus serait vraie d'un harnais
-        # qui n'installe RIEN nulle part — un chemin faux, un interpreteur
-        # absent — et ce test serait vert sur le defaut.
+        # Le harnais a bien installe les hooks dans le depot jetable. Sans ce
+        # cas, l'assertion precedente serait vraie d'un harnais qui n'installe
+        # rien (chemin faux, interpreteur absent).
         assert execution.returncode == 0, f"{execution.stdout}\n{execution.stderr}"
         assert (depot / ".git" / "hooks" / "pre-commit.legacy").exists(), (
             "le harnais n'a arme aucun hook dans son propre bac a sable"
@@ -382,16 +355,13 @@ class TestLeHarnaisResteDansSonBacASable:
 
 
 class TestLeScriptConstateSonPropreResultat:
-    """Le script doit ROUGIR quand le montage n'est pas celui qu'il annonce.
+    """Le script echoue quand l'installation n'est pas celle attendue.
 
-    C'est ce qui le distingue d'une consigne ecrite : une consigne suppose que
-    le geste a ete fait dans le bon ordre, le script le CONSTATE. Sans ce test,
-    le bloc de verification du script serait decoratif — on pourrait le vider
-    sans qu'aucun test ne bronche, et l'installation redeviendrait une promesse.
+    Ces tests couvrent le bloc de verification du script : sans eux, on
+    pourrait le vider sans qu'aucun test n'echoue.
 
-    Le montage casse qu'on lui donne ici est celui que `pre-commit install`
-    suggere lui-meme dans sa sortie — « Use -f to use only pre-commit. » — et
-    qui supprime la seule couche independante de l'arbre de travail.
+    Le premier cas est celui que `pre-commit install` suggere dans sa sortie
+    (« Use -f to use only pre-commit. ») : -f supprime la copie `.legacy`.
     """
 
     def test_un_installeur_qui_passe_moins_f_est_refuse(self, tmp_path: Path):
@@ -412,30 +382,21 @@ class TestLeScriptConstateSonPropreResultat:
         assert not (depot / ".git" / "hooks" / "pre-commit.legacy").exists()
 
     def test_un_installeur_dont_la_liste_de_types_est_vide_est_refuse(self, tmp_path: Path):
-        """Une boucle sur une liste VIDE verifie zero chose, et elle est vraie.
+        """Une liste `TYPES` vide fait echouer le script.
 
-        C'est la forme exacte du defaut que ce lot traque, dans le garde-fou de
-        ce lot. La boucle de VERIFICATION du script itere la meme variable
-        `TYPES` que la boucle d'ARMEMENT : videe, la premiere ne pose aucun
-        `<type>.legacy`, la seconde n'a rien a verifier, et le script sort en 0
-        en annoncant « Garde-fous armes dans ... » suivi d'une liste vide.
+        La boucle de verification itere la meme variable `TYPES` que la boucle
+        d'installation : vide, aucune copie `.legacy` n'est posee, rien n'est
+        verifie, et le script sortirait en 0 (`mesure` le 31 aout 2026 avant le
+        refus explicite). Le framework resterait installe (sans `--hook-type`,
+        `pre-commit install` retombe sur `default_install_hook_types`), ce qui
+        masquerait l'absence.
 
-        `mesure` le 31 aout 2026, sur le script tel qu'il etait livre : `rc=0`,
-        message de succes, et ZERO `.legacy` — donc la couche independante de
-        l'arbre de travail, celle qui a coute au lot 0b sa fusion au premier
-        tour, disparait EN SILENCE. Le framework, lui, reste installe : sans
-        `--hook-type`, `pre-commit install` retombe sur
-        `default_install_hook_types` de la configuration. Le montage a donc
-        exactement l'air du bon, et c'est le pire des etats.
-
-        Ce test asserte depuis le cote qui PRODUIT le defaut : on vide la liste
-        dans le script LIVRE, et on exige que le script s'en apercoive.
+        Le test vide la liste dans le script livre et exige un echec.
         """
         source = INSTALLEUR.read_text()
         mutee = source.replace('TYPES="pre-commit pre-merge-commit"', 'TYPES=""')
-        # Un test qui choisit lui-meme son cas doit prouver qu'il l'a atteint :
-        # si la ligne `TYPES` change de forme, cette mutation ne mute plus rien
-        # et le test resterait vert sans rien garder.
+        # Si la ligne `TYPES` change de forme, ce remplacement ne modifie plus
+        # rien et le test passerait sans rien verifier.
         assert mutee != source, "la ligne TYPES a change de forme : la mutation ne mute plus rien"
 
         depot = tmp_path / "depot-types-vides"
@@ -450,9 +411,9 @@ class TestLeScriptConstateSonPropreResultat:
         assert not (depot / ".git" / "hooks" / "pre-merge-commit.legacy").exists()
 
     def test_le_script_livre_passe_sur_le_meme_harnais(self, tmp_path: Path):
-        # Le temoin du test precedent : sans lui, un `rc != 0` obtenu pour une
-        # raison etrangere au -f (un chemin faux, un interpreteur absent) le
-        # rendrait vert a tort.
+        # Le script livre passe sur le meme harnais. Sans ce cas, un `rc != 0`
+        # obtenu pour une autre raison que -f (chemin faux, interpreteur absent)
+        # ferait passer le test precedent a tort.
         depot = tmp_path / "depot-installeur-livre"
         livre = _monte_un_depot_jetable(depot, INSTALLEUR.read_text())
 

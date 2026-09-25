@@ -40,7 +40,7 @@ class TestIsFrontBackMatter:
             assert is_front_back_matter(titre), titre
 
     def test_keeps_prose_parts(self):
-        """Preface, glossaire et annexes sont de la prose : on les garde."""
+        """Preface, glossaire et annexes sont de la prose : ils sont gardes."""
         for titre in ("Preface", "0. Preface", "A. Key Terms", "13 Appendix", "Glossary"):
             assert not is_front_back_matter(titre), titre
 
@@ -227,16 +227,14 @@ class TestHasTextLayer:
 
 
 class TestPageBatches:
-    """Le contrat « pas de chevauchement de lots », que rien ne gardait.
+    """Le contrat « pas de chevauchement de lots » (registre 4.14).
 
-    ``extraction.py`` realise l'absence de chevauchement par
-    ``end_page = min(start + n - 1, range_end)`` puis ``start_page = end_page + 1``.
-    Remplacer ce ``+ 1`` par rien laissait toute la suite VERTE : le bug etait
-    corrige a la source, le contrat n'etait garde par aucun test (registre 4.14).
+    ``matter.page_batches`` realise l'absence de chevauchement par
+    ``fin = min(debut + taille - 1, fin_plage)`` puis ``debut = fin + 1``.
 
     Une page convertie deux fois n'est pas inoffensive : ``compute_id`` derive
     l'identifiant de ``(document, page, rang dans la page, texte)``, donc le
-    second passage REECRIT les memes sommets — mais ``_global_order`` a avance,
+    second passage reecrit les memes sommets, mais ``_global_order`` a avance,
     et ``sequence`` avec lui. L'ordre de lecture se decale sans qu'aucune erreur
     ne le signale.
     """
@@ -245,7 +243,7 @@ class TestPageBatches:
         assert page_batches([(1, 3)], 5) == [(1, 3)]
 
     def test_batches_do_not_overlap(self):
-        """LA propriete. Sans le +1, on obtiendrait (1,5), (5,9), (9,10)."""
+        """La propriete centrale. Sans le +1, les lots seraient (1,5), (5,9), (9,10)."""
         lots = page_batches([(1, 10)], 5)
         assert lots == [(1, 5), (6, 10)]
         for (_, fin), (debut_suivant, _) in zip(lots, lots[1:], strict=False):

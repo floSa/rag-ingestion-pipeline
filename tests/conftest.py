@@ -11,23 +11,21 @@ from src.pipeline.schemas import (
     ExtractedDocument,
 )
 
-# L'adresse du stockage objet n'a AUCUNE valeur par defaut : `S3_ENDPOINT`
-# manquante fait echouer la construction des reglages, et c'est tout l'objet du
-# lot de retrait (`src/reglages_s3.py`). La suite se place donc dans un
-# environnement CONFIGURE, comme la production, plutot que de compter sur un
-# defaut qui n'existe plus.
+# L'adresse du stockage objet n'a aucune valeur par defaut : sans
+# `S3_ENDPOINT`, la construction des reglages echoue (`src/reglages_s3.py`). La
+# suite se place donc dans un environnement configure, comme la production.
 #
-# La valeur ne designe rien de joignable, et c'est voulu : aucun test unitaire
-# n'ouvre de connexion. Un test qui croirait en ouvrir une echouerait sur une
-# resolution de nom, ce qui se lit.
+# La valeur ne designe rien de joignable, volontairement : aucun test unitaire
+# n'ouvre de connexion. Un test qui en ouvrirait une echouerait sur une
+# resolution de nom, ce qui se diagnostique facilement.
 #
-# ELLE EST POSEE PAR `monkeypatch`, donc elle entre dans `os.environ` : les
-# tests qui lancent un SOUS-PROCESSUS (`test_wipe_stores`, `test_verify_data`,
-# `test_importabilite_cote_hote`) en heritent, et c'est ce qu'il faut — ils
-# eprouvent un module qui construit ses reglages au demarrage.
+# Les variables sont posees par `monkeypatch`, donc dans `os.environ` : les
+# tests qui lancent un sous-processus (`test_wipe_stores`, `test_verify_data`,
+# `test_importabilite_cote_hote`) en heritent. C'est voulu : ils testent un
+# module qui construit ses reglages au demarrage.
 #
-# LE GARDE DU DEFAUT ABSENT N'EN SOUFFRE PAS : `test_settings.py` retire la
-# variable lui-meme, et c'est la que le refus est asserte.
+# Le test de l'absence de defaut n'en est pas affecte : `test_settings.py`
+# retire lui-meme la variable avant de verifier le refus.
 ENDPOINT_DE_TEST = "stockage-de-test:8333"
 
 

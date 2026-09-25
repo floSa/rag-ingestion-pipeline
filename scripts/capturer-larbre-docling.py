@@ -1,29 +1,21 @@
 """Capture l'arbre de titres que Docling rend sur des chapitres reels.
 
-POURQUOI CE SCRIPT EXISTE, et pourquoi le test ne convertit pas lui-meme.
+Le test de non-platitude (``tests/unit/test_non_platitude.py``) verifie la
+hierarchie de titres sur des captures reelles de Docling, et non sur un arbre
+fabrique a la main : il doit distinguer « Docling imbrique » de « ce
+chapitre-la imbrique ».
 
-Le test de non-platitude doit distinguer « Docling imbrique » de « CE
-chapitre-la imbrique » : c'est ce que l'audit du lot 1 reclame, apres que le
-chantier a failli supprimer un lot entier sur un antecedent jamais mesure. Il
-lui faut donc des captures REELLES, pas un arbre fabrique a la main — le
-reproche exact fait a ``test_hierarchie_bout_en_bout.py``.
+Le test ne convertit pas lui-meme : Docling cote hote ajouterait 85 paquets
+(dont torch et quinze paquets NVIDIA CUDA) et retrograderait ``websockets``
+(`mesure` avec ``uv pip install docling==2.117.0``). La conversion est donc
+capturee ici, dans l'image d'extraction ; le test rejoue le code de rang sur la
+capture. Un changement de comportement de Docling se voit en rejouant ce script
+avec ``--verifier``. ``docling`` est epingle a 2.117.0 : a chaque changement de
+version, rejouer ce script.
 
-Mais convertir dans ``make test`` demanderait Docling cote hote, et c'est
-mesure : ``uv pip install docling==2.117.0`` ajoute **85 paquets**, dont torch
-et quinze paquets NVIDIA CUDA, et retrograde ``websockets`` — sur une chaine
-dont le ``pyproject.toml`` dit que « les deps lourdes d'extraction vivent dans
-Dockerfile.docling », et qui tourne sur processeur.
-
-D'ou ce partage : la conversion est capturee ICI, une fois, dans l'image
-d'extraction ; le test rejoue le code de rang sur la capture. Ce que le test ne
-voit pas est un changement de comportement de Docling — et c'est ce script qui
-le verra, puisqu'il est rejouable et que ``--verifier`` compare au lieu
-d'ecrire. ``docling`` est epingle a 2.117.0 ; le jour ou cette version bouge,
-rejouer ce script fait partie du geste.
-
-Le nettoyage et la conversion vivent dans DEUX images differentes — c'est la
-chaine reelle : Dagster nettoie, Docling convertit — donc l'image d'extraction
-n'a pas ``trafilatura``. Il faut l'ajouter au conteneur jetable :
+Le nettoyage (Dagster) et la conversion (Docling) vivent dans deux images
+differentes, et l'image d'extraction n'a pas ``trafilatura``. Il faut
+l'installer dans le conteneur jetable :
 
     docker compose run --rm --no-deps -T -v "$PWD":/travail -w /travail \\
       -e PYTHONPATH=/travail \\
@@ -37,15 +29,13 @@ du HTML nettoye sur l'hote, et une version differente la ferait diverger.
 `mesure` le 31 aout 2026 : les empreintes produites dans l'image et sur l'hote
 sont identiques.
 
-Sans argument, il ECRIT ``tests/fixtures/arbres_docling.yaml``. Avec
-``--verifier``, il compare et sort en 1 si la capture a bouge.
+Sans argument, il ecrit ``tests/fixtures/arbres_docling.yaml``. Avec
+``--verifier``, il compare et sort en 1 si la capture a change.
 
-Le format est du YAML et non du JSON pour une raison precise : les deux
-empreintes SHA-256 sont lues par ``detect-secrets`` comme des « Hex High
-Entropy String ». Le depot declare ses faux positifs AU SITE, par un
-``pragma: allowlist secret`` justifie — et JSON n'admet pas de commentaire. Le
-YAML porte donc la justification a cote de la valeur, ou un relecteur la voit,
-et ``check-yaml`` le controle.
+Le format est YAML et non JSON : ``detect-secrets`` lit les deux empreintes
+SHA-256 comme des « Hex High Entropy String », et le depot declare ses faux
+positifs sur la ligne meme, par un commentaire ``pragma: allowlist secret``.
+JSON n'admet pas de commentaire. ``check-yaml`` controle le fichier.
 """
 
 from __future__ import annotations
@@ -55,8 +45,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# En-tete du fichier genere : il doit dire ce qu'il est et comment le refaire,
-# parce qu'un fichier de 150 Ko genere se relit comme une donnee d'entree.
+# En-tete du fichier genere : il dit ce qu'il est et comment le refaire, pour
+# qu'un fichier genere de 150 Ko ne soit pas pris pour une donnee d'entree.
 ENTETE = """# Arbres de titres rendus par Docling sur deux chapitres reels du corpus.
 #
 # GENERE — ne pas editer a la main. Pour le refaire, ou verifier qu'il est
@@ -71,16 +61,13 @@ ENTETE = """# Arbres de titres rendus par Docling sur deux chapitres reels du co
 RACINE_CORPUS = Path("Datas/htms")
 FIXTURE = Path("tests/fixtures/arbres_docling.yaml")
 
-# Les deux chapitres, et le pourquoi de chacun. Le second a un graphe REELLEMENT
-# plat, et un test qui ne couvrirait que le premier lirait cette platitude comme
-# un defaut.
+# Les deux chapitres. Le premier s'imbrique ; le second a un graphe reellement
+# plat : aucun titre rendu sous le niveau de tete. Couvrir les deux evite de
+# lire une platitude legitime comme un defaut.
 #
-# CE COMMENTAIRE DISAIT « le SEUL chapitre retenu du corpus sans aucune balise
-# <h2> ». C'est FAUX : ils sont trois (`mesure` sur les 22 chapitres retenus par
-# `matter.is_front_back_matter`), et les deux `Preface.html` s'imbriquent quand
-# meme — {0: 9, 1: 4} et {0: 8, 1: 4} sur le graphe vivant. « Sans aucun <h2> »
-# n'est pas la propriete discriminante ; celle qui l'est est « aucun titre rendu
-# sous le niveau de tete ». Registre §3.2.
+# L'absence de balise <h2> ne suffit pas a caracteriser ce cas : trois des 22
+# chapitres retenus n'en ont pas, et les deux `Preface.html` s'imbriquent quand
+# meme ({0: 9, 1: 4} et {0: 8, 1: 4} sur le graphe). Registre 3.2.
 CHAPITRES = {
     "imbrique": "MLOps with Databricks/7. Foundation Models and Context Engineering.html",
     "plat": (
@@ -98,18 +85,18 @@ def empreinte(texte: str) -> str:
 def capturer(chemin: Path) -> dict[str, Any]:
     """Nettoie puis convertit un chapitre, et rend son arbre d'items.
 
-    Les images ne sont PAS exportees : ce qui est capture est la STRUCTURE des
-    titres. Le test nettoie dans les memes conditions, sans quoi les empreintes
-    divergeraient sans que rien ne soit casse.
+    Les images ne sont pas exportees : seule la structure des titres est
+    capturee. Le test nettoie dans les memes conditions, sans quoi les
+    empreintes divergeraient.
 
     Args:
         chemin: Chapitre HTML brut, versionne sous ``Datas/htms/``.
 
     Returns:
         Les deux empreintes et l'arbre : pour chaque item, son label et la
-        reference de son parent, tels que Docling les rend. **Les noeuds de
-        groupe en font partie** : ils ne sont pas du contenu, mais ils sont sur
-        le chemin des parents, et une chaine trouee ne se remonte pas.
+        reference de son parent, tels que Docling les rend. Les noeuds de
+        groupe en font partie : ils ne sont pas du contenu, mais ils sont sur
+        le chemin des parents.
     """
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from docling.document_converter import DocumentConverter
@@ -126,25 +113,17 @@ def capturer(chemin: Path) -> dict[str, Any]:
 
     items: dict[str, dict[str, str]] = {}
     ordre: list[str] = []
-    # ``with_groups=True``, et c'est le coeur de ce script. Par defaut,
-    # ``iterate_items`` NE REND JAMAIS les noeuds de groupe — listes, blocs de
-    # mise en page, conteneurs anonymes. Or ``ranking.docling_parent_rank``
-    # REMONTE la chaine des parents et FRANCHIT ces conteneurs sans les compter :
-    # une capture qui les omet casse la chaine au premier groupe rencontre.
+    # ``with_groups=True`` est indispensable. Par defaut, ``iterate_items`` ne
+    # rend pas les noeuds de groupe (listes, blocs de mise en page, conteneurs
+    # anonymes). Or ``ranking.docling_parent_rank`` remonte la chaine des parents
+    # en franchissant ces conteneurs : sans eux, la chaine est coupee.
     #
-    # Ce n'etait pas theorique. `mesure` : sur le chapitre imbrique, la capture
-    # sans groupes portait **1 130** references de parent pointant un noeud
-    # absent, dont **deux titres** — ``#/texts/389`` -> ``#/groups/79`` et
-    # ``#/texts/468`` -> ``#/groups/91``. Pour ces deux-la, la resolution rendait
-    # ``None``, donc ``docling_parent_rank`` rendait ``None``, donc ``flat_rank``
-    # retombait sur ``docling_level_rank`` (absent) et rendait ``None`` — et le
-    # test les JETAIT EN SILENCE avec ses autres ``None``. Il assertait 39 titres
-    # la ou le graphe reel en porte **41**.
-    #
-    # Et le silence coutait plus que deux titres : sans aucun noeud de groupe
-    # dans la capture, la mutation « compter les conteneurs anonymes comme des
-    # titres » n'avait plus rien a mordre. Le test bati sur du REEL etait aveugle
-    # au mecanisme meme qu'il existe pour eprouver.
+    # `mesure` sur le chapitre imbrique : sans groupes, 1 130 references de
+    # parent pointaient un noeud absent, dont deux titres (``#/texts/389`` ->
+    # ``#/groups/79`` et ``#/texts/468`` -> ``#/groups/91``). Leur rang devenait
+    # ``None`` et le test comptait 39 titres au lieu de 41. Sans noeud de groupe,
+    # le test ne pourrait pas non plus verifier que les conteneurs anonymes ne
+    # sont pas comptes comme des titres.
     for item, _ in document.iterate_items(with_groups=True):
         reference = str(getattr(item, "self_ref", ""))
         parent = getattr(item, "parent", None)
@@ -170,8 +149,8 @@ def main() -> int:
     verifier = "--verifier" in sys.argv
     capture = {nom: capturer(RACINE_CORPUS / rel) for nom, rel in CHAPITRES.items()}
     rendu = ENTETE + yaml.safe_dump(capture, allow_unicode=True, sort_keys=True)
-    # Le pragma va sur la LIGNE de chaque empreinte : c'est la que
-    # `detect-secrets` le cherche, et c'est la qu'un relecteur le lit.
+    # Le pragma va sur la ligne de chaque empreinte : c'est la que
+    # `detect-secrets` le cherche.
     rendu = "\n".join(
         f"{ligne}  # pragma: allowlist secret"
         if ligne.lstrip().startswith(("sha256_brut:", "sha256_nettoye:"))

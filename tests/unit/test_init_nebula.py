@@ -1,24 +1,21 @@
 """L'amorcage du cluster ne doit rien faire tant qu'on ne l'appelle pas, et il
 doit declarer le meme space que le service.
 
-Deux defauts fermes ici, tous deux de la famille « le montage a l'air du bon » :
+Deux proprietes :
 
-1. **tout le corps etait au niveau du MODULE.** Un `import src.init_nebula`
-   enregistrait un hote et creait un space. C'est mot pour mot le defaut 4.5 de
-   `verify_data`, sur un cinquieme module ;
-2. **il declarait `vid_type=FIXED_STRING(64)` en dur**, la ou le service declare
-   `FIXED_STRING(VID_MAX_BYTES)`, soit 256. Les deux passent par
-   `CREATE SPACE IF NOT EXISTS`, donc le premier a tourner gagne — et ce
-   script-ci prescrit lui-meme d'etre lance avant le service. `mesure` le
-   1er septembre 2026 sur un space jetable en `FIXED_STRING(64)` : l'insertion
-   des deux documents reels du corpus est REFUSEE par le graphd, leurs
-   identifiants faisant 65 et 67 octets. Nebula ne sait pas modifier un
-   `vid_type` : la reparation coute une purge complete.
+1. importer `src.init_nebula` n'enregistre aucun hote et ne cree aucun space :
+   le corps est dans `main` (meme regle que `verify_data`, registre 4.5) ;
+2. le space est declare par `create_space_statement()`, donc avec
+   `FIXED_STRING(VID_MAX_BYTES)`, comme le service. Le script et le service
+   passent tous deux par `CREATE SPACE IF NOT EXISTS`, et le premier a tourner
+   fixe le `vid_type`, que Nebula ne sait pas modifier ensuite. `mesure` le
+   1er septembre 2026 sur un space jetable en `FIXED_STRING(64)` : le graphd
+   refusait deux documents reels du corpus, dont les identifiants font 65 et
+   67 octets.
 
-La verification passe par un SOUS-PROCESSUS, comme `test_verify_data.py` et pour
-les memes deux raisons : `nebula3` n'est pas dans le venv du depot, et boucher
-`sys.modules` dans l'interpreteur courant laisserait les bouchons derriere soi,
-rendant l'ordre des tests significatif.
+La verification passe par un sous-processus, comme `test_verify_data.py` :
+`nebula3` n'est pas dans le venv du depot, et bouchonner `sys.modules` dans
+l'interpreteur courant laisserait les bouchons en place pour les tests suivants.
 """
 
 from __future__ import annotations
@@ -32,7 +29,7 @@ from src.docling_service.ngql import VID_MAX_BYTES
 
 RACINE = Path(__file__).resolve().parents[2]
 
-# Bouchon `nebula3` : il IMPRIME les requetes qu'il recoit, ce qui permet
+# Bouchon `nebula3` : il imprime les requetes qu'il recoit, ce qui permet
 # d'asserter ce que le script emet reellement plutot que de relire son source.
 BOUCHONS = {
     "nebula3/__init__.py": "",
@@ -84,9 +81,8 @@ def _amorcer(tmp_path: Path, reglages: dict[str, str] | None = None):
         tmp_path: Repertoire de travail du sous-processus. Pas de `.env` dedans,
             donc les reglages sont ceux du code et non ceux du poste.
         reglages: Variables d'environnement a poser. Celles du graphe sont
-            d'abord RETIREES de l'environnement herite : sans ce retrait, un
-            poste qui les declare rendrait les temoins verts ou rouges selon la
-            machine.
+            d'abord retirees de l'environnement herite, pour que les tests des
+            valeurs par defaut ne dependent pas de la machine.
 
     Returns:
         Le processus termine.
@@ -102,11 +98,9 @@ def _amorcer(tmp_path: Path, reglages: dict[str, str] | None = None):
     for cle in ("NEBULA_HOST", "NEBULA_PORT", "NEBULA_USER", "NEBULA_PASSWORD"):
         environnement.pop(cle, None)
     environnement.pop("IN_INIT_ECHOUE", None)
-    # Les pauses d'amorcage attendent le heartbeat du storaged. Il n'y a aucun
-    # storaged ici : les annuler ne retire rien a ce qui est asserte, et les
-    # payer coutait 76 s a une suite qui tient en 14 (`mesure`). C'est un
-    # reglage du script et non une valeur en dur, ce qui est precisement ce qui
-    # rend ce test possible.
+    # Les pauses d'amorcage attendent le heartbeat du storaged, absent ici. Les
+    # mettre a zero ne change rien a ce qui est verifie, et evite 76 s d'attente
+    # (`mesure`). C'est possible parce que la pause est un reglage.
     environnement["NEBULA_AMORCAGE_PAUSE_SECONDS"] = "0"
     environnement.update(reglages or {})
     return subprocess.run(
@@ -120,7 +114,7 @@ def _amorcer(tmp_path: Path, reglages: dict[str, str] | None = None):
 
 
 class TestLImportNeFaitRien:
-    """Le corps vivait au niveau du module : un import creait un space."""
+    """Importer le module ne cree aucun space."""
 
     def test_importer_le_module_ne_touche_pas_au_graphe(self):
         acheve = subprocess.run(
@@ -136,7 +130,7 @@ class TestLImportNeFaitRien:
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
 
     def test_importer_le_module_n_affiche_rien(self):
-        """Le module affichait « Adding hosts... » a l'import."""
+        """L'import n'affiche rien."""
         acheve = subprocess.run(
             [sys.executable, "-c", "import src.init_nebula"],
             cwd=RACINE,
@@ -148,7 +142,7 @@ class TestLImportNeFaitRien:
 
 
 class TestLeSpaceCreeEstCeluiDuService:
-    """Le garde du `vid_type` : un seul site, et il tient le corpus."""
+    """Le `vid_type` vient de `create_space_statement`, et tient le corpus."""
 
     def test_le_create_space_declare_la_taille_du_code(self, tmp_path):
         acheve = _amorcer(tmp_path)
@@ -158,10 +152,9 @@ class TestLeSpaceCreeEstCeluiDuService:
         assert f"FIXED_STRING({VID_MAX_BYTES})" in creations[0]
 
     def test_le_create_space_ne_declare_plus_64(self, tmp_path):
-        """LE TEMOIN, et c'est lui qui ferme le defaut mesure.
+        """Le space n'est pas declare en `FIXED_STRING(64)`.
 
-        Sans lui, le test precedent resterait vert si `VID_MAX_BYTES` retombait
-        a 64 — et c'est precisement la valeur que ce script ecrivait en dur.
+        Le test precedent passerait si `VID_MAX_BYTES` valait 64 ; celui-ci non.
         """
         acheve = _amorcer(tmp_path)
         creations = [ligne for ligne in acheve.stdout.splitlines() if "CREATE SPACE" in ligne]
@@ -174,7 +167,7 @@ class TestLeSpaceCreeEstCeluiDuService:
 
 
 class TestLesReglagesDecidentDeLaConnexion:
-    """Le script codait `("graphd", 9669)` et `("root", "nebula")` en dur."""
+    """L'adresse et les identifiants du graphd viennent de l'environnement."""
 
     def test_l_adresse_et_les_identifiants_viennent_du_env(self, tmp_path):
         acheve = _amorcer(
@@ -191,7 +184,7 @@ class TestLesReglagesDecidentDeLaConnexion:
         assert "IDENTIFIANTS=amorceur/phrase" in acheve.stdout
 
     def test_sans_variables_les_defauts_de_la_pile_valent(self, tmp_path):
-        """LE TEMOIN : de mauvais defauts casseraient tout poste au `.env` muet."""
+        """Sans variables, les valeurs par defaut habituelles sont utilisees."""
         acheve = _amorcer(tmp_path)
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
         assert "ADRESSES=[('graphd', 9669)]" in acheve.stdout
@@ -199,7 +192,7 @@ class TestLesReglagesDecidentDeLaConnexion:
 
 
 class TestLeCodeDeSortieDitSiLaConnexionAEuLieu:
-    """Le script faisait `exit(1)` depuis le niveau module, jamais asserte."""
+    """`main()` rend 1 quand la connexion est impossible."""
 
     def test_une_connexion_refusee_sort_en_un(self, tmp_path):
         acheve = _amorcer(tmp_path, reglages={"IN_INIT_ECHOUE": "1"})
@@ -208,7 +201,6 @@ class TestLeCodeDeSortieDitSiLaConnexionAEuLieu:
         assert "CREATE SPACE" not in acheve.stdout
 
     def test_une_connexion_ouverte_sort_en_zero(self, tmp_path):
-        """LE TEMOIN du precedent : sans lui, un script qui sort toujours en 1
-        passerait."""
+        """Une connexion reussie rend 0 (exclut un script qui sort toujours en 1)."""
         acheve = _amorcer(tmp_path)
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr

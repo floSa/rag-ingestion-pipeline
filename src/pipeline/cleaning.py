@@ -38,9 +38,9 @@ from readability import Document
 
 from src.pipeline.sources import CleaningOptions, ExtractionProfile
 
-# Ce module n'avait AUCUN logger, et c'est ce qui rendait ses deux pertes
-# silencieuses : une strategie d'extraction qui leve (registre 4.7) et un
-# nettoyage qui jette la quasi-totalite du texte (4.6).
+# Journal des deux pertes possibles du nettoyage : une strategie d'extraction
+# qui leve (registre 4.7) et un nettoyage qui jette la quasi-totalite du texte
+# (registre 4.6).
 logger = logging.getLogger(__name__)
 
 # Balises qui ne portent jamais de contenu a ingerer.
@@ -64,7 +64,7 @@ CHROME_TAGS: list[str] = ["nav"]
 # Chrome de page supprime uniquement hors d'un <article>/<main>. A l'interieur,
 # ces balises portent du contenu d'ouvrage : <header> le titre de chapitre,
 # <aside> les encadres (interviews, notes, avertissements) que les editeurs
-# techniques balisent ainsi. Les supprimer sans condition amputait le livre.
+# techniques balisent ainsi. Les supprimer sans condition amputerait le livre.
 CONTEXTUAL_CHROME_TAGS: list[str] = ["header", "footer", "aside"]
 
 # Classes marquees par SingleFile lui-meme.
@@ -115,10 +115,9 @@ _TITLE_SEP = re.compile(r"\s+[-–—|·»]\s+")
 class CleaningReport:
     """Bilan d'un nettoyage, expose dans les metadonnees Dagster.
 
-    ``precleaned_text_chars`` est le denominateur de la perte, et il manquait :
-    le bilan portait `text_chars` sans rien a quoi le comparer, si bien qu'aucun
-    consommateur ne pouvait dire si le nettoyage avait retire du boilerplate ou
-    amputé un chapitre (registre 4.6).
+    ``precleaned_text_chars`` est le denominateur de la perte : sans lui,
+    `text_chars` ne dit pas si le nettoyage a retire du boilerplate ou ampute
+    un chapitre (registre 4.6).
     """
 
     strategy: str
@@ -132,9 +131,9 @@ class CleaningReport:
     def text_ratio(self) -> float:
         """Part du texte pre-nettoye que le nettoyage a conservee.
 
-        Vaut ``1.0`` quand il n'y avait aucun texte a conserver : sans cette
-        borne, tout document sans texte visible leverait une alerte de perte —
-        et un `0.0` y serait faux, il n'y a pas de perte de rien.
+        Vaut ``1.0`` quand il n'y avait aucun texte a conserver : rien n'a ete
+        perdu, et un document sans texte visible ne doit pas declencher
+        d'alerte de perte.
         """
         if self.precleaned_text_chars == 0:
             return 1.0
@@ -277,7 +276,7 @@ def _convert_math_to_latex(soup: BeautifulSoup) -> int:
     ``$$latex$$`` (bloc) — texte simple qui traverse l'extraction et que
     Docling indexera tel quel.
 
-    A appeler AVANT la suppression du bruit, qui supprime les <script>.
+    A appeler avant la suppression du bruit, qui supprime les <script>.
 
     Returns:
         Nombre de formules converties.
@@ -402,7 +401,7 @@ def preclean_html(
         _decompose_all(soup.select(selector))
 
     # Elements caches en dur (attribut hidden / display:none / visibility:hidden),
-    # AVANT la suppression des attributs style qui porte l'information.
+    # avant la suppression des attributs style, qui portent cette information.
     _decompose_all(soup.find_all(hidden=True))
     _decompose_all(
         tag
@@ -487,11 +486,10 @@ def _build_report(
 def _avertir_si_le_texte_est_jete(
     bilan: CleaningReport, options: CleaningOptions, titre: str
 ) -> None:
-    """Crie quand le nettoyage a conserve moins que le seuil d'alerte.
+    """Journalise un avertissement si le nettoyage a conserve moins que le seuil.
 
-    C'est le compteur qui manquait la ou il y a perte. `min_text_ratio` acceptait
-    un candidat conservant 5 % du texte ; personne ne pouvait le savoir, ce
-    module n'ayant pas de logger et le bilan pas de denominateur.
+    `min_text_ratio` accepte un candidat qui ne garde que 5 % du texte ; cet
+    avertissement rend une telle perte visible (registre 4.6).
     """
     if bilan.text_ratio >= options.warn_text_ratio:
         return
@@ -557,19 +555,16 @@ def clean_html(
         try:
             candidate = strategy.extract(precleaned)
         except Exception as exc:
-            # LARGEUR VOULUE, ET VOICI POURQUOI. `trafilatura` et
+            # `except` large, volontairement. `trafilatura` et
             # `readability-lxml` sont des extracteurs tiers lances sur du HTML
-            # de capture, souvent malforme : ils peuvent lever n'importe quoi,
-            # et `lxml` remonte des exceptions qui ne descendent pas d'une base
-            # commune utile. Une strategie sur trois qui plante ne doit pas
-            # condamner le document — les deux autres concourent encore.
+            # de capture, souvent malforme ; `lxml` remonte des exceptions sans
+            # base commune utile. Une strategie qui plante ne doit pas condamner
+            # le document : les autres concourent encore.
             #
-            # CE QUI MANQUAIT ETAIT LA TRACE, et c'etait le plus grave des
-            # quatre `except` muets du depot : ce module n'avait aucun logger,
-            # si bien qu'une strategie qui LEVE etait indistinguable d'une
-            # strategie qui n'a RIEN TROUVE. Le document repartait sur un
-            # candidat moins bon, voire sur son HTML pre-nettoye — donc avec son
-            # boilerplate — et aucun code de sortie ne le disait.
+            # L'exception est journalisee (registre 4.7) : sans trace, une
+            # strategie qui leve serait indistinguable d'une strategie qui n'a
+            # rien trouve, et le document retomberait sur un candidat moins bon
+            # sans que rien ne le signale.
             logger.warning(
                 "%s a leve sur %s : %s. Cette strategie ne concourt pas ; le "
                 "candidat retenu sera le meilleur des autres, ou le repli "
@@ -600,8 +595,8 @@ def clean_html(
         return fragment, bilan
 
     # Le repli est le document entier (avec son <head>) : pas de h1 a prefixer.
-    # Il ne peut pas perdre de texte — c'est le denominateur lui-meme — donc pas
-    # d'alerte a lever ici. `factory` avertit deja qu'on est retombe dessus.
+    # Il ne perd aucun texte (c'est le denominateur lui-meme), donc pas d'alerte
+    # de perte ici. `factory` avertit deja du repli.
     return precleaned, _build_report(
         raw, precleaned, precleaned, PRECLEANED_FALLBACK, reference_chars
     )

@@ -1,9 +1,9 @@
 """File de jobs d'extraction executee par un worker unique.
 
 L'extraction d'un livre de 400 pages dure des heures. La faire tenir dans une
-requete HTTP posait deux problemes : le client Dagster expirait avant la fin
-(run rouge alors que le service continuait a ecrire), et l'endpoint bloquait
-l'event loop du service, figeant y compris le healthcheck.
+requete HTTP poserait deux problemes : le client Dagster expirerait avant la
+fin (run en echec alors que le service continue a ecrire), et l'endpoint
+bloquerait l'event loop du service, healthcheck compris.
 
 Le POST se contente donc de mettre en file et de rendre un identifiant ; un
 worker unique deroule les jobs les uns apres les autres, et Dagster interroge

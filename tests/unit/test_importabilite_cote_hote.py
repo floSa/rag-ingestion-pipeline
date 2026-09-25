@@ -1,26 +1,18 @@
-"""Tout module de ``src/`` s'importe cote hote, sauf UNE exception nommee.
+"""Tout module de ``src/`` s'importe cote hote, sauf une exception nommee.
 
-**C'etait la cause mecanique de six angles morts du chantier** — registre §3.4,
-§4.4, §4.5, §4.19, §4.28.d. Un module qui importe une dependance lourde au niveau
-du module est inimportable dans le venv du depot, donc rien de ce qu'il decide
-n'est testable : *ce qu'un test n'importe pas, il ne teste pas.* Six modules ont
-ete deverrouilles aux lots 3, 3-repare et 4, en differant l'import dans la
-fonction qui en a besoin.
+Un module qui importe une dependance lourde au niveau du module est
+inimportable dans le venv du depot, donc rien de ce qu'il decide n'est
+testable (registre §3.4, §4.4, §4.5, §4.19, §4.28.d). Les modules concernes
+importent donc ces dependances dans la fonction qui en a besoin.
 
-**Et le README affirmait « Aucun module du depot n'est plus inimportable cote
-hote ».** C'est une PHRASE D'EXHAUSTIVITE, la famille que le mandat §10 nomme
-comme un defaut en attente — et elle etait fausse. `mesure` le 1er septembre
-2026 : **33 modules sous `src/`, 1 inimportable**,
-`src/docling_service/main.py`, sur `ModuleNotFoundError: No module named
-'fastapi'`. Le tableau situe deux paragraphes plus haut dans le meme README dit
-lui-meme que `main.py` est atteint par un BOUCHON et non par un import : le
-document se contredisait dans sa propre section.
+Mesure le 1er septembre 2026 : 33 modules sous `src/`, 1 inimportable,
+`src/docling_service/main.py` (`ModuleNotFoundError: No module named
+'fastapi'`). `test_main.py` l'atteint par un bouchon, pas par un import.
 
-Ce fichier convertit la phrase en garde. Il rougirait le jour ou un septieme
-module deviendrait inimportable — le motif exact qui a produit les six angles
-morts — et il ne pretend pas que l'exception n'existe pas : il la nomme.
+Ce fichier echoue si un autre module devient inimportable, et nomme
+l'exception au lieu de la nier.
 
-L'exploration se fait en SOUS-PROCESSUS, et pour deux raisons dont la premiere
+L'exploration se fait en sous-processus, et pour deux raisons dont la premiere
 suffirait :
 
 - importer trente-trois modules dans le processus de pytest les laisserait dans
@@ -43,15 +35,14 @@ from pathlib import Path
 
 RACINE_DEPOT = Path(__file__).resolve().parents[2]
 
-# L'exception CONNUE, et elle est nommee plutot que niee. `main.py` EST
-# l'application FastAPI : differer cet import-la n'aurait aucun sens, et le
-# module n'a AUCUNE ligne modifiee par le lot 4. Il est atteint par un bouchon
-# `fastapi` pose comme un vrai paquet en tete de `PYTHONPATH`
-# (`test_main.py`), ce qui n'est pas la meme chose qu'etre importable.
+# L'exception connue. `main.py` est l'application FastAPI : differer cet
+# import n'aurait aucun sens. Il est atteint par un bouchon `fastapi` pose
+# comme un vrai paquet en tete de `PYTHONPATH` (`test_main.py`), ce qui n'est
+# pas la meme chose qu'etre importable.
 EXCEPTIONS_CONNUES = {"src.docling_service.main"}
 
 # Un module dont l'import est deja prouve possible, pour que ce fichier ne
-# puisse pas etre vert sur un balayage qui n'a rien importe.
+# puisse pas passer sur un balayage qui n'a rien importe.
 TEMOIN = "src.docling_service.ngql"
 
 _EXPLORATEUR = """
@@ -77,7 +68,7 @@ print(json.dumps({"modules": modules, "importes": importes, "inimportables": ini
 
 @dataclass(frozen=True)
 class _Releve:
-    """Ce que le sous-processus a trouve, sous une forme TYPEE.
+    """Ce que le sous-processus a trouve, sous une forme typee.
 
     Un `dict[str, object]` aurait demande une assertion de type a chaque lecture,
     et la regle du depot interdit `type: ignore` : la forme porte le type.
@@ -113,12 +104,12 @@ class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
     """La phrase du README, convertie en garde."""
 
     def test_le_balayage_a_bien_importe_quelque_chose(self) -> None:
-        """LE TEMOIN, ET IL PASSE EN PREMIER.
+        """Contre-epreuve, placee en premier.
 
-        *Un test qui choisit lui-meme son cas doit prouver qu'il l'a atteint.*
         Un balayage qui ne trouverait aucun fichier rendrait « 0 inimportable »,
-        et les tests suivants seraient verts sans rien garder. La borne est
-        INFERIEURE et non une egalite : ajouter un module ne doit pas rougir.
+        et les tests suivants passeraient sans rien verifier. La borne est
+        inferieure et non une egalite : ajouter un module ne fait pas echouer
+        ce test.
         """
         releve = _explorer()
 
@@ -130,9 +121,9 @@ class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
         )
 
     def test_seules_les_exceptions_connues_sont_inimportables(self) -> None:
-        """LE GARDE. Un septieme module inimportable rougit ici.
+        """Un nouveau module inimportable fait echouer ce test.
 
-        L'assertion est un SOUS-ENSEMBLE et non une egalite : le jour ou
+        L'assertion est un sous-ensemble et non une egalite : le jour ou
         `fastapi` entre au venv, `main.py` devient importable, et ce n'est pas une
         regression — c'est la fin de l'exception.
         """
@@ -148,9 +139,9 @@ class TestAucunModuleNeDevientInimportableSansQuOnLeDise:
         )
 
     def test_l_exception_connue_est_encore_la_pour_la_raison_annoncee(self) -> None:
-        """Le second temoin : l'exception est NOMMEE, pas supposee.
+        """L'exception est verifiee, pas supposee.
 
-        Sans lui, `EXCEPTIONS_CONNUES` pourrait grossir indefiniment sans que
+        Sans ce test, `EXCEPTIONS_CONNUES` pourrait grossir indefiniment sans que
         personne ne verifie que ses entrees decrivent encore quelque chose. Si
         `main.py` devient importable, ce test le dit — et il faudra retirer
         l'entree plutot que la garder « au cas ou ».

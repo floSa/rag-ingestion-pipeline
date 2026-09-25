@@ -155,7 +155,7 @@ class TestPrecleanHtml:
         assert "chrome du site" not in result
 
     def test_keeps_aside_inside_article(self):
-        """Les editeurs techniques balisent les encadres en <aside> : c'est du livre."""
+        """Les editeurs techniques balisent les encadres en <aside> : c'est du contenu."""
         html = (
             "<html><body>"
             "<aside>articles lies du site</aside>"
@@ -405,13 +405,11 @@ class TestCleanHtmlFile:
 
 
 class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
-    """Registre 4.7 : `except Exception: candidate = None`, sans une ligne.
+    """Une strategie d'extraction qui leve est journalisee (registre 4.7).
 
-    C'etait le plus grave des quatre `except` muets du depot. `cleaning.py`
-    n'avait AUCUN logger : une strategie d'extraction qui levait devenait un
-    non-candidat, indistinguable d'une strategie qui n'a rien trouve. Le
-    document repartait sur un candidat moins bon, ou sur le repli
-    pre-nettoye — c'est-a-dire avec son boilerplate — et rien ne le disait.
+    Sans journal, une strategie qui leve est indistinguable d'une strategie qui
+    n'a rien trouve : le document retombe sur un candidat moins bon, ou sur le
+    repli pre-nettoye avec son boilerplate, sans que rien ne le signale.
     """
 
     HTML = (
@@ -434,10 +432,10 @@ class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
         assert any("lxml a rendu l'ame" in message for message in messages), messages
 
     def test_les_autres_strategies_gagnent_quand_une_leve(self, monkeypatch, caplog):
-        """LE TEMOIN. Sans lui, un `except` qui laisserait tout tomber passerait.
+        """Une strategie qui plante n'empeche pas les autres de concourir.
 
-        La largeur de l'`except` est VOULUE, et c'est ce test qui dit pourquoi :
-        une strategie sur trois qui plante ne doit pas condamner le document.
+        C'est la raison de l'`except` large : une strategie sur trois qui plante
+        ne doit pas condamner le document.
         """
 
         def leve(self, html):
@@ -454,9 +452,9 @@ class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
         assert "menu" not in _
 
     # HTML sans conteneur semantique : `SemanticContainerStrategy` y rend `None`
-    # sans lever, ce qui est son cas NOMINAL. C'est le cas qu'il faut atteindre
-    # pour distinguer « une strategie n'a rien trouve » de « une strategie a
-    # plante », et le test ci-dessous prouve qu'il l'atteint.
+    # sans lever, son cas nominal. Ce cas distingue « une strategie n'a rien
+    # trouve » de « une strategie a plante » ; le test ci-dessous verifie
+    # d'abord qu'il est bien atteint.
     HTML_SANS_ARTICLE = (
         "<html><head><title>Un chapitre</title></head><body>"
         "<div><h1>Un chapitre</h1><p>"
@@ -465,19 +463,14 @@ class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
     )
 
     def test_une_strategie_qui_ne_trouve_rien_n_est_pas_journalisee(self, caplog):
-        """LE SECOND TEMOIN : le garde ne doit pas crier sur le chemin nominal.
+        """Une strategie qui ne trouve rien ne produit aucun avertissement.
 
-        Sans lui, un journal pose a tort — sur le simple `candidate is None`,
-        qui est le cas nominal d'une strategie qui n'a rien trouve — noierait le
-        signal reel : un avertissement a chaque document rendrait celui qui
-        compte invisible.
+        Un journal declenche sur le simple `candidate is None` (cas nominal)
+        produirait un avertissement a chaque document et masquerait les vrais.
 
-        `mesure` : ce temoin a d'abord ete ecrit sur `HTML`, qui porte un
-        `<article>`. Aucune strategie n'y rend `None`, donc le journal mal place
-        ne se declenchait jamais et le temoin restait VERT sous la mutation —
-        il etait creux. C'est la lecon « un test qui choisit lui-meme son cas
-        doit prouver qu'il l'a atteint », et la preuve est la premiere
-        assertion.
+        Le HTML utilise n'a pas d'`<article>` : avec `HTML`, aucune strategie ne
+        rend `None` et le test passerait meme si le journal etait mal place. La
+        premiere assertion verifie que le cas voulu est atteint.
         """
         precleaned = preclean_html(self.HTML_SANS_ARTICLE, CleaningOptions())
         assert (
@@ -498,29 +491,26 @@ class TestUneStrategieQuiPlanteNEstPlusUnNonCandidatSilencieux:
         assert levees == [], levees
 
 
-# Le pire ratio texte-conserve/texte-pre-nettoye des 22 chapitres retenus du
-# corpus, `mesure` le 1er septembre 2026 par le nettoyage reel en memoire :
-# minimal 0.988, median 0.997, maximal 0.998, 0 chapitre sous 0.95.
+# Ratio texte conserve / texte pre-nettoye sur les 22 chapitres retenus du
+# corpus, mesure le 1er septembre 2026 avec le nettoyage reel : minimal 0.988,
+# median 0.997, maximal 0.998, aucun chapitre sous 0.95.
 PIRE_RATIO_MESURE_DU_CORPUS = 0.988
 
 
 class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
-    """Registre 4.6 : `min_text_ratio = 0.05` acceptait de jeter 95 % du texte.
+    """Une perte de texte importante au nettoyage est signalee (registre 4.6).
 
-    Aucun seuil d'alerte, aucun journal, et `factory` ne publiait ni
-    `precleaned_text_chars` ni le ratio dans les metadonnees Dagster : la perte
-    etait structurellement invisible. Un run vert, un chapitre ampute, rien.
+    `min_text_ratio = 0.05` accepte un candidat qui jette 95 % du texte. Ce
+    plancher d'acceptation reste tel quel, volontairement : refuser plus tot
+    ferait retomber le document sur son HTML pre-nettoye, qui garde plus de
+    texte mais aussi son boilerplate. Un seuil d'alerte distinct,
+    `warn_text_ratio`, s'ajoute au-dessus.
 
-    **Le seuil d'acceptation n'est pas touche, et c'est deliberé.** Le refuser
-    plus tot ferait retomber le document sur son HTML pre-nettoye, qui garde
-    PLUS de texte — avec son boilerplate. `0.05` est un plancher
-    d'acceptation ; ce qui manquait etait un seuil d'ALERTE au-dessus de lui.
-
-    Le defaut de ce seuil vient de la mesure, `mesure` le 1er septembre 2026 sur
-    les 22 chapitres retenus du corpus : ratio minimal **0.988**, median 0.997,
-    maximal 0.998, et **0 chapitre sous 0.95**. Les 22 passent par la strategie
-    `article`. Un seuil d'alerte a 0.90 est donc muet sur ce corpus et parle des
-    qu'un document perd plus d'un dixieme de son texte.
+    Son defaut vient d'une mesure du 1er septembre 2026 sur les 22 chapitres
+    retenus du corpus : ratio minimal 0.988, median 0.997, maximal 0.998, aucun
+    chapitre sous 0.95 ; les 22 passent par la strategie `article`. Un seuil a
+    0.90 reste donc muet sur ce corpus et avertit des qu'un document perd plus
+    d'un dixieme de son texte.
     """
 
     CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
@@ -537,7 +527,7 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
         assert 0.9 < bilan.text_ratio <= 1.0, bilan
 
     def test_le_ratio_est_le_rapport_des_deux_comptes(self):
-        """LE TEMOIN du precedent : un ratio code en dur a 1.0 passerait sans lui."""
+        """Complete le precedent : un ratio code en dur a 1.0 passerait sans lui."""
         _, bilan = clean_html(self.HTML, CleaningOptions())
 
         assert bilan.text_ratio == bilan.text_chars / bilan.precleaned_text_chars
@@ -553,17 +543,16 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
         )
 
     def test_une_perte_massive_est_journalisee_avec_ses_deux_comptes(self, monkeypatch, caplog):
-        """Une strategie qui ne rend qu'un dixieme du texte doit crier.
+        """Une strategie qui ne rend qu'un dixieme du texte declenche l'alerte.
 
-        Le cas est FABRIQUE — le corpus reel ne descend jamais sous 0.988 — et
-        c'est precisement pourquoi il faut le fabriquer : un test sur le corpus
-        serait vert des deux cotes du defaut.
+        Le cas est fabrique : le corpus reel ne descend jamais sous 0.988, et un
+        test sur le corpus passerait avec ou sans alerte.
         """
 
         def rend_un_cinquieme(self, html):
-            # Au-dessus de `min_text_chars` (250) pour etre ACCEPTE, et bien en
-            # dessous du seuil d'alerte : c'est le cas exact que 4.6 decrit, un
-            # candidat retenu qui a jete l'essentiel du texte.
+            # Au-dessus de `min_text_chars` (250) pour etre accepte, et bien en
+            # dessous du seuil d'alerte : un candidat retenu qui a jete
+            # l'essentiel du texte (registre 4.6).
             return ExtractionCandidate(
                 strategy="article", html="<p>" + "mot bref ici. " * 26 + "</p>"
             )
@@ -583,11 +572,10 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
         assert str(bilan.text_chars) in perte[0], perte[0]
 
     def test_le_chemin_nominal_ne_journalise_aucune_perte(self, caplog):
-        """LE TEMOIN : une alerte a chaque document rendrait la vraie invisible.
+        """Le chemin nominal ne declenche aucune alerte de perte.
 
-        C'est le meme defaut que le seuil absent, par l'autre bout : un seuil
-        pose trop haut crie sur les 22 chapitres du corpus, et plus personne ne
-        lit la ligne.
+        Un seuil trop haut avertirait sur les 22 chapitres du corpus, et
+        l'avertissement ne serait plus lu.
         """
         with caplog.at_level(logging.WARNING, logger="src.pipeline.cleaning"):
             _, bilan = clean_html(self.HTML, CleaningOptions())
@@ -601,11 +589,10 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
         assert pertes == [], pertes
 
     def test_le_seuil_d_alerte_est_muet_sur_le_corpus_mesure(self):
-        """Le seuil vient d'une mesure, et cette mesure est ecrite ici.
+        """Le seuil d'alerte reste sous le pire ratio mesure sur le corpus.
 
-        `mesure` le 1er septembre 2026 : le pire ratio des 22 chapitres retenus
-        vaut 0.988. Un seuil au-dessus rendrait le journal bavard sur un corpus
-        sain, et c'est ce que ce test interdit.
+        Mesure du 1er septembre 2026 : le pire ratio des 22 chapitres retenus
+        vaut 0.988. Un seuil au-dessus avertirait sur un corpus sain.
         """
         assert CleaningOptions().warn_text_ratio < PIRE_RATIO_MESURE_DU_CORPUS, (
             "le seuil d'alerte depasse le pire ratio reel du corpus : les 22 "
@@ -618,15 +605,12 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
 
 
 class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
-    """Registre 4.25 : la forme de l'adresse d'objet avait DEUX sites.
+    """L'adresse d'objet a une seule forme, construite par `images.object_url`.
 
-    `images.object_url` et `ExportateurDImages.__call__` la construisaient par
-    deux f-strings identiques. C'est la forme que le CONTRAT publie — l'agent lit
-    `media_url` — donc deux sites sont deux facons de deriver, sur la seule
-    propriete qu'aucun des deux ne peut verifier chez l'autre.
-
-    `mesure` : faire reconstruire son URL a `media.py` — en `https` au lieu de
-    `http`, par exemple — laissait la suite ENTIEREMENT VERTE.
+    C'est la forme que publie le contrat (l'agent lit `media_url`, registre
+    4.25). `ExportateurDImages` doit donc rendre exactement l'adresse de
+    `images.object_url`, et non la reconstruire : une variante (en `https` au
+    lieu de `http`, par exemple) passerait sinon inapercue.
     """
 
     def test_l_url_rendue_est_exactement_celle_du_site_unique(self, monkeypatch):
@@ -643,9 +627,11 @@ class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
         assert rendue == object_url("images/html/htms/livre/chapitre/img_0000.png")
 
     def test_un_upload_en_echec_ne_rend_aucune_url(self, monkeypatch):
-        """LE TEMOIN : sans lui, un exporteur qui rend toujours une URL passerait,
-        et le graphe porterait des adresses d'objets jamais televerses — le
-        registre 4.28.b, cree a la main."""
+        """Un televersement en echec ne rend aucune URL.
+
+        Sans ce test, un exporteur qui rend toujours une URL passerait, et le
+        graphe porterait des adresses d'objets jamais televerses (registre
+        4.28.b)."""
         from src.pipeline.media import ExportateurDImages
 
         def refuse(*a, **k):

@@ -1,20 +1,16 @@
 """Crop des elements visuels d'un PDF et export vers le stockage objet.
 
-Le document PDF est passe en argument au lieu d'etre rouvert : la version
-initiale faisait un ``fitz.open()`` du fichier entier pour chaque image, soit
-des centaines d'ouvertures d'un livre de 400 pages.
+Le document PDF est passe en argument au lieu d'etre rouvert pour chaque
+image : un livre de 400 pages en compte des centaines.
 
-**CE MODULE EST LE SEUL DU DEPOT QUI CONSTRUIT UN CLIENT S3**, et c'est
-delibere. `pipeline/media.py` en construisait un second, avec ses propres
-reglages et son propre ``secure=`` : deux sites pour la meme decision, donc
-deux facons d'en changer. :func:`build_client` est desormais le seul, et il
-est le seul endroit du depot ou le nom du SDK apparaisse en dehors de
-`verify_data`.
+Ce module est le seul de `src/` qui construit un client S3
+(:func:`build_client`) et qui importe la bibliotheque cliente.
+`pipeline/media.py` passe par lui, ce qui laisse une seule decision de
+reglages et de ``secure=``.
 
-Le SDK s'appelle ``minio`` (minio-py) et il RESTE : c'est un client S3
-generique, qui parle a n'importe quelle passerelle S3 — c'est par lui que la
-pile a bascule sans changer une ligne de televersement. Son nom ne dit rien du
-serveur en face, que seul ``S3_ENDPOINT`` designe.
+La bibliotheque cliente s'appelle ``minio`` (minio-py). C'est un client S3
+generique, qui parle a n'importe quelle passerelle S3 : son nom ne dit rien du
+serveur en face (SeaweedFS aujourd'hui), que seul ``S3_ENDPOINT`` designe.
 """
 
 from __future__ import annotations
@@ -37,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Le type du client S3, sous un nom qui ne designe pas un produit. Il existe
 # pour que `pipeline/media.py` puisse annoter le sien sans importer le SDK :
-# le depot n'a qu'UN site qui nomme la bibliotheque, et c'est ce module-ci.
+# le depot n'a qu'un site qui nomme la bibliotheque, et c'est ce module-ci.
 ClientS3 = Minio
 
 _client: ClientS3 | None = None
@@ -47,14 +43,13 @@ _client_lock = threading.Lock()
 def build_client(
     endpoint: str, access_key: str, secret_key: str, *, secure: bool = False
 ) -> ClientS3:
-    """Construit un client S3 — LE SEUL SITE DE CONSTRUCTION DU DEPOT.
+    """Construit un client S3. C'est le seul site de construction du depot.
 
-    Le refus sur une adresse vide est ici en plus des reglages, et ce n'est pas
-    une redite : cette fonction est PUBLIQUE, et un appelant qui lui passerait
-    une adresse lue ailleurs contournerait la validation de
-    `ReglagesDuStockageObjet`. Un client sans adresse ne leve pas a la
-    construction — il leve a l'appel, sur une erreur de resolution de nom qui
-    ne dit pas ce qui manque.
+    L'adresse vide est refusee ici en plus des reglages : la fonction est
+    publique, et un appelant qui lui passerait une adresse lue ailleurs
+    contournerait la validation de `ReglagesDuStockageObjet`. Un client sans
+    adresse ne leve pas a la construction, mais a l'appel, sur une erreur de
+    resolution de nom qui ne dit pas ce qui manque.
 
     Args:
         endpoint: ``hote:port`` de la passerelle S3, sans schema.
@@ -123,59 +118,42 @@ def ensure_bucket(max_attempts: int = 15, wait_seconds: float = 5.0) -> bool:
 
 
 def object_url(object_name: str) -> str:
-    """Adresse d'un objet du bucket — INTERNE et AUTHENTIFIEE, pas publique.
+    """Adresse d'un objet du bucket : interne et authentifiee, pas publique.
 
-    **La forme stockee n'est pas une URL qu'un navigateur peut ouvrir, et le
-    registre 4.25 demandait de trancher ce qu'elle est.** Trois faits mesures le
-    1er septembre 2026 :
+    Ce n'est pas une URL qu'un navigateur peut ouvrir (registre 4.25). Mesure
+    le 1er septembre 2026 :
 
-    - les 13 URL portees par le graphe designent des objets qui EXISTENT
+    - les 13 URL portees par le graphe designent des objets qui existent
       (`stat_object` avec un client S3 authentifie : 0 URL morte sur 13) ;
-    - un `GET` **anonyme** rend **403 AccessDenied**, et pas seulement hors du
-      reseau Docker : depuis un conteneur DANS `rag_network` aussi. Ce n'est donc
-      pas un probleme de resolution de nom, c'est le bucket qui n'est pas public ;
-    - l'adresse est un nom de service Docker : hors du reseau, il ne resout
-      pas. Elle avait de surcroit une VALEUR PAR DEFAUT a l'epoque de cette
-      mesure, celle du stockage d'alors ; le defaut n'existe plus, et
-      `S3_ENDPOINT` est desormais exige — `src/reglages_s3.py` dit pourquoi.
+    - un `GET` anonyme rend 403 AccessDenied, y compris depuis un conteneur
+      de `rag_network` : le bucket n'est pas public ;
+    - l'hote est un nom de service Docker, qui ne resout pas hors du reseau.
 
-    « 0 URL morte » dependait donc entierement de la methode de lecture, et
-    c'etait le vrai defaut du constat : une mesure juste, presentee sans sa
-    condition.
+    `rag-agent-chat` sert de proxy : il est sur `rag_network`, porte
+    `RESTRICT_MEDIA_TO_GRAPH=true` (il ne sert que ce que le graphe
+    reference), lit l'objet avec ses propres identifiants S3 en lecture seule
+    et le re-sert a son client. Il ne doit jamais passer cette adresse telle
+    quelle a un navigateur.
 
-    **CE QUE L'AGENT PEUT EN FAIRE, et c'est la decision.** `rag-agent-chat` se
-    raccroche a `rag_network` et porte `RESTRICT_MEDIA_TO_GRAPH=true` : il ne
-    sert que ce que le graphe reference. Il est donc le PROXY, et cette adresse
-    est faite pour lui : il resout le nom de service, lit l'objet avec ses
-    identifiants S3 — son propre jeu, en lecture seule — et le re-sert a son
-    client. Il ne doit jamais passer cette adresse telle quelle a un
-    navigateur.
+    Deux alternatives sont ecartees :
 
-    **Les deux autres issues ont ete ECARTEES, et pour des motifs mesurables :**
-
-    - *rendre le bucket public en lecture* ferait passer le `GET` anonyme, mais
-      seulement dans le reseau, et rendrait chaque image du corpus lisible par
-      tout ce qui y tourne. Le gain est nul pour l'agent, qui a deja ses
-      identifiants ;
-    - *stocker une URL presignee* la ferait EXPIRER. Un graphe est durable ; une
-      signature ne l'est pas. Le jour de l'expiration, les images cesseraient de
-      s'afficher sans qu'aucune erreur ne le dise — c'est-a-dire exactement la
-      famille de defaut que ce lot ferme, plantee volontairement.
+    - rendre le bucket public en lecture ne servirait que dans le reseau, et
+      rendrait chaque image lisible par tout ce qui y tourne, sans gain pour
+      l'agent qui a deja ses identifiants ;
+    - stocker une URL presignee la ferait expirer : un graphe est durable, une
+      signature ne l'est pas, et les images cesseraient de s'afficher sans
+      erreur.
 
     L'hote reste un reglage (`S3_ENDPOINT`) : un deploiement qui expose la
-    passerelle sous un autre nom stocke une adresse atteignable de la, sans
-    changer de code. C'est ce qui a permis la bascule du 25 septembre 2026 —
-    aucune ligne de ce module n'a change, seule la valeur du reglage.
-
-    **C'est aussi le SEUL site de cette forme.** `pipeline/media.py` la
-    reconstruisait a l'identique par une seconde f-string : deux sites pour la
-    forme que le contrat publie, donc deux facons de deriver.
+    passerelle sous un autre nom stocke une adresse atteignable, sans changer
+    de code. Cette fonction est le seul site de cette forme ; `pipeline/media.py`
+    l'appelle.
 
     Args:
         object_name: Cle de l'objet dans le bucket.
 
     Returns:
-        L'adresse interne de l'objet, en style CHEMIN
+        L'adresse interne de l'objet, en style chemin
         (``http://hote:port/bucket/cle``). La forme est celle que
         :func:`object_key` sait inverser exactement.
     """
@@ -184,25 +162,20 @@ def object_url(object_name: str) -> str:
 
 
 def object_key(url: str) -> str:
-    """La cle NUE d'un objet, retrouvee depuis l'adresse que le contrat publie.
+    """La cle nue d'un objet, retrouvee depuis l'adresse que le contrat publie.
 
-    **POURQUOI LE CONTRAT PORTE LA CLE A COTE DE L'ADRESSE.** L'adresse contient
-    l'hote, donc elle PERIME : la bascule du 25 septembre 2026 a change l'hote
-    de 212 objets d'un coup, et tout consommateur qui voulait atteindre l'objet
-    devait defaire l'adresse a sa facon pour en extraire la cle. Defaire une
-    forme est une regle, et une regle recopiee chez trois consommateurs est
-    trois regles. La cle, elle, ne bouge pas d'un stockage a l'autre : c'est
-    elle l'identite de l'objet, et c'est ce que `object_key` publie.
+    Le contrat publie la cle a cote de l'adresse (`media_url` + `object_key`)
+    parce que l'adresse contient l'hote et perime avec lui : le changement de
+    stockage du 25 septembre 2026 a change l'hote de 212 objets. La cle, elle,
+    ne change pas d'un stockage a l'autre : c'est l'identite de l'objet. La
+    publier evite a chaque consommateur de defaire l'adresse a sa facon.
 
-    **C'EST L'INVERSE EXACT DE :func:`object_url`, ET C'EST VERIFIABLE.** Cette
-    derniere est une concatenation pure, sans encodage : la cle apparait telle
-    quelle dans le chemin. La retrouver, c'est donc retirer le schema, l'hote et
-    le premier segment — le bucket — et ne RIEN decoder. Un ``unquote`` ici
-    rendrait une cle differente de celle passee a ``put_object`` des qu'un nom
-    porterait un ``%``, et `stat_object` rendrait alors 404 sur un objet
-    present. `sanitize_key` borne par ailleurs les cles a ``[A-Za-z0-9/_.-]``,
-    donc le cas ne se presente pas aujourd'hui ; la regle vaut pour le jour ou
-    il se presenterait.
+    C'est l'inverse exact de :func:`object_url`, qui concatene sans encoder.
+    Retrouver la cle, c'est retirer le schema, l'hote et le premier segment (le
+    bucket), sans rien decoder. Un ``unquote`` rendrait une cle differente de
+    celle passee a ``put_object`` des qu'un nom porterait un ``%``, et
+    `stat_object` rendrait alors 404. `sanitize_key` borne aujourd'hui les cles
+    a ``[A-Za-z0-9/_.-]``, donc le cas ne se presente pas encore.
 
     Args:
         url: Adresse produite par :func:`object_url`, ou chaine vide.

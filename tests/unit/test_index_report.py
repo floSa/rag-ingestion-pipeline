@@ -1,10 +1,8 @@
 """Tests de l'instrument de troncature.
 
-Un test « l'instrument rend un nombre » est vert des DEUX cotes du defaut :
-tokeniser le texte stocke rend un nombre, tokeniser le texte encode aussi. Ces
-tests font donc regresser le CHOIX du texte, en construisant des chunks que le
-seul prefixe de titre fait franchir la fenetre — le cas exact que l'instrument
-ne comptait pas (registre 3.4).
+Ces tests verifient quel texte est mesure : le texte encode (prefixe du titre
+de section), et non le texte stocke. Ils construisent des chunks que le seul
+prefixe de titre fait depasser la fenetre du modele (registre 3.4).
 """
 
 from __future__ import annotations
@@ -24,8 +22,8 @@ RACINE = Path(__file__).resolve().parents[2]
 def compter_les_mots(texte: str) -> int:
     """Tokeniseur de substitution : un mot, un token.
 
-    Le vrai tokeniseur demande le modele, donc torch. Ce qui est mesure ici
-    n'est pas la tokenisation — c'est QUEL TEXTE lui est donne.
+    Le vrai tokeniseur demande le modele, donc torch. Ces tests ne portent pas
+    sur la tokenisation, mais sur le texte qui lui est donne.
     """
     return len(texte.split())
 
@@ -38,7 +36,7 @@ class TestMesurerLaFenetre:
     LIMITE = 5
 
     def test_the_title_prefix_is_counted(self):
-        """Sans le prefixe, ce chunk ne compte pas : c'est tout le defaut."""
+        """Le chunk ne depasse la fenetre qu'avec son prefixe de titre."""
         mesure = mesurer_la_fenetre(
             self.DOCUMENTS, self.METADATAS, compter_les_mots, self.LIMITE, True
         )
@@ -46,10 +44,9 @@ class TestMesurerLaFenetre:
         assert mesure.maximum == 6
 
     def test_the_stored_text_alone_would_count_nothing(self):
-        """Le contre-cas, qui prouve que le test distingue les deux textes.
+        """Sans prefixe, la mesure rend les chiffres du texte stocke.
 
-        Si la mesure retombait sur le texte stocke, elle rendrait ces
-        chiffres-ci — et le test ci-dessus rougirait.
+        Ce cas prouve que le test precedent distingue les deux textes.
         """
         mesure = mesurer_la_fenetre(
             self.DOCUMENTS, self.METADATAS, compter_les_mots, self.LIMITE, False
@@ -63,7 +60,7 @@ class TestMesurerLaFenetre:
         assert not mesurer_la_fenetre([""], [{}], compter_les_mots, 5, False).prefixe_du_titre
 
     def test_a_chunk_exactly_at_the_limit_is_not_truncated(self):
-        """La borne est stricte : le modele tronque AU-DELA de sa fenetre."""
+        """La borne est stricte : le modele tronque au-dela de sa fenetre."""
         mesure = mesurer_la_fenetre(["un deux trois quatre cinq"], [{}], compter_les_mots, 5, True)
         assert mesure.depassements == 0
 
@@ -80,16 +77,13 @@ class TestMesurerLaFenetre:
 
 
 class TestLeModuleResteImportableSansModele:
-    """Ce qu'un test n'importe pas, il ne teste pas.
+    """Le module s'importe sans `chromadb` ni le modele d'embedding.
 
-    L'instrument n'etait garde par aucun test parce qu'il importait `chromadb`
-    et le modele d'embedding au niveau du module : personne ne pouvait
-    l'importer sans l'image d'extraction, qui pese 10,4 Go. Ces dependances sont
-    desormais chargees dans ``main``.
+    Ces dependances sont chargees dans ``main`` : le module est testable sans
+    l'image d'extraction (10,4 Go).
 
-    La verification passe par un SOUS-PROCESSUS : mesurer ``sys.modules`` dans
-    l'interpreteur courant rendrait le verdict dependant de ce qu'un autre test
-    a importe avant.
+    La verification passe par un sous-processus : lire ``sys.modules`` dans
+    l'interpreteur courant dependrait de ce que d'autres tests ont importe.
     """
 
     SONDE = (
@@ -108,18 +102,11 @@ class TestLeModuleResteImportableSansModele:
 
 
 class TestCompterLesDocuments:
-    """L'IDENTITE D'UN DOCUMENT EST `source_path`, JAMAIS `filename` SEUL.
+    """L'identite d'un document est `source_path`, jamais `filename` seul.
 
-    `index_report:116` comptait `{m.get("filename")}` et rendait **22** alors que
-    le graphe porte **23** documents. `mesure` le 31 aout 2026 sur l'index
-    complet : 22 `filename` distincts contre 23 `source_path`, et la seule
-    collision est `Preface` — le corpus contient deux `Preface.html`, un par
-    ouvrage.
-
-    C'est EXACTEMENT le cas d'ecole que l'exigence 3 du contrat cite comme sa
-    preuve, dans un fichier que le lot 3 a reecrit. Et deux lignes plus bas, le
-    bloc « Profondeur de hierarchie » du meme fichier utilisait correctement
-    `source_path` : les deux identites cohabitaient dans la meme fonction.
+    Exigence 3 du contrat. `mesure` le 31 aout 2026 sur l'index complet : 22
+    `filename` distincts contre 23 `source_path`, la seule collision etant
+    `Preface` (le corpus contient deux `Preface.html`, un par ouvrage).
     """
 
     # Le cas reel, reduit a l'essentiel : deux ouvrages, un `Preface` chacun.
@@ -140,11 +127,7 @@ class TestCompterLesDocuments:
         assert compter_les_documents(self.LES_DEUX_PREFACES) == 2
 
     def test_counting_by_filename_would_have_said_one(self):
-        """LE TEMOIN, et c'est lui le resultat.
-
-        Sans lui, le test ci-dessus se lirait comme un truisme. Il montre que les
-        deux comptes DIVERGENT sur ce cas precis, et de combien.
-        """
+        """Sur ce cas, les deux comptes different, et de combien."""
         assert len({m["filename"] for m in self.LES_DEUX_PREFACES}) == 1
 
     def test_two_chunks_of_the_same_document_count_once(self):
@@ -154,9 +137,8 @@ class TestCompterLesDocuments:
     def test_a_missing_source_path_does_not_crash_and_counts_as_one_unknown(self):
         """Un chunk sans chemin est deja une anomalie de `verify_contract`.
 
-        Ce compteur ne doit ni lever ni compter chaque inconnu separement : il
-        rendrait un nombre de documents superieur au reel, ce qui est le defaut
-        inverse et tout aussi silencieux.
+        Ce compteur ne doit ni lever ni compter chaque inconnu separement, ce
+        qui surestimerait le nombre de documents.
         """
         metas = [{"filename": "a"}, {"filename": "b"}, {"source_path": "livre/c.html"}]
         assert compter_les_documents(metas) == 2
@@ -175,31 +157,20 @@ class TestCompterLesDocuments:
 
 
 class TestLaFenetreRapporteeEstCelleDuModele:
-    """LE GARDE QUI MANQUAIT, et son jumeau documentaire etait FAUX deux fois.
+    """La fenetre rapportee est lue sur le modele, pas ecrite dans le code.
 
-    La fenetre du modele est le denominateur de tout ce que cet instrument dit
-    sur la troncature. Elle **n'est pas un reglage** : aucun `settings.py` ne la
-    porte, elle est lue au runtime sur le modele du contrat
-    (`modele.max_seq_length`). Or `services/chromadb.md` et
-    `llm_integration_plan.md` l'annoncaient tous deux a **256** tokens quand elle
-    vaut **128** (registre 6.2), et `extraction_donnees.md` batissait un
-    pourcentage dessus.
+    La fenetre est le denominateur de toute mesure de troncature. Ce n'est pas
+    un reglage : elle est lue a l'execution (`modele.max_seq_length`) et vaut
+    128 tokens pour le modele du contrat (registre 6.2).
 
-    `mesure` le 2 septembre 2026 sur le code livre par le lot 4 : remplacer
-    `limite = int(model.max_seq_length)` par `limite = 256` — le nombre meme qui
-    etait faux dans la documentation — laisse la suite ENTIEREMENT VERTE, 834
-    tests. L'instrument pouvait donc rapporter une fenetre fabriquee, et le
-    chiffre de troncature avec elle, sans que rien ne bronche.
+    `main()` est lance en sous-processus, avec un modele bouchonne dont la
+    fenetre vaut une valeur qu'aucun defaut du depot ne porte : une valeur
+    ecrite en dur (`128`, `256`) ne peut pas la reproduire.
 
-    Le garde asserte **depuis le cote qui produit** : `main()` est lance pour de
-    bon en sous-processus, avec un modele bouchonne dont la fenetre vaut une
-    valeur qu'aucun defaut du depot ne porte. Un `128` ou un `256` en dur ne peut
-    pas la reproduire par hasard.
-
-    Le montage bouchonne `chromadb` et `sentence_transformers` **comme de vrais
-    paquets en tete de PYTHONPATH**, et non dans `sys.modules` : sinon les
-    bouchons survivraient au test et l'ordre des tests deviendrait significatif.
-    C'est le montage de `test_verify_data.py` et de `test_wipe_stores.py`.
+    `chromadb` et `sentence_transformers` sont bouchonnes par de vrais paquets
+    en tete de PYTHONPATH, et non dans `sys.modules`, pour ne pas laisser de
+    bouchons aux tests suivants. Meme montage que `test_verify_data.py` et
+    `test_wipe_stores.py`.
     """
 
     FENETRE_BOUCHON = 777
@@ -264,10 +235,10 @@ class SentenceTransformer:
         return acheve.stdout
 
     def test_le_montage_a_bien_atteint_le_rapport(self, tmp_path):
-        """LE TEMOIN, ET IL PASSE EN PREMIER.
+        """Le rapport a bien tourne jusqu'a la section de la fenetre.
 
-        Un sous-processus qui sortirait en 0 sans rien imprimer rendrait les
-        assertions suivantes vraies d'un rapport qui n'a jamais tourne.
+        Sans ce test, un sous-processus sorti en 0 sans rien imprimer pourrait
+        rendre les assertions suivantes vraies.
         """
         sortie = self._rapport(tmp_path, self.FENETRE_BOUCHON)
 
@@ -275,7 +246,7 @@ class SentenceTransformer:
         assert "chunks indexes            : 1" in sortie, sortie
 
     def test_la_limite_rapportee_est_celle_du_modele(self, tmp_path):
-        """LE GARDE. Une fenetre en dur rougit ici."""
+        """La fenetre affichee est celle du modele bouchonne."""
         sortie = self._rapport(tmp_path, self.FENETRE_BOUCHON)
 
         assert f"limite                    : {self.FENETRE_BOUCHON} tokens" in sortie, (
@@ -285,11 +256,10 @@ class SentenceTransformer:
         )
 
     def test_la_limite_suit_le_modele_et_n_est_pas_figee(self, tmp_path):
-        """Le second temoin, et il est le plus important.
+        """Deux modeles differents rendent deux fenetres differentes.
 
-        Sans lui, une limite ecrite en dur a la valeur du bouchon passerait le
-        garde ci-dessus. Deux modeles differents doivent rendre deux fenetres
-        differentes — c'est cela, « lue sur le modele ».
+        Sans ce test, une limite ecrite en dur a la valeur du bouchon passerait
+        le test precedent.
         """
         autre = 512
 

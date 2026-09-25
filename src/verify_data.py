@@ -1,28 +1,17 @@
 """Controle avant-vol : etat des trois stores apres (ou avant) une ingestion.
 
-A lancer depuis le reseau Docker, les stores etant adresses par leur nom de
-service :
+A lancer dans un conteneur jetable du service d'extraction :
 
-    docker compose exec docling-service python -m src.verify_data
+    docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \\
+      docling-service python -m src.verify_data
 
-Les identifiants viennent de la configuration du service (donc de ``.env``) et
-ne sont plus ecrits en dur.
+Les adresses et identifiants viennent des reglages du service (donc de
+``.env`` et de ``docker-compose.yml``).
 
-**Ce module faisait ses entrees-sorties a l'IMPORT.** Il n'avait pas de
-``main`` : ouvrir une connexion ChromaDB, lister un bucket du stockage objet et
-interroger NebulaGraph etaient des instructions de niveau module, executees par
-le seul fait d'importer ``src.verify_data``. Deux consequences, et la seconde est la
-plus couteuse :
-
-- un ``import`` accidentel — un outil qui parcourt le paquet, une completion,
-  un ``pytest --collect-only`` — declenchait les trois controles et pouvait
-  appeler ``sys.exit(1)`` ;
-- **rien n'etait testable.** Un test qui importe le module aurait exige les
-  trois stores debout. Le module n'etait donc garde par aucun test, exactement
-  comme ``index_report`` et ``verify_contract`` (registre 4.5).
-
-Les clients de stores sont importes DANS ``main`` pour la meme raison : le
-module doit rester importable sans eux.
+Toutes les entrees-sorties sont dans des fonctions, et les clients de stores
+sont importes dans ces fonctions : importer le module n'ouvre aucune connexion
+et n'appelle pas ``sys.exit``, ce qui le rend testable sans les stores
+(registre 4.5).
 """
 
 from __future__ import annotations
@@ -35,8 +24,8 @@ def report(label: str, message: str, echecs: list[str], ok: bool = True) -> None
     """Affiche une ligne de bilan et memorise l'echec.
 
     La liste des echecs est passee en argument plutot que tenue au niveau du
-    module : un etat de module survit a l'appel et s'accumule d'une execution a
-    l'autre dans un meme processus.
+    module : un etat de module s'accumulerait d'un appel a l'autre dans un meme
+    processus.
 
     Args:
         label: Nom du controle.
@@ -63,19 +52,14 @@ def verifier_chromadb(settings: Any, echecs: list[str]) -> None:
 
 
 def verifier_le_stockage_objet(settings: Any, echecs: list[str]) -> None:
-    """Compte les objets du bucket, et NOMME le serveur interroge.
+    """Compte les objets du bucket, et affiche le serveur interroge.
 
-    L'adresse est affichee, et ce n'est pas de l'ornement : ce controle nommait
-    un PRODUIT, ecrit dans le code, quelle que soit la passerelle en face. Un
-    controle avant-vol qui nomme un serveur qu'il n'interroge pas ne rassure sur
-    rien, et il a rassure a tort pendant toute une bascule. Le seul endroit ou
-    le produit ait sa place est la valeur de ``S3_ENDPOINT``, et c'est elle qui
-    est affichee.
+    L'en-tete affiche la valeur de ``S3_ENDPOINT``, et non un nom de produit
+    ecrit dans le code : il montre le serveur reellement interroge.
 
     Le client est construit par ``images.build_client``, seul site de
-    construction du depot. L'import reste DANS la fonction, comme les deux
-    autres controles : ce module doit rester importable sans les clients de
-    stores (voir l'en-tete).
+    construction du depot. L'import reste dans la fonction (voir l'en-tete du
+    module).
     """
     from src.docling_service.images import build_client
 

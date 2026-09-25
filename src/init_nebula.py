@@ -5,11 +5,9 @@ d'extraction. Le service, lui, joue `init_schema()` a chaque demarrage et cree
 tags et aretes ; ce script-ci ne fait que ce qu'`init_schema` ne peut pas faire
 tant que le storaged n'est pas enregistre.
 
-**Les adresses et les identifiants viennent des reglages, plus du code.** Ce
-fichier ecrivait `("graphd", 9669)` et `("root", "nebula")` en dur : c'etait le
-QUATRIEME site du defaut que le registre 4.3 en annonce trois. Un poste dont le
-graphd ecoute ailleurs, ou dont le mot de passe a change, voyait ce script
-echouer sans qu'aucun reglage n'explique pourquoi.
+L'adresse du graphd et les identifiants viennent des reglages du service
+(``NEBULA_HOST``, ``NEBULA_PORT``, ``NEBULA_USER``, ``NEBULA_PASSWORD``), et non
+de valeurs ecrites dans ce script (registre 4.3).
 """
 
 from __future__ import annotations
@@ -26,7 +24,8 @@ def main() -> int:
 
     Returns:
         0 si le pool s'est ouvert, 1 sinon. Les echecs de requete sont
-        affiches : ce script est un outil d'amorcage qu'on lit, pas une porte.
+        affiches sans changer le code de retour : ce script d'amorcage se lit,
+        il ne bloque rien.
     """
     from nebula3.Config import Config
     from nebula3.gclient.net import ConnectionPool

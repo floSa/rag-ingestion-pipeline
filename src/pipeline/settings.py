@@ -19,14 +19,10 @@ class PipelineSettings(ReglagesDuStockageObjet):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     source_dir: str = "/opt/dagster/app/Datas"
-    # `CLEANED_SUBDIR` etait ici, et il n'y est plus : le sous-repertoire ou
-    # l'etape de nettoyage depose ses copies est un DETAIL D'IMPLEMENTATION, pas
-    # un reglage. Il vit desormais en constante,
-    # `src.docling_service.elements.CLEANED_SUBDIR`, avec les trois mesures qui
-    # ont decide (registre 4.29.a) — dont celle-ci, la moins visible : toute
-    # valeur autre que la constante deplacait les `element_id` de tout le corpus,
-    # parce que le nettoyage ecrivait selon le reglage et que l'identite du
-    # document retirait la constante.
+    # Le sous-repertoire des copies nettoyees n'est pas un reglage : c'est la
+    # constante `src.docling_service.elements.CLEANED_SUBDIR` (registre 4.29.a).
+    # Le rendre reglable deplacerait les `element_id` de tout le corpus des que
+    # la valeur differe de celle que l'identite du document retire.
     docling_service_url: str = "http://docling-service:8000"
 
     # Les quatre reglages du stockage objet viennent de
@@ -55,10 +51,9 @@ class PipelineSettings(ReglagesDuStockageObjet):
     # lexicale. Le defaut vise le service tel qu'il se nomme sur rag_network,
     # le reseau que ce pipeline cree et auquel l'agent s'attache.
     #
-    # Vider cette URL DESACTIVE l'appel. C'est un choix possible, pas un
-    # oubli : definitions.py l'annonce alors au chargement du code location, et
-    # le sensor de reindexation le redit a chaque tick au lieu de lancer des
-    # runs qui n'ont rien a faire.
+    # Vider cette URL desactive l'appel. definitions.py l'annonce alors au
+    # chargement du code location, et le sensor de reindexation le repete a
+    # chaque tick au lieu de lancer des runs inutiles.
     agent_service_url: str = "http://agent-api:8000"
     # Cle d'API de l'agent, si le sien en exige une (sa route /reindex est
     # protegee des que API_KEY est renseignee de son cote).

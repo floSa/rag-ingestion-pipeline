@@ -1,11 +1,9 @@
 #!/bin/sh
 # Refuse un commit dont l'adresse d'auteur ou de committer n'est pas autorisée.
 #
-# Raison : deux identités portent le même NOM (« Florian Horellou »), donc un
-# contrôle sur le nom ne voit rien. Sept commits sont partis avec l'adresse
-# professionnelle sur le dépôt personnel rag-agent-chat, et il a fallu réécrire
-# l'historique PUIS détruire et recréer le dépôt : la liste des contributeurs de
-# GitHub, une fois constituée, ne se défait pas.
+# Le contrôle porte sur l'adresse et non sur le nom : deux identités portent le
+# même nom. Une adresse non autorisée publiée sur GitHub reste dans la liste des
+# contributeurs du dépôt, qu'une réécriture d'historique ne corrige pas.
 #
 # Pour autoriser une adresse : l'ajouter à ADRESSES_AUTORISEES.
 # Pour désactiver ponctuellement : git commit --no-verify

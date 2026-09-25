@@ -1,24 +1,17 @@
-"""Le garde contre le melange de DEUX modeles d'embedding dans une collection.
+"""Le refus de melanger deux modeles d'embedding dans une collection, et `build_chunks`.
 
-C'est l'exigence 1 du contrat, et la panne la plus couteuse du systeme : les deux
-modeles candidats rendent 384 dimensions, donc ChromaDB accepte sans broncher,
-aucune sonde ne voit rien, et la recherche rend des passages plausibles et faux.
-Un `.env` change entre deux ingestions suffit.
+Exigence 1 du contrat : les deux modeles candidats rendent 384 dimensions,
+donc ChromaDB accepte le melange, aucune sonde ne le voit, et la recherche
+rend des passages plausibles et faux. Un `.env` change entre deux ingestions
+suffit.
 
-`vectors._inscrire_le_modele` est le seul endroit qui refuse cela — il LEVE quand
-la collection porte deja un autre modele — et **rien ne le gardait**. `mesure` :
-remplacer sa levee par un `logger.warning` laissait 639 tests verts. Le registre
-§4.4 ecrivait « (`mesure` : la levee se produit) », c'est-a-dire une observation
-faite a la main une fois, pas un garde.
+`vectors._inscrire_le_modele` est le seul endroit qui refuse ce melange : il
+leve quand la collection porte deja un autre modele (registre §4.4).
 
-POURQUOI CE FICHIER N'EXISTAIT PAS, et c'est mecanique : `vectors.py` importait
-`chromadb` au niveau du module, et `chromadb` n'est pas dans le venv du depot —
-les deps lourdes vivent dans `Dockerfile.docling`. Aucun test ne pouvait donc
-importer le module, et *ce qu'un test n'importe pas, il ne teste pas*. L'import
-est desormais differe dans `get_collection`, exactement comme le lot 3 l'avait
-fait pour `index_report`, `verify_contract` et `verify_data` (registre §3.4, §4.4,
-§4.5). C'est le meme defaut, sur le quatrieme module, et personne ne l'avait vu
-parce que c'est le seul des quatre dont le contrat est un `raise`.
+`vectors.py` importe `chromadb` localement (`get_collection`) : `chromadb`
+n'est pas dans le venv du depot, et un import de module rendrait ce fichier
+de tests impossible a collecter (meme cas que `index_report`,
+`verify_contract` et `verify_data`, registre §3.4, §4.4, §4.5).
 """
 
 from __future__ import annotations
@@ -65,7 +58,7 @@ class CollectionEspionne:
 
 
 class _Collection:
-    """Collection ChromaDB reduite a ce que le garde lit et ecrit.
+    """Collection ChromaDB reduite a ce que `_inscrire_le_modele` lit et ecrit.
 
     Elle enregistre les appels a ``modify`` : « la collection a ete tracee » et
     « le code est alle jusqu'au bout » ne sont pas la meme chose.
@@ -94,7 +87,7 @@ class TestUneCollectionVierge:
         assert collection.modifications == [{"embedding_model": CONTRACT_MODEL}]
 
     def test_the_org_prefix_is_stripped_before_being_written(self):
-        """Sans quoi deux ecritures du MEME modele se liraient comme deux modeles."""
+        """Sans quoi deux ecritures du meme modele se liraient comme deux modeles."""
         collection = _Collection()
         _inscrire_le_modele(collection, HF_ORG_PREFIX + CONTRACT_MODEL)
         assert collection.modifications == [{"embedding_model": CONTRACT_MODEL}]
@@ -107,11 +100,11 @@ class TestUneCollectionDejaTracee:
         assert collection.modifications == []
 
     def test_the_same_model_under_its_prefixed_name_is_the_same_model(self):
-        """Le temoin du test suivant.
+        """Contre-epreuve du test suivant.
 
-        Sans lui, un garde qui leverait sur TOUT — y compris sur le bon modele
-        ecrit sous son nom prefixe — passerait le test de levee et rendrait
-        l'ingestion impossible.
+        Sans ce test, un controle qui leverait sur tout, y compris sur le bon
+        modele ecrit sous son nom prefixe, passerait le test de levee et
+        rendrait l'ingestion impossible.
         """
         collection = _Collection({"embedding_model": HF_ORG_PREFIX + CONTRACT_MODEL})
         _inscrire_le_modele(collection, CONTRACT_MODEL)
@@ -119,12 +112,12 @@ class TestUneCollectionDejaTracee:
 
 
 class TestUnAutreModeleFaitLEVER:
-    """LE GARDE LUI-MEME. Il asserte la LEVEE, pas un journal.
+    """Un autre modele fait lever, et rien n'est ecrit.
 
-    Un `logger.warning` a la place du `raise` laisse le job vert et la collection
-    melangee : l'ingestion ecrit par-dessus, deux espaces vectoriels cohabitent, et
-    plus rien ne peut les separer apres coup. C'est pourquoi ce test asserte
-    l'exception ET l'absence d'ecriture.
+    Un simple journal a la place du `raise` laisserait le job reussir et la
+    collection melangee : deux espaces vectoriels cohabiteraient, sans moyen de
+    les separer apres coup. Ces tests verifient donc l'exception et l'absence
+    d'ecriture.
     """
 
     def test_another_model_raises(self):
@@ -154,9 +147,9 @@ class TestUnAutreModeleFaitLEVER:
     def test_the_direction_does_not_matter(self):
         """Le contrat est « deux modeles differents », pas « le mauvais des deux ».
 
-        Sans ce cas, un garde qui ne comparerait qu'au modele du contrat serait
-        vert : la collection porterait le bon modele et l'ingestion tournerait
-        avec le mauvais, ce qui est exactement la meme panne dans l'autre sens.
+        Sans ce cas, un controle qui ne comparerait qu'au modele du contrat
+        passerait : la collection porterait le bon modele et l'ingestion
+        tournerait avec le mauvais, la meme panne dans l'autre sens.
         """
         collection = _Collection({"embedding_model": CONTRACT_MODEL})
         with pytest.raises(EmbeddingContractError):
@@ -165,11 +158,10 @@ class TestUnAutreModeleFaitLEVER:
 
 
 class TestLeModuleResteImportableSansChromadb:
-    """La raison mecanique pour laquelle ce fichier n'existait pas.
+    """`vectors.py` s'importe sans `chromadb`.
 
-    `chromadb` n'est pas dans le venv du depot. Si `vectors.py` le reimportait au
-    niveau du module, tout ce fichier deviendrait une erreur de collecte — et un
-    fichier qui ne se collecte pas ne garde rien. Le sous-processus est
+    `chromadb` n'est pas dans le venv du depot. Si `vectors.py` l'importait au
+    niveau du module, tout ce fichier deviendrait une erreur de collecte. Le sous-processus est
     volontaire : dans l'interpreteur courant, `chromadb` figure deja dans
     `sys.modules` si un autre test l'a bouchonne, et l'ordre des tests
     deviendrait significatif.
@@ -194,12 +186,11 @@ class TestLeModuleResteImportableSansChromadb:
 
 
 class TestLaPurgeDUnDocumentDansLIndexVectoriel:
-    """Registre 4.2 : les identifiants derivent du texte, donc un texte modifie
-    laisse les ANCIENS chunks derriere lui.
+    """Registre 4.2 : sans purge, un texte modifie laisserait ses anciens chunks.
 
-    `NebulaWriter.delete_document` existait pour le graphe et n'avait aucun
-    appelant ; cote ChromaDB, il n'existait meme pas. Or le capteur Dagster
-    declenche sur `mtime` : mettre a jour un document est le chemin NOMINAL.
+    Les identifiants derivent du texte. `vectors.delete_document` est le
+    pendant ChromaDB de `NebulaWriter.delete_document`. Le capteur Dagster
+    declenche sur `mtime` : mettre a jour un document est le cas nominal.
     """
 
     def test_la_purge_supprime_par_source_path_et_non_par_nom(self):
@@ -214,7 +205,7 @@ class TestLaPurgeDUnDocumentDansLIndexVectoriel:
         assert supprimes == 3
 
     def test_la_purge_ne_vise_jamais_le_filename(self):
-        """LE TEMOIN du precedent."""
+        """Contre-epreuve du precedent."""
         collection = CollectionEspionne()
         delete_document(IDENTITE, collection=collection)
 
@@ -228,55 +219,43 @@ class TestLaPurgeDUnDocumentDansLIndexVectoriel:
         assert delete_document(IDENTITE, collection=collection) == 0
 
     def test_la_purge_compte_ce_qu_elle_a_reellement_retire(self):
-        """Le compteur la ou il y a perte : une purge muette ne dit pas si elle
-        a retire 3 chunks ou 3 000."""
+        """Une purge muette ne dirait pas si elle a retire 3 chunks ou 3 000."""
         collection = CollectionEspionne(chunks=["a", "b", "c", "d", "e"])
 
         assert delete_document(IDENTITE, collection=collection) == 5
 
 
 class TestChunkCountNeMentPlus:
-    """Registre 4.28.a : `chunk_count` etait fixe AVANT le filtrage des chunks.
+    """Registre 4.28.a : `chunk_count` annonce exactement les chunks presents.
 
-    `anchoring.resolve_anchors` compte les chunks qui partagent une ancre ;
-    `build_chunks` en jette ensuite ceux qui echouent `has_content` ou sont plus
-    courts que `min_chunk_chars`. Le compte annonce est celui d'AVANT.
-
-    `mesure` le 1er septembre 2026 sur l'index vivant, 4 365 chunks et 3 750
-    elements — chiffres reproduits a l'unite pres :
+    `anchoring.resolve_anchors` compte les chunks qui partagent une ancre
+    avant que `build_chunks` ne filtre ceux qui echouent `has_content` ou sont
+    plus courts que `min_chunk_chars`. Jeter un chunk qui a des freres ferait
+    donc mentir le compte. Mesure le 1er septembre 2026 sur l'index vivant
+    (4 365 chunks, 3 750 elements), avant que le filtre ne soit borne :
 
         element_id=aa3de10738  chunk_count=7  presents=[0,1,2,3,5,6]  MANQUE 4
         element_id=eb52c4ec8f  chunk_count=4  presents=[0,1,2]        MANQUE 3
 
-    **LA MESURE QUI A DECIDE.** Les deux elements sont des blocs de CODE decoupes
-    en fenetres successives, et les chunks conserves se raccordent bord a bord :
-    `#3` finit sur `self.model_info = mlflow .` et `#5` reprend sur
-    `log_model ( python_model = self ,`. Le morceau manquant est donc une fenetre
-    du MILIEU d'un texte continu, entre deux fenetres gardees.
+    Les deux elements sont des blocs de code decoupes en fenetres successives
+    qui se raccordent bord a bord : `#3` finit sur `self.model_info = mlflow .`
+    et `#5` reprend sur `log_model ( python_model = self ,`. Le morceau
+    manquant est une fenetre du milieu d'un texte continu.
 
-    **CE QUI EST TRANCHE, ET POURQUOI.** Les deux issues que le mandat pose ne
-    sont pas equivalentes :
+    Deux options :
 
-    - *recalculer `chunk_count` apres filtrage* rendrait le compte exact et
-      **rendrait la perte silencieuse a nouveau** : l'agent concatenerait 6
-      chunks annonces 6 et obtiendrait un texte troue qu'il ne peut plus
-      detecter. Le controle `jeux_de_chunks_incomplets` (registre 4.4)
-      redeviendrait vert sur un index toujours casse. C'est ajuster le compteur
-      a la perte au lieu de la fermer — exactement le defaut que ce lot traque ;
-    - *cesser de filtrer* ferme la perte. Le compte devient exact **parce que
-      rien ne manque**, et non parce qu'on a corrige le compte.
+    - recalculer `chunk_count` apres filtrage rendrait le compte exact mais la
+      perte indetectable : l'agent concatenerait 6 chunks annonces 6 et
+      obtiendrait un texte troue, et le controle `jeux_de_chunks_incomplets`
+      (registre 4.4) ne verrait plus rien ;
+    - ne plus filtrer les chunks qui ont des freres supprime la perte : le
+      compte devient exact parce que rien ne manque.
 
-    La seconde est retenue, et **bornee** : le filtre garde son motif pour un
-    chunk qui est le SEUL de son element — un fragment isole n'apporte rien a une
-    recherche, et l'element reste dans le graphe. Il cesse de s'appliquer a un
-    chunk qui a des FRERES : la, ce n'est pas un fragment isole, c'est la
-    continuation d'un texte dont les voisins sont conserves. Le motif ecrit du
-    filtre — « trop court pour porter du sens » — suppose un chunk autonome, et
-    cette supposition est fausse pour une fenetre du milieu.
-
-    Prix assume : quelques vecteurs de faible valeur pour une recherche, en
-    echange d'un texte entier. Sur l'index mesure, cela vaut **2 chunks sur
-    4 365**.
+    La seconde est retenue. Le filtre reste applique a un chunk qui est le
+    seul de son element : un fragment isole n'apporte rien a une recherche, et
+    l'element reste dans le graphe. Il ne s'applique plus a une fenetre du
+    milieu, dont les voisins sont conserves. Cout : 2 chunks sur 4 365 sur
+    l'index mesure.
     """
 
     @staticmethod
@@ -318,7 +297,7 @@ class TestChunkCountNeMentPlus:
         )
         return module.build_chunks(self.ELEMENTS, IDENTITE, None, document=object())
 
-    # Le morceau du MILIEU est court : c'est le cas mesure sur `aa3de10738`.
+    # Le morceau du milieu est court : c'est le cas mesure sur `aa3de10738`.
     TEXTES = ["a" * 200, "b" * 200, "cd", "d" * 200]
 
     def test_le_jeu_de_chunks_d_un_element_est_complet(self, monkeypatch):
@@ -342,12 +321,11 @@ class TestChunkCountNeMentPlus:
         assert "cd" in textes, textes
 
     def test_un_chunk_seul_et_trop_court_reste_ecarte(self, monkeypatch):
-        """LE TEMOIN, et c'est lui qui borne la decision.
+        """Le filtre reste applique a un chunk autonome.
 
-        Sans lui, « cesser de filtrer » aurait emporte le motif entier du filtre :
-        un fragment de mise en page isole — un filet de tableau, une puce —
-        entrerait dans l'index vectoriel. Le filtre garde son sens pour un chunk
-        autonome ; il le perd pour une fenetre du milieu.
+        Sans ce test, ne plus filtrer du tout passerait : un fragment de mise
+        en page isole (filet de tableau, puce) entrerait dans l'index
+        vectoriel.
         """
         ids, textes, metas = self._construire(monkeypatch, ["cd"])
 
@@ -360,8 +338,8 @@ class TestChunkCountNeMentPlus:
         assert ids == [], f"un artefact de mise en page ne doit pas etre indexe : {textes}"
 
     def test_un_chunk_sans_ancre_reste_ecarte_et_ne_troue_aucun_compte(self, monkeypatch):
-        """Un chunk qu'on ne sait pas rattacher est ecarte — inchange — et il ne
-        peut pas trouer un compte : `resolve_anchors` ne le compte jamais."""
+        """Un chunk sans ancre est ecarte, et il ne peut pas trouer un compte :
+        `resolve_anchors` ne le compte jamais."""
         from src.docling_service import vectors as module
 
         morceaux = self._chunks(["a" * 200, "b" * 200], meme_ancre=False)
@@ -375,36 +353,19 @@ class TestChunkCountNeMentPlus:
 
 
 class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
-    """LE GARDE QUI MANQUAIT, et il manquait a une clause du contrat.
+    """La forme de l'id de chunk, verifiee sur les ids que `build_chunks` ecrit.
 
-    La forme de l'id ChromaDB — id nu pour un element d'un seul chunk, suffixe
-    `#n` au-dela — etait ecrite a DEUX endroits : `chunking.chunk_ids`, testee et
-    **sans aucun appelant**, et une expression en ligne dans `build_chunks`, la
-    seule que la production execute et **que rien ne gardait** (registre 5.1).
+    Id nu pour un element d'un seul chunk, suffixe `#n` au-dela : c'est une
+    clause du contrat, fixee par `chunking.chunk_id` seul (registre 5.1), que
+    `build_chunks` appelle. `verify_contract` compte les ids suffixes : 974 sur
+    4 365, mesure le 2 septembre 2026. Un suffixe inconditionnel porterait ce
+    compte a 4 365 sur 4 365.
 
-    `mesure` sur `main` a `27a6304`, le code d'AVANT ce lot : remplacer
-    l'expression en ligne de `vectors.py` par `f"{element_id}#{ancre.index}"` —
-    un suffixe inconditionnel — y laissait la suite ENTIEREMENT VERTE, **857
-    tests, rc=0**. La meme mutation, portee ici sur `chunking.chunk_id`, rougit
-    a deux tests.
-
-    **CE QUE CETTE MUTATION COUTE, ET CE DOCSTRING L'AVAIT SURDIT.** Il ecrivait
-    « chaque reingestion entrerait des vecteurs neufs, l'index doublerait ».
-    C'est faux depuis le lot 4 (`a54636c`) : `extraction.extract` appelle
-    `storage.forget_document` AVANT la conversion, et `vectors.delete_document`
-    supprime par `where={"source_path": ...}` et **jamais par id** — donc aucune
-    forme d'id ne laisse d'orphelin. Le seul chemin qui saute la purge est le
-    doublon exact, qui n'ecrit rien non plus.
-
-    Ce qui est casse est la **clause du contrat** elle-meme : la forme de l'id,
-    que `verify_contract` COMPTE — 974 ids suffixes sur 4 365 (`mesure` le
-    2 septembre 2026). Un suffixe inconditionnel porterait ce compte a 4 365 sur
-    4 365, et c'est un compteur d'instrument, pas une anomalie levee : raison de
-    plus pour qu'un test tienne la clause.
-
-    C'est pourquoi la fonction n'a pas ete amputee comme du code mort : elle est
-    devenue le seul site, et l'appelant la traverse. Ces tests assertent **depuis
-    le cote qui produit** — sur les ids que `build_chunks` rend.
+    Une forme erronee ne duplique pas les chunks a la reingestion :
+    `extraction.extract` appelle `storage.forget_document` avant la
+    conversion, et `vectors.delete_document` supprime par
+    `where={"source_path": ...}`, jamais par id. Elle rompt en revanche la
+    clause du contrat.
     """
 
     @staticmethod
@@ -458,7 +419,7 @@ class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
         return ids
 
     def test_un_element_d_un_seul_chunk_est_ecrit_sous_son_id_nu(self, monkeypatch):
-        """LE GARDE. Le suffixe inconditionnel rougit ici.
+        """Un suffixe inconditionnel fait echouer ce test.
 
         Deux elements, un chunk chacun : les deux ids doivent etre nus. Un `#0`
         ici signifie que la clause du contrat est rompue au seul site qui ecrit.
@@ -472,11 +433,11 @@ class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
         )
 
     def test_un_element_multi_chunks_est_ecrit_suffixe(self, monkeypatch):
-        """LE TEMOIN, et il est indispensable.
+        """Contre-epreuve du precedent.
 
-        Sans lui, un `chunk_id` qui rendrait TOUJOURS l'id nu passerait le test
-        ci-dessus — et deux chunks du meme element s'ecraseraient l'un l'autre a
-        l'upsert, ce qui perd du texte au lieu d'en dupliquer.
+        Sans ce test, un `chunk_id` qui rendrait toujours l'id nu passerait le
+        test ci-dessus, et deux chunks du meme element s'ecraseraient l'un
+        l'autre a l'upsert.
         """
         ids = self._ids(monkeypatch, ["a" * 200, "b" * 200, "c" * 200], meme_ancre=True)
 
@@ -486,11 +447,10 @@ class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
         )
 
     def test_les_ids_ecrits_sont_tous_distincts(self, monkeypatch):
-        """Le second temoin : la propriete qui rend l'upsert correct.
+        """Les ids ecrits sont distincts, ce qui rend l'upsert correct.
 
-        `chunk_ids` l'assertait sur sa propre sortie ; ce qui compte est qu'elle
-        tienne sur ce que la production ECRIT, un `upsert` avec un id repete
-        n'ecrivant qu'un vecteur pour deux chunks.
+        La propriete est verifiee sur ce que la production ecrit : un `upsert`
+        avec un id repete n'ecrit qu'un vecteur pour deux chunks.
         """
         ids = self._ids(monkeypatch, ["a" * 200, "b" * 200, "c" * 200], meme_ancre=True)
 
@@ -498,23 +458,19 @@ class TestLaFormeDeLIdDeChunkEstGardeeLaOuElleEstEcrite:
 
 
 class TestPageNoEndAtteintLaMetadonneeDeChunk:
-    """LA MOITIE VECTORIELLE DU REGISTRE 4.22, ET ELLE N'ETAIT PROUVEE PAR RIEN.
+    """Registre 4.22, cote vectoriel : `page_no_end` atteint la metadonnee de chunk.
 
-    `page_no_end` est ecrit dans les deux stores. La moitie GRAPHE est gardee —
-    `test_ngql.py::test_page_no_end_falls_back_on_page_no_and_not_on_zero`. La
-    moitie VECTORIELLE ne l'etait pas : aucun test n'assertait `page_no_end` sur
-    la metadonnee de chunk.
+    `page_no_end` est ecrit dans les deux stores. Le cote graphe est verifie
+    par `test_ngql.py::test_page_no_end_falls_back_on_page_no_and_not_on_zero`,
+    le cote vectoriel ici.
 
-    **Et son echec est silencieux, y compris pour l'instrument.**
-    `verify_contract` ne peut pas le voir : il controle la PRESENCE de la cle, et
-    son compteur ne compte que les `None`. Un `0` partout passerait donc pour une
-    valeur — alors que `ngql.py` ecrit a son propre site qu'un 0 y dirait « page
-    inconnue ». Un agent lirait « cet element finit page 0 » sans qu'aucune
-    erreur ne distingue cela de « on ne sait pas ».
+    `verify_contract` ne verrait pas une erreur : il controle la presence de la
+    cle, et ne compte que les `None`. Un `0` partout passerait pour une valeur,
+    et un agent lirait « cet element finit page 0 ».
 
-    Le repli est `page_no` et JAMAIS 0, pour la meme raison qu'au site du graphe :
-    un element qui tient sur une page finit sur sa page d'entree, et 0 n'est pas
-    un numero de page.
+    Le repli est `page_no` et jamais 0, comme au site du graphe : un element
+    qui tient sur une page finit sur sa page d'entree, et 0 n'est pas un
+    numero de page.
     """
 
     ELEMENT_QUI_ENJAMBE = {
@@ -552,11 +508,10 @@ class TestPageNoEndAtteintLaMetadonneeDeChunk:
         return metas
 
     def test_la_page_de_fin_d_un_element_qui_enjambe_atteint_chromadb(self, monkeypatch):
-        """LE GARDE. C'est la valeur que l'agent lira pour cadrer une citation.
+        """C'est la valeur que l'agent lit pour cadrer une citation.
 
-        Une citation « page 7 » sur cet element couvre en realite 7 ET 8 : sans
-        `page_no_end`, l'agent ne peut pas le dire, et c'est le defaut que le
-        registre 4.22 nomme.
+        Une citation « page 7 » sur cet element couvre en realite 7 et 8 : sans
+        `page_no_end`, l'agent ne peut pas le dire (registre 4.22).
         """
         metas = self._metadonnees(monkeypatch, [self.ELEMENT_QUI_ENJAMBE])
 
@@ -570,13 +525,11 @@ class TestPageNoEndAtteintLaMetadonneeDeChunk:
         assert metas[0]["page_no"] == 7, metas[0]
 
     def test_un_element_sans_page_de_fin_retombe_sur_sa_page_d_entree(self, monkeypatch):
-        """LE TEMOIN, et il porte le meme argument que le site du graphe.
+        """Sans page de fin, le repli est `page_no`, jamais 0.
 
-        Le repli est `page_no`, JAMAIS 0 : un element qui tient sur une page finit
-        sur sa page d'entree. Un 0 dirait « page inconnue » — c'est ecrit au site
-        de `ngql.py` — et rendrait indistinguables « tient sur une page » et « on
-        ne sait pas ou il finit ». Sans ce temoin, un `page_no_end=0` inconditionnel
-        resterait vert des que l'element ne porte pas la cle.
+        Un element qui tient sur une page finit sur sa page d'entree. Un 0
+        dirait « page inconnue » (voir `ngql.py`). Sans ce test, un repli
+        inconditionnel a 0 passerait des que l'element ne porte pas la cle.
         """
         sans_fin = {k: v for k, v in self.ELEMENT_QUI_ENJAMBE.items() if k != "page_no_end"}
         metas = self._metadonnees(monkeypatch, [sans_fin])
@@ -587,7 +540,7 @@ class TestPageNoEndAtteintLaMetadonneeDeChunk:
         )
 
     def test_une_page_de_fin_a_zero_retombe_aussi_sur_la_page_d_entree(self, monkeypatch):
-        """Le second temoin : `0` est traite comme une ABSENCE, pas comme une page.
+        """`0` est traite comme une absence, pas comme une page.
 
         C'est la forme que porte un element ecrit avant que la colonne n'existe.
         Le laisser passer a 0 ferait ecrire dans ChromaDB la valeur que le graphe
@@ -600,12 +553,12 @@ class TestPageNoEndAtteintLaMetadonneeDeChunk:
     def test_la_page_de_fin_ne_recopie_pas_la_page_d_entree_sur_un_element_qui_enjambe(
         self, monkeypatch
     ):
-        """Le troisieme temoin, et il ferme la correction la plus tentante.
+        """La page de fin n'est pas une simple copie de la page d'entree.
 
-        Un `page_no_end=int(element.get("page_no") or 0)` — la faute d'un
-        caractere — passerait les deux temoins ci-dessus, le repli etant
-        precisement `page_no`. Seul un element qui ENJAMBE les distingue, et c'est
-        pourquoi le premier test de cette classe en utilise un.
+        Un `page_no_end=int(element.get("page_no") or 0)` passerait les deux
+        tests ci-dessus, le repli etant precisement `page_no`. Seul un element
+        qui enjambe les distingue, d'ou son usage dans le premier test de cette
+        classe.
         """
         metas = self._metadonnees(monkeypatch, [self.ELEMENT_QUI_ENJAMBE])
 

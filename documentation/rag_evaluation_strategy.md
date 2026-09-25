@@ -1,14 +1,25 @@
 # Strategie d'evaluation RAG
 
+> **Statut du document : plan.** Cette strategie decrit l'evaluation de bout en
+> bout du systeme RAG (retrieval, reranking, generation). Elle n'est pas mise en
+> oeuvre dans ce depot : la generation vit dans `rag-agent-chat`, et ce pipeline
+> n'appelle aucun LLM.
+>
+> Ce qui existe aujourd'hui dans ce depot est une mesure du **rappel dense
+> seul** : le jeu de questions
+> `documentation/campagnes/2026-09-02-jeu-de-questions.yaml` (30 questions) et
+> l'instrument `scripts/campagne/mesurer-le-rappel-vectoriel.py`, dont
+> l'en-tete donne la commande (`docker compose run --rm --no-deps …`). Les
+> campagnes mesurees sont consignees dans `documentation/campagnes/`.
+
 ## Objectif
 
-Definir comment mesurer la qualite du systeme RAG une fois la couche LLM/agent
-ajoutee. L'evaluation porte sur la pertinence du retrieval ET la fidelite des
-reponses generees.
+Mesurer la qualite du systeme RAG complet, couche agent comprise. L'evaluation
+porte sur la pertinence du retrieval **et** la fidelite des reponses generees.
 
 ## Framework recommande
 
-**Ragas** (https://docs.ragas.io) — framework open-source d'evaluation RAG.
+**Ragas** (https://docs.ragas.io), framework open-source d'evaluation RAG.
 
 ## Metriques cibles
 
@@ -20,26 +31,28 @@ reponses generees.
 | answer_relevancy    | La reponse repond-elle a la question ?                | >= 0.85     |
 | answer_correctness  | La reponse est-elle factuellement correcte ?          | >= 0.80     |
 
-## Jeu de donnees golden
+## Jeu de donnees de reference (golden)
 
-Creer un jeu de 50-100 paires (question, reponse_attendue, contexte_source) a
+Constituer 50 a 100 triplets (question, reponse_attendue, contexte_source) a
 partir des documents deja ingeres :
 
-1. Selectionner 10-15 documents couvrant differents types (PDF technique, HTML cours)
-2. Ecrire 5-7 questions par document avec les reponses attendues
-3. Annoter les chunks sources pertinents (IDs ChromaDB)
-4. Stocker dans `tests/fixtures/golden_qa.json`
+1. Selectionner 10 a 15 documents couvrant differents types (PDF technique,
+   HTML de cours, notes Markdown).
+2. Ecrire 5 a 7 questions par document, avec les reponses attendues.
+3. Annoter les passages sources pertinents.
+4. Versionner le jeu sous `documentation/campagnes/`, a cote du jeu de
+   questions existant.
 
 > **Attention aux identifiants.** Les ids de chunk derivent du texte extrait :
-> toute evolution de la chaine d'extraction les change. Un jeu golden annote
-> par ids devient caduc a la premiere modification du pipeline. Preferer
-> annoter par `filename` + extrait de texte attendu, et ne resoudre les ids
-> qu'au moment de l'evaluation.
+> toute evolution de la chaine d'extraction les change. Un jeu annote par ids
+> devient caduc a la premiere modification du pipeline. Preferer annoter par
+> `source_path` + extrait de texte attendu, et ne resoudre les ids qu'au moment
+> de l'evaluation.
 
-> **Point de comparaison.** `context_precision` est la metrique que le
-> nettoyage de l'index fait bouger le plus : avant regroupement, 36 % des
-> chunks recuperables etaient des fragments de mise en page (`x`, `and`, `-`).
-> Toute mesure anterieure a ce changement n'est pas comparable aux suivantes.
+> **Point de comparaison.** `context_precision` est la metrique la plus
+> sensible au nettoyage de l'index : avant le regroupement des fragments, 36 %
+> des chunks recuperables etaient des fragments de mise en page (`x`, `and`,
+> `-`). Une mesure anterieure a ce changement n'est pas comparable aux suivantes.
 
 ## Pipeline d'evaluation
 
@@ -60,12 +73,12 @@ result = evaluate(
 
 ## Integration continue
 
-- Executer l'evaluation apres chaque changement du retrieval ou des prompts
-- Comparer les scores avec la baseline precedente
-- Alerter si une metrique passe sous le seuil
+- Executer l'evaluation apres chaque changement du retrieval ou des prompts.
+- Comparer les scores avec la baseline precedente.
+- Alerter si une metrique passe sous le seuil.
 
 ## Metriques complementaires (hors Ragas)
 
-- **Latence P95** du retrieval (ChromaDB query + reranking)
-- **Tokens consommes** par requete (cout LLM)
-- **Taux de hallucination** (reponses non supportees par le contexte)
+- **Latence P95** du retrieval (requete ChromaDB + reranking).
+- **Tokens consommes** par requete (cout LLM).
+- **Taux d'hallucination** (reponses non supportees par le contexte).

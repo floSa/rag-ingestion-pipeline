@@ -1,20 +1,30 @@
 # Plan d'integration LLM / Agent RAG
 
+> **Statut du document.** Deux natures de contenu coexistent ici :
+>
+> - la **section 4** (« Modele de donnees ») decrit le **systeme actuel** : c'est
+>   le contrat d'interface entre ce pipeline et l'agent, tenu a jour avec le
+>   code (`src/pipeline/schemas.py`, `src/docling_service/ngql.py`) ;
+> - les **sections 2, 3 et 5 a 11** sont le **plan initial** de l'agent. L'agent
+>   est implemente dans un projet separe, `rag-agent-chat`, dont les choix
+>   peuvent differer de ce plan : sa propre documentation fait foi.
+
 ## 1. Contexte et vision
 
-Le pipeline d'ingestion (`rag-ingestion-pipeline`) est complet :
-documents PDF/HTML -> extraction structuree (Docling) -> graphe de connaissances
-(NebulaGraph) + base vectorielle (ChromaDB) + medias (stockage objet S3).
+Le pipeline d'ingestion (`rag-ingestion-pipeline`) transforme des documents
+PDF, HTML et Markdown par extraction structuree (Docling) et les ecrit dans un
+graphe de connaissances (NebulaGraph), une base vectorielle (ChromaDB) et un
+stockage objet S3 pour les medias.
 
-L'agent RAG sera un **projet separe** qui consomme ces stores en lecture.
-Ce document est le contrat d'interface entre les deux projets.
+L'agent RAG est un **projet separe** (`rag-agent-chat`) qui consomme ces stores
+en lecture.
 
 ### Principe directeur
 
-Le RAG classique balance des chunks isoles. Notre approche est differente :
-on utilise le **graphe de connaissances pour reconstruire le contexte structurel**
-du document autour de chaque chunk trouve. L'utilisateur garde le controle
-en selectionnant les sources avant la generation.
+Un RAG classique transmet au modele des chunks isoles. Ici, le **graphe de
+connaissances sert a reconstruire le contexte structurel** du document autour de
+chaque chunk trouve. L'utilisateur garde le controle en selectionnant les sources
+avant la generation.
 
 ---
 
@@ -89,7 +99,7 @@ Chaque resultat contient dans ses metadatas :
 ### 3.2 Reranking
 
 Apres le retrieval brut, un **cross-encoder** re-score les chunks par rapport
-a la question pour ameliorer la precision. On garde les top-10.
+a la question pour ameliorer la precision. Les 10 meilleurs sont conserves.
 
 Pourquoi : les embeddings bi-encoder (paraphrase-multilingual-MiniLM-L12-v2) sont rapides mais
 imprecis. Le cross-encoder est lent mais beaucoup plus precis sur le ranking.
@@ -121,7 +131,7 @@ L'utilisateur peut :
 
 ### 3.4 Graph Context Reconstruction (etape cle)
 
-C'est le coeur de l'avantage. Pour chaque chunk selectionne :
+C'est l'etape qui distingue cette approche. Pour chaque chunk selectionne :
 
 **Phase 1 — Remonter au section_header**
 
@@ -133,13 +143,13 @@ YIELD dst(edge) AS parent_id
 YIELD dst(edge) AS grandparent_id;
 ```
 
-On remonte les edges `PARENT_OF` jusqu'a trouver un noeud avec le tag
-`SectionHeader` (ou `Document` si pas de section parent). Par defaut,
-on s'arrete au premier `SectionHeader` rencontre.
+Les edges `PARENT_OF` sont remontees jusqu'a un noeud portant le tag
+`SectionHeader` (ou `Document` s'il n'y a pas de section parente). Par defaut,
+la remontee s'arrete au premier `SectionHeader` rencontre.
 
 **Strategie de profondeur** : si le chunk est dans la section 3.2.1 :
-- On reconstruit la section **immediate** (3.2.1) avec tous ses enfants
-- On remonte la **chaine de breadcrumbs** jusqu'au Document :
+- la section **immediate** (3.2.1) est reconstruite avec tous ses enfants ;
+- la **chaine de breadcrumbs** est remontee jusqu'au Document :
   `Document > 3. Processing Pipeline > 3.2 Layout Analysis > 3.2.1 Table Recognition`
 - Les sections parentes sont **mentionnees par leur titre** (pas reconstruites)
   pour donner au modele le contexte hierarchique sans exploser le budget tokens
@@ -175,12 +185,12 @@ YIELD properties($$).label AS label,
 **Phase 3 — Recuperer les images/tables**
 
 Pour chaque enfant ayant un `media_url` non vide :
-- Telecharger l'image depuis le stockage objet — par `object_key`, qui est
-  l'identite de l'objet, plutot qu'en defaisant l'adresse a la main
-- L'encoder en base64 pour injection dans le prompt (LLM multimodal)
-- Ou re-servir l'objet a l'affichage. **L'adresse ne va JAMAIS au navigateur** :
-  elle est interne et authentifiee, un `GET` anonyme y rend 403, et l'agent est
-  le proxy
+- telecharger l'image depuis le stockage objet par `object_key`, qui est
+  l'identite de l'objet, plutot qu'en decomposant l'adresse ;
+- l'encoder en base64 pour injection dans le prompt (LLM multimodal) ;
+- ou re-servir l'objet a l'affichage. **L'adresse ne va jamais au navigateur** :
+  elle est interne et authentifiee, un `GET` anonyme y rend 403, et l'agent sert
+  de proxy.
 
 **Resultat** : au lieu d'un chunk isole de 500 caracteres, le modele recoit
 la section complete avec sa hierarchie, ses images, et ses tableaux.
@@ -235,7 +245,7 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 |----------------|---------------|--------------------------------------------|
 | id             | string        | `element_id`, ou `element_id#n` si le bloc a du etre decoupe |
 | embedding      | float[384]    | Vecteur paraphrase-multilingual-MiniLM-L12-v2                   |
-| document       | string        | Texte du chunk, integral — le VECTEUR, lui, est tronque au-dela de la fenetre |
+| document       | string        | Texte du chunk, integral (le vecteur, lui, est tronque au-dela de la fenetre) |
 | metadata.element_id    | string | Hash ID de l'**ancre** du bloc, toujours au format `^[a-f0-9]{10}$` |
 | metadata.graph_node_id | string | = element_id, cle pour NebulaGraph  |
 | metadata.filename      | string | Nom du fichier source, sans extension — le **chapitre** |
@@ -244,40 +254,44 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | metadata.label         | string | Label Docling de l'ancre (text, table, code, ...) |
 | metadata.page_no       | int    | Numero de page (1 pour les formats non pagines) |
 | metadata.media_url     | string | Adresse de l'objet si image/table ("" sinon). **Interne et authentifiee**, jamais servie telle quelle a un navigateur |
-| metadata.object_key    | string | La cle NUE du meme objet, celle passee a `put_object`. L'adresse porte l'hote et perime avec lui ; la cle est l'identite de l'objet et lui survit |
+| metadata.object_key    | string | La cle nue du meme objet, celle passee a `put_object`. L'adresse porte l'hote et devient fausse s'il change ; la cle reste valable |
 | metadata.reference_id  | string | Section parente, ou `DOC`            |
-| metadata.page_no_end   | int    | DERNIERE page du chunk. Egale a `page_no` sauf pour un element que Docling a fusionne par-dessus une frontiere de page : citer « page N » seule est alors inexact |
+| metadata.page_no_end   | int    | **Derniere** page du chunk. Egale a `page_no` sauf pour un element que Docling a fusionne par-dessus une frontiere de page : citer « page N » seule est alors inexact |
 | metadata.language      | string | Code ISO 639-1 du document (`en`, `fr`...), vide si indeterminee |
-| metadata.depth         | int    | Profondeur dans la hierarchie. **DEUX ECHELLES s'y croisent** : sur un titre elle compte les titres au-dessus, sur tout autre element elle vaut celle de son titre + 1. C'est `label` qui dit laquelle. Aucun plafond. Site canonique : `ChunkMetadata.depth` |
+| metadata.depth         | int    | Profondeur dans la hierarchie. **Deux echelles s'y croisent** : sur un titre elle compte les titres au-dessus, sur tout autre element elle vaut celle de son titre + 1. C'est `label` qui dit laquelle. Aucun plafond. Definition de reference : `ChunkMetadata.depth` |
 | metadata.section_title | string | Titre de la section, pour l'affichage des citations |
 | metadata.page_position | int    | Rang de l'element dans sa page       |
 | metadata.ref_position  | int    | Rang de l'element sous son parent    |
-| metadata.chunk_index / chunk_count | int | Position du chunk dans son bloc |
+| metadata.chunk_index / chunk_count | int | Position du chunk parmi ceux de son element, et leur nombre |
 | metadata.block_size    | int    | Nombre d'elements fusionnes dans ce chunk |
 
 **Modele d'embedding** : `paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, fenetre de
 **128** tokens). L'agent doit utiliser le MEME modele pour encoder les questions.
 
-> **Ce bloc annoncait 256 tokens, et « aucune troncature ».** Les deux tombent
-> ensemble (registre §6.2). La fenetre vaut **128** (`mesure` le 2 septembre 2026,
-> `python -m src.index_report` : « limite : 128 tokens »), et **ce n'est pas un
-> reglage** : elle est lue au runtime sur le modele (`modele.max_seq_length`).
-> Le texte **stocke** est integral ; le **vecteur** ne l'est pas — le modele
-> tronque ce qui depasse, et cela arrive. Le chiffre et ses deux causes ont un
-> seul site, `vectors.get_chunker` dans ce depot.
->
-> **Conséquence pour l'agent, et elle est directe** : un budget de contexte
-> calcule sur 256 tokens par chunk surestime du double ce qu'un chunk porte.
+La fenetre vaut **128** tokens (mesure le 2 septembre 2026,
+`python -m src.index_report` : « limite : 128 tokens »). Ce n'est pas un
+reglage : elle est lue au runtime sur le modele (`modele.max_seq_length`). Le
+texte **stocke** est integral ; le **vecteur** ne l'est pas toujours, car le
+modele tronque ce qui depasse. Le chiffre et ses deux causes sont documentes
+dans `vectors.get_chunker` (registre §6.2). Un budget de contexte cote agent se
+calcule donc sur 128 tokens par chunk.
 
-**Granularité** : un vecteur par **chunk**, pas par élément — et le mot « bloc » qui vivait ici était le vocabulaire de `build_blocks`, un regroupement maison retiré du dépôt (registre §5.2, §6.4). Le découpage est confié à `HybridChunker` de Docling, qui regroupe ce qui va ensemble en respectant la **structure** du document ; « les éléments consécutifs d'une même section et de même nature sont fusionnés » décrivait l'algorithme disparu, pas celui-ci.
+**Granularite** : un vecteur par **chunk**, pas par element. Le decoupage est
+confie a `HybridChunker` de Docling, qui regroupe ce qui va ensemble en
+respectant la **structure** du document.
 
-Ce que la production écarte, `mesuré` dans `vectors.build_chunks` : un chunk sans aucun caractère alphanumérique, ou plus court que `MIN_CHUNK_CHARS` — **et seulement s'il est le seul chunk de son élément**. Une fenêtre du milieu d'un texte continu est conservée même courte, sans quoi l'agent concaténerait un texte troué (registre §4.28.a). Les éléments écartés de l'index restent présents dans NebulaGraph.
+Ce que la production ecarte, dans `vectors.build_chunks` : un chunk sans aucun
+caractere alphanumerique, ou plus court que `MIN_CHUNK_CHARS`, **et seulement
+s'il est le seul chunk de son element**. Une fenetre du milieu d'un texte
+continu est conservee meme courte, sans quoi l'agent concatenerait un texte
+troue (registre §4.28.a). Les elements ecartes de l'index restent presents dans
+NebulaGraph.
 
 **Consequences pour l'agent** :
 
 - `id` (le `chunk_id`) peut porter un suffixe `#n` ; **`element_id` n'en porte
   jamais** et reste exploitable tel quel par `/context/{element_id}` ;
-- `element_id` designe le **premier** element du bloc. C'est un noeud reel du
+- `element_id` designe le **premier** element couvert par le chunk. C'est un noeud reel du
   graphe : la reconstruction de contexte fonctionne a l'identique ;
 - tous les elements ecartes de l'index vectoriel **restent dans NebulaGraph**.
   Le graphe est la source de verite de la structure, l'index vectoriel celle de
@@ -303,8 +317,8 @@ page, pas de l'ordre global de lecture, et du **chemin** du document et non de
 son seul nom — deux chapitres homonymes de deux ouvrages differents ne se
 recouvrent donc pas. Attention toutefois : l'id derive aussi du texte, si bien
 que **toute evolution de la chaine d'extraction change les ids** et laisse les
-anciennes entrees orphelines. Purger les stores avant une re-ingestion suivant
-une evolution du pipeline.
+anciennes entrees orphelines. Les stores sont a purger avant une re-ingestion
+qui suit une evolution du pipeline.
 
 ### 4.2 NebulaGraph — Space `rag_space`
 
@@ -315,29 +329,19 @@ une evolution du pipeline.
 | Document       | `filename`: string, `type_file`: string, `total_pages`: int, `collection`: string, `source_path`: string, `language`: string, `content_hash`: string |
 | les **11** tags d'element — SectionHeader, Paragraph, Table, Picture, ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter | `label`: string, `page_no`: int, `page_no_end`: int, `text`: string, `media_url`: string, `object_key`: string, `depth`: int |
 
-> **Ce bloc annoncait DEUX propriétés sur `Document` et CINQ sur les tags
-> d'élément.** `mesuré` le 2 septembre 2026 (`ngql.DOCUMENT_PROPERTIES`,
-> `ngql.VERTEX_PROPERTIES`) : **7** et **6**. Deux manques, et ils ne sont pas de
-> même nature — `source_path` est **l'exigence 3 du contrat**, l'identité d'un
-> document, et elle manquait depuis l'origine ; `page_no_end` a été ajoutée aux
-> onze tags par le **lot 4**, qui n'a pas touché ce document (registre §6.18).
->
-> Les onze tags sont désormais donnés en **une** ligne et non recopiés onze
-> fois : une énumération répétée onze fois est onze occasions de diverger, et
-> c'est ainsi que `page_no_end` a manqué partout à la fois. Le site canonique du
-> schéma est `VERTEX_PROPERTIES` / `VERTEX_TYPES` dans
-> `src/docling_service/ngql.py`.
->
-> **`NULL` n'est pas `0`.** Le schéma Nebula migre en place, les **données** non :
-> un `ALTER TAG … ADD` laisse à `NULL` tous les sommets déjà écrits, et seule une
-> réécriture du document les renseigne. Un `page_no_end` absent signifie « fin
-> inconnue », jamais « tient sur une page ». `verify_contract` le compte.
+Les onze tags d'element partagent le meme schema, defini une seule fois par
+`VERTEX_PROPERTIES` / `VERTEX_TYPES` dans `src/docling_service/ngql.py`.
+
+**`NULL` n'est pas `0`.** Le schema Nebula migre en place, les **donnees** non :
+un `ALTER TAG … ADD` laisse a `NULL` tous les sommets deja ecrits, et seule une
+reecriture du document les renseigne. Un `page_no_end` absent signifie « fin
+inconnue », jamais « tient sur une page ». `verify_contract` le compte.
 
 `depth` est le nombre d'aretes `PARENT_OF` qui separent le noeud de la racine
 de son document. C'est le **seul niveau declare** lisible sur un titre : aucun
 `section_header` n'est jamais un chunk, donc la metadonnee `depth` de ChromaDB
-n'en decrit jamais un (registre 4.24). Un noeud ecrit avant le lot 3 porte
-`NULL` : le schema migre en place, les donnees non.
+n'en decrit jamais un (registre 4.24). Un noeud ecrit avant l'ajout de la
+colonne porte `NULL` : le schema migre en place, les donnees non.
 
 **Edges (relations)** :
 
@@ -346,52 +350,44 @@ n'en decrit jamais un (registre 4.24). Un noeud ecrit avant le lot 3 porte
 | PARENT_OF  | sequence: int    | Document -> SectionHeader -> Elements      |
 | LINKED_TO  | relation: string | Caption -> Picture/Table ("describes")     |
 
-#### `sequence` : les TROIS RESERVES DE LECTURE — a lire avant de s'en servir
+#### `sequence` : trois reserves de lecture
 
 **L'exigence 4 du contrat est tenue** : `sequence` est presente sur **toutes** les
 aretes `PARENT_OF`, et triee par `sequence`, `page_no` ne decroit jamais dans un
 document. `verify_contract` le verifie sur la totalite des aretes.
 
-Mais trois proprietes qu'aucun document ne portait, et **dont deux interdisent
-des controles qu'on serait tente d'ecrire a la place** :
+Trois proprietes sont a connaitre avant de s'en servir :
 
 1. **`sequence` repart a 0 dans chaque document.** Elle n'est **pas** globalement
    monotone : tout « avant / apres » doit etre **borne au document**. Comparer
    deux `sequence` de documents differents n'a aucun sens.
-2. **Elle n'est pas contigue sous un parent, et c'est par construction.** C'est un
-   ordre de lecture **global au document**, pas un rang sous le parent : l'ecart
-   entre deux enfants consecutifs est la taille du sous-arbre du frere precedent.
+2. **Elle n'est pas contigue sous un parent, par construction.** C'est un ordre
+   de lecture **global au document**, pas un rang sous le parent : l'ecart entre
+   deux enfants consecutifs est la taille du sous-arbre du frere precedent.
 3. **Les trous sont grands.** Le plus grand ecart entre deux enfants consecutifs
    d'un meme parent se compte en **centaines**.
 
-**Les deux consequences pour l'agent, et ce sont elles qui coutent :**
+**Consequences pour l'agent :**
 
 - une « fenetre d'elements » implementee comme « les enfants de P dont `sequence`
   est dans `[s-k, s+k]` » rendra **silencieusement moins** d'elements que demande.
   Pour obtenir les `k` voisins, il faut **trier les enfants de P par `sequence`
   puis prendre les rangs voisins**, jamais filtrer sur un intervalle de valeurs ;
-- lire la contiguite comme un indice d'integrite fera **conclure a une perte de
+- lire la contiguite comme un indice d'integrite ferait **conclure a une perte de
   donnees qui n'existe pas**.
 
-Les chiffres de ces trois reserves ont **un seul site**, le docstring de
-`verify_contract.inversions_de_page` dans ce depot : ils y sont remesures sur le
-corpus complet, et non repris du lot 1 qui les avait mesures sur 3 documents.
+Les chiffres de ces trois reserves sont documentes a un seul endroit, le
+docstring de `verify_contract.inversions_de_page`, mesures sur le corpus complet.
 
-> **CE QUI RESTE A FAIRE, ET IL N'EST PAS FAISABLE D'ICI.** Le registre §6.16
-> reste **ouvert**, et sa moitie manquante est la documentation de
-> `rag-agent-chat`, dans l'**autre depot** : ces trois reserves decrivent la
-> facon dont l'AGENT lit `sequence`, et aucun commit de ce depot-ci ne peut
-> l'ecrire la-bas. Ce que ce depot pouvait faire est fait — les rendre
-> trouvables en un endroit nomme, avec leurs chiffres a un site unique. **Le
-> geste qui reste est de les reporter dans `pour_le_pipeline_ingestion.md` cote
-> agent.** Ne pas le confondre avec « §6.16 est ferme ».
+Le registre §6.16 reste **ouvert** : ces reserves decrivent la facon dont l'agent
+lit `sequence`, et doivent aussi etre reportees dans la documentation de
+`rag-agent-chat` (`pour_le_pipeline_ingestion.md`), dans l'autre depot.
 
-**VID format** : `FIXED_STRING(256)` — le site canonique est `VID_MAX_BYTES`
-dans `src/docling_service/ngql.py`. Ce plan annonçait 64 : un space créé à 64
-refuse **16 des 23 documents du corpus**, ceux dont l'identifiant dépasse
-64 octets — jusqu'à **111** —, et un `vid_type` ne se modifie pas après coup.
-Les longueurs et leur méthode de mesure vivent à un seul site,
-`documentation/services/nebulagraph.md`, section « Schéma nGQL ».
+**VID format** : `FIXED_STRING(256)`, defini par `VID_MAX_BYTES` dans
+`src/docling_service/ngql.py`. Un space cree a 64 refuserait **16 des
+23 documents du corpus**, dont l'identifiant va jusqu'a **111** octets, et un
+`vid_type` ne se modifie pas apres coup. Mesures et methode :
+[services/nebulagraph.md](services/nebulagraph.md), section « Schema nGQL ».
 - Document : `doc_{source_path sans extension}` — **la clé, jamais le nom de
   fichier seul** : le corpus porte deux `Preface.html`, et `doc_{filename}`
   les ferait collisionner sur un seul sommet (contrat, exigence 3)
@@ -423,14 +419,14 @@ YIELD dst(edge) AS linked, properties(edge).relation AS rel;
 
 | Champ         | Description                                        |
 |---------------|----------------------------------------------------|
-| Endpoint      | la valeur de `S3_ENDPOINT` — `seaweedfs:8333` sur la pile en service. **Aucune valeur par defaut** |
+| Endpoint      | la valeur de `S3_ENDPOINT` (`seaweedfs:8333` sur la pile actuelle). **Aucune valeur par defaut** |
 | Bucket        | `documents`                                         |
-| Object path   | `images/{filename_stem}/{element_id}_{type}.png`    |
-| Content-Type  | `image/png`                                         |
+| Object path   | PDF : `images/{filename_stem}/{element_id}_{type}.png` ; Markdown : `images/md/{doc_key}/…` ; HTML : `images/html/{doc_key}/…` |
+| Content-Type  | `image/png` pour les crops PDF ; type d'origine pour les images HTML et Markdown |
 | Acces         | Par un client S3 generique, avec le jeu d'identifiants **en lecture seule** cote agent. Credentials dans `.env` |
 
-**Le depot ne nomme le serveur nulle part** : seul `S3_ENDPOINT` le designe, et
-c'est ce qui a permis d'en changer sans qu'une ligne de televersement bouge.
+**Le code ne nomme pas le serveur** (SeaweedFS) : seul `S3_ENDPOINT` le designe.
+Changer de serveur ne touche donc a aucune ligne de televersement.
 
 ### 4.4 Schemas Pydantic (reutilisables)
 
@@ -447,6 +443,7 @@ class DocumentElement(BaseModel):
     id: str                        # hash sha256[:10]
     label: str                     # section_header, text, picture, table, ...
     page_no: int = 1
+    page_no_end: int = 1
     bbox: BoundingBox | None = None
     text: str = ""
     order: int = 0
@@ -454,6 +451,8 @@ class DocumentElement(BaseModel):
     object_key: str | None = None
     content: str | None = None
     reference_id: str = "DOC"      # ID du parent
+    depth: int = 0
+    section_title: str = ""
     page_position: int = 0
     ref_position: int = 0
     type: str = "text"             # "text" ou "resource"
@@ -465,7 +464,7 @@ class DocumentMetadata(BaseModel):
 
 class ExtractedDocument(BaseModel):
     metadata: DocumentMetadata
-    elements: list[DocumentElement]
+    elements: list[DocumentElement] = Field(default_factory=list)
 ```
 
 L'agent peut copier ces schemas ou les importer comme dependance.
@@ -485,26 +484,17 @@ L'agent peut copier ces schemas ou les importer comme dependance.
 | API backend      | **FastAPI**             | Meme stack que le service Docling               |
 | Observabilite    | **Langfuse**            | Open-source, self-hostable en Docker            |
 
-> **LE RERANKER PRESCRIT ICI EST ANGLAIS, FACE A UN EMBEDDER MULTILINGUE**
-> (registre §6.6). `cross-encoder/ms-marco-MiniLM-L6-v2` est entraine sur MS
-> MARCO, un jeu anglais. C'est **la faute exacte que l'agent a deja mesuree de
-> son cote** : etendue de scores **0,0 %** sur 20 candidats en francais, c'est-a-dire
-> un reranker qui ne classe plus rien et se contente de renvoyer l'ordre d'entree.
->
-> Et c'est le meme mode de panne que l'exigence 1 du contrat : **silencieux**. Un
-> reranker qui n'ordonne rien ne leve aucune erreur, ne remplit aucun journal, et
-> rend des resultats plausibles.
->
-> **Le corpus actuel est entierement en anglais** (registre §1), donc le defaut
-> est INERTE aujourd'hui — un reranker anglais sur un corpus anglais fonctionne.
-> Il se reveille au premier document non anglais, ou a la premiere question posee
-> en francais sur un passage anglais, ce que le modele d'embedding multilingue
-> rend precisement possible. La prescription est donc **retiree plutot que
-> remplacee** : choisir un reranker multilingue est une decision de l'autre
-> depot, appuyee sur une campagne, et ce document n'a pas a la trancher a sa
-> place. Ce qu'il doit faire est de ne plus prescrire ce qui a deja echoue.
 | Guardrails       | **NeMo Guardrails**     | Validation input/output, anti-hallucination     |
 | PII detection    | **Presidio**            | Detection/anonymisation d'informations personnelles |
+
+**Reranker : a choisir multilingue** (registre §6.6). `cross-encoder/ms-marco-MiniLM-L6-v2`
+est entraine sur MS MARCO, un jeu anglais. Cote agent, il a ete mesure avec une
+etendue de scores de **0,0 %** sur 20 candidats en francais : il ne classe plus
+rien et renvoie l'ordre d'entree, sans erreur ni journal. Le defaut est sans effet
+tant que corpus et questions sont en anglais, mais il apparait des qu'une question
+francaise vise un passage anglais, ce que l'embedder multilingue rend possible. Le
+choix d'un reranker multilingue releve de `rag-agent-chat` et d'une campagne de
+mesure ; ce plan ne prescrit plus `ms-marco-MiniLM-L6-v2`.
 
 ### Pourquoi LangGraph plutot que LangChain classique
 
@@ -512,7 +502,7 @@ L'agentic loop (le modele qui re-cherche) est un **workflow a etats** :
 - Etat initial -> Retrieval -> Attente selection user -> Reconstruction ->
   Generation -> (boucle si besoin) -> Reponse finale
 
-LangGraph modelise ca naturellement comme un graphe d'etats avec des
+LangGraph le modelise comme un graphe d'etats avec des
 transitions conditionnelles. LangChain classique (chains) ne gere pas
 bien les boucles ni le human-in-the-loop.
 
@@ -609,10 +599,9 @@ L'agent tourne sur `rag_network` et accede directement :
 - Stockage objet : la valeur de `S3_ENDPOINT` (`seaweedfs:8333`)
 
 **Option B — Acces externe** (prod ou projet separe)
-Exposer les ports via `docker-compose.override.yml` du projet d'ingestion :
-- ChromaDB : `http://localhost:8080`
-- NebulaGraph : `localhost:9669`
-- Stockage objet : le port publie par l'override
+Publier les ports voulus par un `docker-compose.override.yml` local du projet
+d'ingestion (fichier non versionne) ; les adresses sont alors celles que cet
+override publie sur l'hote.
 
 Les credentials sont les memes que dans `.env` du projet d'ingestion.
 
@@ -628,7 +617,7 @@ NEBULA_HOST=graphd
 NEBULA_PORT=9669
 NEBULA_USER=root
 NEBULA_PASSWORD=nebula
-S3_ENDPOINT=seaweedfs:8333      # aucune valeur par defaut : sans elle, ca ne demarre pas
+S3_ENDPOINT=seaweedfs:8333      # aucune valeur par defaut : sans elle, l'agent ne demarre pas
 S3_ACCESS_KEY=                  # le jeu LECTURE SEULE, pas celui du pipeline
 S3_SECRET_KEY=
 S3_BUCKET=documents
@@ -641,9 +630,7 @@ LLM_MAX_TOKENS=4096
 
 # --- Retrieval ---
 EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2   # DOIT etre le meme que l'ingestion
-# A TRANCHER : ms-marco-MiniLM-L6-v2 est ANGLAIS, et l'agent a mesure une
-# etendue de scores de 0,0 % sur 20 candidats francais — un reranker qui ne
-# classe plus rien, en silence. Voir la reserve du tableau des modeles.
+# A choisir multilingue : ms-marco-MiniLM-L6-v2 est anglais (voir la section 5).
 RERANK_MODEL=<a-trancher-multilingue>
 RETRIEVAL_TOP_K=20
 RERANK_TOP_K=10

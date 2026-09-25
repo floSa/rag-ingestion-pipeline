@@ -1,18 +1,19 @@
-"""Rappel vectoriel BRUT du jeu de questions, contre le corpus ENTIER.
+"""Rappel vectoriel brut du jeu de questions, contre le corpus entier.
 
-Ce que cette mesure est, et ce qu'elle n'est pas — a lire avant tout chiffre :
+Portee de la mesure, a lire avant tout chiffre :
 
-- elle mesure la recherche DENSE seule, celle que ce depot produit : encoder la
+- elle mesure la recherche dense seule, celle que ce depot produit : encoder la
   question avec le meme modele que l'index, interroger ChromaDB, regarder si les
   `element_id` attendus reviennent dans les k premiers ;
-- elle NE mesure PAS l'agent. Ni BM25, ni la reconstruction par le graphe, ni le
-  reranker, ni l'abstention : tout cela vit dans `rag-agent-chat`. Un rappel
-  dense bas ici ne condamne rien, et un rappel haut ne garantit rien la-bas ;
-- 30 questions ne suffisent pas a arbitrer un reglage. Un ecart de deux points
+- elle ne mesure pas l'agent : BM25, reconstruction par le graphe, reranker et
+  abstention vivent dans `rag-agent-chat`. Un rappel dense bas ici ne condamne
+  rien, et un rappel haut ne garantit rien la-bas ;
+- 30 questions ne suffisent pas a arbitrer un reglage : un ecart de deux points
   est du bruit (registre 1).
 
-**Le geste**, celui du registre section 4.27 — monter le `src` de la branche
-mesuree, jamais celui du clone principal :
+Commande (registre 4.27), a lancer depuis l'arbre de travail de la branche
+mesuree : `docker-compose.yml` y monte son `src/`, et la commande ajoute ses
+`scripts/` et `documentation/` :
 
     docker compose run --rm --no-deps -T \\
       -v "$PWD/scripts":/app/scripts:ro \\
@@ -37,13 +38,10 @@ from src.docling_service.embedding import get_embedding_model
 
 def main() -> None:
     chemin = sys.argv[1]
-    # 50 REJOINT LES TROIS AUTRES, et le motif est comparatif : la seconde
-    # campagne mesure le rappel AVANT et APRES une reingestion complete, et les
-    # deux moities ne se comparent que sur les memes k. Laisser 50 a la ligne de
-    # commande le rendait facultatif des deux cotes, donc oubliable d'un seul.
-    # Le troc est ecrit : un kmax plus grand coute une requete plus large par
-    # question — 30 requetes a 50 voisins contre 30 a 20 — et rien d'autre, la
-    # question n'etant encodee qu'une fois.
+    # 50 fait partie des k par defaut : une campagne qui compare le rappel avant
+    # et apres une reingestion doit utiliser les memes k des deux cotes. Le cout
+    # est une requete plus large par question (50 voisins au lieu de 20) ; la
+    # question n'est encodee qu'une fois.
     defaut = ["5", "10", "20", "50"]
     ks = [int(x) for x in (sys.argv[2].split(",") if len(sys.argv) > 2 else defaut)]
     with open(chemin, encoding="utf-8") as flux:
@@ -61,7 +59,7 @@ def main() -> None:
     kmax = max(ks)
     resultats = []
     for q in questions:
-        # Encode EXACTEMENT comme la production : `vectors.write_elements` appelle
+        # Encode comme la production : `vectors.write_elements` appelle
         # `encode(...)` sans `normalize_embeddings`, donc vecteurs non normes, et
         # la collection ne declare pas `hnsw:space` — ChromaDB retombe sur `l2`
         # (registre 4.29.f). Normaliser ici comparerait deux espaces differents.

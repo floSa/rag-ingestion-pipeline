@@ -1,8 +1,9 @@
 """Rapport de qualite de l'index vectoriel.
 
-A lancer depuis le reseau Docker :
+A lancer dans un conteneur jetable du service d'extraction :
 
-    docker compose exec docling-service python -m src.index_report
+    docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \\
+      docling-service python -m src.index_report
 
 Repond aux questions qu'on se pose apres une ingestion : l'index contient-il du
 bruit, les chunks ont-ils une taille exploitable, et depassent-ils la fenetre du
@@ -21,10 +22,9 @@ from typing import Any
 from src.docling_service.chunking import embedding_inputs, has_content
 from src.docling_service.settings import get_settings
 
-# `chromadb`, le modele d'embedding et `vectors` sont importes DANS ``main`` :
-# ce module doit rester importable sans eux, sinon la mesure de fenetre
-# ci-dessous ne serait testable nulle part — et c'est precisement elle qui
-# etait fausse.
+# `chromadb`, le modele d'embedding et `vectors` sont importes dans ``main`` :
+# ce module reste importable sans eux, ce qui permet de tester la mesure de
+# fenetre ci-dessous.
 
 # En deca, un chunk ne porte pas assez de matiere pour etre retrouve utilement.
 FAIBLE_CONTENU_CARACTERES = 40
@@ -48,21 +48,15 @@ def mesurer_la_fenetre(
     limite: int,
     embed_section_context: bool,
 ) -> FenetreMesuree:
-    """Compte les chunks que le modele tronque, sur le texte QU'IL RECOIT.
+    """Compte les chunks que le modele tronque, sur le texte qu'il recoit.
 
-    Cette fonction tokenisait ``documents``, c'est-a-dire le texte **stocke**,
-    alors que ``vectors.write_elements`` encode le texte **prefixe du titre de
-    section**. Elle sous-comptait donc, et pas d'un peu : d'un facteur **2,1**
-    sur le compte, et le maximum annonce etait lui aussi sous-estime. Un lecteur
-    voyait le chiffre du texte stocke et lisait un bruit d'arrondi. Les nombres
-    de cette comparaison vivent a
-    :func:`~src.docling_service.vectors.get_chunker`, leur seul site — ce module
-    RAPPORTE la mesure, il n'est pas l'endroit ou elle est consignee.
+    Le texte mesure est le texte encode, prefixe du titre de section quand
+    ``embed_section_context`` est vrai, et non le texte stocke : ce dernier
+    sous-estime le nombre de chunks tronques (chiffres a
+    :func:`~src.docling_service.vectors.get_chunker`).
 
-    Le texte encode n'est plus reconstruit ici : il vient de
-    :func:`~src.docling_service.chunking.embedding_inputs`, le meme site que
-    celui qui le produit. Un instrument qui recalcule ce qu'il mesure finit par
-    mesurer autre chose.
+    Ce texte vient de :func:`~src.docling_service.chunking.embedding_inputs`,
+    la fonction qui le produit pour l'encodage : il n'est pas recalcule ici.
 
     Args:
         documents: Textes stockes, lus dans ChromaDB.
@@ -89,18 +83,10 @@ def mesurer_la_fenetre(
 def compter_les_documents(metadatas: Sequence[Mapping[str, Any]]) -> int:
     """Compte les documents distincts par ``source_path``, jamais par ``filename``.
 
-    C'EST L'EXIGENCE 3 DU CONTRAT, ET SON CAS D'ECOLE EST DANS CE CORPUS.
-    Cette ligne comptait ``{m.get("filename")}`` et rendait **22** alors que le
-    graphe porte **23** documents : le corpus contient deux ``Preface.html``, un
-    par ouvrage, et ``filename`` vaut ``Preface`` pour les deux (`mesure` le
-    31 aout 2026 sur l'index complet — 22 ``filename`` distincts contre 23
-    ``source_path``, la seule collision etant ``Preface``).
-
-    Un rapport qui sous-compte les documents ne le dit pas : il annonce un
-    nombre plausible. Et c'est le contrat lui-meme qui cite ce cas comme sa
-    preuve — « ``source_path`` est l'identite d'un document, jamais ``filename``
-    seul. Le corpus actuel le prouve : ``Index.html`` et ``Preface.html``
-    existent dans les deux ouvrages. »
+    ``source_path`` est l'identite d'un document (exigence 3 du contrat). Le
+    corpus contient deux ``Preface.html``, un par ouvrage : compter par
+    ``filename`` rendrait 22 documents au lieu de 23 (`mesure` le 31 aout 2026
+    sur l'index complet).
 
     Args:
         metadatas: Metadonnees des chunks.

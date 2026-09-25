@@ -1,28 +1,27 @@
-"""LE HARNAIS D'EQUIVALENCE DOIT SAVOIR DIRE NON, et ce fichier le lui fait dire.
+"""Tests du harnais d'equivalence : il doit savoir rendre un rouge.
 
 Le harnais de `src/equivalence_des_identifiants.py` fige, avant la campagne de
-reingestion, un instantane des `element_id` EMIS par la production, puis dit
-apres la campagne lesquels ont bouge. Sa valeur est sa capacite a rendre un
-rouge.
+reingestion, un instantane des `element_id` emis par la production, puis dit
+apres la campagne lesquels ont bouge.
 
-**LA VERSION PRECEDENTE RENDAIT DEUX FAUX VERTS**, trouves par l'audit du lot 11
-et devenus ici des tests de la porte qualite (:class:`TestLesFauxVertsDeLAudit`) :
+Deux faux verts sont tenus par :class:`TestLesFauxVertsDeLAudit` :
 
-- relancee APRES la campagne, elle comparait le code X au graphe ecrit par ce
-  meme code X — trois `ListItem` qui recoivent du texte rendaient `OK`, rc=0 ;
-- elle jetait l'identifiant EMIS pour le recalculer — une production qui calcule
-  sur `.cleaned/<cle>` rendait `IDENTIQUES 30`, rc=0.
+- relance apres la campagne, un harnais qui reextrait avec le code du jour le
+  compare au graphe ecrit par ce meme code : trois `ListItem` qui recoivent du
+  texte rendraient `OK`, rc=0 ;
+- un harnais qui recalcule l'identifiant au lieu de garder celui qui est emis ne
+  voit pas une production qui calcule sur `.cleaned/<cle>`.
 
-Les deux scenarios passent par le VRAI `_extract_flat`, seul le convertisseur
+Les deux scenarios passent par le vrai `_extract_flat`, seul le convertisseur
 Docling etant remplace : c'est le chemin que le harnais emprunte en campagne.
 
-**ET LE PIEGE EST DANS LA MUTATION ELLE-MEME.** Une mutation qui ne mute rien
-rend le controle negatif vert sans rien prouver : le lot qui a ecrit la
-premiere version a mute `page_no` sur `page_no >= 12`, sur un chapitre tout
-entier en page 1. :class:`TestUneMutationNulleEstImpossible` le garde.
+Une mutation qui ne mute rien rendrait le controle negatif vert sans rien
+prouver (par exemple `page_no >= 12` sur un chapitre tout entier en page 1) :
+:class:`TestUneMutationNulleEstImpossible` le verifie.
 
-Ce qui arme les barrieres tourne en SOUS-PROCESSUS : l'armement survit dans
-`sys.modules` et ferait tomber six tests de `tests/unit/test_storage.py`.
+Les tests qui arment les barrieres tournent en sous-processus : l'armement
+survit dans `sys.modules` et ferait tomber six tests de
+`tests/unit/test_storage.py`.
 """
 
 from __future__ import annotations
@@ -79,8 +78,8 @@ RACINE_DEPOT = Path(__file__).resolve().parents[2]
 def _lignes(nombre=60, page_no=1, textes=None):
     """Un releve d'essai coherent : chaque identifiant est celui de la formule.
 
-    TOUS SUR LA MEME PAGE, et c'est voulu : c'est la forme d'un chapitre HTML,
-    celle sur laquelle la mutation historique `page_no >= 12` etait nulle.
+    Tous sur la meme page : c'est la forme d'un chapitre HTML, sur laquelle une
+    mutation conditionnee par `page_no >= 12` serait nulle.
     """
     lignes = []
     for rang in range(nombre):
@@ -98,11 +97,11 @@ def _lignes(nombre=60, page_no=1, textes=None):
 
 
 def _lignes_a_jumeaux():
-    """Le cas qui trompait l'ancienne attribution : des `text50` partages.
+    """Un releve dont des elements partagent leur `text50`.
 
-    Des lignes blanches de code (`""`), une virgule repetee — la forme reelle
-    d'un chapitre technique. L'ancienne heuristique par jumeaux attribuait la
-    mutation `filename` a `position_in_page` 60 fois sur 60.
+    Des lignes blanches de code (`""`), une virgule repetee : la forme reelle
+    d'un chapitre technique. Une attribution par heuristique (rapprochement de
+    textes identiques) y imputerait la mutation `filename` a `position_in_page`.
     """
     textes = ["", "", ",", "Texte A", "", ",", "Texte B", ""] * 8
     return _lignes(nombre=len(textes), textes=textes)
@@ -113,10 +112,10 @@ def _lignes_a_jumeaux():
 
 class TestLeReleveEstCeluiDeLEmission:
     def test_l_identifiant_emis_est_garde_tel_quel(self):
-        """L'identifiant du releve est `element["id"]`, JAMAIS un recalcul.
+        """L'identifiant du releve est `element["id"]`, jamais un recalcul.
 
-        C'est le second faux vert de l'audit : un harnais qui recalcule ne voit
-        pas une production qui calcule sur autre chose que ce qu'elle declare.
+        Un harnais qui recalcule ne voit pas une production qui calcule sur
+        autre chose que ce qu'elle declare.
         """
         emis = {
             "id": "0123456789",
@@ -134,13 +133,12 @@ class TestLeReleveEstCeluiDeLEmission:
 
     @pytest.mark.parametrize("champ", ["id", "page_no", "page_position", "text", "label"])
     def test_chaque_champ_du_contrat_leve_quand_il_disparait(self, champ):
-        """M31 : les CINQ champs lus par indexation, pas seulement `page_position`.
+        """Mutation M31 : les cinq champs sont lus par indexation.
 
-        Le mutant de l'audit remplacait l'indexation par `.get` : un champ
-        disparu du contrat devenait alors un zero, une chaine vide ou un `None`
-        qui se compare — et le seul test qui tenait cette garantie portait sur
-        `page_position`. `self_ref` n'y est pas : il est lu par `.get` A DESSEIN,
-        un element sans `self_ref` etant licite (l'appariement le rend "").
+        Avec `.get`, un champ disparu du contrat deviendrait un zero, une chaine
+        vide ou un `None` qui se compare. `self_ref` n'y est pas : il est lu par
+        `.get` a dessein, un element sans `self_ref` etant licite (l'appariement
+        le rend "").
         """
         emis = {
             "id": "0123456789",
@@ -223,8 +221,8 @@ class TestLInstantane:
         """Un octet change dans un releve fait lever la relecture."""
         ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-24"})
         (releve,) = [f for f in tmp_path.iterdir() if f.name.startswith("htms__")]
-        # Une ligne de DONNEES, et non l'entete : alterer l'entete rougirait par
-        # le controle d'entete, et laisserait l'empreinte sans garde.
+        # Une ligne de donnees, et non l'entete : alterer l'entete rougirait par
+        # le controle d'entete, et ne testerait pas l'empreinte.
         releve.write_text(releve.read_text(encoding="utf-8").replace("\ttext\n", "\tcode\n", 1))
 
         with pytest.raises(InstantaneCorrompuError):
@@ -239,20 +237,19 @@ class TestLInstantane:
             lire_l_instantane(tmp_path)
 
     def test_un_instantane_ne_s_ecrase_pas(self, tmp_path):
-        """Ecraser l'instantane serait perdre l'avant — la seule chose qu'il garde."""
+        """Ecraser l'instantane serait perdre l'avant, la seule chose qu'il garde."""
         ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-24"})
 
         with pytest.raises(FileExistsError):
             ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-25"})
 
     def test_le_nombre_de_lignes_annonce_par_le_manifeste_est_verifie(self, tmp_path):
-        """M14 : le manifeste annonce `elements`, et la relecture DOIT recompter.
+        """Mutation M14 : le manifeste annonce `elements`, et la relecture recompte.
 
-        Sans ce garde, un releve tronque passait pour complet — et un releve
-        tronque, c'est « ces elements n'existent plus », donc des deplacements
-        invisibles. Le SHA-256 du releve est recalcule ici pour que ce soit le
-        COMPTE qui rougisse, et non l'empreinte : un garde qu'un autre garde
-        couvre n'est pas tenu.
+        Sans ce controle, un releve tronque passerait pour complet, et ses
+        elements manquants deviendraient des deplacements invisibles. Le SHA-256
+        du releve est recalcule ici pour que ce soit le compte qui rougisse, et
+        non l'empreinte : sinon le test ne dirait rien du compte.
         """
         ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-24"})
         (releve,) = [f for f in tmp_path.iterdir() if f.name.startswith("htms__")]
@@ -269,7 +266,7 @@ class TestLInstantane:
             lire_l_instantane(tmp_path)
 
     def test_le_format_de_l_instantane_est_verifie(self, tmp_path):
-        """M28 : un instantane d'un AUTRE format ne se relit pas en silence."""
+        """Mutation M28 : un instantane d'un autre format ne se relit pas en silence."""
         ecrire_l_instantane(tmp_path, [_emission()], {"date": "2026-09-24"})
         manifeste = tmp_path / "MANIFESTE.tsv"
         manifeste.write_text(
@@ -344,7 +341,7 @@ class TestLaComparaison:
         for ligne in lignes:
             ligne["self_ref"] = f"#/texts/{ligne['position_in_page'] % 3}"
 
-        # La PREMIERE occurrence de `#/texts/1` : un appariement qui oublierait le
+        # La premiere occurrence de `#/texts/1` : un appariement qui oublierait le
         # rang d'occurrence la confondrait avec la derniere, rang 4.
         bilan = comparer_les_releves("p", lignes, _reparer(lignes, [1]))
 
@@ -366,7 +363,7 @@ class TestLaComparaison:
         ]
 
     def test_un_identifiant_repris_par_un_autre_element_est_reassigne(self):
-        """Le cas MESURE de l'option d : une ligne de code vide herite de l'id d'une puce.
+        """Cas observe : une ligne de code vide herite de l'identifiant d'une puce.
 
         Meme cle, meme page, meme rang, meme `text50` vide : meme identifiant.
         Une difference d'ensembles le dit identique ; il designe pourtant du code.
@@ -391,13 +388,11 @@ class TestLaComparaison:
         assert "REASSIGNE" in verdict.raisons[0]
 
     def test_identiques_retranche_les_reassignes(self):
-        """M34 : `identiques` ANNONCE les elements qui n'ont pas bouge.
+        """Mutation M34 : `identiques` ne compte que les elements qui n'ont pas bouge.
 
-        Un identifiant REASSIGNE est present des deux cotes, donc compte par la
-        difference d'ensembles — mais il designe un autre element. Le compter
-        parmi les identiques, c'est annoncer une stabilite qu'on vient de nier
-        deux lignes plus bas. Le mutant de l'audit retirait la soustraction ;
-        aucun test ne le voyait.
+        Un identifiant reassigne est present des deux cotes, donc compte par la
+        difference d'ensembles, mais il designe un autre element : il ne doit
+        pas etre compte parmi les identiques.
         """
         textes = ["Titre", "", "", "Suite"]
         avant = _lignes(nombre=4, textes=textes)
@@ -430,7 +425,7 @@ def _bilan(lignes, apres):
 
 
 class TestLeVerdict:
-    """rc=0 si et seulement si l'ensemble deplace EGALE l'ensemble declare."""
+    """rc=0 si et seulement si l'ensemble deplace egale l'ensemble declare."""
 
     def test_rien_declare_rien_deplace_est_vert(self):
         lignes = _lignes()
@@ -452,7 +447,7 @@ class TestLeVerdict:
         assert trancher([_bilan(lignes, _reparer(lignes, [2, 9]))], declares).ok
 
     def test_un_declare_qui_ne_bouge_pas_est_rouge(self):
-        """Sinon une reparation NON APPLIQUEE passerait en silence."""
+        """Sinon une reparation non appliquee passerait en silence."""
         lignes = _lignes()
         declares = {lignes[2]["element_id"], lignes[9]["element_id"]}
 
@@ -502,10 +497,10 @@ class TestLesClesDObjet:
         )
 
     def test_une_cle_apparue_sans_deplacement_declare_est_rouge(self):
-        """M22 : seule la branche « disparue » etait tenue.
+        """Mutation M22 : la branche « apparue », en plus de « disparue ».
 
-        Une cle d'objet APPARUE que la declaration n'explique pas, c'est un crop
-        de plus dans le bucket sous un identifiant que personne n'a annonce.
+        Une cle d'objet apparue que la declaration n'explique pas est un crop de
+        plus dans le bucket, sous un identifiant que personne n'a annonce.
         """
         raisons = raisons_des_cles_d_objet(
             "p",
@@ -551,11 +546,7 @@ class TestLeControleNegatif:
 
     @pytest.mark.parametrize("nom", sorted(MUTATIONS))
     def test_chaque_mutation_est_vue_et_attribuee_a_son_seul_terme(self, nom):
-        """Vue EN TOTALITE, et imputee a SON terme — jumeaux de `text50` compris.
-
-        C'est ce que l'ancienne attribution ne tenait pas : sur ce releve, elle
-        imputait `filename` a `position_in_page` pour chaque element.
-        """
+        """Vue en totalite, et imputee a son terme, `text50` partages compris."""
         lignes = _lignes_a_jumeaux()
 
         bilan = comparer_les_releves("p", lignes, appliquer_la_mutation(MUTATIONS[nom], lignes))
@@ -591,7 +582,7 @@ class TestLeControleNegatif:
 
 
 class TestUneMutationNulleEstImpossible:
-    """LE DEFAUT DU LOT PRECEDENT, converti en garde."""
+    """Une mutation sans effet est refusee, pas comptee comme un succes."""
 
     @staticmethod
     def _inerte():
@@ -607,19 +598,19 @@ class TestUneMutationNulleEstImpossible:
             appliquer_la_mutation(self._inerte(), _lignes(page_no=1))
 
     def test_la_meme_mutation_sur_un_document_pagine_ne_leve_pas(self):
-        """Le temoin de la garde : elle refuse la mutation NULLE, pas la mutation."""
+        """Contre-epreuve : seule la mutation nulle est refusee, pas la mutation."""
         mutes = appliquer_la_mutation(self._inerte(), _lignes(page_no=12))
 
         assert mutes[0]["page_no"] == 13
 
     def test_le_controle_rend_une_mutation_nulle_comme_un_echec(self):
-        """Un releve vide ne laisse rien muter : chaque controle doit etre ROUGE."""
+        """Un releve vide ne laisse rien muter : chaque controle doit etre rouge."""
         assert not any(c.ok for c in controle_negatif("p", []))
 
 
 class TestLeControleSeJuge:
     def test_une_mutation_mal_attribuee_n_est_pas_un_controle_vert(self):
-        """Voir sans savoir POURQUOI est un rouge : c'est l'ancienne attribution."""
+        """Voir sans savoir pourquoi est un rouge."""
         assert not Controle("x", mutes=3, collisions=0, vus=3, mal_attribues=1).ok
 
     def test_une_mutation_vue_en_partie_n_est_pas_un_controle_vert(self):
@@ -702,16 +693,15 @@ class TestFigerRefuseDEcrireUnInstantaneFaux:
         )
 
     def test_un_graphe_qui_porte_deja_les_identifiants_mutes_est_rouge(self, tmp_path):
-        """LE CONTROLE NEGATIF DU CONTROLE NEGATIF : la clause `vu_du_graphe > 0`.
+        """Tient la clause `vu_du_graphe > 0` du controle negatif.
 
-        Le troisieme audit l'a montree SANS TEST : elle survivait a son retrait.
-        Ce qu'elle garde : un graphe qui porterait DEJA les identifiants mutes
-        rendrait `emis_seul == 0`, et la mutation serait « vue » par le seul
-        appariement, sans qu'aucune confrontation au graphe l'ait confirmee.
+        Un graphe qui porterait deja les identifiants mutes rendrait
+        `emis_seul == 0` : la mutation serait « vue » par le seul appariement,
+        sans confirmation par le graphe.
 
-        Le monde est construit ainsi : le graphe porte l'emission ET tous les
-        identifiants qu'une mutation produirait. La raison attendue est celle
-        de la MUTATION ; sans la clause, elle disparait.
+        Ici, le graphe porte l'emission et tous les identifiants qu'une mutation
+        produirait. La raison attendue est celle de la mutation ; sans la
+        clause, elle disparait.
         """
         emission = _une_emission()
         mutes = {
@@ -757,13 +747,12 @@ class TestComparerAlInstantane:
         assert comparer(monde, instantane, instantane.empreinte, set(), [], lambda _: None) == 1
 
     def test_un_corpus_vide_est_rouge_et_ne_compare_rien(self, tmp_path):
-        """LE FAUX VERT BLOQUANT DU SECOND AUDIT : rc=0 et OK sur un corpus VIDE.
+        """Un corpus vide ne rend pas vert (registre 4.38.a).
 
-        `_ecarts_de_couverture` ne comparait chaque paire que dans UN sens
-        (`a - b` pour `a < b` en ordre alphabetique) : `instantane - corpus`
-        n'etait jamais calcule. Puis `comparer` sautait par `continue` tout
-        document absent du corpus. Le corpus arrive par un MONTAGE, et ce depot
-        a deja connu une purge qui emportait 24 fichiers sur 25.
+        Il faut que `_ecarts_de_couverture` compare chaque paire dans les deux
+        sens (`instantane - corpus` compris), et que `comparer` compte comme
+        raison tout document absent du corpus. Le corpus arrive par un montage :
+        un montage vide ou partiel est un cas reel.
         """
         sortie = []
         instantane = self._fige(tmp_path, [_une_emission()])
@@ -776,7 +765,7 @@ class TestComparerAlInstantane:
         assert any("DOCUMENTS COMPARES 0 / 1" in ligne for ligne in sortie), sortie
 
     def test_un_seul_document_sorti_du_corpus_est_rouge(self, tmp_path):
-        """Le meme trou, en plus discret : l'instantane en porte 2, le corpus 1."""
+        """Meme cas, en plus discret : l'instantane en porte 2, le corpus 1."""
         emissions = [_une_emission(), _une_emission("htms/L/2. Ch.html")]
         instantane = self._fige(tmp_path, emissions)
         sortie = []
@@ -787,14 +776,13 @@ class TestComparerAlInstantane:
 
         assert rc == 1
         assert any("DOCUMENTS COMPARES 1 / 2" in ligne for ligne in sortie), sortie
-        # LA RAISON EXPLICITE, et non le seul rc : sans cette assertion, le
-        # garde `non_compares` survivait a son propre retrait (mutation A1-b),
-        # l'ecart de couverture rougissant deja. Une garantie qu'un autre garde
-        # couvre n'est pas tenue — c'est tout le motif de la table des mutations.
+        # La raison explicite, et non le seul rc : l'ecart de couverture rougit
+        # deja, donc sans cette assertion le retrait de `non_compares` passerait
+        # (mutation A1-b).
         assert any("n'ont PAS ete compares" in ligne for ligne in sortie), sortie
 
     def test_un_graphe_vide_avec_un_corpus_intact_est_rouge(self, tmp_path):
-        """Deja rouge sur `3625816` par le sens `corpus - graphe` ; tenu ici contre son retrait."""
+        """Rouge par le sens `corpus - graphe` de la couverture."""
         instantane = self._fige(tmp_path, [_une_emission()])
 
         monde = _monde([_une_emission()], documents_du_graphe=[])
@@ -809,11 +797,9 @@ class TestComparerAlInstantane:
         assert any("dans instantane et pas dans corpus" in r for r in raisons), raisons
 
     def test_un_journal_de_barrieres_non_vide_rougit_comparer(self, tmp_path):
-        """A2 : le garde existait dans `comparer`, aucun test ne le tenait.
+        """Mutation A2 : le journal non vide rougit aussi `comparer`.
 
-        Mutation de l'audit — retrait du garde dans `comparer` SEUL : 55 tests
-        verts. Le pendant de `test_une_barriere_touchee_est_rouge_meme_avalee`,
-        cote `comparer`.
+        Pendant, cote `comparer`, de `test_une_barriere_touchee_est_rouge_meme_avalee`.
         """
         instantane = self._fige(tmp_path, [_une_emission()])
         journal = ["vectors.get_collection"]
@@ -826,9 +812,7 @@ class TestComparerAlInstantane:
 
 
 class TestCeQuiSeDitDevantUnRouge:
-    """M35 : une garantie ECRITE — « elle dit, devant un rouge, si c'est l'entree
-    ou le code qui a change » — que le mutant de l'audit retirait sans qu'un
-    test bouge."""
+    """Mutation M35 : devant un rouge, la sortie dit si l'entree a change."""
 
     def _fige(self, tmp_path, emissions):
         figer(_monde(emissions), tmp_path, {"date": "t"}, [], lambda _: None)
@@ -855,16 +839,15 @@ class TestCeQuiSeDitDevantUnRouge:
 
 
 class TestLeHarnaisNeSeRetautologisePas:
-    """A3 : refiger apres la campagne rendait rc=0 des deux cotes (`mesure` de l'audit).
+    """Refiger apres la campagne ne doit pas rendre vert (mutations A3, registre 4.39.a).
 
-    A3 posait l'empreinte attendue dans le PARENT du dossier — donc a un site
-    que l'appelant DESIGNAIT. Le troisieme audit l'a retourne : trois gestes, un
-    `printf` au milieu, et rc=0. Les deux sites sont desormais FIXES, resolus
-    depuis l'emplacement du module (§4.39.a).
+    L'empreinte attendue et le repertoire de campagne sont a des sites fixes,
+    resolus depuis l'emplacement du module : aucun argument ne peut les
+    deplacer.
     """
 
     def test_l_empreinte_attendue_ne_depend_plus_de_l_argument(self, tmp_path):
-        """LE GESTE DE L'AUDIT : une table voisine, ecrite a la main, n'authentifie plus rien."""
+        """Une table voisine, ecrite a la main, n'authentifie rien."""
         dossier = tmp_path / "2026-09-24-instantane-des-identifiants"
         dossier.mkdir()
         (tmp_path / "empreintes-des-instantanes.tsv").write_text(
@@ -885,7 +868,7 @@ class TestLeHarnaisNeSeRetautologisePas:
         assert module.REPERTOIRE_DE_CAMPAGNE.is_dir()
 
     def test_un_enfant_indirect_du_repertoire_est_refuse(self, tmp_path):
-        """`…/campagnes/bis/instantane` porterait sa propre table voisine."""
+        """`…/campagnes/bis/instantane` n'est pas un enfant direct : refuse."""
         repertoire = tmp_path / "campagnes"
         (repertoire / "bis" / "instantane").mkdir(parents=True)
 
@@ -902,14 +885,14 @@ class TestLeHarnaisNeSeRetautologisePas:
         )
 
     def test_l_empreinte_de_l_instantane_du_depot_est_celle_de_la_constante(self):
-        """LE SITE CANONIQUE : la constante du module, contre l'instantane du depot."""
+        """La constante du module, contre l'instantane versionne du depot."""
         nom = "2026-09-24-instantane-des-identifiants"
         dossier = RACINE_DEPOT / "documentation/campagnes" / nom
 
         assert EMPREINTES_ATTENDUES[nom] == lire_l_instantane(dossier).empreinte
 
     def test_un_instantane_refige_porte_une_autre_empreinte_et_rougit(self, tmp_path):
-        """LE SCENARIO DE L'AUDIT : on refige apres la campagne, on compare contre lui."""
+        """Refiger apres la campagne puis comparer contre ce nouvel instantane rougit."""
         dossier = tmp_path / "instantane"
         figer(_monde([_une_emission()]), dossier, {"date": "t"}, [], lambda _: None)
         refige = tmp_path / "refige"
@@ -930,14 +913,14 @@ class TestLeHarnaisNeSeRetautologisePas:
         assert any("EMPREINTE INATTENDUE" in ligne for ligne in sortie), sortie
 
     def test_un_dossier_absent_de_la_constante_est_refuse(self):
-        """Le cas exact du second instantane : ecrit DANS le repertoire, inscrit nulle part."""
+        """Un second instantane, ecrit dans le repertoire mais inscrit nulle part."""
         dossier = RACINE_DEPOT / "documentation/campagnes/refige-en-douce"
 
         with pytest.raises(EmpreinteInattendueError, match="n'est pas dans EMPREINTES_ATTENDUES"):
             empreinte_attendue(dossier)
 
     def test_refiger_dans_le_meme_dossier_rend_un_rc_1_et_non_une_trace(self, tmp_path):
-        """`FileExistsError` remontait nue : une trace d'appel n'est pas un verdict."""
+        """`FileExistsError` devient rc=1 : une trace d'appel n'est pas un verdict."""
         monde = _monde([_une_emission()])
         sortie = []
         assert figer(monde, tmp_path, {"date": "t"}, [], lambda _: None) == 0
@@ -948,18 +931,18 @@ class TestLeHarnaisNeSeRetautologisePas:
         assert any("ne s'ecrase pas" in ligne for ligne in sortie), sortie
 
     def test_le_site_reel_du_depot_s_authentifie(self):
-        """LE SITE REEL : la constante du module, contre l'instantane du depot."""
+        """`empreinte_attendue` authentifie l'instantane versionne du depot."""
         dossier = RACINE_DEPOT / "documentation/campagnes/2026-09-24-instantane-des-identifiants"
 
         assert empreinte_attendue(dossier) == lire_l_instantane(dossier).empreinte
 
 
 class TestLesTroisGestesDeLAudit:
-    """LE SCENARIO EXACT du troisieme audit, contre le SCRIPT, rc du PROCESSUS.
+    """Le script lui-meme, par son code de sortie : figer ou comparer ailleurs rend 1.
 
-    `figer <ailleurs>` ; un `printf` dans la table voisine ; `comparer
-    <ailleurs>`. Les deux gestes du script rendent desormais 1, avant tout
-    armement et toute connexion — donc mesurables sur l'hote, sans store.
+    Scenario : `figer <ailleurs>`, une table d'empreintes ecrite a cote, puis
+    `comparer <ailleurs>`. Les deux gestes refusent avant tout armement et
+    toute connexion, donc le test tourne sur l'hote, sans store.
     """
 
     SCRIPT = "scripts/campagne/verifier-l-equivalence-des-identifiants.py"
@@ -983,7 +966,7 @@ class TestLesTroisGestesDeLAudit:
         assert not cible.exists(), "rien n'a ete ecrit hors du repertoire"
 
     def test_comparer_hors_du_repertoire_de_campagne_rend_1_malgre_la_table_voisine(self, tmp_path):
-        """LE `printf` DE L'AUDIT : la table voisine n'est meme plus lue."""
+        """Une table d'empreintes posee a cote du dossier n'est pas lue."""
         cible = tmp_path / "bis" / "2026-09-24-instantane-des-identifiants"
         cible.mkdir(parents=True)
         (cible.parent / "empreintes-des-instantanes.tsv").write_text(
@@ -996,23 +979,16 @@ class TestLesTroisGestesDeLAudit:
         assert "hors du repertoire de campagne" in acheve.stdout, acheve.stdout
 
     def test_comparer_un_instantane_non_inscrit_rend_un_verdict_avant_toute_connexion(self):
-        """Reparation N4 : `EmpreinteInattendueError` rejoint le garde du dossier.
+        """Mutation N4 : un instantane non inscrit est refuse avant la connexion.
 
-        Elle se levait APRES la connexion au graphe et APRES l'armement des
-        barrieres, et remontait en TRACE D'APPEL. Une trace d'appel n'est pas un
-        verdict — c'est la phrase du second audit, sur un troisieme site.
+        Le dossier vise est un enfant direct du repertoire de campagne, donc il
+        passe le premier refus, et il n'est pas dans `EMPREINTES_ATTENDUES`. Il
+        n'existe pas : ce test n'ecrit rien dans le depot.
 
-        Le dossier vise est un enfant DIRECT du repertoire de campagne, donc il
-        franchit le premier garde, et il n'est pas dans `EMPREINTES_ATTENDUES`.
-        Il n'existe pas non plus : c'est voulu, rien n'est ecrit dans le depot
-        par ce test.
-
-        **CE QUI REND LA MESURE NETTE SUR L'HOTE** : `nebula3` n'y est pas
-        installe. Avant la reparation, ce meme geste rendait 1 sur un
-        `ModuleNotFoundError: No module named 'nebula3'` leve par `Graphe` —
-        `mesure` du 24 septembre 2026. Le rc ne distinguait donc pas le refus
-        du harnais d'un plantage a la connexion. L'assertion porte sur le
-        MESSAGE et sur l'absence de trace, pas sur le seul rc.
+        `nebula3` n'est pas installe sur l'hote : un refus trop tardif rendrait
+        aussi 1, mais sur un `ModuleNotFoundError` leve par `Graphe`. Les
+        assertions portent donc sur le message et sur l'absence de trace
+        d'appel, pas sur le seul rc (registre 4.40.g).
         """
         cible = RACINE_DEPOT / "documentation/campagnes/2099-01-01-instantane-non-inscrit"
         assert not cible.exists(), "ce test n'ecrit rien dans le depot"
@@ -1022,7 +998,7 @@ class TestLesTroisGestesDeLAudit:
         assert acheve.returncode == 1, acheve.stdout + acheve.stderr
         assert "n'est pas dans EMPREINTES_ATTENDUES" in acheve.stdout, acheve.stdout
         assert "Traceback" not in acheve.stderr, acheve.stderr
-        # AVANT TOUTE CONNEXION ET TOUT ARMEMENT : ni l'un ni l'autre n'a imprime.
+        # Avant toute connexion et tout armement : ni l'un ni l'autre n'a imprime.
         assert "barrieres d'ecriture armees" not in acheve.stdout, acheve.stdout
         assert "nebula3" not in acheve.stderr, acheve.stderr
 
@@ -1043,40 +1019,19 @@ def _executer(code, *arguments):
     return json.loads(acheve.stdout.strip().splitlines()[-1])
 
 
-# ─── CE QUI A REMPLACE LA DERIVATION AST, ET POURQUOI ELLE EST RETIREE ───────
+# ─── Barrieres a l'execution ────────────────────────────────────────────────
 #
-# La version precedente DERIVAIT, par lecture AST de `src/docling_service/*.py`,
-# les fonctions porteuses d'un client de store, a partir de trois « semences »
-# (`Minio`, `ConnectionPool`, `HttpClient`) et d'un point fixe ; chaque porteur
-# devait ensuite etre une porte barree, un `NON_ECRIVAINS` motive ou un
-# `HORS_PROCESSUS` motive, « sans quatrieme cas ».
+# La preuve de non-ecriture se fait a l'execution, sur les constructeurs des SDK
+# (:func:`~src.equivalence_des_identifiants.barrer_les_sdk_de_store`), et non par
+# une analyse statique des porteurs de client : un alias d'import, un `getattr`,
+# un client construit au niveau du module ou une porte hors du dossier balaye
+# echappent a toute analyse statique (registre 4.39.b). `TestLesPortesNeuvesLevent`
+# mesure ces chemins un par un.
 #
-# LE TROISIEME AUDIT DU LOT 11 LUI A FAIT PASSER QUATRE PORTES NEUVES SUR CINQ :
-# un alias d'import (`from minio import Minio as _M`), un `getattr(minio,
-# "Minio")(...)`, un client construit au niveau du module, et une porte deposee
-# dans `src/pipeline/` — hors du dossier balaye. Et ses quatre `HORS_PROCESSUS`
-# ne reposaient que sur l'absence de `fastapi` SUR L'HOTE : dans l'image
-# d'extraction, `src.docling_service.main` s'importe et les quatre ressortaient
-# LIES. Deux de ses classements etaient en outre FAUX, et personne ne l'avait
-# vu : `images.ensure_bucket` appelle `make_bucket`, donc ecrit ; les raisons
-# d'`extract` et de `_extract_pdf` omettaient `storage.forget_document`.
-#
-# DECISION DU PILOTE, 24 septembre 2026 : on ne rafistole pas l'analyse
-# statique — `getattr` suffit a tromper n'importe laquelle, et chaque audit
-# trouverait le trou suivant. La derivation, `NON_ECRIVAINS` et `HORS_PROCESSUS`
-# sont RETIRES : ils promettaient une exhaustivite qu'ils ne tenaient pas, et
-# leurs classements faux n'etaient plus corriges par personne. La preuve est
-# passee a l'EXECUTION, sur les constructeurs des SDK
-# (:func:`~src.equivalence_des_identifiants.barrer_les_sdk_de_store`), et les
-# tests de `TestLesPortesNeuvesLevent` la mesurent porte par porte.
-#
-# CE QUI RESTE DE L'ANCIEN DISPOSITIF, et ce qu'il prouve exactement : les
-# barrieres par SITE, seconde couche, verifiees ci-dessous sur la liste
-# DECLAREE des portes — plus aucune derivation, donc plus aucune phrase
-# d'exhaustivite. Et la CLASSIFICATION des dependances tierces, qui se lit
-# depuis `src/` et jamais d'une copie locale : ce fichier en portait une en dur,
-# donc vider la constante de production ne rougissait rien (mutant `S2` du
-# quatrieme audit). Voir `test_toute_dependance_tierce_de_src_est_classee`.
+# Restent verifiees ci-dessous : les barrieres par site, seconde couche, sur la
+# liste declaree des portes (sans pretention d'exhaustivite), et la
+# classification des dependances tierces, lue depuis `src/` et non depuis une
+# copie locale (voir `test_toute_dependance_tierce_de_src_est_classee`).
 
 PARCOURS_DES_SITES = """
 import importlib, json, sys
@@ -1104,14 +1059,13 @@ print(json.dumps({"originaux": sorted(originaux), "encore_lies": encore_lies,
 
 DECLAREES = json.dumps([*PORTES, TEMOIN_DU_STOCKAGE])
 
-# LES CINQ PORTES NEUVES DE L'AUDIT, plus les deux variantes de ce lot. Chacune
-# est un programme COMPLET : il arme, puis tente de construire un client par un
-# chemin different. Le verdict attendu est le meme partout — `BarriereDEcriture`.
+# Sept chemins de construction d'un client. Chacun est un programme complet : il
+# arme, puis tente de construire un client par un chemin different. Le verdict
+# attendu est le meme partout : `BarriereDEcritureError`.
 #
-# Elles portent sur `minio`, et c'est un choix de MESURE : c'est le seul des
-# trois SDK installe sur l'hote, donc le seul dont la porte qualite puisse
-# rougir sans conteneur. Les trois SDK sont mesures ensemble DANS L'IMAGE
-# d'extraction, et le releve est au registre (§4.39.b).
+# Ils portent sur `minio`, seul des trois SDK installe sur l'hote, donc seul
+# testable sans conteneur. Les trois SDK sont mesures ensemble dans l'image
+# d'extraction (registre 4.39.b).
 _ARMER = """
 from src.equivalence_des_identifiants import armer_les_barrieres
 
@@ -1185,17 +1139,13 @@ importlib.import_module("minio").Minio("h", access_key="a", secret_key="b")
 """,
 }
 
-# LES HUIT CHEMINS QUI NE PASSENT PAR AUCUN NOM, defaut N3 du quatrieme audit.
+# Huit chemins qui ne passent par aucun nom (registre 4.40.f). Le rebondage des
+# noms ne les prend pas ; ils passent tous par la classe, dont l'`__init__` leve
+# (`_barrer_la_classe`).
 #
-# Le rebondage des NOMS ne prend que les noms. `mesure` du 24 septembre 2026 sur
-# `minio` : sur 10 chemins de construction, **8 lui echappaient** — ceux-ci. Ils
-# passent tous par la CLASSE, et c'est pourquoi la barriere y descend : son
-# `__init__` leve (`_barrer_la_classe`).
-#
-# CHACUN CAPTURE LE CONSTRUCTEUR **AVANT** L'ARMEMENT, et c'est ce qui les rend
-# difficiles : au moment ou la barriere se pose, le nom `Minio` n'est plus le
-# seul chemin vers la classe. Une capture posterieure serait prise par le
-# rebondage, donc ne prouverait rien de neuf.
+# Chacun capture le constructeur avant l'armement : au moment ou la barriere se
+# pose, le nom `Minio` n'est plus le seul chemin vers la classe. Une capture
+# posterieure serait prise par le rebondage, donc ne prouverait rien de neuf.
 _CAPTURES = """
 import functools
 
@@ -1248,10 +1198,9 @@ CHEMINS_DE_CLASSE = {
     + '\nLECTEUR.__class__("h", access_key="a", secret_key="b")\n',
 }
 
-# LE CONTROLE NEGATIF DE N3, et il est indispensable : barrer la classe ne doit
-# PAS casser les clients de LECTURE du harnais, construits AVANT l'armement.
-# Leur `__init__` a deja tourne. Une barriere qui les casserait rendrait le
-# harnais inutilisable, et le rc du script ne dirait pas pourquoi.
+# Contre-epreuve : barrer la classe ne doit pas casser les clients de lecture du
+# harnais, construits avant l'armement (leur `__init__` a deja tourne). Une
+# barriere qui les casserait rendrait le harnais inutilisable.
 CLIENT_DE_LECTURE_SURVIT = (
     _CAPTURES
     + _ARMER
@@ -1293,12 +1242,10 @@ def _modules_temporaires(**modules):
 
 
 class TestLaBarriereDescendALaClasse:
-    """N3 : les huit chemins qui ne passent par AUCUN nom levent desormais.
+    """Les huit chemins qui ne passent par aucun nom levent (registre 4.40.f).
 
-    Ils portent sur `minio`, et c'est un choix de MESURE : c'est le seul des
-    trois SDK installe sur l'hote, donc le seul dont la porte qualite puisse
-    rougir sans conteneur. Les trois SDK sont mesures ensemble DANS L'IMAGE, et
-    le releve est au registre (§4.40.f).
+    Ils portent sur `minio`, seul des trois SDK installe sur l'hote, donc seul
+    testable sans conteneur. Les trois SDK sont mesures ensemble dans l'image.
     """
 
     def _lancer(self, code):
@@ -1318,11 +1265,11 @@ class TestLaBarriereDescendALaClasse:
         assert "BarriereDEcritureError" in acheve.stderr, (nom, acheve.stdout, acheve.stderr)
 
     def test_le_client_de_lecture_construit_avant_l_armement_lit_toujours(self):
-        """LE CONTROLE NEGATIF : une barriere qui casse le harnais ne garde rien."""
+        """Contre-epreuve : la barriere ne casse pas le client de lecture du harnais."""
         assert _executer(CLIENT_DE_LECTURE_SURVIT) == "lit"
 
     def test_l_armement_rend_ce_qu_il_a_pris_a_la_classe_et_ce_qu_il_n_a_pas_pu(self):
-        """Ce que la premiere couche n'a PAS pu prendre est RENDU, jamais tu."""
+        """Ce que la premiere couche n'a pas pu prendre est rendu, pas tu."""
         releve = _executer(
             """
 import json
@@ -1337,19 +1284,16 @@ print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.s
         assert releve["sans_classe"] == {}, releve
 
     def test_le_rebondage_des_noms_relie_les_modules_deja_charges(self):
-        """LA SECONDE COUCHE, mesuree sur ce qu'elle SEULE tient : une FABRIQUE.
+        """La seconde couche, sur ce qu'elle seule tient : une fabrique.
 
-        Depuis que la barriere descend a la classe (N3), le rebondage des noms
-        ne tient plus, a lui seul, aucun chemin de `minio` : ses deux
-        constructeurs sont des CLASSES, donc pris par la premiere couche. Ce
-        qu'il tient seul, ce sont les constructeurs qui NE SONT PAS des
-        classes — les 7 fabriques de `chromadb`, absentes de l'hote.
+        Les deux constructeurs de `minio` sont des classes, donc pris par la
+        premiere couche. Le rebondage des noms tient seul les constructeurs qui
+        ne sont pas des classes, comme les 7 fabriques de `chromadb`, absentes
+        de l'hote.
 
-        Ce test les remplace par une fabrique FACTICE, et mesure le geste qui
-        compte : un `from module import fabrique` DEJA execute ailleurs doit
-        etre re-lie. C'est lui que la mutation `A6-b` retire ; sans ce test,
-        elle survivait, et une couche qu'aucune mutation ne tient est une
-        couche dont on ne sait plus si elle garde.
+        Ce test utilise une fabrique factice et verifie qu'un
+        `from module import fabrique` deja execute ailleurs est re-lie
+        (mutation A6-b).
         """
         import types
 
@@ -1360,8 +1304,8 @@ print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.s
 
         sdk = types.ModuleType("faux_sdk_de_store")
         sdk.HttpClient = fabrique_de_client
-        # UN CONSOMMATEUR qui a DEJA fait son `from faux_sdk import HttpClient`,
-        # sous un alias : c'est exactement le cas que le balayage doit prendre.
+        # Un consommateur qui a deja fait son `from faux_sdk import HttpClient`,
+        # sous un alias : le cas que le balayage doit prendre.
         consommateur = types.ModuleType("faux_consommateur")
         consommateur.client_http = fabrique_de_client
         journal: list[str] = []
@@ -1378,17 +1322,16 @@ print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.s
         assert journal == ["faux_sdk.HttpClient", "faux_sdk.HttpClient"]
 
     def test_une_fabrique_n_est_pas_prise_par_la_classe_et_la_raison_est_rendue(self):
-        """LA BORNE DE LA PREMIERE COUCHE, et c'est le cas de `chromadb`.
+        """Limite de la premiere couche : le cas de `chromadb`.
 
-        Ses constructeurs sont des FONCTIONS, pas des classes : `HttpClient`,
-        `PersistentClient`, `EphemeralClient`… Il n'y a pas d'`__init__` a
-        barrer. Le rebondage des noms reste leur SEULE couche, et la raison
-        entre dans `sans_classe` pour que le script l'imprime au lieu de la
-        taire.
+        Ses constructeurs sont des fonctions (`HttpClient`, `PersistentClient`,
+        `EphemeralClient`…) : pas d'`__init__` a barrer. Le rebondage des noms
+        est leur seule couche, et la raison entre dans `sans_classe` pour que le
+        script l'imprime.
 
-        Ce cas ne se mesure pas sur l'hote par l'armement complet — `chromadb`
-        n'y est pas installe, et les deux constructeurs de `minio` sont des
-        classes. Il se mesure donc a la fonction, directement.
+        `chromadb` n'est pas installe sur l'hote, et les deux constructeurs de
+        `minio` sont des classes : le cas se teste donc directement sur la
+        fonction.
         """
         from src.equivalence_des_identifiants import _barrer_la_classe
 
@@ -1404,7 +1347,7 @@ print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.s
         assert journal == []
 
     def test_une_classe_est_prise_et_le_deja_construit_survit(self):
-        """L'autre sens, a la meme fonction : ce qui EST une classe est pris."""
+        """L'autre sens, a la meme fonction : une classe est prise."""
         from src.equivalence_des_identifiants import BarriereDEcritureError, _barrer_la_classe
 
         class Client:
@@ -1422,16 +1365,15 @@ print(json.dumps({"classes": armement.sdk.classes, "sans_classe": armement.sdk.s
         with pytest.raises(BarriereDEcritureError):
             Client("h")
         assert journal == ["faux.Client.__init__"]
-        # LE CONTROLE NEGATIF : l'instance anterieure reste utilisable.
+        # Contre-epreuve : l'instance anterieure reste utilisable.
         assert deja_construit.lire() == "lu sur h"
 
 
 class TestLesPortesNeuvesLevent:
-    """LA PREUVE EST A L'EXECUTION, et elle ne depend d'aucune lecture du code.
+    """La preuve est a l'execution, et ne depend d'aucune lecture du code.
 
-    Les cinq portes que la derivation AST a laissees passer, plus deux
-    variantes de ce lot. Chacune tourne dans un processus NEUF — armer est
-    irreversible — et doit lever `BarriereDEcritureError`.
+    Chaque chemin de `PORTES_NEUVES` tourne dans un processus neuf (armer est
+    irreversible) et doit lever `BarriereDEcritureError`.
     """
 
     def _lancer(self, code):
@@ -1472,7 +1414,7 @@ print(json.dumps(armement.journal))
 
 
 class TestLEnumerationDesConstructeurs:
-    """LES CONSTRUCTEURS SONT ENUMERES DEPUIS LE SDK INSTALLE, jamais de memoire."""
+    """Les constructeurs sont enumeres depuis le SDK installe, pas d'une liste."""
 
     def test_la_regle_de_minio_rend_les_clients_et_aucune_erreur(self):
         import minio
@@ -1485,7 +1427,7 @@ class TestLEnumerationDesConstructeurs:
         assert not [n for n in noms if n.endswith("Error")], noms
 
     def test_une_classe_publique_neuve_du_sdk_est_prise_sans_toucher_au_code(self):
-        """LE PIEGE « une liste en dur se trompe en silence », a un cran de profondeur."""
+        """Un client neuf publie par le SDK est pris sans modifier le code."""
         import types
 
         from src.equivalence_des_identifiants import _classes_hors_exception
@@ -1498,7 +1440,7 @@ class TestLEnumerationDesConstructeurs:
         assert _classes_hors_exception(faux) == ["ClientNeuf"]
 
     def test_la_regle_de_chromadb_ne_retient_que_les_fabriques(self):
-        """Les noms en `Client` qui sont des CLASSES sont les interfaces abstraites."""
+        """Les noms en `Client` qui sont des classes sont les interfaces abstraites."""
         import types
 
         from src.equivalence_des_identifiants import _fabriques_de_client
@@ -1524,39 +1466,33 @@ class TestLEnumerationDesConstructeurs:
         assert _pools_et_connexions(faux) == ["Connection", "ConnectionPool", "SessionPool"]
 
     def test_minio_est_bien_barre_et_les_sdk_absents_sont_nommes(self):
-        """Un SDK absent du processus n'y construit rien : c'est RENDU, jamais tu."""
+        """Un SDK absent du processus n'y construit rien, et son absence est rendue."""
         releve = _executer(PARCOURS_DES_SITES, DECLAREES)
 
         assert releve["sdk_barres"]["minio"] == ["minio.Minio", "minio.MinioAdmin"]
         # Sur l'hote, `nebula3` et `chromadb` ne s'importent pas : ils doivent
-        # etre NOMMES absents, et jamais sautes en silence.
+        # etre nommes absents, pas sautes en silence.
         assert set(releve["sdk_barres"]) | set(releve["sdk_absents"]) == {
             "minio",
             "nebula3.gclient.net",
             "nebula3.gclient.net.SessionPool",
             "chromadb",
-            # `chromadb` EN DEUX SITES depuis N3 : ses noms publics sont des
-            # FABRIQUES, et les classes concretes qu'elles construisent vivent
-            # dans `chromadb.api.client`.
+            # `chromadb` en deux sites : ses noms publics sont des fabriques, et
+            # les classes concretes qu'elles construisent vivent dans
+            # `chromadb.api.client`.
             "chromadb.api.client",
         }, releve
 
     def test_toute_dependance_tierce_de_src_est_classee(self):
-        """CHAQUE module tiers importe par `src/` est classe, et c'est une AUTORISATION.
+        """Chaque module tiers importe par `src/` est classe : liste d'autorisation.
 
-        **LA POLARITE EST LE GARDE, et c'est la reparation B2 du quatrieme
-        audit.** Ce test portait sa propre copie en dur de `SDK_DE_STORE` et
-        ecrivait `importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE)`, qui vaut
-        `SDK_DE_STORE - importe` parce que `&` lie plus fort que `^`. Il ne
-        pouvait voir qu'un SDK DISPARU. Deux mutants y survivaient : `S1`, un
-        `import boto3` ajoute a `storage.py`, et `S2`, la constante videe.
-
-        Il enumere desormais TOUS les modules tiers de premier niveau importes
-        par `src/` — hors bibliotheque standard, hors `src` — et exige que
-        chacun figure dans une classification IMPORTEE DEPUIS `src/`. Une
-        dependance tierce nouvelle rougit sans que personne ait eu a penser a
-        elle ; une dependance classee qui disparait rougit aussi, pour que la
-        classification ne conserve pas de nom mort.
+        Le test enumere tous les modules tiers de premier niveau importes par
+        `src/` (hors bibliotheque standard, hors `src`) et exige que chacun
+        figure dans la classification importee depuis `src/`, jamais une copie
+        locale (registre 4.40.b ; mutations S1, un `import boto3` ajoute, et S2,
+        la constante videe). Une dependance nouvelle rougit sans que personne ait
+        eu a y penser ; une dependance classee qui disparait rougit aussi, pour
+        que la classification ne garde pas de nom mort.
         """
         from src.equivalence_des_identifiants import PAS_UN_STORE, SDK_DE_STORE
 
@@ -1566,7 +1502,7 @@ class TestLEnumerationDesConstructeurs:
             for noeud in ast.walk(arbre):
                 if isinstance(noeud, ast.Import):
                     importe |= {alias.name.split(".")[0] for alias in noeud.names}
-                # `level == 0` : un `from .ngql import` est un import RELATIF,
+                # `level == 0` : un `from .ngql import` est un import relatif,
                 # dont le module n'est pas une dependance tierce.
                 elif isinstance(noeud, ast.ImportFrom) and noeud.level == 0 and noeud.module:
                     importe.add(noeud.module.split(".")[0])
@@ -1585,14 +1521,14 @@ class TestLEnumerationDesConstructeurs:
             f"la classification garde des noms que `src/` n'importe plus : {disparues}. "
             "Une classification qui survit a sa dependance ne decrit plus rien."
         )
-        # Les deux classes sont DISJOINTES : un nom des deux cotes rendrait le
+        # Les deux classes sont disjointes : un nom des deux cotes rendrait le
         # verdict de chaque assertion insensible a l'autre.
         assert not set(SDK_DE_STORE) & set(PAS_UN_STORE)
 
     def test_les_sdk_classes_stores_sont_ceux_que_la_barriere_couvre(self):
         """Classer un SDK « de store » sans le barrer ne garderait rien.
 
-        Le lien entre les deux constantes est fait ICI, et pas laisse a la
+        Le lien entre les deux constantes est verifie ici, pas laisse a la
         relecture : chaque nom de `SDK_DE_STORE` doit etre le premier segment
         d'au moins un chemin de `CONSTRUCTEURS_DES_SDK`, et reciproquement.
         """
@@ -1604,7 +1540,7 @@ class TestLEnumerationDesConstructeurs:
 
 
 class TestLesClientsDeLectureDuHarnais:
-    """LES SEULS CLIENTS PERMIS SONT CEUX DE LECTURE, et ils portent leur borne."""
+    """Les seuls clients permis sont de lecture, et chacun porte sa limite."""
 
     def test_l_enveloppe_ne_laisse_passer_que_les_methodes_nommees(self):
         from src.equivalence_des_identifiants import BarriereDEcritureError, LectureSeule
@@ -1624,13 +1560,10 @@ class TestLesClientsDeLectureDuHarnais:
             enveloppe.remove_object("seau", "cle")
 
     def test_l_enveloppe_ecrit_dans_le_journal_partage(self):
-        """Le journal de l'enveloppe est celui de l'ARMEMENT, reparation N2.
+        """Le journal de l'enveloppe est celui de l'armement (mutation N2).
 
-        Elle tenait son propre `self._journal`, que personne ne lisait : une
-        ecriture d'objet refusee ici, puis AVALEE par la production, ne devenait
-        aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement,
-        et c'est celui-la qu'on lui passe desormais — comme a
-        :class:`SessionEnLecture`, qui le faisait deja.
+        `figer` et `comparer` rougissent sur ce journal : une ecriture refusee
+        ici puis avalee par la production y reste visible.
         """
         from src.equivalence_des_identifiants import BarriereDEcritureError, LectureSeule
 
@@ -1666,12 +1599,9 @@ class TestLesClientsDeLectureDuHarnais:
             session.execute(requete)
         assert journal, "une requete refusee entre au journal"
 
-    # LES ECRITURES COMPOSEES QUI PASSAIENT, defaut B3 du quatrieme audit. Le
-    # controle ne decoupait que sur `;`, alors que nGQL compose aussi par le
-    # TUBE `|` — qui passe le resultat d'une lecture a une ECRITURE — et par le
-    # simple saut de ligne. Chacune de ces formes commence par un verbe de
-    # lecture et ECRIT. `mesure` sur une session factice, 24 septembre 2026 :
-    # les 12 passaient, dont les trois que l'audit nomme.
+    # Ecritures composees (registre 4.40.c) : nGQL compose par `;`, par le tube
+    # `|`, qui passe le resultat d'une lecture a une ecriture, et par le saut de
+    # ligne. Chacune de ces formes commence par un verbe de lecture et ecrit.
     ECRITURES_COMPOSEES = [
         'GO FROM "v" OVER PARENT_OF YIELD dst(edge) AS d | DELETE VERTEX $-.d;',
         "SHOW SPACES | DROP SPACE $-.Name;",
@@ -1683,16 +1613,15 @@ class TestLesClientsDeLectureDuHarnais:
         "USE rag_space | DROP SPACE rag_space;",
         "SHOW TAGS | DROP TAG $-.Name;",
         "DESCRIBE SPACE rag_space | DROP SPACE rag_space;",
-        # Les deux formes par SAUT DE LIGNE, mesurees ici et non par l'audit :
-        # elles passaient aussi, et c'est ce qui met le saut de ligne parmi les
-        # separateurs.
+        # Les deux formes par saut de ligne : c'est pourquoi le saut de ligne est
+        # parmi les separateurs.
         'GO FROM "v" OVER PARENT_OF YIELD dst(edge) AS d\nDELETE VERTEX $-.d;',
         "MATCH (d:Document) RETURN d\nDROP SPACE rag_space;",
     ]
 
     @pytest.mark.parametrize("requete", ECRITURES_COMPOSEES)
     def test_une_ecriture_composee_par_un_tube_ou_un_saut_de_ligne_est_refusee(self, requete):
-        """Le premier mot LIT, et la requete ECRIT. C'est tout le defaut B3."""
+        """Le premier mot lit, et la requete ecrit : elle doit etre refusee."""
         from src.equivalence_des_identifiants import BarriereDEcritureError, SessionEnLecture
 
         class Fausse:
@@ -1706,13 +1635,13 @@ class TestLesClientsDeLectureDuHarnais:
         assert journal, "une requete refusee entre au journal"
 
     def test_un_separateur_cite_fait_refuser_plus_jamais_moins(self):
-        """LA BORNE DU SITE, et elle est MESUREE ici plutot qu'affirmee.
+        """Limite du decoupage : un separateur cite fait refuser une lecture.
 
         Un separateur a l'interieur d'une chaine citee compte pour un
-        separateur : la requete ci-dessous ne fait que LIRE, et elle est
-        pourtant refusee. C'est le sens acceptable. L'autre sens est tenu par
-        l'argument ecrit au site — decouper ne fait qu'ajouter des fragments,
-        donc des exigences — et par les 12 formes ci-dessus.
+        separateur : la requete ci-dessous ne fait que lire, et elle est
+        pourtant refusee. C'est le sens sans danger : decouper ne fait
+        qu'ajouter des fragments, donc des exigences. L'autre sens est tenu par
+        les 12 formes ci-dessus.
         """
         from src.equivalence_des_identifiants import BarriereDEcritureError, SessionEnLecture
 
@@ -1734,7 +1663,7 @@ class TestLesClientsDeLectureDuHarnais:
         ],
     )
     def test_les_requetes_du_harnais_passent(self, requete):
-        """Le controle negatif : un garde qui refuse tout ne garde rien."""
+        """Contre-epreuve : un controle qui refuserait tout ne prouverait rien."""
         from src.equivalence_des_identifiants import SessionEnLecture
 
         class Fausse:
@@ -1744,13 +1673,13 @@ class TestLesClientsDeLectureDuHarnais:
         assert SessionEnLecture(Fausse(), []).execute(requete).startswith("passe")
 
     def test_les_trois_requetes_reelles_de_la_classe_graphe_passent(self):
-        """Les requetes du harnais telles que `Graphe` les FORME, et non recopiees.
+        """Les requetes du harnais telles que `Graphe` les forme, et non recopiees.
 
-        Le controle negatif precedent porte sur des requetes ecrites a la main
+        La contre-epreuve precedente porte sur des requetes ecrites a la main
         dans ce fichier : elles pourraient diverger de celles que le script
         envoie. Celles-ci sont formees par les memes constantes et les memes
         f-strings que `Graphe.__init__`, `Graphe.documents` et `Graphe.ids`, sur
-        des `element_id` REELS lus dans l'instantane versionne.
+        des `element_id` reels lus dans l'instantane versionne.
         """
         from src.docling_service.ngql import SPACE, document_vid
         from src.equivalence_des_identifiants import SessionEnLecture
@@ -1773,22 +1702,21 @@ class TestLesClientsDeLectureDuHarnais:
 
 
 class TestLesBarrieres:
-    """« Ce qui ecrirait leve », a TOUS les sites ou la porte est liee."""
+    """Ce qui ecrirait leve, a tous les sites ou la porte est liee."""
 
     def test_aucune_porte_declaree_ne_reste_liee_dans_un_module_src(self):
-        """LE TEST QUE L'AUDIT A MONTRE MANQUANT : deux mutants lui survivaient.
+        """Aucune porte declaree ne reste liee a son original (registre 4.37.d).
 
-        Apres armement, il parcourt chaque module `src.*` charge et rougit si un
-        attribut y EST ENCORE la fonction d'origine d'une porte DECLAREE.
-        `storage` et `extraction` importent `get_writer` PAR NOM : barrer
-        `nebula.get_writer` dans `nebula` seul le laisse vivant a deux sites.
-        `mesure` : il rougit au retrait de `nebula.get_writer` comme de
-        `vectors.get_collection` de la liste du producteur (registre 4.37.d).
+        Apres armement, le test parcourt chaque module `src.*` charge et rougit
+        si un attribut y est encore la fonction d'origine d'une porte declaree.
+        `storage` et `extraction` importent `get_writer` par nom : barrer
+        `nebula.get_writer` dans `nebula` seul le laisserait vivant a deux
+        sites. Le test rougit si `nebula.get_writer` ou `vectors.get_collection`
+        est retire de `PORTES`.
 
-        **CE QU'IL PROUVE, ET RIEN DE PLUS** : que les portes NOMMEES dans
-        `PORTES` sont bien deliees partout. Il ne dit rien des portes qu'on
-        n'aurait pas nommees — c'est la barriere d'execution sur les SDK qui
-        tient celles-la (`TestLesPortesNeuvesLevent`).
+        Il ne prouve que cela : les portes nommees dans `PORTES` sont deliees
+        partout. Les portes non nommees relevent de la barriere des SDK
+        (`TestLesPortesNeuvesLevent`).
         """
         releve = _executer(PARCOURS_DES_SITES, DECLAREES)
 
@@ -1833,7 +1761,7 @@ print(json.dumps({"leves": resultat, "journal": armement.journal}))
         assert sorted(releve["journal"]) == sorted(releve["leves"])
 
     def test_la_production_appelee_par_son_module_leve(self):
-        """Une barriere rendue mais non POSEE ne garde rien : on appelle par le module."""
+        """Une barriere rendue mais non posee ne garde rien : on appelle par le module."""
         releve = _executer(
             """
 import json
@@ -1863,12 +1791,11 @@ print(json.dumps(leve))
         assert all(v is True for v in releve.values()), releve
 
     def test_la_capture_valide_les_elements_comme_persist(self):
-        """M32 : « la capture valide les elements comme `persist` », ecrit et non tenu.
+        """Mutation M32 : la capture valide les elements comme `persist`.
 
         Sans la validation, un element hors contrat entrerait dans l'instantane
-        sans que rien ne le dise — et l'instantane est ce a quoi on compare
-        TOUT le reste. Le mutant de l'audit retirait l'appel a
-        `validate_elements` ; 55 tests restaient verts.
+        sans que rien ne le dise, alors que tout le reste est compare a
+        l'instantane.
         """
         releve = _executer(
             """
@@ -1936,8 +1863,8 @@ print(json.dumps({
         assert releve["journal"] == ["images.get_client().remove_object"]
 
 
-# Un chapitre de 30 elements, dont trois `ListItem` VIDES aux rangs 5, 11 et 17 —
-# la forme mesuree des puces de Docling. Le convertisseur est remplace ; tout le
+# Un chapitre de 30 elements, dont trois `ListItem` vides aux rangs 5, 11 et 17 :
+# la forme observee des puces de Docling. Le convertisseur est remplace ; tout le
 # reste est le chemin de production, `_extract_flat` et `DocumentAccumulator`
 # compris.
 SCENARIO = """
@@ -1995,15 +1922,14 @@ def _scenario(tmp_path, suite):
 
 
 class TestLesFauxVertsDeLAudit:
-    """Les deux scenarios de l'audit du lot 11, par le VRAI `_extract_flat`."""
+    """Les deux faux verts a eviter, par le vrai `_extract_flat`."""
 
     def test_trois_listitem_qui_recoivent_du_texte_rougissent_apres_la_campagne(self, tmp_path):
-        """FAUX VERT N° 1 : relance apres la campagne, l'ancien harnais disait `OK`.
+        """Faux vert n° 1 : comparer le code du jour au graphe qu'il a ecrit.
 
-        Le graphe d'apres est ECRIT par le code repare, et l'ancien harnais
-        reextrayait avec ce meme code : il comparait X a X. Le harnais compare
-        desormais a l'instantane fige AVANT, et doit dire les trois deplaces,
-        imputes a `text50`.
+        Le graphe d'apres est ecrit par le code repare ; reextraire avec ce meme
+        code ne verrait rien. Le harnais compare a l'instantane fige avant, et
+        doit dire les trois deplaces, imputes a `text50`.
         """
         resultat = _scenario(
             tmp_path,
@@ -2035,11 +1961,12 @@ resultat = {"rc_figer": rc_figer, "rc_nu": rc_nu, "rc_declare": rc_declare, "rc_
         assert resultat["journal"] == []
 
     def test_une_production_qui_calcule_sur_cleaned_rougit_avant_la_campagne(self, tmp_path):
-        """FAUX VERT N° 2 : l'ancien harnais recalculait, et ne voyait pas la derive.
+        """Faux vert n° 2 : un harnais qui recalcule ne voit pas une derive au site d'appel.
 
-        Le graphe est celui de la production SAINE. La production derive ensuite
-        au site d'appel : elle calcule sur `.cleaned/<cle>`. Aucun identifiant
-        emis n'est plus celui du graphe, et `figer` doit REFUSER d'ecrire.
+        Le graphe est celui de la production saine. La production derive
+        ensuite au site d'appel : elle calcule sur `.cleaned/<cle>`. Aucun
+        identifiant emis n'est plus celui du graphe, et `figer` doit refuser
+        d'ecrire.
         """
         resultat = _scenario(
             tmp_path,
@@ -2058,7 +1985,7 @@ resultat = {"rc": rc, "conformes": sum(l["element_id"] in GRAPHE["ids"] for l in
         assert resultat["rc"] == 1, "la production ne rend plus le graphe, et le harnais dit OK"
         assert resultat["ecrit"] is False, "un instantane faux a ete fige"
         assert any("emis seul / graphe seul  : 30 / 30" in ligne for ligne in resultat["sortie"])
-        # LA RAISON, et pas seulement le rc : le controle negatif rougit aussi ce
+        # La raison, et pas seulement le rc : le controle negatif rougit aussi ce
         # scenario, par ricochet (la mutation `site_d_appel` y devient nulle), et
-        # masquerait une confrontation au graphe qui ne garderait plus rien.
+        # masquerait une confrontation au graphe devenue inoperante.
         assert any("l'emission n'est pas le graphe" in ligne for ligne in resultat["sortie"])

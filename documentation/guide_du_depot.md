@@ -1,51 +1,35 @@
 # Guide du dépôt — le détail de l'exploitation courante
 
-> **Ce document est le corps long de l'ancien `README.md`**, déplacé ici le
-> 25 septembre 2026 quand le `README` est devenu un point d'entrée d'une page.
-> Rien n'y a été réécrit : ce sont les mêmes sections, au même contenu.
+> **Par où commencer.** Lire d'abord [`README.md`](../README.md), puis
+> [`livraison.md`](livraison.md), le mode d'emploi complet où chaque commande
+> est datée. [`axes_amelioration.md`](axes_amelioration.md) (le registre),
+> [`pilotage_du_chantier.md`](pilotage_du_chantier.md) et
+> [`campagnes/`](campagnes/) sont des **archives datées** : ils racontent
+> comment l'état actuel a été atteint et ne sont pas tenus à jour.
 >
-> **Un avertissement avant de lire.** Les chiffres que ce texte porte sont ceux
-> de leur date, pas d'aujourd'hui — les chiffres datés et remesurés sont à
-> [`etat_des_lieux.md`](etat_des_lieux.md) et à
-> [`livraison.md`](livraison.md). Le stockage d'objets, lui, n'est plus nommé
-> par ce document ni par le code : le dépôt parle à une **passerelle S3**, et
-> seule `S3_ENDPOINT` désigne le serveur — fiche :
-> [`services/stockage_objet.md`](services/stockage_objet.md).
+> Ce guide détaille le fonctionnement courant : sources, nettoyage, ingestion,
+> purge, graphe, porte qualité et garde-fous du dépôt. Ses chiffres portent leur
+> date ; les chiffres remesurés au 25 septembre 2026 sont à
+> [`etat_des_lieux.md`](etat_des_lieux.md) et à [`livraison.md`](livraison.md).
 >
-> **Ce que la relecture du 25 septembre 2026 a trouvé, et ce qu'elle a fait.**
-> Les commandes de ce document ont été relues une à une — **quatorze blocs**.
-> Le dépouillement :
+> **Stockage d'objets.** Le dépôt parle à une **passerelle S3** (aujourd'hui
+> SeaweedFS, `seaweedfs:8333`) ; seule la variable `S3_ENDPOINT` désigne le
+> serveur. Fiche : [`services/stockage_objet.md`](services/stockage_objet.md).
 >
-> - **aucune adresse de store en dur**, **aucune console**, **aucun
->   identifiant**, **aucune commande `mc`** : ce document n'en a jamais porté.
->   `mesuré le 25 septembre 2026` par `grep` sur les motifs d'adresse,
->   d'identifiant par défaut et de client en ligne de commande.
-> - **une phrase était factuellement fausse** — elle nommait le stockage
->   d'objets par un nom de service qui n'était plus le sien — et elle est
->   **corrigée** sur place, plus bas.
-> - **deux commandes ne sont pas vérifiables depuis ce document** parce
->   qu'elles **écrivent** ; elles portent désormais la marque **« antérieur à la
->   bascule, non vérifié »**, avec le renvoi vers le geste qui, lui, a été
->   exécuté.
-> - les **douze** autres blocs ne touchent pas au stockage d'objets — `git`,
->   `make`, `uv run ruff`, `pre-commit`, `detect-secrets`, `docker compose
->   logs`, `docker compose restart docling-service` — et la bascule ne les
->   atteint pas. **Un des douze a été rejoué** pour ne pas se payer de mots :
->   `docker compose exec docling-service python -m src.verify_data`,
->   `mesuré le 25 septembre 2026 à 09:38 UTC`, **`rc=0`** — 4 367 chunks,
->   **212** objets, 15 196 nœuds, 23 documents. *(Son titre de section nommait
->   alors un produit écrit dans le code ; il affiche désormais l'adresse
->   réellement interrogée, ce qui est la seule chose qui dise ce qu'on a
->   mesuré.)*
+> **Instruments.** Les scripts de purge et de contrôle (`wipe_stores`,
+> `verify_data`, `verify_contract`, `index_report`) se lancent par
+> `docker compose run --rm --no-deps …`, et non par `docker run --env-file .env` :
+> seul Compose dérive `S3_ACCESS_KEY` et `S3_SECRET_KEY` du jeu d'identifiants
+> du serveur ([`livraison.md`](livraison.md) §3.3).
 
 ---
 
 ## Ajouter une nouvelle source
 
-Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gildas-lormeau/SingleFile)) ne demande **aucun code Python** :
+Ajouter une source (par exemple un site capturé avec [SingleFile](https://github.com/gildas-lormeau/SingleFile)) ne demande **aucun code Python** :
 
-1. Déposez les fichiers dans un sous-dossier de `./Datas`, ex. `Datas/captures/monsite/`.
-2. Déclarez la source dans `src/pipeline/sources.yaml` :
+1. Déposer les fichiers dans un sous-dossier de `./Datas`, par exemple `Datas/captures/monsite/`.
+2. Déclarer la source dans `src/pipeline/sources.yaml` :
    ```yaml
    - name: capture_monsite
      glob: "captures/monsite/**/*.html"
@@ -53,13 +37,16 @@ Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gi
      cleaning:                                    # optionnel
        extra_remove_selectors: [".cookie-banner"]
    ```
-3. Rechargez le code location dans l'UI Dagster (bouton **Reload definitions**). Un sensor `capture_monsite_sensor` apparaît et ingère les fichiers.
+3. Recharger le code location dans l'UI Dagster (bouton **Reload definitions**). Un capteur `capture_monsite_sensor` apparaît et ingère les fichiers.
+
+Toute nouvelle source déplace les comptes de référence et l'empreinte des clés
+d'objets, et périme le jeu de 30 questions ([`livraison.md`](livraison.md) §8.4).
 
 ### Les trois types de sources
 
 | `type` | Chaîne d'assets | Quand l'utiliser |
 |---|---|---|
-| `pdf` | extraction directe, par lots de pages, images croppées vers le stockage d'objets | Livres et documents paginés |
+| `pdf` | extraction directe, par lots de pages, images découpées (crops) vers le stockage d'objets | Livres et documents paginés |
 | `html` | nettoyage universel puis extraction | Captures de sites, livres découpés en chapitres HTML |
 | `md` | extraction directe | Markdown déjà propre : notes, exports, documentation |
 
@@ -71,21 +58,21 @@ Le Markdown ne passe pas par le nettoyage : il n'a ni boilerplate à retirer ni 
   type: md
 ```
 
-Deux points méritent d'être connus.
+Deux points à connaître.
 
-**Docling convertit le Markdown ligne par ligne.** Un fichier dont les paragraphes sont coupés à 80 colonnes produirait donc un élément par ligne, et la recherche porterait sur des fragments de 75 caractères. Les paragraphes sont pour cette raison recollés avant conversion — sans toucher au fichier source, et en laissant intacts blocs de code, tableaux, listes, titres et retours à la ligne explicites.
+**Docling convertit le Markdown ligne par ligne.** Un fichier dont les paragraphes sont coupés à 80 colonnes produirait un élément par ligne, et la recherche porterait sur des fragments de 75 caractères. Les paragraphes sont donc recollés avant conversion, sans toucher au fichier source, en laissant intacts blocs de code, tableaux, listes, titres et retours à la ligne explicites.
 
-**Un Markdown ne contient jamais ses images, il les désigne.** Les deux syntaxes sont reconnues — `![[fichier.jpg|1000]]` d'Obsidian et `![légende](chemin)` du standard — et les images sont téléversées puis rattachées à leur place exacte dans le document. Corollaire : **copiez le dossier entier**, notes *et* pièces jointes. Une note copiée seule perd ses figures.
+**Un Markdown ne contient pas ses images, il les désigne.** Les deux syntaxes sont reconnues — `![[fichier.jpg|1000]]` d'Obsidian et `![légende](chemin)` du standard — et les images sont téléversées puis rattachées à leur place exacte dans le document. Il faut donc **copier le dossier entier**, notes *et* pièces jointes : une note copiée seule perd ses figures.
 
 ### Nettoyage HTML universel
 
 Les sources HTML passent par un nettoyage en étages, sans configuration par site :
-1. **Formules mathématiques** : les formules rendues (KaTeX, MathJax v2/v3, MathML) sont remplacées par leur source LaTeX — `$...$` (inline) ou `$$...$$` (bloc) — récupérée dans le DOM avant toute suppression. Sans ça, le rendu web produit du texte dupliqué illisible.
-2. **Pré-passe d'hygiène** : suppression des scripts, styles, éléments cachés (`sf-hidden`, `display:none`), chrome de page (nav, rôles ARIA), commentaires, icônes inline (< 4 Ko) et décorations d'ancres dans les titres. Les **images base64 volumineuses sont exportées vers le stockage d'objets** et leur `src` réécrit (comme les crops PDF) ; les `header`, `footer` et `aside` internes à un `<article>`/`<main>` sont conservés — le premier porte le titre de chapitre, le dernier les encadrés du livre (interviews, notes, avertissements).
+1. **Formules mathématiques** : les formules rendues (KaTeX, MathJax v2/v3, MathML) sont remplacées par leur source LaTeX — `$...$` (inline) ou `$$...$$` (bloc) — récupérée dans le DOM avant toute suppression. Sans cela, le rendu web produit du texte dupliqué illisible.
+2. **Pré-passe d'hygiène** : suppression des scripts, styles, éléments cachés (`sf-hidden`, `display:none`), chrome de page (nav, rôles ARIA), commentaires, icônes inline (< 4 Ko) et décorations d'ancres dans les titres. Les **images base64 volumineuses sont exportées vers le stockage d'objets** (`src/pipeline/media.py`) et leur `src` réécrit, comme les crops PDF. Les `header`, `footer` et `aside` internes à un `<article>`/`<main>` sont conservés : le premier porte le titre de chapitre, le dernier les encadrés du livre (interviews, notes, avertissements).
 3. **Extraction de contenu** : un profil par site (s'il est déclaré) gagne directement ; sinon les conteneurs sémantiques HTML5 (`<article>`, `<main>`) font autorité ; sinon [trafilatura](https://trafilatura.readthedocs.io/) et readability-lxml sont comparés et le plus complet gagne. Si aucun `<h1>` ne survit, le titre de la page est réinjecté (structure propre pour Docling).
-4. **Garde-fou** : si trop peu de texte est extrait, le HTML pré-nettoyé est conservé tel quel (rien n'est perdu) et un warning apparaît dans les logs Dagster.
+4. **Garde-fou** : si trop peu de texte est extrait, le HTML pré-nettoyé est conservé tel quel (rien n'est perdu) et un avertissement apparaît dans les logs Dagster.
 
-**Ce que « nettoyer » retire exactement.** Le fichier maigrit énormément — une capture SingleFile de 2,8 Mo tombe à 62 Ko — mais **cette division par 45 porte sur le poids du fichier, pas sur le contenu**. Le volume d'une capture est fait de scripts, de feuilles de style et d'images encodées en base64 dans le HTML lui-même. Mesuré sur les chapitres de `Practical MLOps` :
+**Ce que le nettoyage retire.** Le fichier maigrit fortement — une capture SingleFile de 2,8 Mo tombe à 62 Ko — mais **cette division par 45 porte sur le poids du fichier, pas sur le contenu**. Le volume d'une capture est fait de scripts, de feuilles de style et d'images encodées en base64 dans le HTML. Mesuré sur les chapitres de `Practical MLOps` :
 
 | | Avant nettoyage | Après nettoyage |
 |---|---|---|
@@ -97,20 +84,20 @@ Les sources HTML passent par un nettoyage en étages, sans configuration par sit
 
 **Le texte perd environ 1 %**, et ce 1 % est le chrome du lecteur : « Table of contents », « Search », « Sign out ». Code, images, tableaux et titres passent intégralement.
 
-La stratégie retenue, les tailles avant/après et le nombre d'images exportées sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition. Si un site ressort mal, déclarez-lui un profil `detect`/`content`/`strip` dans `sources.yaml` (voir l'exemple en tête du fichier).
+La stratégie retenue, les tailles avant/après et le nombre d'images exportées sont visibles dans les métadonnées de l'asset `cleaned_html` de chaque partition. Si un site ressort mal, lui déclarer un profil `detect`/`content`/`strip` dans `sources.yaml` (voir l'exemple en tête du fichier).
 
 ### Ce qui n'est ingéré qu'une fois : détection des doublons
 
-Sur une bibliothèque constituée au fil des années, le même ouvrage revient sous deux noms — une copie de sauvegarde, un téléchargement refait. Deux cas, deux traitements :
+Dans une bibliothèque constituée au fil des années, le même ouvrage revient sous deux noms — une copie de sauvegarde, un téléchargement refait. Deux cas, deux traitements :
 
 | Cas | Traitement |
 |---|---|
-| **Le même fichier, même chemin, ré-ingéré** | Les identifiants d'éléments sont déterministes et les écritures sont des *upserts* : la nouvelle version écrase l'ancienne. Aucun doublon possible, c'est acquis depuis le début. |
+| **Le même fichier, même chemin, ré-ingéré** | Les identifiants d'éléments sont déterministes et les écritures sont des *upserts* : la nouvelle version écrase l'ancienne. Aucun doublon possible. |
 | **Le même fichier, sous un autre nom ou un autre dossier** | L'empreinte SHA-256 du fichier est portée par le nœud `Document`. Avant toute conversion, le service cherche si un autre document porte la même empreinte : si oui, le fichier est **ignoré**, le run réussit et signale `duplicate_of` avec le chemin de l'original. |
 
-Le contrôle a lieu **avant la conversion** : reconnaître un doublon coûte une lecture de fichier, le convertir pour rien coûte plusieurs minutes de GPU.
+Le contrôle a lieu **avant la conversion** : reconnaître un doublon coûte une lecture de fichier, le convertir pour rien coûte plusieurs minutes de calcul.
 
-**Ce que ça ne détecte pas, volontairement** : deux éditions différentes du même livre, ou le même ouvrage en PDF et en HTML. Les fichiers diffèrent, donc les empreintes aussi. Les rapprocher demanderait une comparaison approximative, qui écarterait à tort des ouvrages légitimes — un risque plus grave que le doublon lui-même.
+**Ce qui n'est pas détecté, volontairement** : deux éditions différentes du même livre, ou le même ouvrage en PDF et en HTML. Les fichiers diffèrent, donc les empreintes aussi. Les rapprocher demanderait une comparaison approximative, qui écarterait à tort des ouvrages légitimes — un risque plus grave que le doublon lui-même.
 
 ### La hiérarchie des titres
 
@@ -126,19 +113,17 @@ Ce qui change d'un format à l'autre n'est pas la règle, mais d'où vient le ra
 | **Markdown** | l'attribut `level` (1 pour `##`, 2 pour `###`) | fidèle aux dièses du fichier |
 | **PDF** | la **taille de police**, lue dans le fichier | reconstruite, voir ci-dessous |
 
-Le code n'a aucune branche par format : il essaie les signaux dans l'ordre et prend le premier qui répond. **Si aucun ne répond, tous les titres restent frères sous le document** — le comportement d'avant. La hiérarchie n'est jamais inventée.
+Le code n'a aucune branche par format : il essaie les signaux dans l'ordre et prend le premier qui répond. **Si aucun ne répond, tous les titres restent frères sous le document.** La hiérarchie n'est jamais inventée.
 
-**Le cas des PDF.** Docling ne déclare aucun parent sur un PDF et met tous les titres au même niveau — mesuré : 333 en-têtes, tous au niveau 1. Mais la taille de police est **écrite en clair dans le fichier** ; on la lit, on ne l'estime pas. Le relevé se fait une fois par document : la taille qui porte le plus de caractères est celle du corps du texte, les tailles supérieures sont celles des titres, et leur rang donne le niveau.
+**Le cas des PDF.** Docling ne déclare aucun parent sur un PDF et met tous les titres au même niveau — mesuré : 333 en-têtes, tous au niveau 1. Mais la taille de police est **écrite en clair dans le fichier** ; elle est lue, pas estimée. Le relevé se fait une fois par document : la taille qui porte le plus de caractères est celle du corps du texte, les tailles supérieures sont celles des titres, et leur rang donne le niveau.
 
-**Aucune valeur n'est écrite en dur** — un ouvrage composé en 24/22/20 points se segmente exactement comme un ouvrage en 20/18/16.
+**Aucune valeur n'est écrite en dur** : un ouvrage composé en 24/22/20 points se segmente exactement comme un ouvrage en 20/18/16.
 
-Deux garde-fous : un titre dont la boîte est **contenue dans une image ou un tableau** est écarté (le texte d'une figure peut être grand), et un titre **pas plus grand que le corps du texte** n'ouvre pas de niveau. Un titre écarté prend le rang le plus profond, jamais le rang zéro — le promouvoir chapitre remettrait tout l'arbre à zéro.
+Deux garde-fous : un titre dont la boîte est **contenue dans une image ou un tableau** est écarté (le texte d'une figure peut être grand), et un titre **pas plus grand que le corps du texte** n'ouvre pas de niveau. Un titre écarté prend le rang le plus profond, jamais le rang zéro : le promouvoir chapitre remettrait tout l'arbre à zéro.
 
-**La profondeur n'est plafonnée par rien**, et cette phrase disait le contraire. Le lot 3 a retiré `MAX_DEPTH` (registre §4.24) : `depth` est le nombre d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document, et il dépasse 3 sur une part mesurable du corpus. Le site canonique de cette règle, des **deux échelles** qui s'y croisent et de la distribution mesurée est `ChunkMetadata.depth` dans `src/pipeline/schemas.py` — la distribution n'est écrite que là, pour qu'elle n'ait pas quatre sites de plus.
+**La profondeur n'est pas plafonnée** (registre §4.24). `depth` est le nombre d'arêtes `PARENT_OF` qui séparent l'élément de la racine de son document, et il dépasse 3 sur une part mesurable du corpus.
 
-Le motif écrit du plafond — « l'objectif est de reconstruire un bloc avec ses titres parents, pas de reproduire une arborescence complète » — **décrivait une limitation de l'arbre qui n'a jamais existé** : `parent_id` n'a jamais été plafonné, donc les arêtes écrites dans le graphe étaient les mêmes avec ou sans lui. Son seul effet mesurable était de rendre `depth` non injectif, la valeur 4 recouvrant les profondeurs réelles 4 **et** 5.
-
-**Et `depth` mélange deux échelles**, ce qu'un agent doit savoir avant de s'en servir : sur un **titre**, il compte les titres au-dessus ; sur **tout autre** élément, il vaut celui de son titre **plus un**. Un paragraphe sous un titre de premier niveau vaut donc 1, comme un sous-titre — c'est `label` qui dit laquelle des deux on lit. Le site canonique de cette règle est `ChunkMetadata.depth` dans `src/pipeline/schemas.py`.
+**`depth` mélange deux échelles**, ce qu'un agent doit savoir avant de s'en servir : sur un **titre**, il compte les titres au-dessus ; sur **tout autre** élément, il vaut celui de son titre **plus un**. Un paragraphe sous un titre de premier niveau vaut donc 1, comme un sous-titre ; c'est `label` qui dit laquelle des deux échelles on lit. La règle, les deux échelles et la distribution mesurée sont écrites à un seul endroit : `ChunkMetadata.depth` dans `src/pipeline/schemas.py`.
 
 **Vérifié contre le sommaire imprimé de l'ouvrage, ligne à ligne :**
 
@@ -156,23 +141,21 @@ Le motif écrit du plafond — « l'objectif est de reconstruire un bloc avec se
     [1] Summary
 ```
 
-Chaque chunk porte sa profondeur sous la clé `depth`. Le rapport d'index (`src/index_report.py`) compte les documents par profondeur atteinte, ce qui montre d'un coup d'œil lesquels sont restés plats.
+Chaque chunk porte sa profondeur sous la clé `depth`. Le rapport d'index (`src/index_report.py`) compte les documents par profondeur atteinte, ce qui montre lesquels sont restés plats.
 
 ### La langue de chaque document
 
-Chaque document est identifié dans l'une de sept langues (`en`, `fr`, `es`, `de`, `it`, `pt`, `nl`), et cette langue est portée par le nœud `Document` **et par chaque chunk** — l'agent peut donc filtrer sans repasser par le graphe. La valeur reste vide quand le doute est permis.
+Chaque document est identifié dans l'une de sept langues (`en`, `fr`, `es`, `de`, `it`, `pt`, `nl`), et cette langue est portée par le nœud `Document` **et par chaque chunk** : l'agent peut donc filtrer sans repasser par le graphe. La valeur reste vide en cas de doute.
 
-C'est important, et **cette phrase disait exactement le contraire de la vérité.** Elle annonçait que « le modèle qui transforme le texte en vecteurs n'est entraîné que sur de l'anglais » : c'était vrai d'`all-MiniLM-L6-v2`, remplacé depuis `7b72854`. Le modèle du contrat est `paraphrase-multilingual-MiniLM-L12-v2`, **multilingue** — une question française retrouve les passages anglais, et réciproquement. Le contrat met explicitement en garde contre le modèle dont cette phrase portait encore la trace (registre §6.14).
-
-Le renvoi qui suivait pointait de surcroît une **ancre disparue** — `#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`, qui ne correspond à aucun titre de la cible. La mesure des deux modèles, les scores comparés et les quatre façons de traiter le multilingue sont dans [base_vectorielle.md](base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue).
+Le modèle d'embedding du contrat, `paraphrase-multilingual-MiniLM-L12-v2`, est **multilingue** : une question française retrouve les passages anglais, et réciproquement. L'ancien modèle `all-MiniLM-L6-v2`, entraîné sur l'anglais seul, ne doit pas être utilisé (registre §6.14). La mesure des deux modèles, les scores comparés et les quatre façons de traiter le multilingue sont dans [base_vectorielle.md](base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue).
 
 ### Ce qui n'est pas ingéré : index, sommaire, pages liminaires
 
-Un livre ne contient pas que du livre. **L'index est le pire cas pour un RAG** : une liste de mots suivis de numéros de page, sans une seule phrase à indexer, mais qui contient tout le vocabulaire de l'ouvrage — il ressort donc sur presque toutes les questions sans jamais rien apporter. Sommaire, couverture et page de copyright ont le même profil.
+Un livre ne contient pas que du contenu. **L'index est le pire cas pour un RAG** : une liste de mots suivis de numéros de page, sans une phrase à indexer, mais qui contient tout le vocabulaire de l'ouvrage — il ressort donc sur presque toutes les questions sans rien apporter. Sommaire, couverture et page de copyright ont le même profil.
 
 Sont écartés par défaut : `Index`, `Table of Contents`, `Contents`, `Cover`, `Copyright`, `Credits`, `Colophon`, `Title page`, `Dedication`, `About the author`, `About the reviewer`, et leurs équivalents français. La liste complète est `FRONT_BACK_MATTER_TITLES` dans [`matter.py`](../src/docling_service/matter.py).
 
-**Ne sont pas écartés, volontairement** : préface, glossaire (`Key Terms`) et annexes. C'est de la prose, et un glossaire répond même très bien aux questions « c'est quoi X ? ».
+**Ne sont pas écartés, volontairement** : préface, glossaire (`Key Terms`) et annexes. C'est de la prose, et un glossaire répond bien aux questions « c'est quoi X ? ».
 
 Le repérage dépend du format :
 
@@ -181,9 +164,9 @@ Le repérage dépend du format :
 | Livre découpé en fichiers (HTML, MD) | **Par le nom du fichier**. `Index.html` n'est même pas transformé en partition : ni run, ni place, ni bruit. |
 | PDF | **Par les signets du document** — l'arborescence cliquable du volet gauche d'un lecteur PDF. Elle donne le titre de chaque partie et sa page de début. |
 
-**Le décalage des pages ne se pose pas.** C'est le piège attendu : dans un livre, le sommaire imprimé annonce des numéros qui ne correspondent pas au rang réel de la page dans le fichier, avec un écart d'une à deux pages. Les signets, eux, ne portent pas un numéro imprimé mais une **destination interne** que le format résout en page physique. Vérifié sur `statisticsfordatascience.pdf` : le sommaire imprimé annonce la préface page 1, alors qu'elle commence physiquement page 19 — et le signet donne bien 19.
+**Le décalage des pages ne se pose pas.** Dans un livre, le sommaire imprimé annonce des numéros qui ne correspondent pas au rang réel de la page dans le fichier, avec un écart d'une à deux pages. Les signets, eux, portent une **destination interne** que le format résout en page physique. Vérifié sur `statisticsfordatascience.pdf` : le sommaire imprimé annonce la préface page 1, alors qu'elle commence physiquement page 19 — et le signet donne bien 19.
 
-**Filet de sortie.** Beaucoup de PDF n'ont pas de signets, ou en ont d'incomplets. Dans ce cas l'index est reconnu **à sa forme** : des lignes courtes terminées par un ou plusieurs numéros de page, cherchées uniquement dans le dernier quart du document pour ne pas confondre un index avec un tableau de résultats en plein chapitre.
+**Filet de sécurité.** Beaucoup de PDF n'ont pas de signets, ou en ont d'incomplets. Dans ce cas l'index est reconnu **à sa forme** : des lignes courtes terminées par un ou plusieurs numéros de page, cherchées uniquement dans le dernier quart du document pour ne pas confondre un index avec un tableau de résultats en plein chapitre.
 
 Un garde-fou refuse d'écarter plus de 35 % d'un document : au-delà, c'est forcément un signet parent mal interprété, pas un index.
 
@@ -203,246 +186,187 @@ Le nombre de pages écartées apparaît dans les métadonnées du job (`skipped_
 
 ## Ingestion à grande échelle
 
-Un corpus de plusieurs dizaines de livres de 300 à 400 pages se déroule sans intervention, mais demande de savoir quoi regarder.
+Un corpus de plusieurs dizaines de livres de 300 à 400 pages se déroule sans intervention, à condition de savoir quoi regarder.
 
-**Comment le débit est cadencé.** Le sensor crée une partition et un run par fichier. La file Dagster n'en exécute que deux à la fois (`max_concurrent_runs` dans `dagster.yaml`), et le service Docling ne convertit qu'un document à la fois : les autres runs attendent visiblement dans **Runs → Queued**. Rien ne sature, rien ne se perd, et l'ordre est celui de la découverte.
+**Comment le débit est cadencé.** Le capteur crée une partition et un run par fichier. La file Dagster n'en exécute que deux à la fois (`max_concurrent_runs` dans `dagster.yaml`), et le service Docling ne convertit qu'un document à la fois : les autres runs attendent dans **Runs → Queued**. Rien ne sature, rien ne se perd, et l'ordre est celui de la découverte.
 
-Validé en conditions réelles : 120 fichiers déposés d'un coup produisent **120 partitions et 120 runs dans un seul passage de sensor**, drainés en 6 minutes. Un test unitaire garde cette propriété jusqu'à 250 fichiers.
+Validé en conditions réelles : 120 fichiers déposés d'un coup produisent **120 partitions et 120 runs dans un seul passage de capteur**, traités en 6 minutes. Un test unitaire vérifie cette propriété jusqu'à 250 fichiers.
 
-**Si le service redémarre en cours de route.** Sa file de jobs vit en mémoire : les documents en cours sont perdus. Les assets portent pour cette raison une politique de reprise (deux tentatives, délai croissant) qui rattrape le cas sans intervention. Les échecs propres à un document, eux, ne sont pas retentés — inutile de reconvertir 400 pages pour retomber sur la même page illisible.
+**Si le service redémarre en cours de route.** Sa file de jobs vit en mémoire : les documents en cours sont perdus. Les assets portent donc une politique de reprise (deux tentatives, délai croissant) qui rattrape le cas sans intervention. Les échecs propres à un document ne sont pas retentés : reconvertir 400 pages pour retomber sur la même page illisible est inutile.
 
-**Suivre un document.** Chaque run journalise l'avancement de son job toutes les 15 secondes : pages traitées, éléments extraits, chunks écrits. À la fin, les métadonnées de l'asset `extracted_document` récapitulent le total et la durée. Côté service :
+**Suivre un document.** Chaque run journalise l'avancement de son job toutes les 15 secondes (`extraction_poll_seconds`) : pages traitées, éléments extraits, chunks écrits. À la fin, les métadonnées de l'asset `extracted_document` récapitulent le total et la durée. Côté service :
 
 ```bash
 docker compose logs -f docling-service
 ```
 
-**Ce qui fait échouer un run — et ce que ça veut dire.**
+**Ce qui fait échouer un run, et ce que cela veut dire.**
 
-| Message | Cause | Quoi faire |
+| Message | Cause | Que faire |
 |---|---|---|
-| `Job ... inconnu du service Docling (redémarrage ?)` | Le service a redémarré, la file est en mémoire | Relancer la partition depuis l'UI Dagster |
+| `Job ... inconnu du service Docling (redemarrage ?)` | Le service a redémarré, la file est en mémoire | La politique de reprise relance ; sinon, relancer la partition depuis l'UI Dagster |
 | `N batch(s) non convertis` | Des pages n'ont pas pu être lues par Docling | Les autres pages sont bien ingérées ; le message liste les pages manquantes |
-| `Service Docling toujours pas prêt` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
-| `nGQL rejeté ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
+| `Service Docling toujours pas pret` | Modèles ou schéma NebulaGraph pas encore initialisés | Attendre la fin du démarrage (`docker compose ps` : `healthy`) |
+| `nGQL rejete ...` | Écriture refusée par le graphe | Le run échoue volontairement plutôt que de laisser un graphe incomplet |
 
-**Ré-ingérer proprement.** Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro, le script tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et **`seaweedfs`** par leur nom de service) :
+### Purger les stores
 
-```bash
-docker compose exec docling-service python -m src.wipe_stores
-```
-
-> **Corrigé le 25 septembre 2026.** Cette phrase nommait le stockage d'objets
-> par un nom de service qui n'était plus le sien. `wipe_stores` vise ce que
-> `S3_ENDPOINT` désigne, et **rien d'autre** — il affiche d'ailleurs cette
-> adresse avant de compter ce qu'il supprime. Cette variable **n'a aucune
-> valeur par défaut** : sans elle, la purge ne commence pas.
->
-> **Et la commande ci-dessus est marquée « antérieur à la bascule, non
-> vérifié ».** Elle n'a pas été rejouée : **elle écrit**, elle vide les trois
-> stores. La forme qui **a** été jouée le 25 septembre 2026, avec son montage
-> complet, est au **§3.3 de [`livraison.md`](livraison.md)** — préférez-la.
-> Retenez surtout ce que celle-ci ne dit pas : **la purge impose deux
-> redémarrages**, `docling-service` **et** le conteneur `agent-api` de
-> `rag-agent-chat` (§3.3 et §6.6 de [`livraison.md`](livraison.md)).
-
-> **LA PURGE NE DÉCLENCHE RIEN, ET CETTE SECTION NE LE DISAIT PAS.** Elle donnait
-> la purge, puis « redémarrer, puis réingérer », sans une ligne sur ce qui
-> provoque la réingestion. Le chemin nominal est le capteur de source, et il en
-> était **incapable** : sa clé de run était déterministe sur `(source, partition,
-> mtime)`, Dagster cherche une clé consommée dans **tout** l'historique sans borne
-> de temps, donc un fichier dont le `mtime` n'a pas bougé ne pouvait jamais être
-> réingéré — et l'échec ne ressemblait pas à un échec (`skip_reason=None`, pas une
-> ligne au journal). `mesuré` le **2 septembre 2026**, curseur vidé et vérifié à 0
-> entrée : **23 clés demandées, 0 run créé** ; le détail vit à son site canonique,
-> [`documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`](campagnes/2026-09-02-premiere-campagne-de-reference.md).
-> **Un opérateur qui purgeait puis attendait gardait des stores vides
-> indéfiniment**, en ayant suivi cette section à la lettre. Registre §4.32.a.
-
-**Déclencher la réingestion.** Elle **ne part jamais toute seule** : elle se
-demande, en posant le curseur du capteur de la source sur `reingerer:<étiquette>`.
-Un capteur par source — `pdfs_sensor`, `livres_html_sensor`, `markdown_sensor`.
-
-Par l'interface Dagster, **Overview → Sensors → le capteur → Cursor → Edit cursor** :
-
-```
-reingerer:2026-09-22-apres-purge
-```
-
-ou en ligne de commande, dans le conteneur qui porte déjà le workspace du daemon :
+Les identifiants d'éléments sont déterministes : ré-ingérer un document écrase ses nœuds et ses vecteurs au lieu de les dupliquer. Pour repartir de zéro, le script de purge tourne **dans le réseau Docker** (il s'adresse à `chromadb`, `graphd` et au serveur que désigne `S3_ENDPOINT`) :
 
 ```bash
-docker compose exec dagster-daemon dagster sensor cursor -w /opt/dagster/app/src/workspace.yaml --set 'reingerer:2026-09-22-apres-purge' livres_html_sensor
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.wipe_stores
 ```
 
-> **Antérieur à la bascule, non vérifié.** Cette forme **écrit un curseur et
-> déclenche 23 runs** : elle n'a pas été rejouée. Elle vise `dagster-daemon` ;
-> la forme **exécutée** le 25 septembre 2026 vise `dagster-webserver` et se lit
-> au **§3.2 de [`livraison.md`](livraison.md)**. Les deux gestes sont le même,
-> mais seul le second a été mesuré. L'étiquette ci-dessus est un **exemple daté
-> du 22 septembre 2026** : **ne la recopiez pas telle quelle** — une étiquette
-> déjà employée est une clé de run déjà consommée, donc **zéro run et aucun
-> message**.
+C'est la forme exécutée le 25 septembre 2026 ([`livraison.md`](livraison.md) §3.3). `wipe_stores` vise ce que `S3_ENDPOINT` désigne, et rien d'autre ; il affiche cette adresse avant de compter ce qu'il supprime. La variable **n'a aucune valeur par défaut** : sans elle, la purge ne commence pas. Sur la pile en service, la purge doit annoncer **212 objets supprimés** sous `seaweedfs:8333` ; un autre compte ou une autre adresse arrête la procédure.
 
-| | |
-|---|---|
-| **Ce qui déclenche** | ce marqueur, et rien d'autre. Le tick qui le lit repart sans aucun `mtime` connu — le marqueur a pris la place du curseur JSON qui les portait —, redemande une partition par fichier, et fait porter **l'étiquette** à la clé de run : c'est ce qui la rend neuve pour Dagster. |
-| **Ce qui garantit qu'elle ne parte pas seule** | **deux** choses, et elles ne couvrent pas le même cas. D'abord **le curseur** : il vit dans le stockage de l'instance, survit au rechargement du code, aucune ligne du dépôt ne l'efface, et tant qu'il est là le capteur ne demande rien sur un corpus inchangé. Ensuite, **sans marqueur, la clé garde exactement sa forme historique** `{source}_{partition}_{mtime}` — mais cela ne sert que si le curseur est perdu **seul, historique intact** : remise à zéro à la main, capteur renommé, code location renommée. Là, le capteur redemande tout, Dagster ne crée aucun run, et il le **dit**. `TestLaCleNominaleEstInchangee` fige cette forme. |
-| **Ce qu'aucune des deux ne couvre** | la perte **simultanée** du curseur et de l'historique — ils sont dans le même Postgres. Le corpus entier est alors réingéré, en silence, et la forme de la clé n'y change rien. Registre §4.26. |
-| **Si le geste est fait deux fois** | avec la **même** étiquette, les clés sont identiques et Dagster ne crée aucun run — le capteur le **dit**, avec le nombre de demandes perdues, et le curseur a avancé : le geste est à refaire. Avec une étiquette **neuve**, la réingestion repart. |
-| **Un marqueur sans étiquette** | est refusé, le curseur laissé intact, et la raison journalisée. L'honorer rendrait la clé constante, donc le second geste muet — le défaut §4.32.a rouvert par le geste censé le fermer. |
-| **Si une ingestion de cette source tourne déjà** | le contrôle porte sur le **job**, donc sur tout run de la source — une réingestion précédente comme une ingestion nominale. Le marqueur n'est **pas** honoré et **pas** consommé : le tick rend un `SkipReason` qui nomme le run en vol **et son âge**, et le tick suivant relira le marqueur. Le geste est **différé, pas perdu**. Sans cette garde, un second marqueur d'étiquette neuve produisait un second jeu complet de runs — deux runs sur la **même** partition réécrivant `Datas/.cleaned/<fichier>` en même temps, ce que `max_concurrent_runs: 2` sans clé de concurrence par partition rend atteignable. Registre §4.33.c. **La portée est le marqueur** : un fichier *modifié* pendant une réingestion produit toujours une clé neuve sur une partition en vol, et ce cas reste ouvert (§4.34.a). Le refus **se répète tant que le run n'est pas terminal** — un run gelé le prolongerait, borné par le `max_runtime_seconds` de `dagster.yaml`, soit **25 h** au pire (90 000 s) — et **non** les 24 h de `extraction_timeout_seconds`, qui est le plafond que le pipeline s'accorde *par document* et non celui du *run monitoring* ; l'arithmétique des deux est écrite une fois dans `dagster.yaml` ; l'âge annoncé dans la raison de saut est ce qui le rend lisible. |
+Il purge **quatre** choses. Sa sortie titre chacune (`--- ChromaDB ---`, `--- Stockage objet (<adresse>) ---`, `--- NebulaGraph ---`, `--- HTML nettoye ---`) :
 
-L'étiquette est libre : une date, un motif. La seule règle est qu'elle soit **neuve
-à chaque geste**.
-
-Il purge **quatre** choses, et non trois. Cette phrase disait « les trois stores — collection ChromaDB, space NebulaGraph et bucket d'objets » : c'était une phrase d'exhaustivité, et le lot 4 l'a rendue fausse en ajoutant la quatrième sans la compter ici. Le compte est `mesuré` sur la sortie du script, qui titre chacune (`--- ChromaDB ---`, `--- Stockage objet (<adresse>) ---`, `--- NebulaGraph ---`, `--- HTML nettoyé ---`) :
-
-| Ce qui est purgé | Pourquoi il y est |
+| Ce qui est purgé | Pourquoi |
 |---|---|
 | la collection ChromaDB `rag_documents` | les vecteurs |
 | le space NebulaGraph `rag_space` | le graphe |
-| le bucket `documents` du stockage d'objets | les crops d'images ; ils survivaient à toute purge avant le lot 4 |
-| `Datas/.cleaned/` | **les orphelins, et rien d'autre.** Cette case a dit pendant quatre lots que « l'asset `cleaned_html` ne se rematérialise pas si son fichier existe déjà » : **c'est faux**, `mesuré` le 22 septembre 2026 en appelant le corps livré de l'asset deux fois sur une copie temporaire — une destination au contenu périmé est **réécrite**. Ce qu'une réingestion ne réécrit jamais, ce sont les copies nettoyées des documents que le corpus n'a **plus** : rien ne les relit, rien ne les efface, et après la purge du bucket elles pointent des objets que seul `cleaned_html` restaurerait — pour un document qui n'existe plus. *(Elles ne sont pas le seul résidu d'un document disparu : sa partition dynamique Dagster survit elle aussi, et `wipe_stores` n'y touche pas — §4.34.g. Elles sont le seul qui porte des adresses d'objets mortes.)* Registre §4.33.a ; gardé par `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`, qui tient les **deux** natures, celle qui est réécrite et celle qui survit |
+| le bucket `documents` du stockage d'objets | les crops et images ; sans purge, ceux des ingestions précédentes s'accumuleraient |
+| `Datas/.cleaned/` | les copies nettoyées **orphelines**. Une réingestion réécrit déjà une copie nettoyée périmée (mesuré le 22 septembre 2026) ; ce qu'elle ne réécrit jamais, ce sont les copies des documents que le corpus n'a **plus**, qui pointent des objets supprimés par la purge du bucket (registre §4.33.a). La partition dynamique Dagster d'un document disparu survit aussi, et `wipe_stores` n'y touche pas (registre §4.34.g). Vérifié par `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT` |
 
-**Le sous-répertoire `.cleaned` n'est pas configurable, et c'est délibéré.** `CLEANED_SUBDIR` a été un réglage annoncé dans `.env.example`, et il décidait à lui seul de la cible de ce `rmtree`. Quatre valeurs faisaient viser `Datas/` ou son parent, et deux autres, **bien contenues donc acceptées par le garde**, en détruisaient le contenu : `mesuré` sur un faux corpus jetable, `htms` emportait 24 des 25 fichiers du corpus versionné et `database` les cinq stores. Toute valeur autre que le défaut déplaçait de surcroît les `element_id` de tout le corpus, en silence — le nettoyage écrivait selon le réglage, l'identité du document retirait la constante. Le sous-répertoire est désormais une constante du code ; le contrôle de containment, lui, **reste** : `SOURCE_DIR` demeure un réglage, et une racine mal réglée fait toujours sortir le script en 1 plutôt que de supprimer ce qu'elle désigne. **Et une seconde borne a été posée par le lot 9** : `purge_cleaned` est une fonction **publique**, et son garde ne tenait plus que par la constante de son appelant — une cible comme `Datas/htms`, strictement contenue dans la racine, passait. Elle refuse désormais toute cible qui n'est pas `SOURCE_DIR/.cleaned` ou l'un de ses descendants, par un refus **distinct** (`CibleHorsDuNettoyeError`) : le premier accuse `SOURCE_DIR`, le second accuse l'argument, et les deux ne s'instruisent pas au même endroit.
+Le script sort en **code d'erreur** si l'une des quatre purges échoue : une purge partielle est pire qu'une purge absente, puisqu'on réingère alors par-dessus des restes (vérifié par `test_un_echec_de_purge_du_html_fait_sortir_en_un`).
 
-Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il recrée le schéma. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
+Les objets restés dans le bucket après la disparition de leur nœud ne seraient pas une fuite : l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`). Ils ne seraient que de la place perdue.
 
-> **REDÉMARREZ `docling-service` AVANT toute réingestion, y compris sans purge.**
-> C'est `init_schema()` qui joue les `ALTER TAG … ADD`, et il n'est appelé **qu'au
-> démarrage du service** (`main.py`, dans le `lifespan`). Le lot 4 ajoute la
-> colonne `page_no_end` aux onze tags d'élément. Une réingestion lancée avant le
-> redémarrage écrit donc contre un tag qui n'a pas la colonne, et le graphd
-> rejette chaque `INSERT`.
->
-> **ÉTAT DU POSTE, ET IL PÉRIME — c'est un état, pas une propriété du code.**
-> `mesuré` le **1er septembre 2026** : `DESCRIBE TAG Paragraph` rendait
-> `label, page_no, text, <adresse du média>, depth` — la colonne **n'existait
-> pas**.
-> `mesuré` le **2 septembre 2026**, après un redémarrage de `docling-service` qui
-> a joué `init_schema()` : `DESCRIBE TAG Paragraph` et `DESCRIBE TAG SectionHeader`
-> rendent **six** colonnes, `page_no_end` comprise, et **7 251 sommets `Paragraph`
-> sur 7 251 sont à `NULL`**. L'état a donc changé de moitié : le schéma a migré,
-> les données non — c'est le **second** des deux états que le message d'anomalie
-> distingue, plus le premier.
->
-> **Ne lis pas ces deux lignes comme un fait du dépôt : remesure.**
-> `docker exec <conteneur docling> python -c "… DESCRIBE TAG Paragraph …"`. Un
-> redémarrage de service suffit à les périmer, et c'est exactement ce qui vient
-> d'arriver. La **consigne**, elle, ne périme pas : redémarrer avant de réingérer
-> est sans coût quand le schéma est déjà à jour, et c'est la seule des deux
-> choses qui vaille d'être apprise par cœur.
->
-> L'ordre est **redémarrer, puis réingérer**, et jamais l'inverse. Un opérateur qui
-> lit « il faut une réingestion » dans un message d'anomalie et s'exécute sans
-> redémarrer ne répare rien. Et « réingérer » est un geste précis, pas une
-> attente : le curseur du capteur, posé sur `reingerer:<étiquette>` — le message
-> d'anomalie le dit désormais lui-même, il ne le disait pas.
->
-> **Et le message d'anomalie le dit désormais lui-même.** Il égarait : il
-> annonçait « le tag a migré, les données non — il faut une réingestion » alors
-> que, dans le cas mesuré, la colonne **n'existait pas** (registre §4.29.e). Le
-> contrôle lit maintenant `DESCRIBE TAG` **avant** de compter les valeurs
-> absentes, et rend deux anomalies distinctes : « la colonne n'existe pas,
-> redémarrer le service **puis** réingérer » et « la colonne existe, les données
-> sont à NULL, réingérer ». Les deux états demandaient des gestes différents et
-> se présentaient sous la même phrase.
+**Le sous-répertoire `.cleaned` n'est pas configurable, délibérément.** C'est une constante du code (`CLEANED_SUBDIR` dans `src/docling_service/elements.py`). Configurable, il décidait seul de la cible du `rmtree` : certaines valeurs visaient `Datas/` ou son parent, d'autres, contenues dans la racine, en détruisaient le contenu (`htms` emportait 24 des 25 fichiers du corpus), et toute valeur autre que le défaut déplaçait les `element_id` de tout le corpus. `SOURCE_DIR` reste un réglage : une racine mal réglée fait sortir le script en 1 plutôt que de supprimer ce qu'elle désigne. `purge_cleaned`, fonction publique, refuse en outre toute cible qui n'est pas `SOURCE_DIR/.cleaned` ou l'un de ses descendants, par une erreur distincte (`CibleHorsDuNettoyeError`) : la première erreur met en cause `SOURCE_DIR`, la seconde l'argument.
 
-> Le bucket était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'une des **quatre** purges résiste — les trois stores *et* `Datas/.cleaned/` : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes. *(Cette phrase disait « les trois stores », trente-cinq lignes sous le tableau qui en compte quatre. `mesuré` sur le code : quatre branches alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par `test_un_echec_de_purge_du_html_fait_sortir_en_un`.)*
+### Redémarrer `docling-service` avant toute réingestion
 
 ```bash
 docker compose restart docling-service
 ```
 
-**Réindexation lexicale de l'agent.** Une fois l'ingestion retombée, le pipeline appelle
-`POST /reindex` sur `rag-agent-chat`. L'agent tient son index BM25 **en mémoire** : sans cet
-appel, un document ingéré après son démarrage reste trouvable en recherche dense — la requête
-part à ChromaDB à chaque fois — mais **invisible en recherche lexicale** jusqu'à son prochain
-redémarrage. La recherche devient silencieusement asymétrique.
+**À faire avant toute réingestion, y compris sans purge.** C'est `init_schema()` qui crée le schéma du graphe et joue les `ALTER TAG … ADD`, et il n'est appelé **qu'au démarrage du service** (`src/docling_service/main.py`, dans le `lifespan`). La purge supprime le space NebulaGraph ; sans redémarrage, la réingestion écrit contre un schéma absent ou incomplet, et le graphd rejette les `INSERT`. C'est aussi le seul moyen de faire évoluer le schéma du graphe : NebulaGraph ne sait pas modifier la longueur des identifiants après coup.
 
-L'agent possède bien un filet — il compare le nombre de chunks de sa collection à celui qu'il a
-indexé — mais ce filet **ne voit pas** une réingestion qui retire autant de chunks qu'elle en
-ajoute, ce qui est précisément le cas d'une réingestion. D'où un contrat, et non une option.
+Redémarrer est sans coût quand le schéma est déjà à jour. L'ordre est **redémarrer, puis réingérer**, jamais l'inverse. Le journal du service doit porter :
 
-**Une fois par rafale, pas une fois par document.** L'appel ne vit pas dans l'asset
-d'extraction : il a son propre job, `agent_reindex_job`, et son propre sensor. Ce sensor
-regarde l'état des runs d'ingestion, et n'arme le job que lorsque **plus aucun n'est en vol**
-— ni en cours, ni en attente dans la file — et qu'au moins un a réussi depuis la dernière
-réindexation. Le nombre d'appels ne suit donc pas le nombre de documents : une rafale de N
-documents donne **une** reconstruction BM25 au lieu de N, chacune étant complète et synchrone
-côté agent. Un corpus déposé en goutte-à-goutte donne en revanche une
-réindexation par rafale, ce qui est le comportement voulu — un document ingéré doit devenir
-cherchable.
-
-Un échec d'appel **ne fait jamais échouer une ingestion réussie** : il ne le peut plus, l'appel
-vivant dans son propre run.
-
-**Mais il fait rougir le sien, et il est retenté.** Le run de réindexation échoue pour de bon,
-donc il apparaît là où l'on regarde les échecs. Et le sensor le retente au tick suivant, aussi
-longtemps qu'il le faut : il ne tient aucun curseur à lui, il compare le repère de la dernière
-ingestion réussie à celui de la dernière **réindexation réussie**. Tant que ce second repère
-n'existe pas, il reste quelque chose à faire. L'agent peut être légitimement arrêté — c'est le
-cas d'une première mise en route — et il verra alors des runs rouges jusqu'à ce qu'il réponde.
-C'est bruyant, et c'est voulu : la version précédente avançait son repère à l'**émission** de
-la demande, si bien qu'une réindexation manquée était perdue définitivement, sans que rien ne
-rougisse nulle part.
-
-| Variable | Rôle | Défaut |
-|---|---|---|
-| `AGENT_SERVICE_URL` | Racine de l'API de l'agent sur `rag_network`. **Vide = appel désactivé**, annoncé au démarrage de Dagster et à chaque tick du sensor | `http://agent-api:8000` |
-| `AGENT_API_KEY` | Clé d'API, si l'agent en exige une | *(vide)* |
-
-**Contrôle avant-vol.** Avant de lancer le gros corpus, vérifiez que les trois stores répondent :
-
-```bash
-docker compose exec docling-service python -m src.verify_data
+```
+INFO [src.docling_service.images] Bucket 'documents' pret sur seaweedfs:8333.
+INFO [src.docling_service.nebula] Schema semantique NebulaGraph pret.
 ```
 
-**Contrôle après ingestion.** Un rapport sur la qualité de l'index vectoriel : volume, bruit résiduel, taille des chunks, et surtout part des chunks qui dépassent la fenêtre du modèle d'embedding — ceux-là sont tronqués par le modèle lui-même, en silence.
+`verify_contract` distingue deux anomalies de schéma, qui demandent deux gestes différents (registre §4.29.e) :
 
-```bash
-docker compose exec docling-service python -m src.index_report
+- « la colonne n'existe pas » : redémarrer le service **puis** réingérer ;
+- « la colonne existe, les données sont à NULL » : réingérer.
+
+`docker compose restart` ne relit pas le `.env`. Après une modification du `.env`, utiliser `docker compose up -d --force-recreate --no-deps <service>` ([`livraison.md`](livraison.md) §6.4).
+
+**Après une purge, ne pas redémarrer `agent-api`** (conteneur de `rag-agent-chat`). L'agent détecte la purge et rouvre sa session NebulaGraph lui-même ; son `/health` passe au rouge pendant la purge, ce qui est normal. Relever son `/health` et un `GET /media/<clé>` cinq minutes après la fin de la réingestion, et ne le redémarrer que s'il est encore rouge ([`livraison.md`](livraison.md) §6.6).
+
+### Déclencher la réingestion
+
+**La purge ne déclenche rien.** Un fichier inchangé n'est jamais réingéré seul : sa clé de run est déjà consommée dans l'historique Dagster. La réingestion **se demande**, en posant le curseur du capteur de la source sur `reingerer:<étiquette>`. Un capteur par source : `pdfs_sensor`, `livres_html_sensor`, `markdown_sensor`.
+
+Par l'interface Dagster, **Overview → Sensors → le capteur → Cursor → Edit cursor**, saisir par exemple :
+
+```
+reingerer:2026-09-25-apres-purge
 ```
 
-**Volumétrie.** `mesuré` le 2 septembre 2026 sur l'index vivant — **24 chapitres HTML de deux ouvrages plus 1 PDF de 71 pages, soit 23 documents ingérés** :
+ou en ligne de commande (forme exécutée le 25 septembre 2026, [`livraison.md`](livraison.md) §3.2) :
+
+```bash
+docker compose exec -T -w /opt/dagster/app -e PYTHONPATH=/opt/dagster/app \
+  dagster-webserver dagster sensor cursor livres_html_sensor \
+    --set 'reingerer:<étiquette>' -w src/workspace.yaml
+```
+
+puis de même pour `pdfs_sensor`. Sur le corpus actuel, le résultat attendu est **23 runs** (22 + 1), tous créés par les capteurs.
+
+**L'étiquette doit être neuve à chaque geste** : une date, un motif. Elle entre dans la clé de run ; une étiquette déjà employée est une clé déjà consommée, donc **zéro run**. Ne pas recopier l'exemple ci-dessus tel quel.
+
+La CLI ne sait pas relire un curseur (`dagster sensor cursor` n'a que `--set` et `--delete`). Le geste de lecture est au §3.2 de [`livraison.md`](livraison.md).
 
 | | |
 |---|---|
-| chunks vectorisés | **4 365** |
-| sommets de graphe | **15 196**, dont 23 `Document` |
-| arêtes `PARENT_OF` | **15 173** |
-| objets du bucket | **13** |
-| `Datas/database/` | **≈ 388 Mo** — NebulaGraph 257, PostgreSQL 78, ChromaDB 51, stockage d'objets 1,8 |
-| corpus source | 25 fichiers, 57 381 999 o |
+| **Ce qui déclenche** | ce marqueur, et rien d'autre. Le tick qui le lit repart sans aucun `mtime` connu (le marqueur a remplacé le curseur JSON qui les portait), redemande une partition par fichier, et fait porter **l'étiquette** à la clé de run : c'est ce qui la rend neuve pour Dagster. |
+| **Ce qui empêche un départ spontané** | deux choses, qui ne couvrent pas le même cas. D'abord **le curseur** : il vit dans le stockage de l'instance, survit au rechargement du code, aucune ligne du dépôt ne l'efface, et tant qu'il est là le capteur ne demande rien sur un corpus inchangé. Ensuite, **sans marqueur, la clé garde sa forme** `{source}_{partition}_{mtime}` : si le curseur est perdu **seul**, historique intact (remise à zéro à la main, capteur ou code location renommé), le capteur redemande tout, Dagster ne crée aucun run, et le capteur le **journalise**. `TestLaCleNominaleEstInchangee` fige cette forme. |
+| **Ce qu'aucune des deux ne couvre** | la perte **simultanée** du curseur et de l'historique : ils sont dans le même Postgres (`postgres-dagster`). Le corpus entier est alors réingéré sans avertissement (registre §4.26). D'où `--no-deps` pour toute recréation de service ([`livraison.md`](livraison.md) §6.3). |
+| **Si le geste est fait deux fois** | avec la **même** étiquette, les clés sont identiques et Dagster ne crée aucun run ; le capteur le journalise avec le nombre de demandes perdues, et le curseur a avancé : le geste est à refaire avec une étiquette **neuve**. |
+| **Un marqueur sans étiquette** | est refusé, le curseur laissé intact, et la raison journalisée : l'honorer rendrait la clé constante, donc le second geste muet (registre §4.32.a). |
+| **Si une ingestion de cette source tourne déjà** | le marqueur n'est **ni honoré ni consommé** : le tick rend un `SkipReason` qui nomme le run en cours **et son âge**, et le tick suivant relira le marqueur. Le geste est différé, pas perdu. Cela évite que deux runs réécrivent la même partition de `Datas/.cleaned/` en même temps (registre §4.33.c). Le refus se répète tant que le run n'est pas terminé ; un run gelé le prolonge au plus jusqu'au `max_runtime_seconds` de `dagster.yaml`, soit 25 h (90 000 s), à ne pas confondre avec les 24 h d'`extraction_timeout_seconds`, plafond par document. Un fichier *modifié* pendant une réingestion produit toujours une clé neuve sur une partition en cours ; ce cas reste ouvert (registre §4.34.a). |
 
-*(Cette section annonçait « 42 documents, 750 Mo, 23 741 nœuds, 5 592 chunks », mesurés sur le **corpus de référence** — mixte français/anglais, avec 6 notes Markdown et un PDF de 280 pages. Ce corpus n'existe plus, le registre §1 le déclare mort, et `Datas/mds/` est vide : aucun de ces chiffres n'était reproductible. Registre §6.9.)*
+### Réindexation lexicale de l'agent
 
-**Et deux réserves, sans lesquelles cette table induirait en erreur :**
+Une fois l'ingestion terminée, le pipeline appelle `POST /reindex` sur `rag-agent-chat`. L'agent tient son index BM25 **en mémoire** : sans cet appel, un document ingéré après son démarrage reste trouvable en recherche dense (la requête part à ChromaDB à chaque fois) mais **invisible en recherche lexicale** jusqu'à son prochain redémarrage.
 
-- **les 13 objets du bucket ne sont pas représentatifs.** Le corpus porte **199 images** dans ses captures HTML, et la chaîne qui les téléverse est rompue : elles ne sont ni dans le bucket, ni référencées par le graphe (registre §3.5, §4.28.b). Les 13 objets présents sont tous des crops du PDF. Une extrapolation bâtie sur cette ligne **sous-estimerait donc massivement** le poids des médias ;
-- **une taille de répertoire n'est pas une mesure de contenu.** Les 78 Mo de PostgreSQL sont l'historique Dagster, qui ne suit pas le corpus ; et le registre §4.27 avertit qu'un store peut peser lourd en étant vide. Ces tailles disent ce que le disque porte, pas ce que l'index contient.
+L'agent compare le nombre de chunks de sa collection à celui qu'il a indexé, mais ce contrôle **ne voit pas** une réingestion qui retire autant de chunks qu'elle en ajoute — précisément le cas d'une réingestion. L'appel fait donc partie du contrat.
 
-**Aucune extrapolation n'est donnée ici, et c'est délibéré.** Cette section annonçait « de l'ordre de 15 à 25 Go pour 300 livres » sans dire de quoi c'était dérivé. Un chiffre par livre tiré d'un corpus de deux ouvrages dont la chaîne d'images est cassée serait `supposé` déguisé en `calculé` — et le chantier a déjà payé une décision de plan fondée sur un raisonnement plausible jamais mesuré (registre §4.28.e).
+**Une fois par rafale, pas une fois par document.** L'appel a son propre job, `agent_reindex_job`, et son propre capteur, `agent_reindex_sensor` (`src/pipeline/reindex_job.py`). Ce capteur n'arme le job que lorsque **plus aucun run d'ingestion n'est en cours ni en file**, et qu'au moins un a réussi depuis la dernière réindexation. Une rafale de N documents donne **une** reconstruction BM25 au lieu de N ; un corpus déposé au goutte-à-goutte donne une réindexation par rafale, ce qui est voulu : un document ingéré doit devenir cherchable.
+
+Un échec d'appel **ne fait jamais échouer une ingestion réussie**, puisque l'appel vit dans son propre run. **Ce run-là échoue** et apparaît avec les autres échecs, et le capteur le retente au tick suivant tant qu'il le faut : il compare le repère de la dernière ingestion réussie à celui de la dernière **réindexation réussie**. Si l'agent est arrêté (première mise en route, par exemple), des runs de réindexation échouent jusqu'à ce qu'il réponde ; c'est voulu, pour qu'une réindexation manquée reste visible.
+
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `AGENT_SERVICE_URL` | Racine de l'API de l'agent sur `rag_network`. **Vide = appel désactivé**, annoncé au démarrage de Dagster et à chaque tick du capteur | `http://agent-api:8000` |
+| `AGENT_API_KEY` | Clé d'API, si l'agent en exige une | *(vide)* |
+
+### Contrôles
+
+**Avant ingestion.** Vérifier que les trois stores répondent :
+
+```bash
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.verify_data
+```
+
+Mesuré le 25 septembre 2026 à 09:38 UTC (sous la forme `docker compose exec docling-service python -m src.verify_data`) : `rc=0` — 4 367 chunks, 212 objets, 15 196 nœuds, 23 documents.
+
+**Après ingestion.** Un rapport sur la qualité de l'index vectoriel : volume, bruit résiduel, taille des chunks, et surtout part des chunks qui dépassent la fenêtre du modèle d'embedding — ceux-là sont tronqués par le modèle lui-même, sans avertissement.
+
+```bash
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.index_report
+```
+
+Le contrat avec l'agent se vérifie par `src.verify_contract`, et les comptes de référence par les gestes du §4 de [`livraison.md`](livraison.md).
+
+### Volumétrie
+
+Mesuré sur l'index vivant — **24 chapitres HTML de deux ouvrages plus 1 PDF de 71 pages, soit 23 documents ingérés** :
+
+| | 25 septembre 2026 | 2 septembre 2026 |
+|---|---|---|
+| chunks vectorisés | **4 367** | 4 365 |
+| sommets de graphe | **15 196**, dont 23 `Document` | 15 196 |
+| arêtes `PARENT_OF` | **15 173** | 15 173 |
+| objets du bucket | **212** | 13 |
+| `Datas/database/` | non remesuré | ≈ 388 Mo — NebulaGraph 257, PostgreSQL 78, ChromaDB 51, stockage d'objets 1,8 |
+| corpus source | 25 fichiers | 25 fichiers, 57 381 999 o |
+
+Source des chiffres du 25 septembre : §4.2 de [`livraison.md`](livraison.md).
+
+**Deux réserves :**
+
+- **le poids du disque au 2 septembre ne représente pas les médias.** À cette date, les images des captures HTML n'étaient pas téléversées (registre §3.5, §4.28.b) : les 13 objets étaient tous des crops du PDF. Depuis, les 212 objets sont en place, et le poids du stockage d'objets n'a pas été remesuré ;
+- **une taille de répertoire n'est pas une mesure de contenu.** Les 78 Mo de PostgreSQL sont l'historique Dagster, qui ne suit pas le corpus, et un store peut peser lourd en étant vide (registre §4.27).
+
+**Aucune extrapolation n'est donnée, délibérément.** Un chiffre par livre tiré d'un corpus de deux ouvrages serait une supposition présentée comme un calcul (registre §4.28.e).
 
 **Débit.** Voir le tableau détaillé dans [orchestration.md](orchestration.md#combien-de-temps-prend-une-ingestion) : un chapitre HTML en 6 s, un PDF de 300 pages en 1 à 2 min, **1 h 30 à 2 h pour 50 livres**, sans surveillance.
 
-**Mémoire.** Relevée toutes les 20 à 30 secondes pendant une demi-heure d'ingestion continue (111 mesures en régime) : **médiane 6,08 Gio, pic 6,43 Gio**, contre une limite de 10 Go fixée dans `docker-compose.yml` — soit 3,5 Gio de marge. L'essentiel est constitué des modèles, chargés une fois pour toutes ; la consommation ne monte pas avec le nombre de documents traités.
+**Mémoire.** Relevée toutes les 20 à 30 secondes pendant une demi-heure d'ingestion continue (111 mesures en régime) : **médiane 6,08 Gio, pic 6,43 Gio**, contre une limite de 10 Go fixée dans `docker-compose.yml`, soit 3,5 Gio de marge. L'essentiel est constitué des modèles, chargés une fois pour toutes ; la consommation ne monte pas avec le nombre de documents traités.
 
-Si vous relevez une consommation qui grimpe au fil des livres, c'est anormal : coupez et signalez-le, plutôt que d'attendre le plafond.
+Une consommation qui grimpe au fil des livres est anormale : arrêter l'ingestion et le signaler plutôt que d'attendre le plafond.
 
 ---
 
-## Exploration du Graphe (NebulaGraph)
+## Exploration du graphe (NebulaGraph)
 
-Le pipeline génère un graphe sémantique où chaque document est un nœud central relié à ses composants (titres, paragraphes, images, etc.).
+Le pipeline génère un graphe où chaque document est un nœud central relié à ses composants (titres, paragraphes, images, etc.).
 
-### Requêtes nGQL types (à taper dans l'onglet Console)
+### Requêtes nGQL types (onglet Console de Nebula Studio)
 
-**IMPORTANT : Ne tapez pas `USE rag_space;` dans la console !**
-Dans Nebula Studio, vous devez **d'abord** sélectionner l'espace `rag_space` depuis le menu déroulant en haut à droite. Ensuite, vous pourrez exécuter les requêtes suivantes :
+**Ne pas taper `USE rag_space;` dans la console.**
+Dans Nebula Studio, sélectionner **d'abord** l'espace `rag_space` dans le menu déroulant en haut à droite, puis exécuter les requêtes suivantes :
 
-1. **Voir un document complet et sa structure** (ronds reliés) :
+1. **Voir un document complet et sa structure** :
    ```ngql
    MATCH p=(d:Document)-[r:PARENT_OF]->(e)
    WHERE d.filename == "statisticsfordatascience"
@@ -455,42 +379,51 @@ Dans Nebula Studio, vous devez **d'abord** sélectionner l'espace `rag_space` de
    RETURN p;
    ```
 
-3. **Trouver les images et leurs légendes** (relations sémantiques) :
+3. **Trouver les images et leurs légendes** :
    ```ngql
    MATCH p=(c:Caption)-[:LINKED_TO]->(res)
    RETURN p;
    ```
 
-### Guide de Visualisation (Studio v3.8.0)
+Pour compter des sommets, utiliser `MATCH … RETURN count(n)` tag par tag, et non `SHOW STATS`, qui rend 0 sur un space peuplé ([`livraison.md`](livraison.md) §4.2).
 
-Pour un rendu optimal, configurez les couleurs par **Tag** dans l'interface :
-1. Sélectionnez l'espace **`rag_space`** en haut à droite.
+### Guide de visualisation (Studio v3.8.0)
+
+Pour un rendu lisible, configurer les couleurs par **Tag** dans l'interface :
+1. Sélectionner l'espace **`rag_space`** en haut à droite.
 2. Dans l'onglet **Console** ou **Visualisation** :
-   - **Document** : Rouge (Nœud racine)
-   - **SectionHeader** : Bleu (Structure)
-   - **Paragraph** : Gris (Contenu)
-   - **Table / Picture** : Vert (Ressources riches)
-   - **Caption** : Jaune (Métadonnées liées)
-3. Utilisez le **Vertex Filter** pour isoler des types spécifiques (ex: ne montrer que `Code` et `Formula`).
+   - **Document** : rouge (nœud racine)
+   - **SectionHeader** : bleu (structure)
+   - **Paragraph** : gris (contenu)
+   - **Table / Picture** : vert (ressources riches)
+   - **Caption** : jaune (métadonnées liées)
+3. Utiliser le **Vertex Filter** pour isoler des types précis (par exemple ne montrer que `Code` et `Formula`).
 
 ---
 
-## Structure du Projet
+## Structure du projet
 
 ```text
-RAG_Assistant/
-├── Datas/                      # Dossier source partagé pour vos livres (HTML/PDF)
+rag-ingestion-pipeline/
+├── Datas/                      # Corpus source (HTML/PDF/MD), versionné
 │   └── .cleaned/               # HTML nettoyés (générés par le pipeline)
-├── documentation/              # Documentation technique détaillée de l'architecture
+├── documentation/              # Documentation technique
+├── scripts/
+│   ├── campagne/               # Instruments de mesure (jeu de questions, rappel, passerelle S3, identifiants)
+│   ├── git-hooks/pre-commit    # Contrôle d'identité d'auteur
+│   ├── installer-les-garde-fous.sh
+│   └── rejouer-les-mutations.py
 ├── src/
-│   ├── docling_service/        # Microservice d'extraction (GPU)
+│   ├── docling_service/        # Microservice d'extraction
 │   │   ├── main.py             # Application FastAPI : /extract, /jobs, /health
 │   │   ├── jobs.py             # File de jobs et worker unique
 │   │   ├── extraction.py       # Conversion Docling (PDF paginé, HTML/MD direct)
 │   │   ├── elements.py         # Taxonomie des labels, hiérarchie et positions
+│   │   ├── anchoring.py        # Rattachement des chunks Docling aux éléments
 │   │   ├── storage.py          # Persistance d'un lot : graphe puis vecteurs
 │   │   ├── nebula.py           # Écritures NebulaGraph groupées, pool partagé
 │   │   ├── ngql.py             # Échappement et construction des requêtes nGQL
+│   │   ├── embedding.py        # Modèle d'embedding et refus d'en charger un autre
 │   │   ├── vectors.py          # Embeddings par lots et upsert ChromaDB
 │   │   ├── chunking.py         # Découpage des textes longs, contextualisation
 │   │   ├── markdown.py         # Normalisation du Markdown avant conversion
@@ -498,101 +431,79 @@ RAG_Assistant/
 │   │   ├── hierarchy.py        # Arbre des titres : pile et profondeur
 │   │   ├── ranking.py          # Rang d'un titre (parent Docling, level, police)
 │   │   ├── language.py         # Détection de la langue par mots-outils
-│   │   └── images.py           # Crop PyMuPDF, export d'objets, SEUL client S3
-│   └── pipeline/               # Orchestration Dagster
-│       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
-│       ├── sources.py          # Modèles de configuration des sources
-│       ├── factory.py          # Génération assets/jobs/sensors par source
-│       ├── cleaning.py         # Nettoyage HTML universel (trafilatura/readability)
-│       ├── schemas.py          # Contrat de données partagé avec rag-agent-chat
-│       └── definitions.py      # Point d'entrée Dagster
-├── docker-compose.yml          # Configuration de la stack
+│   │   ├── settings.py         # Réglages du service
+│   │   └── images.py           # Crop PyMuPDF, export d'objets, seul site du client S3
+│   ├── pipeline/               # Orchestration Dagster
+│   │   ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
+│   │   ├── sources.py          # Modèles de configuration des sources
+│   │   ├── factory.py          # Génération assets/jobs/capteurs par source
+│   │   ├── cleaning.py         # Nettoyage HTML universel (trafilatura/readability)
+│   │   ├── media.py            # Export des images base64 des captures HTML
+│   │   ├── reindex.py          # Appel POST /reindex sur l'agent
+│   │   ├── reindex_job.py      # Job et capteur de réindexation
+│   │   ├── schemas.py          # Contrat de données partagé avec rag-agent-chat
+│   │   ├── settings.py         # Réglages du pipeline
+│   │   └── definitions.py      # Point d'entrée Dagster
+│   ├── reglages_s3.py          # Réglages du stockage d'objets (S3_*), sans défaut d'adresse
+│   ├── wipe_stores.py          # Purge des trois stores et de Datas/.cleaned/
+│   ├── verify_data.py          # Contrôle avant-vol des trois stores
+│   ├── verify_contract.py      # Vérification du contrat avec rag-agent-chat
+│   ├── index_report.py         # Rapport sur l'index vectoriel
+│   ├── init_nebula.py          # Amorçage du cluster NebulaGraph sur pile neuve
+│   └── equivalence_des_identifiants.py  # Instantané et comparaison des element_id
+├── tests/
+├── docker-compose.yml          # Configuration de la pile
+├── dagster.yaml                # Instance Dagster (file de runs, run monitoring)
 ├── Dockerfile.dagster          # Environnement Dagster
-└── Dockerfile.docling          # Environnement extraction GPU
+├── Dockerfile.docling          # Environnement d'extraction
+└── Makefile                    # Porte qualité
 ```
 
 ---
 
-## Tests
+## Tests et porte qualité
 
 ```bash
 make install && make all
 ```
 
+Dans un worktree, utiliser `uv sync` à la place de `make install` (voir plus bas).
+
 `make install` appelle `uv sync`, qui installe les dépendances de production
-**et** le groupe `dev` déclaré dans `pyproject.toml` : `pytest`, `ruff`, `mypy`
-et les stubs de typage. La porte qualité est donc reproductible depuis la seule
-source de vérité du dépôt, sans liste annexe à se rappeler. `make all` enchaîne
-`lint`, `typecheck`, `test` et `format-check` — chaque outil derrière `uv run`,
-donc aux versions épinglées par `uv.lock` — et s'arrête à la première étape
-rouge.
+**et** le groupe `dev` déclaré dans `pyproject.toml` (`pytest`, `ruff`, `mypy`
+et les stubs de typage), puis arme les garde-fous git. `make all` — la **porte
+qualité** — enchaîne `lint`, `typecheck`, `test`, `mutations` et
+`format-check`, chaque outil derrière `uv run`, donc aux versions épinglées par
+`uv.lock`, et s'arrête à la première étape en échec.
 
-### La porte ne réécrit plus le dépôt qu'elle contrôle
-
-`make all` appelait `format`, c'est-à-dire `ruff format src/`, qui **écrit**. La
-porte réécrivait donc trois fichiers avant de les contrôler, et chaque
-développeur devait se souvenir de révoquer `git checkout -- src/` avant chaque
-commit, sous peine de livrer du reformatage sans rapport avec son sujet. Un
-garde-fou qui repose sur la mémoire du suivant n'est pas un garde-fou.
-
-Les deux gestes sont désormais séparés :
+**Un code de retour non nul est un défaut, sans exception à connaître.** Les
+comptes de la dernière exécution (tests, fichiers vus par `mypy`, mutations,
+fichiers formatés) sont au §4.1 de [`livraison.md`](livraison.md).
 
 | Cible | Ce qu'elle fait | Où elle vit |
 |---|---|---|
-| `make format` | **écrit** — `ruff format src/ tests/` | geste volontaire, dans aucune porte |
-| `make format-check` | **constate** — `ruff format --check src/ tests/` | dernière étape de `make all` |
-| `make lint` | **constate** — `ruff check src/ tests/` | première étape de `make all` |
+| `make lint` | **constate** — `ruff check src/ tests/ scripts/` | première étape de `make all` |
+| `make typecheck` | **constate** — `mypy src/ scripts/` | deuxième étape |
+| `make test` | `pytest tests/` | troisième étape |
+| `make mutations` | rejoue les mutations de `tests/mutations/table-des-mutations.json` : chacune doit faire échouer au moins un test | quatrième étape |
+| `make format-check` | **constate** — `ruff format --check src/ tests/ scripts/` | dernière étape |
+| `make format` | **écrit** — `ruff format src/ tests/ scripts/` | geste volontaire, dans aucune porte |
+| `make test-cov` | `pytest` avec couverture de `src/` | hors porte |
+| `make audit` | `pip-audit` sur les deux fichiers de dépendances | hors porte |
 
-**`make lint` a porté `src/` seul jusqu'au lot 4, et c'était le MÊME angle mort
-que D7, d'un cran plus loin.** Le hook `ruff` voit tout ce qui est **indexé**,
-donc `tests/` ; la cible ne voyait que `src/`. `make all` rendait donc 0 sur un
-arbre dont le hook refusait le commit, et le développeur apprenait la faute au
-moment du commit, pas au moment du contrôle. `mesuré` le 1er septembre 2026 :
-**deux commits du lot 4 ont été refusés pour des règles — `N802`, `SIM223`,
-`E402`, `I001` — que `make all` venait de déclarer propres.** Les deux gardes
-voient désormais la même chose. `typecheck` reste borné à `src/` : c'est
-`pyproject.toml` qui exclut `tests/` de `mypy`, un choix déclaré et non une
-divergence de portée.
+La porte ne réécrit pas le dépôt qu'elle contrôle : `make all` constate le
+formatage, il ne l'applique pas. `lint` et `format-check` couvrent `tests/` et
+`scripts/`, comme le hook `ruff`, qui voit tout ce qui est indexé : sans cela,
+`make all` pourrait rendre 0 sur un arbre dont le hook refuse le commit.
+`typecheck` n'inclut pas `tests/` : c'est `pyproject.toml` qui les exclut de
+`mypy`, par choix déclaré.
 
-**Cette table a porté `src/` seul pendant quelques heures, et c'était faux.**
-Le commit qui a étendu les deux cibles à `tests/` — pour fermer l'angle mort D7,
-où `test_wipe_stores.py` n'était vu par aucune des deux — a changé le `Makefile`
-sans changer la table qui le décrit. Le lot 5 s'appelle « la documentation contre
-le code » : le défaut qu'il doit chasser est né dans le commit qui fermait un
-angle mort, ce qui est exactement la façon dont ce défaut-là naît.
+`pyproject.toml` porte déjà `strict = true` pour `mypy`, avec une exception
+motivée, `disallow_untyped_decorators = false`, pour les décorateurs Dagster et
+FastAPI. Lancer `mypy --strict` à la main annule cette exception et produit des
+erreurs qui n'en sont pas ; la porte est `make all`.
 
-**`make all` rend 0, et l'exception « rc=2 est le rouge attendu » n'existe
-plus.** Elle a vécu du lot 0b au lot 3 : le dépôt portait quatre fichiers pliés
-à la main, `format-check` les signalait, et chaque conversation redécouvrait
-qu'un rc=2 sur `main` était normal. Cette exception a **déjà masqué un vrai
-rouge une fois**. Les quatre fichiers sont désormais format-propres, et la
-porte n'a plus qu'un seul verdict à rendre : 0 ou un défaut.
-
-L'état, `mesuré` sur cette révision :
-
-```bash
-uv run ruff format --check src/ tests/
-```
-
-→ « 72 files already formatted », `rc=0`. Et `make all` → `rc=0`.
-
-*(Ce nombre valait **67**, et il était faux sur la révision qui le portait —
-mot pour mot le défaut que le pilote venait de corriger en `39ce91a`, « le README
-annonçait 66 fichiers formatés », refait par le lot suivant. Un `mesuré` n'est pas
-une étiquette de véracité, c'est une étiquette de **provenance**, et une
-provenance comprend l'arbre. Une phrase qui dit « SUR CETTE RÉVISION » se
-remesure à chaque révision qui la traverse, ou elle se supprime.)*
-
-**Ce que le prochain développeur doit en faire : un rc non nul est un défaut,
-sans exception à connaître.** C'est tout l'intérêt du geste. Le détail de ce
-qu'il a coûté — quatre fichiers, un total de **20 lignes** de diff réparties
-sur trois commits de style, dont **7** pour celui-ci (`mesuré`,
-`git show --numstat --format= <commit>` sur les trois) — vit au registre §5.4.
-
-`format-check` passe **en dernier** dans `all`, et cela n'a plus de conséquence
-pratique : `lint`, `typecheck` et `test` rendent leur verdict, puis
-`format-check` rend le sien, et l'ensemble est vert. Pour lire les trois
-premiers seuls :
+Pour lire les premières étapes seules :
 
 ```bash
 make lint typecheck test
@@ -605,41 +516,31 @@ make install
 ```
 
 Ce geste, et lui seul, arme les hooks déclarés dans `.pre-commit-config.yaml`
-**et** le contrôle d'identité d'auteur. **Il n'était fait nulle part avant le
-lot 0b** : les garde-fous étaient déclarés et rien ne les exécutait
-(registre §5.5). Un garde-fou déclaré et non installé est pire qu'absent — on
-croit l'avoir.
+**et** le contrôle d'identité d'auteur. Un garde-fou déclaré mais non installé
+est pire qu'absent : on croit l'avoir (registre §5.5).
 
 `make install` fait `uv sync`, puis `sh scripts/installer-les-garde-fous.sh`.
 Ce script monte les deux couches **dans l'ordre**, ne passe **jamais** `-f`, et
 **vérifie son propre résultat** : il sort en erreur si le montage n'est pas
 celui qu'il annonce.
 
-**`uv` est requis.** Cette phrase disait « si `uv` manque, il s'exécute seul » :
-c'est faux, et `mesuré` — `env PATH=/usr/bin:/bin sh
-scripts/installer-les-garde-fous.sh` rend **`rc=1`** et ne pose que les deux
-copies du contrôle d'identité, sans aucun hook du framework ni `.legacy`. Le
-script le dit sur sa sortie d'erreur ; c'était la documentation qui mentait.
+**`uv` est requis.** Sans `uv` au `PATH`, le script sort en `rc=1` et ne pose
+que les deux copies du contrôle d'identité, sans aucun hook du framework ni
+`.legacy` ; il le dit sur sa sortie d'erreur (mesuré le 31 août 2026).
 
-**Lance-le depuis le clone principal.** `pre-commit install` grave dans le hook
-généré une ligne `INSTALL_PYTHON=<interpréteur de l'arbre d'où on l'a lancé>`, et
-`.git/hooks` est partagé par tout le clone. Si cet arbre disparaît — un
-`git worktree remove` après fusion, par exemple — et qu'aucun `pre-commit` n'est
-au PATH, **tout commit du dépôt et de tous ses arbres de travail** est refusé,
-sur le seul message « `` `pre-commit` not found. `` », qui ne nomme pas la cause
-(`mesuré`, 31 août 2026 : `rc=1`, HEAD inchangé). C'est fail-closed, donc sans
-danger pour l'historique. **Le geste de sortie :** relancer `make install` depuis
-le clone principal.
-
-L'ordre n'est pas cosmétique, et il ne pouvait pas rester une consigne écrite.
-Le lot 0b, tel qu'il avait été livré, demandait deux gestes dans un sens précis ;
-l'inversion ne produit aucune erreur, seulement l'absence d'une protection. Un
-garde-fou qui repose sur la mémoire du suivant n'est pas un garde-fou — c'est la
-phrase que ce même lot a fait respecter à `make all`, et elle valait aussi ici.
+**Le lancer depuis le clone principal, pas depuis un worktree.**
+`pre-commit install` écrit dans le hook généré une ligne
+`INSTALL_PYTHON=<interpréteur de l'arbre d'où on l'a lancé>`, et `.git/hooks`
+est partagé par tout le clone. Si cet arbre disparaît (un `git worktree remove`
+après fusion, par exemple) et qu'aucun `pre-commit` n'est au `PATH`, **tout
+commit du dépôt et de tous ses arbres de travail** est refusé, avec le seul
+message « `` `pre-commit` not found. `` », qui ne nomme pas la cause. Le refus
+est sans danger pour l'historique. **Pour en sortir :** relancer `make install`
+depuis le clone principal.
 
 | Hook | Ce qu'il fait | Écrit ? |
 |---|---|---|
-| `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche — voir la réserve ci-dessous, tous les chemins qui créent un commit ne sont pas couverts | non |
+| `identite-auteur` | refuse un commit dont l'adresse d'auteur **ou** de committer n'est pas dans la liste blanche — tous les chemins qui créent un commit ne sont pas couverts, voir plus bas | non |
 | `trailing-whitespace`, `end-of-file-fixer` | hygiène de fin de ligne et de fin de fichier | oui, sur les fichiers **indexés** |
 | `check-yaml` | YAML valide | non |
 | `check-added-large-files` | refuse un fichier **nouvellement ajouté** de plus de 500 ko. Ne voit **pas** un fichier déjà suivi qu'on modifie, quelle que soit sa taille | non |
@@ -647,79 +548,66 @@ phrase que ce même lot a fait respecter à `make all`, et elle valait aussi ici
 | `ruff-format` | `--check` — **constate**, ne reformate pas | non |
 | `detect-secrets` | refuse un secret dans un fichier **indexé** | non |
 
-#### Le contrôle d'identité tient sur `pre-commit.legacy`, et c'est essentiel
-
-Il est déclaré **deux fois**, et ce n'est pas une redondance décorative :
-
-- comme hook `repo: local` dans `.pre-commit-config.yaml` — donc dans l'**arbre
-  de travail** ;
-- comme `.git/hooks/pre-commit.legacy`, la copie manuelle que
-  `pre-commit install` déplace et continue d'exécuter — donc **hors** de l'arbre
-  de travail.
-
-Les deux pointent le même script versionné, `scripts/git-hooks/pre-commit` : la
-liste blanche d'adresses n'a **qu'un site versionné**.
-
-**Elle en a deux une fois armée, et il faut le savoir.** Cette phrase disait
-« un seul site, et il ne peut pas diverger » : c'est vrai du dépôt, faux du
-montage. `pre-commit.legacy` est une **copie figée à l'installation** ; le hook
-`repo: local`, lui, relit le script versionné à chaque commit. `mesuré` le
-31 août 2026, dans un clone frais armé par le script livré, une édition
-**commitée** de `ADRESSES_AUTORISEES` :
-
-| Édition | Effet au commit suivant |
-|---|---|
-| **ajouter** une adresse | **sans effet** — la couche `repo: local` l'accepte, puis `pre-commit.legacy` refuse (`rc=1`, HEAD inchangé) en affichant l'**ancienne** liste |
-| **retirer** une adresse | **appliqué** — la couche `repo: local` refuse (`rc=1`, HEAD inchangé) |
-
-C'est **fail-closed dans les deux sens** : de la friction, jamais une exposition.
-Et le montage n'est pas changé pour autant — la copie figée **est** la propriété
-qui rend le contrôle indépendant de l'arbre de travail (section ci-dessous).
-**Le geste : après toute édition de `ADRESSES_AUTORISEES`, relancer
-`make install`**, qui réécrit la copie. Le message de refus énumère alors
-l'ancienne liste : une adresse fraîchement ajoutée qui n'y figure pas est ce
-cas-là, et rien d'autre.
-
-**Seule la seconde couche est inconditionnelle.** Le hook généré par le
-framework ouvre sa configuration en chemin **relatif** : un arbre de travail
-dont `.pre-commit-config.yaml` ne déclare pas le contrôle est désarmé, en
-silence. Sur les 111 commits de `main`, aucun ne le déclare (`mesuré` le 31 août
-2026 sur `a005172`) — donc tout `git checkout` d'un commit ancien, tout
-`git bisect`, tout HEAD détaché. C'est pour cela que
-`scripts/installer-les-garde-fous.sh` copie le script **avant** d'appeler
-`pre-commit install`, et que **`-f` ne doit jamais être passé** : `-f` supprime
-`pre-commit.legacy`, et `pre-commit install` le suggère lui-même dans sa sortie.
-
-Un test garde cette propriété plutôt que de la documenter :
-`tests/unit/test_installation_des_garde_fous.py` monte un dépôt jetable dont la
-configuration ne porte **pas** le contrôle, y exécute le script livré, et prouve
-que le refus tient.
-
 Les hooks qui écrivent ne touchent que ce qui est **déjà indexé**, refusent le
-commit, et **nomment chaque fichier qu'ils ont corrigé** — sans montrer le diff.
-Cette phrase disait « et montrent leur diff » : c'était faux. `mesuré` le 31 août
-2026, la sortie se limite à `- files were modified by this hook` puis
-`Fixing <fichier>`. Le diff s'obtient avec `--show-diff-on-failure`, un drapeau
-de la **ligne de commande** que le hook généré ne porte pas et qu'aucune clé de
-`.pre-commit-config.yaml` ne peut activer. Pour le lire :
+commit, et **nomment chaque fichier corrigé**, sans montrer le diff (sortie :
+`- files were modified by this hook` puis `Fixing <fichier>`). Le diff
+s'obtient avec `--show-diff-on-failure`, un drapeau de la ligne de commande que
+le hook généré ne porte pas et qu'aucune clé de `.pre-commit-config.yaml` ne
+peut activer :
 
 ```bash
 git diff                                   # ce que le hook vient d'écrire
 uv run pre-commit run --show-diff-on-failure --all-files
 ```
 
-On relit, on réindexe. C'est la différence de fond avec le défaut que le lot 0b
-vient de corriger dans `make all` (section précédente), qui réécrivait tout
-`src/` — y compris des fichiers qu'on n'avait pas touchés — et sortait **vert**.
+Relire, puis réindexer.
+
+#### Le contrôle d'identité est installé deux fois
+
+Il est déclaré à deux endroits, et ce n'est pas une redondance :
+
+- comme hook `repo: local` dans `.pre-commit-config.yaml` — donc dans l'**arbre
+  de travail** ;
+- comme `.git/hooks/pre-commit.legacy`, la copie que `pre-commit install`
+  déplace et continue d'exécuter — donc **hors** de l'arbre de travail.
+
+Les deux pointent le même script versionné, `scripts/git-hooks/pre-commit` : la
+liste blanche d'adresses (`ADRESSES_AUTORISEES`) n'a qu'**un site versionné**.
+
+**Une fois armée, elle en a deux.** `pre-commit.legacy` est une **copie figée à
+l'installation** ; le hook `repo: local` relit le script versionné à chaque
+commit. Mesuré le 31 août 2026, après une édition **commitée** de
+`ADRESSES_AUTORISEES` :
+
+| Édition | Effet au commit suivant |
+|---|---|
+| **ajouter** une adresse | **sans effet** — la couche `repo: local` l'accepte, puis `pre-commit.legacy` refuse (`rc=1`, HEAD inchangé) en affichant l'**ancienne** liste |
+| **retirer** une adresse | **appliqué** — la couche `repo: local` refuse (`rc=1`, HEAD inchangé) |
+
+Le refus l'emporte dans les deux sens : de la friction, jamais une exposition.
+**Après toute édition de `ADRESSES_AUTORISEES`, relancer `make install`**, qui
+réécrit la copie. Une adresse fraîchement ajoutée qui n'apparaît pas dans la
+liste affichée par le refus est ce cas-là.
+
+**Seule la seconde couche est inconditionnelle.** Le hook généré par le
+framework ouvre sa configuration en chemin **relatif** : un arbre de travail
+dont `.pre-commit-config.yaml` ne déclare pas le contrôle est désarmé, sans
+avertissement. C'est le cas de tout `git checkout` d'un commit ancien, de tout
+`git bisect`, de tout HEAD détaché sur une révision antérieure au contrôle.
+C'est pourquoi `scripts/installer-les-garde-fous.sh` copie le script **avant**
+d'appeler `pre-commit install`, et pourquoi **`-f` ne doit jamais être passé** :
+`-f` supprime `pre-commit.legacy`, et `pre-commit install` le suggère lui-même
+dans sa sortie.
+
+`tests/unit/test_installation_des_garde_fous.py` vérifie cette propriété : il
+monte un dépôt jetable dont la configuration ne porte **pas** le contrôle, y
+exécute le script livré, et constate que le refus tient.
 
 #### Ce que le contrôle d'identité couvre, et ce qu'il ne couvre pas
 
-**Cette réserve remplace une phrase sans réserve, et elle est mesurée.** Le
-README affirmait que le hook « refuse un commit dont l'adresse d'auteur ou de
-committer n'est pas dans la liste blanche », sans dire *quels commits*. Or
-`git commit` n'est pas le seul chemin qui en crée un, et git ne déclenche pas les
-mêmes hooks sur tous. `mesuré` le 31 août 2026, mouchards posés sur chaque hook
-de `.git/hooks` :
+`git commit` n'est pas le seul chemin qui crée un commit, et git ne déclenche
+pas les mêmes hooks sur tous. Mesuré le 31 août 2026, en journalisant chaque
+hook de `.git/hooks` :
 
 | Geste | Couvert | Par quoi |
 |---|---|---|
@@ -729,182 +617,128 @@ de `.git/hooks` :
 | `git revert` | **non** | git n'y déclenche ni `pre-commit` ni `commit-msg` |
 | `git cherry-pick` | **non** | idem |
 | `git rebase` | **non** | aucun hook de la famille ; le rebase réécrit le committer |
-| `git commit --no-verify` | **non** | par construction. Ne l'utilise jamais |
+| `git commit --no-verify` | **non** | par construction. À ne jamais utiliser |
 
-Les fusions ont été fermées par la réparation du lot 0b : `pre-commit install`
-n'installe que le type `pre-commit`, et un commit de fusion portant `@aosis.net`
-partait sans rencontrer quoi que ce soit (`mesuré`).
-
-**`git revert` et `git cherry-pick` restent ouverts, et ce n'est pas un oubli.**
-Le seul point d'accroche que git y déclenche est `prepare-commit-msg` — et un
-contrôle posé là serait **vert sur le défaut** : `mesuré`, lors d'un
-`cherry-pick`, `git var GIT_AUTHOR_IDENT` y rend l'identité **locale**, pas celle
-du commit produit. Un commit d'auteur `@aosis.net` cueilli depuis un arbre
-configuré en `@gmail.com` se présente au hook comme `@gmail.com`, et passe.
-La fermeture honnête est un hook `pre-push` ; elle est ouverte au registre.
+**`git revert` et `git cherry-pick` restent ouverts.** Le seul point d'accroche
+que git y déclenche est `prepare-commit-msg`, et un contrôle posé là laisserait
+passer le défaut : lors d'un `cherry-pick`, `git var GIT_AUTHOR_IDENT` y rend
+l'identité **locale**, pas celle du commit produit. La fermeture correcte est
+un hook `pre-push` ; elle est inscrite au registre.
 
 #### Ce que `detect-secrets` protège, et ce qu'il ne protège pas
 
-À ne pas survendre. `.env` porte les identifiants du stockage d'objets et de
-PostgreSQL — *les variables `S3_*` portent ce que le CLIENT présente, et
-`SEAWEEDFS_RW_*` / `SEAWEEDFS_RO_*` les identités du SERVEUR ; `docker-compose.yml`
-dérive les premières des secondes, sans recopier de valeur* — mais
-**un hook `pre-commit` ne voit que les fichiers indexés, et `.env` est dans
-`.gitignore` : il n'est donc jamais indexé, et installer ce hook ne le fera
-jamais scanner.** Le gain est ailleurs, et il est réel : empêcher qu'un secret
-parte un jour dans un fichier **versionné**. Aujourd'hui `docker-compose.yml`
-passe par des variables d'environnement et ne porte aucun secret en clair
-(`mesuré`, 31 août 2026).
+`.env` porte les identifiants du stockage d'objets et de PostgreSQL. Les
+variables `SEAWEEDFS_RW_*` / `SEAWEEDFS_RO_*` déclarent les identités du
+**serveur** ; `docker-compose.yml` en dérive `S3_ACCESS_KEY` et `S3_SECRET_KEY`,
+ce que le **client** présente, sans recopier de valeur. Mais **un hook
+`pre-commit` ne voit que les fichiers indexés, et `.env` est dans
+`.gitignore`** : il n'est jamais indexé, donc jamais scanné. Le gain est
+ailleurs : empêcher qu'un secret parte un jour dans un fichier **versionné**.
+`docker-compose.yml` passe par des variables d'environnement et ne porte aucun
+secret en clair.
 
-Il n'y a **pas de baseline**. Le dépôt en portait une, `.secrets.baseline`,
-générée le 30 avril 2026 et jamais regénérée ; le lot 0b l'a supprimée après
-avoir mesuré qu'elle avait pourri (registre §5.5). Un faux positif se déclare
-désormais **au site**, avec sa justification, par un commentaire
-`# pragma: allowlist secret`.
+Il n'y a **pas de baseline** (`.secrets.baseline` a été supprimée, registre
+§5.5). Un faux positif se déclare **au site**, avec sa justification, par un
+commentaire `# pragma: allowlist secret` placé **sur la ligne qui porte la
+valeur** — pas sur la ligne qui ouvre le dictionnaire ou l'appel : posé une
+ligne trop haut, il ne filtre rien et le commit est refusé sans que le message
+dise pourquoi.
 
-**Distingue les lignes qui PORTENT le pragma de celles qui le citent en prose :
-les deux comptes ne sont pas le même.** Une ligne porteuse annote une valeur, et
-c'est celle-là que `detect-secrets` lit ; les autres sont les commentaires qui la
-justifient, cette section, et la ligne de `scripts/capturer-larbre-docling.py`
-qui *écrit* le pragma dans la capture YAML.
-
-Les porteuses se comptent ainsi (`mesuré` le 1er septembre 2026) :
+Les lignes qui portent le pragma (à distinguer de celles qui le citent en prose)
+se comptent ainsi :
 
 ```bash
 git ls-files -z -- '*.py' '*.yaml' | xargs -0 grep -nE '#[[:space:]]*pragma: allowlist secret$'
 ```
 
-Elle en rend **11** — **7** en Python et **4** dans la capture YAML —, contre
-**25** occurrences si l'on compte toute mention dans tout fichier versionné :
+La commande porte `'*.py' '*.yaml'` et non `--include='*.py'` : bornée au
+Python, elle ne verrait pas les porteuses des fichiers YAML. Mesuré le
+25 septembre 2026, elle rend **16** lignes, toutes des faux positifs :
 
-| Site | Ce que le scanner y lit |
+| Nature | Exemples |
 |---|---|
-| `src/pipeline/reindex.py:69` | `API_KEY_HEADER`, dont la valeur est un **nom** d'en-tête HTTP |
-| `src/docling_service/settings.py:34` | `NEBULA_PASSWORD`, le mot de passe **public** du graphd de développement, celui de `docker-compose.yml` |
-| `tests/unit/test_reindex.py:91` et `:92` | l'argument `api_key`, dont la valeur d'essai est le mot « secret » lui-même |
-| `tests/unit/test_nebula.py:201`, `tests/unit/test_verify_data.py:246`, `tests/unit/test_init_nebula.py:186` | les mêmes identifiants publics, posés en variables d'environnement d'essai |
-| `tests/fixtures/arbres_docling.yaml`, 4 lignes | les empreintes SHA-256 des captures, lues comme des « Hex High Entropy String » |
+| un **nom** d'en-tête HTTP | `src/pipeline/reindex.py` (`API_KEY_HEADER`) |
+| le mot de passe **public** du graphd de développement, celui de `docker-compose.yml` | `src/docling_service/settings.py` (`nebula_password`) |
+| des identifiants d'essai posés dans les tests | `tests/conftest.py`, `tests/unit/test_settings.py`, `test_reindex.py`, `test_nebula.py`, `test_init_nebula.py`, `test_verify_data.py` |
+| des empreintes SHA-256, lues comme des « Hex High Entropy String » | `tests/fixtures/arbres_docling.yaml`, `src/equivalence_des_identifiants.py`, `documentation/campagnes/2026-09-02-jeu-de-questions.yaml` |
 
-Le compte est passé de 2 à 3, puis à 6, puis à 11, et **jamais parce qu'un secret
-était apparu** : à 3, la troisième ligne était née du piège de déduplication
-décrit au registre ; les suivantes sont les identifiants du graphd exposés en
-réglages et les empreintes de la capture. Ne recopie pas ce compte : la commande
-ci-dessus se relance, et c'est elle qui fait foi.
+Ce compte n'est pas à recopier : la commande fait foi.
 
-**La commande porte `'*.py' '*.yaml'` et non `--include='*.py'`, et c'est un
-correctif.** Bornée aux fichiers Python, elle ne voyait pas les 4 porteuses de la
-capture YAML — elle annonçait donc un dépôt plus propre qu'il n'est, sur la
-mesure même qui existe pour compter les exceptions.
-
-**Le pragma doit annoter la ligne qui porte la VALEUR**, pas la ligne qui ouvre le
-dictionnaire ou l'appel : posé une ligne trop haut, il ne filtre rien et le commit
-est refusé sans que le message dise pourquoi (`mesuré` le 1er septembre 2026, deux
-refus consécutifs sur `tests/unit/test_verify_data.py`).
-
-> Cette section a été perdue une fois, et c'est consigné plutôt que tu. Le commit
-> `0217bab` l'avait écrite ; `a54636c`, juste après la réparation d'un incident de
-> procédé — un `git checkout <branche> -- .` dans un arbre portant des commits —,
-> a réintroduit le texte de `main` par-dessus. Un `make all` vert ne pouvait pas
-> le montrer : rien de ce qui se perd dans un document ne rougit. Le geste pour
-> lire un fichier d'une autre révision est `git show <rev>:<fichier>`, et rien
-> d'autre.
+Pour scanner tout le dépôt hors corpus :
 
 ```bash
 git ls-files -z -- ':!Datas/' | xargs -0 uv run --with detect-secrets==1.5.0 detect-secrets-hook
 ```
 
-**Le `:!Datas/` n'est pas un détail de confort, et il n'était pas là.** Sans lui,
-cette commande contredit la section suivante : `detect-secrets` est appelé
-**directement**, donc l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` — que
-seul le framework applique — ne le filtre pas, et le scan bute sur les deux faux
-positifs du corpus. `mesuré` le 31 août 2026 **sur le résultat d'une fusion
-d'essai `--no-ff` avec `a005172`**, sans le `:!Datas/` : deux
-`Hex High Entropy String`, aux deux emplacements que la section suivante nomme.
-Avec le `:!Datas/` : aucune sortie, `rc=0`, 99 fichiers scannés. La commande
-**ne doit rien rendre** — c'est cela, son verdict.
+**La commande ne doit rien afficher** : c'est son verdict. Le `:!Datas/` est
+nécessaire : `detect-secrets` est appelé **directement**, donc
+l'`exclude: '^Datas/'` de `.pre-commit-config.yaml`, que seul le framework
+applique, ne le filtre pas, et le scan bute sur deux faux positifs du corpus.
 
-Deux réserves à connaître avant de lire son code de retour :
+Deux réserves avant de lire son code de retour :
 
-- **le défaut ne se voit pas sur la branche seule.** Tant que `Datas/` n'est pas
-  versionné, `git ls-files` ne le nomme pas et la commande est verte pour une
-  raison qui disparaît le jour de la fusion. Mesure-la sur le résultat de la
-  fusion, jamais sur la branche ;
 - **le code de retour est celui de `xargs`, pas celui de `detect-secrets`** :
-  `xargs` traduit un échec du programme appelé en **123**, jamais en 1. Ne teste
-  donc pas `rc = 1`, teste `rc ≠ 0` — et prends-le sans pipe supplémentaire, un
-  `| tail` rendrait le code de `tail`.
+  `xargs` traduit un échec du programme appelé en **123**, jamais en 1. Tester
+  `rc ≠ 0`, pas `rc = 1`, et sans tube supplémentaire (un `| tail` rendrait le
+  code de `tail`) ;
+- ce `:!Datas/` et l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` disent
+  la même chose à deux endroits : si l'un change, l'autre doit suivre. Le second
+  est vérifié par `tests/unit/test_hooks_contre_le_corpus.py` ; le premier ne
+  l'est pas, et c'est inscrit au registre.
 
-Ce `:!Datas/` et l'`exclude: '^Datas/'` de `.pre-commit-config.yaml` disent la
-même chose à deux endroits : si l'un bouge, l'autre doit suivre. Le second est
-gardé par `tests/unit/test_hooks_contre_le_corpus.py` ; le premier ne l'est pas,
-et c'est consigné au registre.
+Pour lire un fichier tel qu'il est dans une autre révision, utiliser
+`git show <rev>:<fichier>`, jamais `git checkout <branche> -- .` dans un arbre
+qui porte des commits : cela réécrit l'arbre sans avertissement.
 
-#### Le corpus est hors de portée des hooks, et voici comment l'étendre
+#### Le corpus est hors de portée des hooks
 
 `Datas/htms/` et `Datas/pdfs/` sont **versionnés** — 25 fichiers, 55 Mo. Ce sont
 des données d'entrée, pas du code, et `.pre-commit-config.yaml` les soustrait à
 **tous** les hooks par un `exclude: '^Datas/'` au niveau racine.
 
-**Ce n'est pas de la commodité.** Sans cette exclusion, mesuré sur le résultat
-d'une fusion d'essai :
+Sans cette exclusion, mesuré sur une fusion d'essai :
 
-| Hook | Ce qu'il faisait au corpus |
+| Hook | Effet sur le corpus |
 |---|---|
-| `detect-secrets` | **refusait** le commit — deux `Hex High Entropy String`, faux positifs. Et un `# pragma` est impossible ici : le **contenu** entre dans le calcul de `element_id` (contrat, exigences 2 et 3) |
+| `detect-secrets` | **refusait** le commit — deux `Hex High Entropy String`, faux positifs. Un `# pragma` est impossible ici : le **contenu** entre dans le calcul de `element_id` (contrat, exigences 2 et 3) |
 | `trailing-whitespace`, `end-of-file-fixer` | **écrivaient** — 24 fichiers sur 25, 240 lignes. Au commit, `git add` puis recommit faisait entrer le fichier **altéré**, sans erreur |
 | `check-added-large-files` | **refusait** tout fichier **nouveau** de plus de 500 ko : le corpus ne pouvait plus grandir |
 
 La deuxième ligne est la plus grave. Le corpus est une donnée de mesure : deux
 postes dont les fichiers diffèrent d'un caractère produisent des `element_id`
-différents, donc des campagnes que rien ne permet de comparer, **sans qu'aucune
-erreur ne le signale** (mandat §2.2). Un hook qui « corrige » une fin de ligne
-dans un HTML capturé fait exactement ce dégât.
+différents, donc des campagnes impossibles à comparer, **sans qu'aucune erreur
+ne le signale**.
 
-**Le geste pour étendre le corpus, aujourd'hui :**
+**Pour étendre le corpus :**
 
 ```bash
 git add "Datas/htms/<ouvrage>/<chapitre>.html" && git commit
 ```
 
-Rien de particulier — c'est le point de l'exclusion. Aucun `--no-verify`, aucun
-seuil à relever, aucune exception à ajouter. Deux choses seulement :
+Rien de particulier : aucun `--no-verify`, aucun seuil à relever, aucune
+exception à ajouter. Deux règles seulement :
 
-- **ne renomme rien, jamais**, et surtout pas pour « ranger » : `source_path`
-  entre dans `element_id`. Les noms doivent être identiques au caractère près
-  d'un poste à l'autre (mandat §2.2) ;
+- **ne jamais renommer un fichier du corpus**, même pour « ranger » :
+  `source_path` entre dans `element_id`. Les noms doivent être identiques au
+  caractère près d'un poste à l'autre ;
 - au-delà de **50 Mo par fichier**, GitHub avertit ; au-delà de **100 Mo**, il
-  refuse. Aucun fichier du corpus n'approche ces bornes aujourd'hui — mais
-  **pas « de loin » comme ce paragraphe l'a affirmé**. Il disait « le plus gros
-  fichier du corpus pèse aujourd'hui moins de 1 Mo » : c'est **faux**, et de
-  presque un ordre de grandeur. `mesuré` le 31 août 2026 **sur le résultat de la
-  fusion d'essai**, `git ls-files -z -- Datas | xargs -0 stat -c '%s %n'` :
-  le plus gros pèse **6 362 475 o** — `Datas/htms/Practical MLflow for
-  Generative AI on Databricks/8. Deploying a GenAI Application with
-  MLflow.html` — le plus petit **671 707 o**, et **19 des 25** dépassent 1 Mo.
-  La conclusion tient, la marge est de **8×** et non de 50× : une capture plus
-  lourde, ou un PDF d'images, la rapprocherait vite.
+  refuse. Mesuré le 31 août 2026 (`git ls-files -z -- Datas | xargs -0 stat -c '%s %n'`) :
+  le plus gros fichier pèse **6 362 475 o**
+  (`Datas/htms/Practical MLflow for Generative AI on Databricks/8. Deploying a GenAI Application with MLflow.html`),
+  le plus petit **671 707 o**, et **19 des 25** dépassent 1 Mo. La marge est
+  d'environ **8×** : une capture plus lourde, ou un PDF d'images, la réduirait
+  vite.
 
-**Ce que l'exclusion coûte**, écrit pour que personne ne le découvre : un secret
-réel déposé sous `Datas/` ne serait pas vu par `detect-secrets`. C'est accepté —
-le corpus est une capture de documentation publique, et l'alternative consiste à
-altérer les données de mesure du chantier. La borne est étroite : ce chemin-là,
-et lui seul.
+**Ce que l'exclusion coûte** : un secret réel déposé sous `Datas/` ne serait pas
+vu par `detect-secrets`. C'est accepté : le corpus est une capture de
+documentation publique, et l'alternative consisterait à altérer les données de
+mesure. La borne est étroite : ce chemin-là, et lui seul.
 
-**904 tests verts** (`mesuré` le 22 septembre 2026 par `make all` sur cette
-révision, `rc=0` du processus ; `ruff`, `mypy` et `ruff format --check` propres
-au même moment, puisque `make all` les enchaîne. Le compte tient sur cinq
-graines de hachage — `PYTHONHASHSEED` à 0, 1, 42, 1337 et 65535 —, `rc=0` aux
-cinq.) *La commande est `make all`, et elle a remplacé « `mypy --strict` » dans
-cette phrase : `pyproject.toml` porte déjà `strict = true` ET une exception
-motivée ligne 84, `disallow_untyped_decorators = false`, pour les décorateurs
-Dagster et FastAPI. Passer `--strict` à la main ÉCRASE l'exception et fabrique
-des erreurs qui n'existent pas ; la porte de ce dépôt est `make all`.* C'est le site
-canonique de ce chiffre : il n'est écrit nulle part ailleurs dans le dépôt, et
-toute autre mention doit renvoyer ici plutôt que le recopier. Un chiffre
-recopié cesse d'être une mesure — « 407 tests » a circulé pour une révision qui
-en comptait 477, sans qu'aucune commande ne l'ait jamais produit.
+### Ce que les tests couvrent
 
-La logique sensible du service d'extraction vit dans des modules sans dépendance lourde : elle est donc testée sans Docling, torch ni NebulaGraph, et couverte à 100 %.
+La logique sensible du service d'extraction vit dans des modules sans dépendance
+lourde : elle est testée sans Docling, torch ni NebulaGraph. Couverture relevée
+par `make test-cov` (valeurs non remesurées au 25 septembre 2026) :
 
 | Module | Rôle | Couverture |
 |---|---|---|
@@ -919,47 +753,27 @@ La logique sensible du service d'extraction vit dans des modules sans dépendanc
 | `jobs.py` | File de jobs et worker | 99 % |
 | `cleaning.py` | Nettoyage HTML universel | 94 % |
 
-Les modules restants, `vectors.py` et `main.py`, sont des adaptateurs — vers
-ChromaDB et vers FastAPI : ils ne sont pas couverts en unitaire et se valident par
-une ingestion réelle. Chacun garde tout de même la propriété qui décide :
-`vectors.py` le contrôle du modèle d'embedding et la page de fin des chunks
-(`tests/unit/test_vectors.py`), `main.py` le refus de démarrer hors contrat
-(`tests/unit/test_main.py`, par sous-processus). *(Cette phrase ne nommait que
-`vectors.py` : elle avait été écrite en supposant `main.py` déverrouillé, ce qu'il
-n'est pas — voir juste en dessous.)*
+`vectors.py` et `main.py` sont des adaptateurs, vers ChromaDB et vers FastAPI :
+ils ne sont pas couverts en unitaire et se valident par une ingestion réelle.
+Chacun a tout de même sa propriété décisive sous test : `vectors.py` le contrôle
+du modèle d'embedding et la page de fin des chunks (`tests/unit/test_vectors.py`),
+`main.py` le refus de démarrer hors contrat (`tests/unit/test_main.py`).
 
-**Deux modules ont été DÉVERROUILLÉS au lot 4, et un troisième a été atteint
-autrement** — la distinction n'est pas cosmétique, et la première rédaction de ce
-paragraphe la gommait. La cause est la même dans les trois cas : ils étaient
-**inimportables côté hôte**, donc rien de ce qu'ils décident ne pouvait être testé
-— *ce qu'un test n'importe pas, il ne teste pas*.
+Trois modules étaient inimportables côté hôte, donc intestables ; ils sont
+atteints ainsi :
 
-| Module | Ce qui l'empêchait | Ce qui a changé | Ce qui le garde désormais |
+| Module | L'obstacle | La solution | Le test |
 |---|---|---|---|
 | `nebula.py` | `import nebula3` au niveau du module | l'import est **différé** dans la fonction qui en a besoin | `test_nebula.py` — l'identité du document, `source_path` et jamais `filename` |
 | `extraction.py` | `import docling` au niveau du module | l'import est **différé** | `test_extraction.py` — l'oubli avant réécriture, le retrait d'un document partiel, la chaîne d'images, le compteur de pages perdues |
-| `main.py` | `fastapi` absent du venv du dépôt | **rien : aucune ligne du module n'est modifiée** | `test_main.py` — le refus de démarrer hors contrat, atteint par un bouchon `fastapi` posé comme un vrai paquet en tête de `PYTHONPATH`, par sous-processus |
+| `main.py` | `fastapi` absent de l'environnement du dépôt | aucune modification du module | `test_main.py` — un faux paquet `fastapi` placé en tête de `PYTHONPATH`, dans un sous-processus |
 
-Les deux premiers ont vu leur import différé, le geste de `vectors.get_collection`.
-Le troisième n'a **pas** été déverrouillé : `main.py` **est** l'application
-FastAPI, différer cet import-là n'aurait aucun sens, et c'est le TEST qui va le
-chercher derrière un bouchon. Un module atteint par un bouchon n'est pas un module
-importable, et l'écrire comme tel surdisait ce qui avait été fait.
-
-**Un module du dépôt reste inimportable côté hôte, et c'est le seul.** `mesuré` le
-1er septembre 2026 : **33 modules sous `src/`, 1 inimportable** —
-`src/docling_service/main.py`, `ModuleNotFoundError: No module named 'fastapi'`.
-Ce paragraphe affirmait « Aucun module du dépôt n'est plus inimportable côté
-hôte » : c'était une **phrase d'exhaustivité**, la famille que le mandat §10 nomme
-comme un défaut en attente, et elle contredisait le tableau situé juste au-dessus,
-qui dit lui-même que `main.py` est atteint par un bouchon.
-
-L'affirmation est désormais **bornée à sa portée réelle, et gardée** :
-`tests/unit/test_importabilite_cote_hote.py` importe les 33 modules dans un
-sous-processus et rougit dès qu'un module inimportable n'est pas déclaré. C'était
-la cause mécanique de six angles morts du chantier (registre §3.4, §4.4, §4.5,
-§4.19, §4.28.d) — la convertir en garde plutôt qu'en phrase est ce qui empêche le
-septième.
+`main.py` **reste inimportable côté hôte**, et c'est le seul module de `src/`
+dans ce cas : il **est** l'application FastAPI, et c'est le test qui le charge
+derrière un faux paquet. `tests/unit/test_importabilite_cote_hote.py` importe
+tous les modules de `src/` dans un sous-processus et échoue dès qu'un module
+inimportable n'est pas déclaré comme tel (registre §3.4, §4.4, §4.5, §4.19,
+§4.28.d).
 
 ---
 
@@ -976,5 +790,6 @@ septième.
 | Nebula Graph | Graphe de connaissances | Apache-2.0 |
 | PostgreSQL | Métadonnées Dagster | PostgreSQL License (open-source) |
 | SeaweedFS | Stockage d'objets | Apache-2.0 |
+| minio (minio-py) | Bibliothèque cliente S3 | Apache-2.0 |
 | requests | Client HTTP | Apache-2.0 |
 | **Ce projet** | Code applicatif | MIT — Copyright (c) 2026 floSa `<à confirmer : aucun fichier LICENSE présent>` |

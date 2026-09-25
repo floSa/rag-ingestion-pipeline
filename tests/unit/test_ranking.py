@@ -121,16 +121,14 @@ class TestExceedsBodySize:
 
 
 class TestFallbackRank:
-    """Le rang de REPLI, et le compteur qui manquait.
+    """Le rang de repli, et son compteur.
 
-    `mesure` sur le seul PDF du corpus : 39 titres sur 87 (45 %) recoivent ce
-    rang, et non un rang mesure — le PDF ne classe que trois niveaux. Les
-    profondeurs relevees dans le graphe melangeaient donc trois niveaux mesures
-    et un empilement par defaut, et RIEN ne le comptait (registre 4.21).
+    Mesure sur le seul PDF du corpus : 39 titres sur 87 (45 %) recoivent ce
+    rang, et non un rang mesure, le PDF ne classant que trois niveaux
+    (registre 4.21).
 
-    Le mecanisme typographique n'est pas refait ici : l'audit du lot 1 a montre
-    qu'il n'est robuste que sur ce PDF-ci, une refabrication calibre depuis un
-    EPUB. Le mesurer suffit.
+    Le classement typographique n'est robuste que sur ce PDF, fabrique depuis
+    un EPUB ; il n'est pas refait ici, seulement mesure.
     """
 
     RANGS = {27.5: 0, 21.2: 1, 16.9: 2}
@@ -144,7 +142,7 @@ class TestFallbackRank:
         assert fallback_rank({}) is None
 
     def test_the_fallback_is_what_an_unmeasurable_heading_receives(self):
-        """Le compteur et la decision doivent lire la MEME valeur.
+        """Le compteur et la decision doivent lire la meme valeur.
 
         Si le repli etait calcule a deux endroits, le compteur compterait autre
         chose que ce que la decision attribue.

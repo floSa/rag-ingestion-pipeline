@@ -1,18 +1,16 @@
 """La hierarchie des titres, depuis les items Docling jusqu'au graphe.
 
-Pourquoi ce fichier existe. ``test_elements.py`` verifie deja que
-``DocumentAccumulator`` imbrique correctement les titres — mais il lui INJECTE
-``heading_rank`` a la main. Il reste donc vert si ``flat_rank`` et
-``pdf_heading_rank`` rendent toujours ``None`` : dans ce cas tous les titres
-recoivent le rang 0, deviennent freres sous le document, et l'on retombe
-exactement sur le graphe plat mesure en production — 901 ``SectionHeader``
-enfants du ``Document``, 0 enfant d'un autre ``SectionHeader``.
+``test_elements.py`` verifie que ``DocumentAccumulator`` imbrique correctement
+les titres, mais en lui injectant ``heading_rank`` a la main. Il passerait donc
+meme si ``flat_rank`` et ``pdf_heading_rank`` rendaient toujours ``None`` : tous
+les titres recevraient alors le rang 0 et deviendraient freres sous le document,
+soit le graphe plat autrefois mesure en production (901 ``SectionHeader``
+enfants du ``Document``, aucun enfant d'un autre ``SectionHeader``).
 
-Autrement dit, le test existant est vert des deux cotes du defaut.
-
-Ceux-ci partent donc d'items tels que Docling les rend, traversent le calcul du
-rang, et n'assertent qu'a l'arrivee : la forme de l'arbre. Ils rougissent des
-que le rang cesse de remonter, quelle qu'en soit la cause.
+Les tests de ce fichier partent donc d'items tels que Docling les rend,
+traversent le calcul du rang, et ne verifient que le resultat : la forme de
+l'arbre. Ils echouent des que le rang cesse de remonter, quelle qu'en soit la
+cause.
 """
 
 from __future__ import annotations
@@ -95,7 +93,8 @@ class TestHtmlLeRangRemonteDuParentDocling:
         assert flat_rank(ItemHtml("text", "Du texte."), None) is None
 
     def test_l_arbre_produit_a_trois_niveaux(self):
-        # LE test. Sur le graphe de production : 0 chemin de longueur 3.
+        # Test central. Sur le graphe plat mesure en production : aucun chemin
+        # de longueur 3.
         chapitre = ItemHtml("title", "Chapitre 3")
         section = enchaine(ItemHtml("section_header", "3.2"), chapitre)
         sous = enchaine(ItemHtml("section_header", "3.2.1"), section)
@@ -216,16 +215,16 @@ class TestPdfLeRangVientDeLaTaille:
         assert rang == max(RANGS_TAILLES.values()) + 1
 
 
-# ─── La regression qu'on pretend garder ──────────────────────────────────────
+# ─── La regression couverte ──────────────────────────────────────────────────
 
 
 class TestLeGrapheNeDoitPlusEtrePlat:
     """Ce que ces tests protegent, dit en une assertion.
 
-    Sur le graphe de production : 901 ``SectionHeader`` enfants du
-    ``Document``, 0 enfant d'un autre ``SectionHeader``, 0 chemin de longueur
-    3. Si le calcul du rang cesse de remonter — pour n'importe quelle raison —
-    on y revient, et c'est ici que ca se voit.
+    Graphe plat mesure en production : 901 ``SectionHeader`` enfants du
+    ``Document``, aucun enfant d'un autre ``SectionHeader``, aucun chemin de
+    longueur 3. Si le calcul du rang cesse de remonter, quelle qu'en soit la
+    raison, ce graphe revient, et ce test echoue.
     """
 
     def test_un_document_a_trois_niveaux_ne_produit_pas_que_des_freres(self):

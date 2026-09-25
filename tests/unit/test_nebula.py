@@ -1,19 +1,15 @@
-"""Gardes de l'ecriture du graphe.
+"""Tests de l'ecriture du graphe.
 
-Ce fichier n'existait pas, et pour une raison MECANIQUE : ``nebula.py``
-importait ``nebula3`` au niveau du module, or ``nebula3`` n'est pas dans le venv
-du depot — les dependances lourdes d'extraction vivent dans
-``Dockerfile.docling``. Aucun test ne pouvait donc importer le module, et *ce
-qu'un test n'importe pas, il ne teste pas*. C'etait le cinquieme et dernier
-module dans ce cas, apres ``index_report`` (registre 3.4), ``verify_contract``
-(4.4), ``verify_data`` (4.5) et ``vectors`` (4.4).
+``nebula.py`` importe ``nebula3`` localement (``_connect``) : ``nebula3`` n'est
+pas dans le venv du depot, et un import de module rendrait ``nebula.py``
+intestable cote hote (meme cas que ``index_report``, registre 3.4,
+``verify_contract`` 4.4, ``verify_data`` 4.5 et ``vectors`` 4.4).
 
-Le garde central : **la CLE du document, et non son nom de fichier.**
-``document_vid`` recoit ``identity.key`` de ses trois appelants, et le remplacer
-par ``identity.filename`` laissait la suite entierement verte (registre 4.28.d)
-— alors que cela ferait collisionner les deux ``Preface.html`` du corpus sur un
-seul sommet, c'est-a-dire la perte silencieuse d'un document entier et la
-violation directe de l'exigence 3 du contrat.
+Propriete centrale : le sommet ``Document`` porte la cle du document, et non
+son nom de fichier (registre 4.28.d). ``document_vid`` recoit ``identity.key``
+de ses trois appelants ; ``identity.filename`` ferait collisionner les deux
+``Preface.html`` du corpus sur un seul sommet, perdant un document entier en
+silence (exigence 3 du contrat).
 """
 
 from __future__ import annotations
@@ -74,7 +70,7 @@ class ResultatVide:
 
 
 class SessionEspionne:
-    """Session NebulaGraph bouchonnee qui retient les requetes qu'on lui passe."""
+    """Session NebulaGraph bouchonnee qui retient les requetes recues."""
 
     def __init__(self) -> None:
         self.requetes: list[str] = []
@@ -119,11 +115,11 @@ def insertion_du_document(pool: PoolEspion) -> str:
 
 
 class TestLeSommetDocumentPorteLaCleEtNonLeNomDeFichier:
-    """Le garde de l'exigence 3 : ``source_path`` est l'identite, jamais ``filename``.
+    """Exigence 3 : ``source_path`` est l'identite, jamais ``filename``.
 
-    Ces trois tests rougissent a la mutation
-    ``document_vid(identity.key)`` -> ``document_vid(identity.filename)`` dans
-    ``write_elements``, qui laissait la suite entierement verte avant ce fichier.
+    Ces trois tests echouent si ``write_elements`` appelle
+    ``document_vid(identity.filename)`` au lieu de
+    ``document_vid(identity.key)``.
     """
 
     def test_l_identifiant_du_sommet_derive_de_la_cle(
@@ -137,9 +133,9 @@ class TestLeSommetDocumentPorteLaCleEtNonLeNomDeFichier:
     def test_le_nom_de_fichier_seul_ne_sert_jamais_d_identifiant(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Le temoin du precedent.
+        """Contre-epreuve du precedent.
 
-        Sans lui, un identifiant qui porterait la cle ET le nom de fichier
+        Sans ce test, un identifiant qui porterait la cle et le nom de fichier
         passerait le test ci-dessus.
         """
         writer, pool = writer_espionne(monkeypatch)
@@ -169,7 +165,7 @@ class TestLeSommetDocumentPorteLaCleEtNonLeNomDeFichier:
     def test_les_aretes_partent_du_meme_sommet_que_l_insertion(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Le sommet insere et le parent des aretes sont le MEME identifiant.
+        """Le sommet insere et le parent des aretes sont le meme identifiant.
 
         Deux derivations independantes de l'identifiant pourraient diverger :
         le document serait insere sous une cle et ses elements rattaches sous
@@ -185,12 +181,12 @@ class TestLeSommetDocumentPorteLaCleEtNonLeNomDeFichier:
 
 
 class TestLesIdentifiantsDuGrapheViennentDesReglages:
-    """Registre 4.3 : ``get_session("root", "nebula")`` etait ecrit en dur.
+    """Registre 4.3 : les identifiants de session viennent des reglages.
 
-    ``NEBULA_USER`` et ``NEBULA_PASSWORD`` existent dans ``.env.example`` et
-    n'etaient exposes par AUCUN settings : le ``.env`` mentait sur ce qui est
-    reellement lu. Changer le mot de passe du graphd rendait le service
-    inutilisable sans qu'aucun reglage ne l'explique.
+    ``NEBULA_USER`` et ``NEBULA_PASSWORD`` (``.env.example``) doivent etre
+    reellement lus : des identifiants ecrits en dur rendraient le service
+    inutilisable apres un changement de mot de passe du graphd, sans qu'aucun
+    reglage ne l'explique.
     """
 
     def test_la_session_recoit_les_identifiants_des_reglages(
@@ -211,11 +207,11 @@ class TestLesIdentifiantsDuGrapheViennentDesReglages:
     def test_les_valeurs_par_defaut_restent_celles_de_la_pile(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE TEMOIN. Sans variable, les defauts historiques valent toujours.
+        """Sans variable, les defauts sont ceux de la pile.
 
-        Sans lui, exposer les reglages avec de mauvais defauts casserait tout
-        poste dont le ``.env`` ne les declare pas — et le test ci-dessus
-        resterait vert, puisqu'il fournit les deux variables.
+        Sans ce test, de mauvais defauts casseraient tout poste dont le ``.env``
+        ne declare pas ces variables, et le test ci-dessus passerait encore,
+        puisqu'il fournit les deux variables.
         """
         from src.docling_service.settings import get_settings
 

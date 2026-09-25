@@ -4,11 +4,11 @@ Deux regimes selon le format :
 
 - **PDF** : conversion par batchs de pages pour borner la memoire, avec crop
   des elements visuels vers le stockage objet. Les batchs ne se chevauchent
-  plus : les ids etant deterministes, le chevauchement ne faisait que
-  re-convertir les memes pages, soit environ 40 % de temps GPU perdu.
+  pas : les ids etant deterministes, un chevauchement ne ferait que
+  re-convertir les memes pages (environ 40 % de temps GPU en plus).
 - **HTML et Markdown** : conversion d'un seul tenant, sans pagination ni crop.
   Les images des captures HTML ont deja ete televersees par le pipeline
-  Dagster, on se contente de propager leur adresse.
+  Dagster ; seule leur adresse est propagee.
 """
 
 from __future__ import annotations
@@ -85,16 +85,13 @@ def get_converter(ocr: bool = False) -> DocumentConverter:
     Construit paresseusement pour que le module reste importable (et le service
     demarrable) meme si le chargement des modeles est lent.
 
-    **`docling` est importe ICI et non au niveau du module.** Il n'est pas dans
-    le venv du depot — les deps lourdes d'extraction vivent dans
-    `Dockerfile.docling` — donc un import de module rendait
-    `src.docling_service.extraction` INIMPORTABLE cote hote, et tout ce qu'il
-    decide intestable : c'est ce qui laissait le contrat de `page_batches` sans
-    garde (registre 4.14), et c'est ce qui laisserait sans garde les deux appels
-    a `storage.forget_document` (4.1 et 4.2). C'est le meme geste que
-    `vectors.get_collection`, `nebula._connect` et le `import fitz` local de ce
-    fichier meme — sur le sixieme et dernier module dans ce cas.
-    *Ce qu'un test n'importe pas, il ne teste pas.*
+    `docling` est importe ici et non au niveau du module : il n'est pas dans le
+    venv du depot (les dependances lourdes d'extraction sont dans
+    `Dockerfile.docling`). Un import de module rendrait
+    `src.docling_service.extraction` inimportable cote hote, donc intestable
+    (registre 4.14 pour `page_batches`, 4.1 et 4.2 pour les appels a
+    `storage.forget_document`). Meme choix que `vectors.get_collection`,
+    `nebula._connect` et le `import fitz` local de ce fichier.
 
     Args:
         ocr: Activer la reconnaissance de caracteres. Reserve aux documents
@@ -157,18 +154,16 @@ def extract(path: Path, source_path: str = "", report: Reporter = _noop) -> dict
             "type_file": suffix.lstrip("."),
         }
 
-    # REGISTRE 4.2 : le document est OUBLIE avant d'etre reecrit. Les
+    # Registre 4.2 : le document est purge avant d'etre reecrit. Les
     # identifiants derivent du texte, donc un texte modifie produit de nouveaux
-    # identifiants et `upsert` laisse les anciens derriere lui, en orphelins,
-    # dans les deux stores. Le capteur declenchant sur `mtime`, mettre a jour un
-    # document est le chemin NOMINAL : c'est lui qui cassait.
+    # identifiants et `upsert` laisserait les anciens en orphelins dans les deux
+    # stores. Le capteur declenchant sur `mtime`, c'est le cas nominal.
     #
-    # La purge vient APRES le controle de doublon, et l'ordre compte : un doublon
-    # exact sort plus haut sans rien toucher, donc reingerer un fichier
-    # inchange ne detruit rien pour le reecrire a l'identique.
+    # La purge vient apres le controle de doublon : un doublon exact sort plus
+    # haut sans rien toucher.
     #
-    # Elle leve si un store resiste : reecrire par-dessus une purge a moitie
-    # faite est exactement ce que 4.2 decrit.
+    # Elle leve si un store resiste : ne pas reecrire par-dessus une purge a
+    # moitie faite.
     storage.forget_document(identity)
 
     if suffix in PDF_SUFFIXES:
@@ -220,8 +215,8 @@ def _already_ingested(content_hash: str, identity: DocumentIdentity) -> str:
 def _deduce_source_path(path: Path) -> str:
     """Deduit le chemin relatif a ``Datas/`` quand le pipeline ne l'a pas fourni.
 
-    Cas d'un appel manuel a l'API. On coupe au dossier ``Datas`` ; a defaut, on
-    retombe sur le nom du fichier seul — l'ouvrage sera alors inconnu.
+    Cas d'un appel manuel a l'API. Le chemin est coupe au dossier ``Datas`` ; a
+    defaut, seul le nom du fichier est garde, et l'ouvrage est alors inconnu.
     """
     parts = path.parts
     if "Datas" in parts:
@@ -233,7 +228,7 @@ def _index_attachments(directory: Path) -> dict[str, Path]:
     """Recense les fichiers presents autour d'une note, par nom.
 
     Obsidian ne met que le nom du fichier dans ``![[image.jpg]]`` et resout le
-    reste lui-meme. On reconstitue cette resolution en indexant une fois pour
+    reste lui-meme. Cette resolution est reconstituee en indexant une fois pour
     toutes ce qui vit a cote de la note.
     """
     index: dict[str, Path] = {}
@@ -331,14 +326,11 @@ def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[in
 def html_image_urls(chemin: Path) -> list[str]:
     """Adresses des images d'un HTML nettoye, dans l'ordre du document.
 
-    **C'est la seule voie qui reste, et voici pourquoi.** `cleaning.py` reecrit
-    `img src` avec l'adresse de l'objet, mais Docling ne la rend nulle part :
-    `mesure` le
+    C'est la seule source de ces adresses. `cleaning.py` reecrit `img src` avec
+    l'adresse de l'objet, mais Docling ne la rend nulle part. Mesure le
     1er septembre 2026 sur 4 chapitres nettoyes convertis dans l'image
-    d'extraction, `item.image` vaut `None` sur **24 items `picture` sur 24**, et
-    `item.source`, `item.references` et `item.meta` sont vides aussi. Le test
-    `item.image.uri.startswith("http")` qui vivait ici n'etait donc JAMAIS
-    atteint : la chaine etait rompue en amont de sa propre garde (registre 3.5).
+    d'extraction : `item.image` vaut `None` sur les 24 items `picture`, et
+    `item.source`, `item.references` et `item.meta` sont vides (registre 3.5).
 
     Seuls les `src` en `http` sont rendus. Une image restee en `data:` ou en
     chemin relatif n'a aucun objet dans le bucket : la compter decalerait toutes
@@ -369,9 +361,9 @@ def html_image_urls(chemin: Path) -> list[str]:
 
 
 def poser_le_media(element: dict[str, Any], url: str | None) -> None:
-    """Pose l'adresse du media ET sa cle sur un element — LES DEUX ENSEMBLE.
+    """Pose ensemble l'adresse du media et sa cle sur un element.
 
-    Le contrat publie les deux champs, et ils decrivent le MEME objet : une
+    Le contrat publie les deux champs, et ils decrivent le meme objet : une
     adresse sans cle, ou une cle sans adresse, est un element a demi renseigne
     que rien ne rattrape — le graphe et ChromaDB sont ecrits une fois, et
     `verify_contract` compte alors un manque sans pouvoir dire lequel des trois
@@ -393,18 +385,16 @@ def poser_le_media(element: dict[str, Any], url: str | None) -> None:
 def propager_les_url_dimages(elements: list[dict[str, Any]], urls: list[str], stem: str) -> int:
     """Pose les URL sur les elements `picture`, dans l'ordre, ou n'en pose aucune.
 
-    La correspondance est POSITIONNELLE : la n-ieme `<img>` du HTML nettoye est
-    la n-ieme `picture` rendue par Docling. `mesure` le 1er septembre 2026 sur
-    4 chapitres, les deux comptes concordent **4 fois sur 4** — 4/4, 1/1, 9/9,
-    10/10.
+    La correspondance est positionnelle : la n-ieme `<img>` du HTML nettoye est
+    la n-ieme `picture` rendue par Docling. Mesure le 1er septembre 2026 sur
+    4 chapitres : les deux comptes concordent 4 fois sur 4 (4/4, 1/1, 9/9,
+    10/10).
 
-    **UNE CORRESPONDANCE POSITIONNELLE EST FRAGILE, DONC ELLE EST GARDEE PAR UN
-    REFUS.** Si les deux comptes divergent, aucune URL n'est posee. Une URL
-    FAUSSE sur une image est pire qu'une URL absente : l'agent servirait
-    l'illustration d'un autre passage, et rien ne le dirait — alors qu'une URL
-    absente est deja comptee par `verify_contract`, qui la rapporte comme une
-    anomalie. Entre une perte bruyante et une erreur muette, on choisit la perte
-    bruyante.
+    Cette correspondance est fragile : si les deux comptes divergent, aucune
+    URL n'est posee. Une URL fausse est pire qu'une URL absente : l'agent
+    servirait l'illustration d'un autre passage sans que rien ne le dise,
+    alors qu'une URL absente est comptee par `verify_contract` comme une
+    anomalie.
 
     Seuls les `picture` sont cibles, et non tous les elements visuels : un
     `table` est visuel mais n'est pas une `<img>` du HTML. Le compter decalerait
@@ -453,7 +443,7 @@ def _extract_flat(
     report(pages_total=1, pages_done=0, elements=0, chunks=0)
 
     with _prepared_source(path, type_file) as (source_path, image_urls):
-        # Le chemin REELLEMENT converti : pour le HTML c'est le fichier nettoye,
+        # Le chemin reellement converti : pour le HTML c'est le fichier nettoye,
         # celui dont `cleaning.py` a reecrit les `img src`. Le lire est la seule
         # facon de recuperer les URL, Docling ne les rendant nulle part.
         source_path_utilise = source_path
@@ -468,8 +458,8 @@ def _extract_flat(
         element = accumulator.add_item(item, document, heading_rank=rang)
 
         # Balise laissee par la preparation du Markdown : cet element est une
-        # image. On lui rend sa nature et son URL, en place — donc rattache a
-        # la meme section, avec sa legende toujours adjacente.
+        # image. Sa nature et son URL lui sont rendues en place : il reste
+        # rattache a la meme section, avec sa legende adjacente.
         marker = IMAGE_MARKER.match(element["text"])
         if marker is not None:
             element["label"] = "picture"
@@ -480,15 +470,10 @@ def _extract_flat(
 
         elements.append(element)
 
-    # LES IMAGES DES CAPTURES HTML. Ce bloc testait
-    # `item.image.uri.startswith("http")`, et ce test n'etait JAMAIS atteint :
-    # `item.image` vaut `None` sur tous les `picture` rendus depuis un HTML
-    # (`mesure`, 0/24). Les 199 images du corpus n'avaient donc aucune
-    # d'adresse, et l'agent ne sert que ce que le graphe reference — elles
-    # etaient payees en place et en temps, et inatteignables (registre 3.5).
-    #
-    # L'URL est desormais lue dans le HTML nettoye, ou `cleaning.py` l'a ecrite,
-    # et posee par correspondance positionnelle — gardee par un refus.
+    # Images des captures HTML : Docling ne rend pas leur adresse (voir
+    # `html_image_urls`, registre 3.5). L'URL est lue dans le HTML nettoye, ou
+    # `cleaning.py` l'a ecrite, et posee par correspondance positionnelle ;
+    # en cas de desaccord des comptes, aucune n'est posee.
     if type_file == "html":
         posees = propager_les_url_dimages(elements, html_image_urls(source_path_utilise), stem)
         if posees:
@@ -543,8 +528,8 @@ def _extract_pdf(
         besoin_ocr = not _has_text_layer(document, ranges)
 
     if besoin_ocr:
-        # Un scan n'a pas de texte selectionnable. Plutot que de le refuser, on
-        # le repasse avec la reconnaissance de caracteres : c'est lent, mais
+        # Un scan n'a pas de texte selectionnable. Plutot que de le refuser, il
+        # est converti avec la reconnaissance de caracteres : c'est lent, mais
         # c'est le seul moyen de lire l'ouvrage. Les PDF normaux, eux, gardent
         # leur vitesse puisqu'ils n'empruntent jamais cette branche.
         logger.warning("[%s] aucune couche texte : conversion avec OCR", stem)
@@ -575,11 +560,11 @@ def _extract_pdf(
     converter = get_converter(ocr=besoin_ocr)
     total_chunks = 0
     failed_batches: list[str] = []
-    # Combien de titres ont recu un rang MESURE, et combien le rang de repli.
-    # Le PDF ne classe que les tailles superieures au corps du texte : tout le
-    # reste s'empile sous le titre courant, et rien ne le comptait. Sans ce
-    # chiffre, une profondeur relevee dans le graphe melange des niveaux
-    # mesures et un empilement par defaut sans qu'on puisse les distinguer.
+    # Combien de titres ont recu un rang mesure, et combien le rang de repli.
+    # Le PDF ne classe que les tailles superieures au corps du texte : le
+    # reste s'empile sous le titre courant. Sans ce compte, les profondeurs du
+    # graphe melangent niveaux mesures et empilement par defaut sans qu'on
+    # puisse les distinguer.
     titres_total = 0
     titres_replis = 0
     # Detectee sur le premier lot converti, puis conservee : la langue d'un
@@ -587,15 +572,11 @@ def _extract_pdf(
     # le meme noeud Document.
     langue = ""
 
-    # Le decoupage en lots vit dans matter.page_batches et non ici : le contrat
-    # « pas de chevauchement » etait realise par un « + 1 » que rien ne gardait.
-    # Le motif d'origine ajoutait « et ce module n'est pas importable sans
-    # docling, donc pas testable » : ce n'est plus vrai, l'import de `docling`
-    # etant descendu dans `get_converter`. Le decoupage reste ici parce que
-    # `matter.py` porte deja `kept_ranges`, dont il est la suite.
+    # Le decoupage en lots vit dans matter.page_batches, a cote de
+    # `kept_ranges` dont il est la suite, et y est teste (registre 4.14).
     lots = matter.page_batches(ranges, settings.pdf_batch_pages)
 
-    # Le PDF est ouvert UNE fois pour tous les crops du document.
+    # Le PDF est ouvert une seule fois pour tous les crops du document.
     with fitz.open(pdf_path) as document:
         for start_page, end_page in lots:
             logger.info("[%s] batch %d-%d/%d", stem, start_page, end_page, total_pages)
@@ -613,9 +594,9 @@ def _extract_pdf(
                     size_ranks,
                 )
             except Exception as exc:
-                # Une page illisible ne doit pas condamner les 399 autres : on
-                # note l'echec, on continue, et le job echouera a la fin avec
-                # la liste des pages manquantes. Jamais un run vert sur un trou.
+                # Une page illisible ne doit pas condamner les 399 autres :
+                # l'echec est note, la conversion continue, et le job echoue a
+                # la fin avec la liste des pages manquantes.
                 logger.exception("[%s] batch %d-%d en echec", stem, start_page, end_page)
                 failed_batches.append(f"{start_page}-{end_page} ({type(exc).__name__}: {exc})")
             else:
@@ -624,7 +605,7 @@ def _extract_pdf(
                 # Les plages de pages sont retenues lot par lot : les elements
                 # eux-memes ne survivent pas au lot (ils sont persistes puis
                 # jetes), et le compteur de pages perdues a besoin de la
-                # couverture du DOCUMENT entier.
+                # couverture du document entier.
                 pages_couvertes.extend(
                     {"page_no": e["page_no"], "page_no_end": e.get("page_no_end")}
                     for e in batch_elements
@@ -650,15 +631,13 @@ def _extract_pdf(
             )
 
     if failed_batches:
-        # REGISTRE 4.1 : le document PARTIEL est retire avant qu'on ne leve.
-        # Sans ce retrait, la partition Dagster est rouge ET l'ouvrage est dans
-        # l'index, tronque, sans que rien ne l'en sorte — le pire des deux
-        # etats, parce qu'il ressemble a des stores vides. `verify_contract` ne
-        # peut pas le voir : les `element_id` ecrits sont parfaitement valides,
-        # ce sont les pages manquantes qui ne laissent aucune trace.
+        # Registre 4.1 : le document partiel est retire avant de lever. Sinon
+        # la partition Dagster est en echec et l'ouvrage reste dans l'index,
+        # tronque. `verify_contract` ne peut pas le voir : les `element_id`
+        # ecrits sont valides, seules les pages manquent.
         #
-        # L'invariant devient : un document est entierement dans les stores, ou
-        # pas du tout.
+        # Invariant : un document est entierement dans les stores, ou pas du
+        # tout.
         logger.error(
             "[%s] %d lot(s) sur %d en echec : le document partiel est retire des "
             "stores. %d elements et %d chunks deja ecrits sont annules",
@@ -671,9 +650,9 @@ def _extract_pdf(
         try:
             storage.forget_document(identity)
         except Exception as exc:
-            # LARGEUR VOULUE : l'echec d'extraction est la cause premiere et
-            # doit rester la cause levee. Un `raise` depuis ce bloc masquerait
-            # les pages manquantes derriere une panne de store. On chaine.
+            # Exception large voulue : l'echec d'extraction est la cause
+            # premiere et doit rester la cause levee, la panne de store y est
+            # chainee.
             raise BatchExtractionError(
                 f"{len(failed_batches)} batch(s) non convertis pour {stem} : "
                 f"{'; '.join(failed_batches)}. ET LE DOCUMENT PARTIEL N'A PAS PU "
@@ -685,13 +664,11 @@ def _extract_pdf(
             f"stores : l'index ne porte pas d'ouvrage tronque"
         )
 
-    # LE COMPTEUR DU REGISTRE 4.22, et il ne pouvait pas exister avant
-    # `page_no_end`. Une page enjambee n'est PAS une page perdue : elle est
-    # couverte par un element qui commence avant elle. Ce qui reste apres ce
-    # changement est la vraie perte — une page que personne ne couvre — et c'est
-    # elle qu'il faut crier. Sur le corpus, les six pages qui paraissaient vides
-    # (8, 18, 19, 25, 68, 69) sont enjambees, donc ce compteur doit se taire
-    # dessus : il ne parle que d'une perte reelle.
+    # Compteur du registre 4.22. Une page enjambee n'est pas perdue : elle est
+    # couverte par un element qui commence avant elle. Seule une page que
+    # personne ne couvre est signalee. Sur le corpus, les six pages sans
+    # element de debut (8, 18, 19, 25, 68, 69) sont enjambees, donc ce
+    # compteur ne les signale pas.
     perdues = pages_sans_element(pages_couvertes, total_pages, skipped)
     if perdues:
         logger.warning(
@@ -778,7 +755,7 @@ def _front_back_matter_pages(document: Any, total_pages: int, stem: str) -> set[
         logger.info("[%s] signets : %d pages hors contenu ecartees", stem, len(skipped))
 
     # L'index est la partie la plus nuisible : s'il n'a pas ete trouve par les
-    # signets, on le cherche a sa forme dans la queue du document.
+    # signets, il est cherche a sa forme dans la queue du document.
     if not any(page > total_pages * 0.6 for page in skipped):
         debut = total_pages - max(1, int(total_pages * matter.INDEX_SEARCH_TAIL_RATIO))
         textes = {page: document[page - 1].get_text() for page in range(debut + 1, total_pages + 1)}
@@ -793,11 +770,9 @@ def _front_back_matter_pages(document: Any, total_pages: int, stem: str) -> set[
 def _has_text_layer(document: Any, ranges: list[tuple[int, int]]) -> bool:
     """Indique si le PDF porte du texte selectionnable.
 
-    Un livre scanne n'en a pas : Docling le convertirait sans broncher et
-    produirait un document quasi vide, le run passerait au vert sur un trou.
-    C'est le pire resultat possible sur une bibliotheque de deux cents
-    ouvrages, d'ou ce controle — qui aiguille vers l'OCR plutot que de laisser
-    passer.
+    Un livre scanne n'en a pas : Docling le convertirait sans erreur en un
+    document quasi vide, et le run reussirait. Ce controle aiguille alors vers
+    l'OCR.
 
     Le sondage porte sur des pages reparties dans tout le document et coute
     quelques millisecondes.
@@ -899,7 +874,7 @@ def _pdf_heading_rank(
 ) -> int | None:
     """Mesure ce qu'il faut au classement d'un titre, puis delegue la decision.
 
-    La mesure vit ici parce qu'elle demande PyMuPDF et le document ouvert ; la
+    La mesure est faite ici parce qu'elle demande PyMuPDF et le document ouvert ; la
     decision vit dans :func:`src.docling_service.ranking.pdf_heading_rank`, qui
     n'a besoin d'aucun des deux et se verifie donc seule.
 
@@ -955,7 +930,7 @@ def _convert_batch(
         rang = _pdf_heading_rank(item, document, elements, body_size, rangs)
         if rang is not None:
             titres += 1
-            # Le compteur lit le repli a la MEME source que la decision : le
+            # Le compteur lit le repli a la meme source que la decision : le
             # recalculer ici compterait autre chose que ce qui est attribue.
             inclassables += int(rang == repli)
         element = accumulator.add_item(item, result.document, heading_rank=rang)

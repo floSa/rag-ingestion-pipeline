@@ -1,14 +1,11 @@
-"""LE REJEU NE TOUCHE PLUS L'ARBRE DE TRAVAIL, ET SON VERDICT DISTINGUE ROUGE ET CASSE.
+"""Tests du rejeu des mutations (`scripts/rejouer-les-mutations.py`).
 
-Deux defauts mesures par le troisieme audit du lot 11 (registre 4.39.c) :
+Deux proprietes (registre 4.39.c) :
 
-- le rejeu mutait les fichiers de PRODUCTION en place. `extraction.py` restait
-  mute 0,66 s sur disque a chaque passage ; apres un `SIGKILL` il restait mute,
-  et le lancement suivant le prenait pour l'origine. Le controle final par
-  `git diff` comparait l'arbre a l'INDEX, donc laissait passer un residu indexe
-  et rougissait devant une modification legitime non commitee ;
-- une mutation qui CASSAIT LA SYNTAXE passait pour « ROUGE » : un rc non nul
-  suffisait au verdict, et un fichier illisible ressemble a un garde qui voit.
+- le rejeu travaille sur une copie jetable et ne modifie pas l'arbre de
+  travail ; le releve des `mtime` le verifie ;
+- le verdict distingue un echec de test (mutation « rouge ») d'une erreur de
+  collecte, comme une mutation qui casse la syntaxe.
 """
 
 from __future__ import annotations
@@ -27,7 +24,7 @@ SCRIPT = "scripts/rejouer-les-mutations.py"
 
 
 def _module():
-    """Le script se charge par son CHEMIN : son nom porte des tirets."""
+    """Le script se charge par son chemin : son nom porte des tirets."""
     specification = importlib.util.spec_from_file_location(
         "rejouer_les_mutations", RACINE_DEPOT / SCRIPT
     )
@@ -47,21 +44,20 @@ def _lancer(*arguments):
 
 
 class TestLeVerdict:
-    """`failed` dans la derniere ligne, `rc == 1`, et aucun `error`. Les trois."""
+    """Le verdict exige `failed` dans la derniere ligne, `rc == 1` et aucun `error`."""
 
     @pytest.mark.parametrize(
         ("code", "derniere"),
         [
             (2, "1 error in 0.10s"),
             (1, "1 error in 0.10s"),
-            # LE CAS QUI TIENT LA CLAUSE `error` A ELLE SEULE : un rc=1 avec un
-            # `failed` — tout ce que les deux autres clauses demandent — mais une
-            # collecte cassee a cote. C'est la mutation de syntaxe.
+            # Seule la clause `error` rejette ce cas : rc=1 et `failed`, mais une
+            # collecte cassee a cote (mutation de syntaxe).
             (1, "1 failed, 1 error in 0.10s"),
             (0, "1 passed in 0.10s"),
             (1, "82 deselected in 0.02s"),
-            # LE CAS QUI TIENT LA CLAUSE `failed` A ELLE SEULE : rc=1, ni erreur
-            # ni deselection, mais rien n'a rougi.
+            # Seule la clause `failed` rejette ce cas : rc=1, ni erreur ni
+            # deselection, mais aucun test n'a echoue.
             (1, "5 passed in 0.10s"),
             (4, "1 failed in 0.10s"),
             (2, "no tests ran in 0.01s"),
@@ -79,7 +75,7 @@ class TestLeVerdict:
 
 
 class TestUneMutationQuiCasseLaSyntaxeFaitEchouerLeRejeu:
-    """LE PIEGE : « une mutation qui casse la syntaxe ressemble a un garde qui voit »."""
+    """Une mutation qui casse la syntaxe n'est pas comptee comme rouge."""
 
     def test_une_entree_qui_casse_la_syntaxe_ne_passe_pas_pour_rouge(self, tmp_path):
         table = tmp_path / "table.json"
@@ -109,10 +105,10 @@ class TestUneMutationQuiCasseLaSyntaxeFaitEchouerLeRejeu:
 
 
 class TestLArbreDeTravailNeBougePas:
-    """Le rejeu tourne sur une COPIE JETABLE : la sonde des `mtime` le mesure."""
+    """Le rejeu tourne sur une copie jetable : le releve des `mtime` le verifie."""
 
     def test_un_mtime_qui_bouge_est_vu(self):
-        """LA SONDE ELLE-MEME : sans ce test, la rendre aveugle ne rougirait rien."""
+        """Le releve des `mtime` detecte un fichier modifie ou supprime."""
         module = _module()
 
         assert module.ce_qui_a_bouge({"src/a.py": 1.0}, {"src/a.py": 2.0}) == ["src/a.py"]
@@ -149,19 +145,14 @@ class TestLArbreDeTravailNeBougePas:
         assert module.empreinte_des_mtime(RACINE_DEPOT) == avant
 
     def test_la_sonde_ignore_les_pycache_et_voit_toujours_les_sources(self, tmp_path):
-        """LA SONDE NE SURVEILLE QUE LES SOURCES, et c'est le defaut B1 du quatrieme audit.
+        """Le releve ne surveille que les sources, pas `__pycache__` (defaut B1).
 
-        Elle faisait `rglob("*")` sans exclusion : elle surveillait les `.pyc`,
-        que l'interpreteur REECRIT tout seul. `mesure` de l'audit : un
-        `python -c "import src.index_report"` lance depuis l'arbre pendant
-        `make mutations` faisait rendre 2 a `make` — le rejeu etait declare
-        « ECHEC : le rejeu a TOUCHE l'arbre de travail » alors qu'il n'avait
-        rien touche. Un garde qui rougit sur ce qu'il ne garde pas finit par
-        etre desarme.
+        L'interpreteur reecrit les `.pyc` de lui-meme : un
+        `python -c "import src.index_report"` lance pendant `make mutations`
+        faisait sinon echouer le rejeu a tort.
 
-        Les deux sens sont tenus ici : le `.pyc` ne rougit plus, le `.py` rougit
-        toujours. Le second est ce qui empeche de « reparer » le premier en
-        rendant la sonde aveugle.
+        Les deux sens sont testes : un `.pyc` reecrit n'est pas signale, un
+        `.py` modifie l'est toujours.
         """
         module = _module()
         (tmp_path / "src/__pycache__").mkdir(parents=True)
@@ -175,11 +166,11 @@ class TestLArbreDeTravailNeBougePas:
 
         assert set(avant) == {"src/production.py", "tests/test_production.py"}, avant
 
-        # Le `.pyc` REECRIT ne rougit plus...
+        # Le `.pyc` reecrit n'est pas signale...
         os.utime(cache, (1_000_000, 1_000_000))
         assert module.ce_qui_a_bouge(avant, module.empreinte_des_mtime(tmp_path)) == []
 
-        # ...et la source touchee rougit toujours.
+        # ...et la source modifiee l'est toujours.
         os.utime(tmp_path / "src/production.py", (1_000_000, 1_000_000))
         assert module.ce_qui_a_bouge(avant, module.empreinte_des_mtime(tmp_path)) == [
             "src/production.py"

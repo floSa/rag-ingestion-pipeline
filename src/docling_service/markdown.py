@@ -6,8 +6,8 @@ et des notes ecrites a la main — produit un element par ligne source. La
 recherche vectorielle porte alors sur des fragments de 75 caracteres au lieu de
 paragraphes, ce qui degrade fortement la pertinence.
 
-On recolle donc les lignes d'un meme paragraphe avant de passer le fichier a
-Docling. Un fichier dont les paragraphes tiennent deja sur une ligne est rendu
+Les lignes d'un meme paragraphe sont donc recollees avant de passer le
+fichier a Docling. Un fichier dont les paragraphes tiennent deja sur une ligne est rendu
 inchange : la normalisation est sans effet la ou elle n'a rien a faire.
 
 Tout ce qui n'est pas de la prose est laisse intact — blocs de code (clotures
@@ -90,7 +90,7 @@ def _walk_lines(text: str) -> Iterator[tuple[str, bool]]:
 
     Yields:
         Couples (ligne, dans_un_bloc_de_code). Les delimiteurs de bloc sont
-        signales comme etant dans le bloc : on n'y touche pas non plus.
+        signales comme etant dans le bloc : ils ne sont pas modifies non plus.
     """
     in_fence = False
     fence_marker = ""
@@ -230,7 +230,7 @@ def normalize_markdown(text: str) -> str:
             output.append(line)
             continue
 
-        # Une ligne suivie d'un soulignement setext est un titre : on la laisse
+        # Une ligne suivie d'un soulignement setext est un titre : elle reste
         # seule, sans quoi le titre engloberait le paragraphe precedent.
         next_line = lines[index + 1] if index + 1 < len(lines) else ""
         followed_by_setext = bool(next_line) and bool(_SETEXT_UNDERLINE.match(next_line))

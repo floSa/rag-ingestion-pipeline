@@ -36,7 +36,7 @@ TAG_MAP: dict[str, str] = {
     "title": "SectionHeader",
 }
 
-# Elements dont on exporte un crop image vers le stockage objet.
+# Elements dont un crop image est exporte vers le stockage objet.
 VISUAL_LABELS: set[str] = {"picture", "table", "figure", "graphic"}
 
 # Labels correspondant a des en-tetes de section (cf. TAG_MAP). Sert a batir la
@@ -50,37 +50,24 @@ ROOT_REFERENCE = "DOC"
 # Dossier ou le pipeline depose les HTML nettoyes ; il double l'arborescence
 # d'origine et ne fait pas partie de l'identite du document.
 #
-# **C'EST UNE CONSTANTE, ET C'ETAIT UN REGLAGE.** `PipelineSettings` portait un
-# champ `cleaned_subdir` expose par `CLEANED_SUBDIR`, annonce a l'operateur dans
-# `.env.example`, et il decidait a lui seul de deux choses qui n'ont pas le meme
-# proprietaire : ou le nettoyage ECRIT, et ce que `wipe_stores` SUPPRIME. Trois
-# consequences mesurees, aucune souhaitable (registre 4.29.a) :
+# C'est une constante et non un reglage (registre 4.29.a). Trois sites en
+# dependent : le nettoyage y ecrit, `wipe_stores` le supprime, et
+# `document_identity` retire ce segment du chemin pour retrouver la source.
+# Une valeur reglable pouvait faire diverger ces sites : avec `.propre`, la
+# `key`, la `collection` et l'`element_id` d'un chapitre changeaient sans
+# erreur (exigences 2 et 3 du contrat), et `htms` faisait supprimer le corpus
+# `Datas/htms/`.
 #
-# - `CLEANED_SUBDIR=htms` est strictement contenu dans la racine, passait donc le
-#   containment livre par le lot 4, et faisait supprimer `Datas/htms/` — 24 des
-#   25 fichiers du corpus versionne. `=database` supprimait les cinq stores ;
-# - toute valeur autre que celle-ci CASSE L'IDENTITE DES DOCUMENTS, en silence.
-#   `document_identity` retire ce segment du chemin pour retrouver la source ; il
-#   le lisait ICI tandis que le nettoyage ecrivait selon le REGLAGE. Les deux
-#   sites pouvaient donc diverger. `mesure` avec `CLEANED_SUBDIR=.propre`, sur le
-#   chemin nettoye d'un chapitre reel : `key` passe de
-#   `htms/MLOps with Databricks/Preface` a `.propre/htms/...`, `collection` passe
-#   de l'ouvrage au dossier de source, et l'`element_id` passe de `fab608f4eb` a
-#   `9d6460cded`. C'est l'exigence 2 du contrat rompue, et l'exigence 3 avec
-#   elle, sans qu'aucune erreur ne soit levee ;
-# - personne ne configure ou une etape intermediaire depose ses fichiers.
-#
-# Le containment de `wipe_stores.purge_cleaned` est CONSERVE : il ne coute rien
-# et il protege desormais contre un `source_dir` mal regle, qui reste un reglage
-# legitime.
+# Le controle d'inclusion de `wipe_stores.purge_cleaned` reste en place : il
+# protege contre un `source_dir` mal regle.
 CLEANED_SUBDIR = ".cleaned"
 
 
 def cleaned_root(source_dir: str | Path) -> Path:
     """Racine des copies nettoyees, sous la racine des donnees.
 
-    SEUL site de cette derivation avec :func:`cleaned_path`, et c'est le point :
-    `wipe_stores` SUPPRIME ce repertoire, l'asset `cleaned_html` y ECRIT, et
+    Seul site de cette derivation, avec :func:`cleaned_path` : `wipe_stores`
+    supprime ce repertoire, l'asset `cleaned_html` y ecrit, et
     :func:`document_identity` retire son nom du chemin. Trois lecteurs, une
     definition.
 
@@ -98,8 +85,8 @@ def cleaned_path(source_dir: str | Path, source_path: str) -> Path:
 
     L'arborescence d'origine est reproduite telle quelle sous
     :func:`cleaned_root`, de sorte que retirer ce seul segment rende le chemin
-    source — ce que fait :func:`document_identity`. C'est cet aller-retour qui
-    doit tenir, et un test l'asserte : la copie nettoyee d'un document doit
+    source — ce que fait :func:`document_identity`. Un test verifie cet
+    aller-retour : la copie nettoyee d'un document doit
     rendre l'identite du document, sans quoi ses `element_id` changent en
     silence.
 
@@ -147,10 +134,10 @@ class DocumentIdentity:
 
 @dataclass(frozen=True)
 class DocumentFacts:
-    """Ce qu'on sait du document au-dela de son chemin.
+    """Ce qui est connu du document au-dela de son chemin.
 
-    Regroupe en un objet ce qui accompagnait deja l'identite jusqu'aux deux
-    stores, et ce qui s'y ajoute : la langue, pour que l'agent sache dans
+    Regroupe ce qui accompagne l'identite jusqu'aux deux stores : format,
+    pagination, la langue, pour que l'agent sache dans
     quelle langue il interroge, et l'empreinte du fichier, qui permet de
     reconnaitre un ouvrage deja ingere sous un autre nom.
 
@@ -179,7 +166,7 @@ def document_identity(source_path: str) -> DocumentIdentity:
     """
     normalise = source_path.replace("\\", "/").strip("/")
     # Les HTML sont convertis depuis leur copie nettoyee, qui reproduit
-    # l'arborescence sous un dossier dedie : on revient au chemin d'origine.
+    # l'arborescence sous un dossier dedie : ce segment est retire.
     segments = [s for s in normalise.split("/") if s and s != CLEANED_SUBDIR]
 
     key = "/".join(segments)
@@ -200,7 +187,7 @@ def document_identity(source_path: str) -> DocumentIdentity:
 def compute_id(filename: str, page_no: int, position_in_page: int, text: str) -> str:
     """Genere un identifiant court deterministe pour un element.
 
-    La position DANS LA PAGE (et non l'ordre global de lecture) rend l'id
+    La position dans la page (et non l'ordre global de lecture) rend l'id
     stable d'une ingestion a l'autre : une page reconvertie produit les memes
     ids, et les upserts ecrasent au lieu de dupliquer.
 
@@ -243,8 +230,8 @@ def item_text(item: Any, document: Any = None) -> str:
     """Texte d'un item Docling, chaine vide s'il n'en porte pas.
 
     Les tables font exception : leur ``text`` vaut ``None``, le contenu vivant
-    dans une structure dediee. Sans export explicite, elles ressortaient vides
-    de l'extraction — presentes dans le graphe, mais introuvables par la
+    dans une structure dediee. Sans export explicite, elles ressortiraient
+    vides de l'extraction — presentes dans le graphe, mais introuvables par la
     recherche vectorielle.
 
     Args:
@@ -277,16 +264,13 @@ def item_provenance(item: Any) -> Any:
 def item_page_span(item: Any) -> tuple[int, int]:
     """Premiere et derniere page couvertes par un item Docling.
 
-    **La seconde etait JETEE, et c'est le registre 4.22.** Six pages du PDF du
-    corpus — 8, 18, 19, 25, 68, 69 sur 71 — n'ont aucun element dans le graphe,
-    alors que PyMuPDF y lit 1 181 a 1 472 caracteres. Le texte n'est pas perdu :
-    il est attribue a la page PRECEDENTE, Docling fusionnant un paragraphe qui
-    enjambe une page. Toute citation « page 7 » couvre donc en realite 7 ET 8,
-    et rien ne le disait.
-
-    L'information existait : `mesure` le 1er septembre 2026, conversion reelle du
-    PDF du corpus en `page_range=(7, 8)`, l'item `#/texts/3` porte **deux
-    provenances, pages [7, 8]**. Seule la premiere etait lue.
+    Docling fusionne un paragraphe qui enjambe une page et l'attribue a la
+    page de debut : une citation « page 7 » peut couvrir 7 et 8 (registre
+    4.22). L'item porte alors plusieurs provenances ; mesure le 1er septembre
+    2026 sur le PDF du corpus, l'item `#/texts/3` porte les pages [7, 8]. Six
+    pages de ce PDF (8, 18, 19, 25, 68, 69 sur 71) ne sont la page de debut
+    d'aucun element : leur texte est porte par l'element de la page
+    precedente.
 
     Args:
         item: Item Docling.
@@ -309,16 +293,14 @@ def pages_sans_element(
     total_pages: int,
     ecartees: set[int] | None = None,
 ) -> list[int]:
-    """Pages qu'AUCUN element ne couvre — le compteur la ou il y a perte.
+    """Pages qu'aucun element ne couvre : la perte reelle.
 
-    Une page enjambee n'est PAS une page perdue : elle est couverte par un
-    element qui commence avant elle, et `page_no_end` le dit desormais. Ce qui
-    reste apres ce changement est la vraie perte — une page que personne ne
-    couvre, ni comme page d'entree ni comme page de fin.
+    Une page enjambee n'est pas perdue : elle est couverte par un element qui
+    commence avant elle, et `page_no_end` le dit. Une page perdue n'est
+    couverte ni comme page d'entree ni comme page de fin.
 
-    Les pages ECARTEES ne comptent pas : le front/back matter est saute
-    volontairement, et le compter comme une perte rendrait le compteur bavard sur
-    chaque PDF. Un compteur qu'on n'ecoute plus ne compte rien.
+    Les pages ecartees ne comptent pas : le front/back matter est saute
+    volontairement, et le compter rendrait le compteur bruyant sur chaque PDF.
 
     Args:
         elements: Elements produits par `DocumentAccumulator`.
@@ -356,7 +338,7 @@ class DocumentAccumulator:
         self._reference_counters: dict[str, int] = {}
         # Suit les titres ouverts pour rattacher chaque nouveau titre au bon
         # parent. Sans rang fourni, tous les titres partagent le rang 0 et se
-        # retrouvent freres sous le document — comportement anterieur.
+        # retrouvent freres sous le document.
         self._headings = HeadingStack()
         self._depths: dict[str, int] = {}
 
@@ -382,11 +364,10 @@ class DocumentAccumulator:
             Le dict element, positions et rattachement hierarchique renseignes.
         """
         prov = item_provenance(item)
-        # `page_no` reste la PREMIERE page, et ce n'est pas un detail :
-        # `compute_id` en derive l'identifiant de l'element. Le deplacer
-        # changerait tous les `element_id` du corpus, donc le jeu de questions de
-        # l'agent (contrat, exigence 2). `page_no_end` est ADDITIF, et c'est ce
-        # qui rend le registre 4.22 corrigible sans reecrire les identifiants.
+        # `page_no` reste la premiere page : `compute_id` en derive
+        # l'identifiant. La changer changerait tous les `element_id` du corpus
+        # (contrat, exigence 2). `page_no_end` s'y ajoute sans toucher aux
+        # identifiants (registre 4.22).
         page_no, page_no_end = item_page_span(item)
         label = item_label(item)
         text = item_text(item, document)
@@ -420,7 +401,7 @@ class DocumentAccumulator:
         element: dict[str, Any] = {
             "id": element_id,
             # Reference interne Docling (« #/texts/18 »). Sert a rattacher les
-            # chunks produits par HybridChunker a nos propres elements ; elle
+            # chunks produits par HybridChunker aux elements du service ; elle
             # ne part dans aucun store.
             "self_ref": str(getattr(item, "self_ref", "")),
             "label": label,

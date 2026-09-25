@@ -1,16 +1,15 @@
 """Tests du garde-fou sur le modele d'embedding.
 
-Ces tests s'attachent au chemin qui PRODUIT les vecteurs — ``get_embedding_model``
-— et non au fichier de configuration qui les decrit. Un test qui relirait
-``settings.embedding_model_name`` pour le comparer au contrat serait vert des
-deux cotes du defaut : il n'exercerait jamais le chargement, donc n'attraperait
-jamais une ingestion lancee avec le mauvais modele.
+Ces tests exercent le chemin qui produit les vecteurs (``get_embedding_model``),
+et non le fichier de configuration. Un test qui relirait
+``settings.embedding_model_name`` pour le comparer au contrat n'exercerait
+jamais le chargement, donc ne detecterait pas une ingestion lancee avec le
+mauvais modele.
 
-Le faux modele rend 384 dimensions **quel que soit son nom**, exactement comme
-la realite : ``all-MiniLM-L6-v2`` et ``paraphrase-multilingual-MiniLM-L12-v2``
-sortent tous deux en 384. Un garde-fou qui se contenterait de verifier la
-dimension serait donc vert sur les deux, et c'est ce que
-``TestDimensionNeSuffitPas`` verrouille.
+Le faux modele rend 384 dimensions quel que soit son nom, comme en realite :
+``all-MiniLM-L6-v2`` et ``paraphrase-multilingual-MiniLM-L12-v2`` sortent tous
+deux en 384. Un controle de la seule dimension accepterait donc les deux ;
+``TestDimensionNeSuffitPas`` le verifie.
 """
 
 from __future__ import annotations
@@ -91,11 +90,7 @@ class TestCheminNominal:
 
 
 class TestDeriveParLEnvironnement:
-    """Le chemin reel de la panne : le .env ecrase le defaut du code.
-
-    C'est ce qui s'est produit — un .env reste a all-MiniLM-L6-v2 a survecu a
-    toute la reingestion multilingue, hors de portee du versionnement.
-    """
+    """Le chemin reel de la panne : le .env, non versionne, ecrase le defaut du code."""
 
     def test_env_hors_contrat_refuse_le_chargement(self, modele_vierge, monkeypatch):
         monkeypatch.setenv("EMBEDDING_MODEL_NAME", MODELE_ANGLAIS)
@@ -104,7 +99,7 @@ class TestDeriveParLEnvironnement:
             charge()
 
     def test_aucun_vecteur_n_est_produit_apres_le_refus(self, modele_vierge, monkeypatch):
-        # Le refus doit tomber AVANT le chargement : si le loader a ete appele,
+        # Le refus doit tomber avant le chargement : si le loader a ete appele,
         # c'est qu'un modele hors contrat a pu encoder.
         monkeypatch.setenv("EMBEDDING_MODEL_NAME", MODELE_ANGLAIS)
         get_settings.cache_clear()
@@ -134,8 +129,8 @@ class TestDimensionNeSuffitPas:
     """Verrouille la raison pour laquelle la panne est silencieuse."""
 
     def test_les_deux_modeles_ont_la_meme_dimension(self):
-        # Si ce test devenait faux, le garde-fou pourrait se simplifier. Tant
-        # qu'il est vrai, verifier la dimension est vert des deux cotes.
+        # Si ce test devenait faux, le controle pourrait se simplifier. Tant
+        # qu'il est vrai, la dimension seule accepte les deux modeles.
         verify_dimension(CONTRACT_DIMENSION, CONTRACT_MODEL)
         verify_dimension(CONTRACT_DIMENSION, MODELE_ANGLAIS)
 
@@ -186,7 +181,7 @@ class TestBalayageDesModelesCourants:
     de cadrage cite bge-m3, multilingual-e5-large et Qwen3-Embedding comme
     candidats a une future migration. Aucun ne doit pouvoir entrer sans
     reingestion, et la bande balayee inclut donc des modeles de dimension
-    differente ET des modeles a 384 dimensions comme le contrat.
+    differente et des modeles a 384 dimensions comme le contrat.
     """
 
     @pytest.mark.parametrize(
@@ -212,20 +207,19 @@ class TestBalayageDesModelesCourants:
 
 
 class TestIndexModelGap:
-    """Exigence 1 verifiee APRES coup, sur ce qui a REELLEMENT produit l'index.
+    """Exigence 1 verifiee apres coup, sur le modele qui a reellement produit l'index.
 
-    verify_model_name garde le modele au chargement. Rien ne gardait l'index
-    lui-meme : un `.env` change entre deux ingestions, et la collection porte
-    des vecteurs de deux modeles differents, tous deux en 384 dimensions.
-    ChromaDB accepte, aucune sonde ne voit rien, la recherche rend des passages
-    plausibles et faux.
+    verify_model_name controle le modele au chargement, pas l'index : un `.env`
+    change entre deux ingestions laisserait une collection portant des
+    vecteurs de deux modeles, tous deux en 384 dimensions. ChromaDB accepte, et
+    la recherche rend des passages plausibles et faux.
     """
 
     def test_the_same_model_is_no_gap(self):
         assert index_model_gap(CONTRACT_MODEL, CONTRACT_MODEL) is None
 
     def test_the_organisation_prefix_is_not_a_gap(self):
-        """Le meme artefact sous ses deux noms : un garde cure-dent finit desactive."""
+        """Le meme artefact sous ses deux noms n'est pas un ecart."""
         assert index_model_gap(CONTRACT_MODEL, f"sentence-transformers/{CONTRACT_MODEL}") is None
 
     def test_another_model_is_reported(self):
