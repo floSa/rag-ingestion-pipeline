@@ -22,7 +22,7 @@ mesuree, jamais celui du clone principal :
       -e HOME=/tmp -e PYTHONPATH=/app -w /app \\
       rag-ingestion-pipeline-docling-service \\
       python scripts/campagne/mesurer-le-rappel-vectoriel.py \\
-        documentation/campagnes/2026-09-02-jeu-de-questions.yaml 5,10,20
+        documentation/campagnes/2026-09-02-jeu-de-questions.yaml 5,10,20,50
 
 Lecture seule : ce script n'ecrit dans aucun store.
 """
@@ -39,7 +39,15 @@ from src.docling_service.embedding import get_embedding_model
 
 def main() -> None:
     chemin = sys.argv[1]
-    ks = [int(x) for x in (sys.argv[2].split(",") if len(sys.argv) > 2 else ["5", "10", "20"])]
+    # 50 REJOINT LES TROIS AUTRES, et le motif est comparatif : la seconde
+    # campagne mesure le rappel AVANT et APRES une reingestion complete, et les
+    # deux moities ne se comparent que sur les memes k. Laisser 50 a la ligne de
+    # commande le rendait facultatif des deux cotes, donc oubliable d'un seul.
+    # Le troc est ecrit : un kmax plus grand coute une requete plus large par
+    # question — 30 requetes a 50 voisins contre 30 a 20 — et rien d'autre, la
+    # question n'etant encodee qu'une fois.
+    defaut = ["5", "10", "20", "50"]
+    ks = [int(x) for x in (sys.argv[2].split(",") if len(sys.argv) > 2 else defaut)]
     with open(chemin, encoding="utf-8") as flux:
         jeu = yaml.safe_load(flux)
     questions = jeu["questions"]

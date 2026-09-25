@@ -11,10 +11,19 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 3 septembre 2026, après la fusion du lot 6** (`69a6786`).
-> **LE PLAN EST ÉPUISÉ** : les six lots sont dans `main`, et la première campagne de
-> référence est faite. Il n'y a plus de lot à distribuer — l'annexe A porte
-> désormais la passation, et le §7 dit ce qui monte au plan ensuite.
+> **Dernière mise à jour : 25 septembre 2026, après la DEUXIÈME campagne de
+> référence** — purge, réingestion complète **par le capteur**, `DEPLACES 0`.
+> L'état, en trois lignes et sans un chiffre recopié, est au **§5.0 bis** ; le
+> compte rendu mesuré est à son site canonique,
+> [`documentation/campagnes/2026-09-25-deuxieme-campagne-de-reference.md`](campagnes/2026-09-25-deuxieme-campagne-de-reference.md).
+>
+> **LE PLAN EST ÉPUISÉ**, et il l'est depuis la fusion du lot 6 (`69a6786`, 3
+> septembre 2026) : les six lots sont dans `main`, et **les deux campagnes de
+> référence sont faites**. Il n'y a plus de lot à distribuer — l'annexe A porte
+> la passation, et le §7 dit ce qui monte au plan ensuite. Le lot 11 est dans
+> `main` depuis le 25 septembre (§5.0), et la campagne qui l'exerce est faite le
+> même jour.
+>
 > Toute valeur chiffrée ci-dessous porte son étiquette `mesuré`, `calculé` ou
 > `supposé`. Une valeur non remesurée ne se recopie pas : on renvoie à son site
 > canonique.
@@ -602,6 +611,56 @@ de code**, **zéro erreur de chargement**, les quatre capteurs évalués et tous
 changement du code d'extraction**, puis `comparer` contre l'instantané figé.
 **Zéro `element_id` déplacé est le résultat attendu** — et c'est la seule
 manière de le savoir, puisque la décision (a) laisse l'extraction en l'état.
+
+
+### 5.0 bis La DEUXIÈME campagne de référence est FAITE — 25 septembre 2026
+
+**Elle est faite, et son résultat est celui qu'on attendait : `DEPLACES 0`.**
+Le compte rendu mesuré, chiffre par chiffre avec sa commande et son heure, vit
+à son site canonique
+[`documentation/campagnes/2026-09-25-deuxieme-campagne-de-reference.md`](campagnes/2026-09-25-deuxieme-campagne-de-reference.md).
+**Aucun chiffre n'est recopié ici** : le §0 de ce mandat interdit de dupliquer
+une valeur mesurée, et les trois lignes ci-dessous sont un état, pas une table.
+
+**Ce que la campagne a fait**, sur la branche `claude/campagne-2-purge-reingestion-08b58a`,
+partie de `d22a153` : purge des trois stores **et** du HTML nettoyé par
+`python -m src.wipe_stores` (`rc=0`, quatre volets), l'unique redémarrage de
+`docling-service` que la purge prescrit elle-même, puis la réingestion par le
+**geste du lot 8** — le marqueur `reingerer:2026-09-25-campagne-2` posé sur les
+curseurs des deux capteurs dont la source porte des fichiers.
+
+**Trois résultats, et ce sont des états :**
+
+1. **la réingestion est complète et elle est passée par le CAPTEUR** — 23
+   partitions demandées, **23 runs créés**, **23 `SUCCESS`**, zéro échec, zéro
+   reprise. Le silence du §4.32.a **ne s'est pas produit** ;
+2. **`comparer` contre l'instantané versionné rend `rc=0`, `23 / 23`,
+   `DEPLACES 0`**, aucun déplacement déclaré. Les huit comptes, l'empreinte des
+   clés MinIO, `verify_contract` et `index_report` **ligne pour ligne**, le texte
+   des 44 ancrages et les quatre valeurs de rappel sont identiques avant et
+   après. La décision (a) est confirmée par la mesure ;
+3. **l'exigence 5 du contrat est ÉPROUVÉE pour la première fois** — le service de
+   l'agent tourne désormais sur ce poste, `agent_reindex_sensor` est parti seul en
+   fin d'ingestion, et son run a réussi.
+
+**Deux constats du registre se ferment par elle** — §4.32.a, dont le lot 8
+disait que « le premier geste de réingestion reste à faire sous les yeux de
+quelqu'un », et §4.28.c sur l'exigence 5. **Deux constats neufs s'ouvrent** :
+§4.42.a, la CLI Dagster pose un curseur et ne sait pas le lire ; §4.42.b,
+l'empreinte des clés MinIO circule sans sa recette.
+
+**Ce que la branche porte**, et rien d'autre : le compte rendu, le registre
+§4.42, ce paragraphe, et **un** commit de code — `9f21b38`, qui ajoute `k = 50`
+aux valeurs de rappel mesurées par défaut, dans `scripts/campagne/`.
+`git diff main..HEAD --stat -- src/` et `-- Datas` rendent tous deux le **vide**.
+
+**La branche n'est NI fusionnée NI poussée** : une vérification passe d'abord.
+C'est la règle du §6, et la campagne s'y tient.
+
+**La pile est laissée debout, démon compris.** C'est la différence avec la
+première campagne, qui avait dû arrêter le démon pour cesser de produire un run
+rouge toutes les trente secondes : l'agent tournant, la réindexation réussit et
+le capteur saute proprement. Le §7 du compte rendu dit l'état exact.
 
 **La branche n'est pas supprimée** : elle est sortie dans l'arbre de travail
 `.claude/worktrees/reingestion-empty-elements-e8882f`.

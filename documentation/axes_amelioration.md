@@ -5177,6 +5177,130 @@ nettoyage. Le corpus en compte **25**. La commande juste écarte `.cleaned` —
 corpus portant un `mtime` postérieur au 24 septembre 2026.
 
 
+### 4.42 → CONSIGNÉ par la DEUXIÈME campagne de référence — deux constats, et deux constats d'AVANT qui se ferment
+
+La campagne du 25 septembre 2026 — purge des trois stores et du HTML nettoyé,
+réingestion complète par le code de `main` sans aucun changement du code
+d'extraction — est au site canonique
+[`documentation/campagnes/2026-09-25-deuxieme-campagne-de-reference.md`](campagnes/2026-09-25-deuxieme-campagne-de-reference.md).
+
+**Son résultat tient en une ligne, et il est celui qu'on attendait :
+`DEPLACES 0`.** `comparer` contre l'instantané versionné rend
+`DOCUMENTS COMPARES 23 / 23`, `rc=0`, aucun déplacement déclaré ni constaté. Les
+huit comptes, l'empreinte des 212 clés d'objet MinIO, les sorties de
+`verify_contract` et d'`index_report` **ligne pour ligne**, le texte des 44
+ancrages et les quatre valeurs de rappel sont **identiques** avant et après. La
+décision (a) du 24 septembre — on ne touche pas aux puces vides — laissait
+l'extraction en l'état ; la réingestion le confirme par la mesure.
+
+**DEUX constats de ce registre se ferment par cette campagne, et c'est un geste
+de pilote, pas de branche.**
+
+- **§4.32.a.** Le lot 8 écrivait : « Ce qui n'est pas prouvé, et qui ne pouvait
+  pas l'être : qu'un run réellement créé par ce chemin aille au bout. Le premier
+  geste de réingestion reste donc à faire sous les yeux de quelqu'un. » **Il est
+  fait.** `mesuré` le 25 septembre 2026 : marqueur `reingerer:2026-09-25-campagne-2`
+  posé sur les curseurs de `livres_html_sensor` et `pdfs_sensor`, tick à 03:43:43
+  et 03:44:10, **22 + 1 = 23 runs CRÉÉS** — et le compte de runs le confirme par
+  un second chemin, **958 → 981**, soit exactement +23. Les 23 sont allés au
+  bout : **23 `SUCCESS`, 0 échec, 0 reprise**. Les clés de run portent
+  l'étiquette et non le `mtime`
+  (`livres_html_<partition>_reingestion_2026-09-25-campagne-2`, `mesuré` sur le
+  tag `dagster/run_key`), ce qui est exactement ce que le lot 8 a livré. **Le
+  silence ne s'est pas produit.**
+- **§4.28.c, et le §7 de la première campagne** — « l'exigence 5 du contrat n'est
+  PAS ÉPROUVÉE ». **Elle l'est.** Le service de l'agent tourne sur ce poste
+  (`rag-agent-api`, `healthy`, `AGENT_SERVICE_URL=http://agent-api:8000` rend
+  **200** sur `/health`, `mesuré` le 25 septembre 2026), `agent_reindex_sensor`
+  est parti **seul** à 03:50:41 — 24 s après la fin du dernier run d'ingestion —
+  et son run rend `ok — 4367 chunks indexes`. Le garde du §4.15 a tenu
+  **13 ticks `SKIPPED` consécutifs**, chacun nommant le run qui bloque. **Réserve
+  qui reste** : ce qui est éprouvé est que l'appel part, aboutit et réussit en fin
+  d'ingestion. Que l'index BM25 d'en face serve effectivement ces 4 367 chunks est
+  une propriété de l'AUTRE dépôt, et aucune requête n'a été posée à l'agent.
+
+#### 4.42.a La CLI Dagster POSE un curseur et ne sait pas le LIRE
+
+`dagster sensor cursor <NOM>` n'offre que `--set` et `--delete` (`mesuré` le
+25 septembre 2026, `dagster sensor cursor --help`). **Il n'existe aucun mode
+lecture**, et la sous-commande sans option ne rend pas la valeur.
+
+**Pourquoi ce n'est pas qu'une gêne d'ergonomie.** Le geste de réingestion du
+lot 8 *est* une écriture de curseur, et c'est le seul déclencheur de la
+réingestion. Un opérateur peut donc le **poser** par une commande officielle,
+mais il ne peut ni **vérifier ce qu'il y a avant de l'écraser**, ni **constater
+que le marqueur a été consommé**, sans sortir de la CLI :
+
+```python
+from dagster import DagsterInstance
+for s in DagsterInstance.get().all_instigator_state():
+    print(s.instigator_name, s.status.value, s.instigator_data.cursor)
+```
+
+C'est la voie qu'emploie déjà le §3.1 de la première campagne, et celle que la
+deuxième a dû employer quatre fois. **Elle n'est écrite nulle part dans le
+dépôt** : ni dans le `README`, ni au-dessus de `PREFIXE_REINGESTION`, qui décrit
+pourtant le geste en soixante lignes et ne dit jamais comment relire ce qu'on
+vient d'écrire.
+
+**La forme du remède, si le pilote veut le fermer** : une ligne de plus dans le
+bloc au-dessus de `PREFIXE_REINGESTION` et dans la section « Ré-ingérer
+proprement » du `README`, donnant le geste de lecture à côté du geste
+d'écriture. Ce n'est pas du code : c'est la moitié manquante d'une procédure
+documentée. *(Le §4.33.d note déjà que les trois copies de la prose du geste de
+réingestion ne sont tenues par rien — un quatrième site ne s'ajoute pas sans y
+penser.)*
+
+#### 4.42.b L'empreinte des clés d'objet MinIO circule SANS SA RECETTE
+
+Le témoin `c91f5be6e24fbcba5f4a744119bf8da65fed44b7ecac79cce0ae1b027ed0b994`
+authentifie l'état du bucket : non pas le *nombre* d'objets, mais **l'ensemble
+des 212 clés**, à la clé près. C'est un bon témoin — chaque clé de crop porte un
+`element_id` dans son nom, donc l'égalité de l'empreinte est une preuve de
+non-déplacement **indépendante de `comparer`**.
+
+**Mais aucun site du dépôt ne disait comment il se calcule.** `mesuré` le
+25 septembre 2026, **avant** que la campagne n'écrive quoi que ce soit :
+`grep -rn 'c91f5be6'` sur `d22a153` rendait le **vide** — ni dans `src/`, ni
+dans `scripts/`, ni dans `documentation/`, ni dans l'instantané.
+
+*(La mesure se rejoue sur le COMMIT et non sur l'arbre, parce que **ce constat
+l'a lui-même périmée** : la campagne écrit désormais l'empreinte dans **deux**
+fichiers, et un `grep` lancé sur l'arbre les trouve. C'est le §4.31.B1 — « cinq
+renvois `mesuré` que le lot a rendus faux LUI-MÊME » — et il se ferme en datant
+la mesure de son commit : `git grep 'c91f5be6' d22a153` rend **le vide, rc=1**,
+tandis que `grep -rc` sur l'arbre rend **4 lignes ici et 6 au compte rendu**.)*
+
+La deuxième campagne a donc dû **identifier la recette par mesure**, en
+calculant quatre variantes plausibles sur la même liste triée :
+
+| Variante | Empreinte |
+|---|---|
+| lignes jointes par `\n`, **avec `\n` final** | **`c91f5be6…0994`** — c'est celle-ci |
+| lignes jointes par `\n`, sans `\n` final | `d1e98913…` |
+| concaténation nue | `56b2cf3c…` |
+| séparateur `\0` | `e2fb462f…` |
+
+**Une empreinte sans sa recette n'est pas un témoin, c'est un chiffre.** Le
+suivant qui la remesurera a une chance sur quatre de la reproduire du premier
+coup, et trois chances sur quatre de conclure à une dérive qui n'existe pas.
+C'est le mode de panne exact que ce chantier traque : un rouge fabriqué par
+l'instrument, sur un système sain.
+
+**Ce que ce constat n'est pas.** Ce n'est pas un reproche à l'instantané, qui
+porte bien, lui, sa propre empreinte et sa propre recette — `cles-d-objet.tsv`
+et son `sha256` dans le manifeste, tous deux produits et relus par
+`src/equivalence_des_identifiants.py`. Les **13** clés qu'il porte sont les
+crops du PDF, pas les **212** objets du bucket : les deux témoins ne comptent pas
+la même chose, et c'est précisément pourquoi le second a besoin de sa recette
+écrite quelque part.
+
+**La forme du remède** : la recette à côté de l'empreinte, partout où l'empreinte
+apparaît — et, mieux, un geste versionné qui la rende, sur le modèle des scripts
+de `scripts/campagne/`. La deuxième campagne l'a écrite à son §1.2 ; elle n'y est
+pas *gardée*.
+
+
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 
 ### 5.1 → traité par le lot 5 — cinq symboles morts retirés, et le sixième était CONTOURNÉ
