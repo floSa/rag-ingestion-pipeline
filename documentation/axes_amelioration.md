@@ -1575,6 +1575,14 @@ pas non plus dans le bucket.
 
 #### 4.28.c `dagster-daemon` est arrêté, et l'exigence 5 n'est pas éprouvable ici
 
+> **Renvoi.** Ce constat est **fermé** — voir §4.42, qui le dit avec ses
+> mesures. Les **67 `ReindexError`** relevés ci-dessous sont un instantané pris
+> au milieu de la **fenêtre 2** des 886 échecs, caractérisés au **§4.43.a** :
+> même cause, même job, et rien depuis le 3 septembre 2026. Et l'exigence 5 a
+> été exercée **une seconde fois** derrière SeaweedFS, à la
+> [campagne du 25 septembre](campagnes/2026-09-25-bascule-seaweedfs.md) — le run
+> `agent_reindex_job` est parti seul et a rendu `ok — 4367 chunks indexes`.
+
 `mesuré` : le daemon est arrêté — le lot 3 l'a arrêté pour que les sensors ne
 réingèrent pas par-dessus ses mesures (§7.2 du mandat) — un run est `QUEUED`
 depuis deux heures, et l'historique porte **67 `ReindexError`**.
@@ -2732,6 +2740,14 @@ Ne recopie pas ses chiffres ici : renvoie-y.
 > **FERMÉ le 22 septembre 2026.** Le constat ci-dessous est conservé **tel qu'il
 > a été écrit**, parce qu'il est la seule trace de l'état mesuré le 2 septembre.
 > Ce qui a changé vit à la fin du constat, sous « Ce que le lot 8 a fait ».
+>
+> **Renvoi.** Le geste de réingestion a été exercé **deux fois** le 25 septembre
+> 2026, et les deux fois le silence ne s'est pas produit : à la
+> [deuxième campagne de référence](campagnes/2026-09-25-deuxieme-campagne-de-reference.md)
+> — 23 runs créés, `958 → 981` — et à la
+> [bascule vers SeaweedFS](campagnes/2026-09-25-bascule-seaweedfs.md), sous
+> l'étiquette `reingerer:2026-09-25-bascule-seaweedfs` — 23 runs créés,
+> `982 → 1 005`. Voir §4.42 et §4.43.
 
 
 **C'est le défaut le plus grave que la campagne ait trouvé, et il est mot pour
@@ -5300,6 +5316,165 @@ apparaît — et, mieux, un geste versionné qui la rende, sur le modèle des sc
 de `scripts/campagne/`. La deuxième campagne l'a écrite à son §1.2 ; elle n'y est
 pas *gardée*.
 
+
+### 4.43 → CONSIGNÉ par la BASCULE vers SeaweedFS — la décision du propriétaire, exécutée et mesurée
+
+**SeaweedFS remplace MinIO.** La solution a été **retenue par le propriétaire du
+chantier en début de semaine du 21 septembre 2026** ; elle est **en service
+depuis le 25 septembre 2026**. Ce registre ne rouvre pas le choix : il consigne
+ce qui a été mesuré en l'exécutant.
+
+Les deux sites canoniques sont
+[`documentation/campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md)
+— les huit critères d'essai, la procédure de bascule et le retour arrière — et
+[`documentation/campagnes/2026-09-25-deuxieme-campagne-de-reference.md`](campagnes/2026-09-25-deuxieme-campagne-de-reference.md),
+dont les huit comptes servent d'attendus.
+
+**Ce qui a été mesuré le 25 septembre 2026, après la bascule réelle :**
+
+| Témoin | Avant, sur MinIO | Après, sur SeaweedFS |
+|---|---|---|
+| sommets, `Document` compris | 15 196 | **15 196** |
+| sommets `Document` / `Paragraph` / `ListItem` / `Code` | 23 / 7 251 / 1 748 / 4 963 | **identiques** |
+| arêtes `PARENT_OF` | 15 173 | **15 173** |
+| chunks ChromaDB | 4 367 | **4 367** |
+| objets dans le bucket `documents` | 212 | **212** |
+| **empreinte des 212 clés** | `c91f5be6…0994` | **`c91f5be6…0994`** |
+| `comparer` contre l'instantané | 23 / 23, `DEPLACES 0`, `rc=0` | **23 / 23, `DEPLACES 0`, `rc=0`** |
+
+Et le témoin propre à la bascule : les **212** sommets porteurs d'une
+`minio_url` la portent **tous** sous `http://seaweedfs:8333/documents/`,
+**zéro** occurrence de `minio:9000` dans le graphe comme dans les 22 copies
+nettoyées de `Datas/.cleaned/`.
+
+**La réingestion a été faite par le capteur, jamais à la main** : marqueur
+`reingerer:2026-09-25-bascule-seaweedfs` posé sur `livres_html_sensor` et
+`pdfs_sensor`, **22 + 1 = 23 runs créés**, tous `SUCCESS`, puis le run
+`agent_reindex_job` parti seul et rendant `ok — 4367 chunks indexes`. Le compte
+de runs le confirme par un second chemin : **982 → 1 005**, soit exactement
++23, puis 1 006 avec la réindexation.
+
+**MinIO n'a été ni arrêté, ni recréé, ni purgé, et rien n'y a été écrit.** Il
+est **conservé, debout, avec ses 212 objets** : c'est le retour arrière, et il
+le restera tant que le pilote ne dira pas de le retirer. `mesuré` après la
+bascule : mêmes 212 objets, même empreinte, `StartedAt` et `RestartCount`
+inchangés, et **aucun objet modifié après 03:50:00 UTC** — l'empreinte des 212
+couples `(date de modification, clé)` vaut `8a73f1a6…e771` avant comme après.
+La purge a d'ailleurs annoncé **0 objet supprimé**, ce qui est le signal que
+c'est bien SeaweedFS qu'elle visait ; un 212 aurait voulu dire qu'elle venait de
+purger MinIO.
+
+#### 4.43.a Les 886 `FAILURE` de l'historique : un seul job, une seule cause, cinq fenêtres closes
+
+L'historique Dagster porte **886 runs `FAILURE`**, et ils faisaient peur sans
+rien dire. Ils sont caractérisés, `mesuré` le 25 septembre 2026 sur les
+`run_records` et les événements `STEP_FAILURE` de l'instance :
+
+- **tous les 886 sont des `agent_reindex_job`** — aucun run d'ingestion n'a
+  jamais échoué sur ce poste ;
+- **une seule cause, 886 fois sur 886** : `DagsterExecutionStepExecutionError`
+  dont la cause est une **`ReindexError`** sur le `POST /reindex`, c'est-à-dire
+  une `ConnectionError` vers un service d'agent **absent** du poste ;
+- **cinq fenêtres**, et rien en dehors :
+
+| Fenêtre | Échecs | De | À |
+|---|---|---|---|
+| 1 | **68** | 31 août 16:06 | 31 août 16:39 |
+| 2 | **498** | 2 septembre 05:33 | 2 septembre 09:43 |
+| 3 | **9** | 2 septembre 12:52 | 2 septembre 12:56 |
+| 4 | **59** | 2 septembre 13:03 | 2 septembre 13:32 |
+| 5 | **252** | 3 septembre 06:31 | 3 septembre 08:37 |
+
+68 + 498 + 9 + 59 + 252 = **886**, et la somme se ferme. **Aucun échec depuis le
+3 septembre 2026 08:37 UTC.**
+
+**La découpe en fenêtres porte son seuil, sans quoi elle ne se rejoue pas** : la
+coupure est un **écart de plus de 300 s** entre deux créations consécutives. À
+600 s ou 900 s, les fenêtres 3 et 4 fusionnent et l'on n'en compte plus que
+quatre — 68 / 498 / 68 / 252. Le seuil n'est pas neutre, et l'écrire est la
+moitié du chiffre.
+
+**Les fenêtres 1 et 5 ne sont documentées nulle part ailleurs**, et c'est le
+sens de ce constat. Le §4.28.c parle de **67 `ReindexError`** relevés le 2
+septembre — c'est un instantané pris au milieu de la fenêtre 2, pas son total.
+Les 68 échecs du 31 août et les 252 du 3 septembre n'ont **aucun site** : ce
+paragraphe est le premier.
+
+**Ce que cela ferme, et ce que cela ne ferme pas.** Cela ferme la crainte d'un
+défaut d'ingestion latent : il n'y en a pas, l'ingestion n'a jamais échoué. Cela
+ne ferme pas le **§4.15** — un service d'agent absent fait échouer la
+réindexation run après run, toutes les 30 s, sans délai de garde ni alerte, et
+c'est exactement ce que ces cinq fenêtres racontent.
+
+#### 4.43.b La recette de l'empreinte des clés, **des deux côtés** — et la clause qui n'est pas éprouvée
+
+Le §4.42.b demandait que l'empreinte circule avec sa recette. La voici, et elle
+se lit **des deux côtés** :
+
+> Les clés d'objet **distinctes** (`set`), triées par `sorted()` de Python,
+> jointes par `"\n"`, **avec un `"\n"` final**, encodées en **UTF-8**,
+> condensées en **SHA-256**, rendues en hexadécimal minuscule.
+
+```python
+cles = sorted({o.object_name for o in client.list_objects(bucket, recursive=True)})
+empreinte = hashlib.sha256(("\n".join(cles) + "\n").encode("utf-8")).hexdigest()
+```
+
+**Mais les deux côtés ne partent pas de la même liste, et c'est le point.**
+
+| Qui | D'où viennent les clés |
+|---|---|
+| `rag-agent-chat` | des **`minio_url` du GRAPHE**, dont il retire le préfixe |
+| ce dépôt (campagnes, sondes) | du **BUCKET**, par `list_objects` |
+
+**Elles s'accordent parce que les deux ensembles sont égaux** — 212 clés de part
+et d'autre, et la bascule vient de le remesurer — **et non parce que la recette
+serait la même par construction**. Si un objet existait dans le bucket sans
+sommet correspondant, ou l'inverse, les deux empreintes divergeraient et aucune
+des deux ne serait fausse. **L'égalité est un fait mesuré, pas une propriété.**
+
+**Et la clause « triée » n'est pas éprouvée.** `list_objects` rend déjà ses clés
+en ordre lexicographique — c'est le comportement de l'API S3, et MinIO comme
+SeaweedFS s'y tiennent. Le `sorted()` de la recette ne change donc rien sur ce
+corpus, et **aucune mesure ne distingue « trié » de « dans l'ordre rendu »**.
+Elle tient du côté du graphe, où l'ordre n'a aucune raison d'être celui-là ;
+côté bucket, elle est **inerte, et donc non éprouvée**. Un jour où une
+passerelle rendrait ses clés dans un autre ordre, c'est cette clause qui
+sauverait le témoin — et personne n'aurait de mesure pour dire qu'elle marche.
+
+#### 4.43.c Le défaut à fermer : `MINIO_*` configure le serveur MinIO **et** authentifie auprès de SeaweedFS
+
+**C'est le défaut réel que la bascule met en lumière, et il reste ouvert.**
+`MINIO_ROOT_USER` et `MINIO_ROOT_PASSWORD` sont lues par **deux** consommateurs
+qui n'ont rien à voir :
+
+- le service `minio` de `docker-compose.yml`, qui s'en **configure lui-même** ;
+- `DoclingSettings`, qui s'en **authentifie** auprès de ce que `MINIO_ENDPOINT`
+  désigne — aujourd'hui `seaweedfs:8333`.
+
+**Conséquence immédiate, et elle a dicté toute la procédure de bascule** : le
+`.env` porte désormais le jeu SeaweedFS sous ces deux noms, si bien que
+**recréer le conteneur `minio` changerait ses identifiants** et rendrait le
+retour arrière impossible. `minio` n'a donc **jamais** été recréé, et un
+`docker compose up -d` **nu** — sans nom de service — le recréerait, puisqu'il
+recrée tout ce dont la configuration a changé. La règle « on nomme les
+services » n'est pas une précaution de style ici : c'est ce qui sépare une
+bascule d'une perte du retour arrière.
+
+**La forme du remède** : un nom neutre — `OBJECT_STORE_ENDPOINT`,
+`OBJECT_STORE_ACCESS_KEY`, `OBJECT_STORE_SECRET_KEY`, `OBJECT_STORE_BUCKET` —
+pour l'**accès client**, et des variables distinctes pour la **configuration du
+serveur** MinIO tant qu'il est conservé. Ce n'est pas un renommage cosmétique :
+c'est la séparation de deux rôles qu'une seule variable tient aujourd'hui. Le
+lot est à part parce que `MINIO_ENDPOINT`, `MINIO_ROOT_USER`,
+`MINIO_ROOT_PASSWORD` et `MINIO_BUCKET` sont le **contrat avec
+`rag-agent-chat`**, qui vit dans un autre dépôt : le renommage se coordonne avec
+son pilote, il ne se décrète pas ici.
+
+*(Deux effets cosmétiques du même défaut, à emporter dans ce lot : la ligne de
+journal `Bucket MinIO 'documents' pret.` parle désormais de SeaweedFS, et la
+sortie de `wipe_stores` titre encore `--- MinIO ---`. Le message porte le nom de
+la bibliothèque `minio-py`, pas celui du serveur.)*
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir
 

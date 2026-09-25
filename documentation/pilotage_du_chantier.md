@@ -11,10 +11,17 @@ Son compagnon obligatoire est [`axes_amelioration.md`](axes_amelioration.md),
 le registre : ce fichier-ci dit **comment on travaille**, le registre dit **ce
 qu'il reste à faire**. Les deux se tiennent à jour lot par lot.
 
-> **Dernière mise à jour : 25 septembre 2026, après la DEUXIÈME campagne de
-> référence** — purge, réingestion complète **par le capteur**, `DEPLACES 0`.
-> L'état, en trois lignes et sans un chiffre recopié, est au **§5.0 bis** ; le
-> compte rendu mesuré est à son site canonique,
+> **Dernière mise à jour : 25 septembre 2026, après la BASCULE vers SeaweedFS**
+> — le stockage objet du pipeline est **SeaweedFS** depuis ce jour, MinIO est
+> conservé debout pour le retour arrière. L'état est au **§5.0 ter** ; le compte
+> rendu mesuré est à son site canonique,
+> [`documentation/campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md),
+> et les mesures d'après au **§4.43** du registre.
+>
+> **Avant elle, le même jour, la DEUXIÈME campagne de référence** — purge,
+> réingestion complète **par le capteur**, `DEPLACES 0`. L'état, en trois lignes
+> et sans un chiffre recopié, est au **§5.0 bis** ; le compte rendu mesuré est à
+> son site canonique,
 > [`documentation/campagnes/2026-09-25-deuxieme-campagne-de-reference.md`](campagnes/2026-09-25-deuxieme-campagne-de-reference.md).
 >
 > **LE PLAN EST ÉPUISÉ**, et il l'est depuis la fusion du lot 6 (`69a6786`, 3
@@ -654,8 +661,12 @@ l'empreinte des clés MinIO circule sans sa recette.
 aux valeurs de rappel mesurées par défaut, dans `scripts/campagne/`.
 `git diff main..HEAD --stat -- src/` et `-- Datas` rendent tous deux le **vide**.
 
-**La branche n'est NI fusionnée NI poussée** : une vérification passe d'abord.
-C'est la règle du §6, et la campagne s'y tient.
+**La branche a depuis été vérifiée, corrigée et FUSIONNÉE** (`--no-ff`, 25
+septembre 2026). La vérification a mesuré **deux phrases fausses** dans le
+compte rendu — les 44 ancrages ne sont pas tous `label=text` (36 `text`, 8
+`list_item`), et les 13 ticks bloqués ne citent pas tous `pdfs_job` (12 sur 13,
+le premier cite `livres_html_job`) — corrigées **dans la branche avant la
+fusion**, chacune à son site, avec la mesure qui les tranche.
 
 **La pile est laissée debout, démon compris.** C'est la différence avec la
 première campagne, qui avait dû arrêter le démon pour cesser de produire un run
@@ -665,6 +676,58 @@ le capteur saute proprement. Le §7 du compte rendu dit l'état exact.
 **La branche n'est pas supprimée** : elle est sortie dans l'arbre de travail
 `.claude/worktrees/reingestion-empty-elements-e8882f`.
 
+
+### 5.0 ter SeaweedFS est EN SERVICE — 25 septembre 2026
+
+**La bascule du stockage objet est faite.** SeaweedFS est la solution **retenue
+par le propriétaire du chantier en début de semaine du 21 septembre 2026** ;
+elle est **en service depuis le 25**. Le choix ne se rouvre pas : il se
+consigne. Les deux sites canoniques sont
+[`documentation/campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md)
+— les huit critères, la procédure et le retour arrière — et le **§4.43** du
+registre, qui porte les mesures d'après. **Aucun chiffre n'est recopié ici.**
+
+**Ce qui a changé, en trois lignes :**
+
+1. **le pipeline écrit et lit sur `seaweedfs:8333`**, et les trois conteneurs
+   qui parlent au store — `dagster-daemon`, `dagster-webserver`,
+   `docling-service` — ont été **recréés** pour relire le `.env`, jamais
+   redémarrés : un `restart` ne relit pas le `.env` ;
+2. **le corpus a été réingéré en entier derrière la nouvelle passerelle**, par
+   le geste du lot 8 et sous l'étiquette `reingerer:2026-09-25-bascule-seaweedfs`.
+   Elle était **obligatoire** : les `minio_url` du graphe et des copies
+   nettoyées portent l'endpoint, donc changer l'endpoint change toutes les
+   adresses stockées. Les **clés**, elles, ne changent pas ;
+3. **les huit comptes, l'empreinte des clés et `comparer` rendent exactement ce
+   qu'ils rendaient sur MinIO.** La bascule est donc **transparente pour
+   l'index**, et c'est mesuré, pas supposé.
+
+**MinIO est CONSERVÉ, debout, avec ses 212 objets, et c'est le retour arrière.**
+Il n'a été ni arrêté, ni recréé, ni purgé, et rien n'y a été écrit — les dates de
+modification de ses 212 objets sont celles d'avant la bascule. **On ne le retire
+pas sans une décision du pilote**, et tant qu'il est là, le retour arrière coûte
+une purge et une réingestion, procédure écrite au §4.8 du compte rendu de la
+bascule.
+
+**Le piège qui commande toute la procédure, et qu'il faut connaître avant de
+toucher à la pile** : `MINIO_ROOT_USER` et `MINIO_ROOT_PASSWORD` portent
+désormais le jeu **SeaweedFS**, et ce sont **aussi** les variables dont le
+service `minio` se configure lui-même. **Recréer `minio` changerait ses
+identifiants et détruirait le retour arrière.** Donc : on **nomme** les services
+qu'on recrée, et un `docker compose up -d` **nu** est interdit sur cette pile.
+Le défaut est consigné au **§4.43.c**, avec la forme de son remède.
+
+**L'autre dépôt reste à basculer.** `rag-agent-chat` a son propre `.env` : il
+doit recevoir `MINIO_ENDPOINT=seaweedfs:8333` et le jeu **lecture seule**. Un
+témoin l'attend dans SeaweedFS — bucket `temoin-bascule`, objet
+`bascule-2026-09-25.txt` — lu par appel direct avec ce jeu-là. **Cette bascule
+appartient au pilote de l'agent**, et elle se coordonne avec lui.
+
+**Un état persistant à ne pas oublier** : les quatre capteurs ont été **arrêtés
+puis relancés** autour de la recréation du démon (le geste prudent du §4.3 du
+compte rendu). Ils sont donc passés de `DECLARED_IN_CODE` à `RUNNING`, et cet
+état-là **vit dans le Postgres de Dagster**, pas dans le code. Il est armé et
+correct ; il n'est simplement plus celui que le code déclare.
 
 ### 5.1 Les branches — il n'y en a plus qu'une
 
@@ -1188,6 +1251,26 @@ ci-dessous porte le prompt qui l'y envoie.
 | **4** | **§4.29.i** — écrire sous une clé provisoire puis basculer | ici | amélioration franche, mais c'est un chantier. La campagne dira si la panne est fréquente : décider avant serait décider sur un `supposé` |
 | **5** | le **second tour de questions** — les pièges | **humain** | c'est la strate où l'on écrit le plus facilement un faux piège. Elle demande une relecture humaine, pas une conversation |
 | **6** | **F7** — faire lire le `Makefile` et les documents par un test | ici | **le dernier angle mort de la méthode** : la documentation peut encore dériver sans que rien ne rougisse, et c'est le seul endroit où le chantier ne s'applique pas à lui-même |
+
+### 7.0 quater Ce que la bascule vers SeaweedFS met devant — 25 septembre 2026
+
+**Le rang 1 de la table ci-dessus est FERMÉ** : §4.32.a l'a été par le lot 8, et
+le geste de réingestion a été exercé **deux fois sous les yeux de quelqu'un** le
+25 septembre (§4.42, §4.43). Le rang 2, l'**exigence 5**, est **éprouvé** des
+deux côtés le même jour. Ce qui monte à leur place, par ordre :
+
+| | Ce que c'est | Qui | Pourquoi ce rang |
+|---|---|---|---|
+| **1** | **basculer `rag-agent-chat` sur SeaweedFS** — son `.env` reçoit `MINIO_ENDPOINT=seaweedfs:8333` et le jeu **lecture seule** | **`rag-agent-chat`** | le pipeline écrit déjà là-bas. Tant que l'agent vise `minio:9000`, il sert des images d'un store **figé**, et son écran dira « image absente » **sans erreur** — un 403 remonte en 404 silencieux. Le témoin `temoin-bascule/bascule-2026-09-25.txt` l'attend, lisible par appel direct avec ce jeu |
+| **2** | **§4.43.c** — découpler `MINIO_*` : une variable configure le serveur MinIO **et** authentifie auprès de SeaweedFS | ici **et** là-bas | tant qu'il tient, recréer `minio` détruit le retour arrière, et un `docker compose up -d` nu suffit à le faire. C'est le contrat avec l'agent : le renommage se coordonne, il ne se décrète pas |
+| **3** | **décider du sort de MinIO** — le garder, ou le retirer | **humain** | il est le retour arrière. Le retirer libère 29 Mo et un conteneur, et ferme la porte. Ce n'est pas une décision de conversation |
+| **4** | **§4.15** — un service d'agent absent fait échouer la réindexation toutes les 30 s, sans délai de garde ni alerte | ici | les **886 `FAILURE`** de l'historique sont exactement cela, caractérisés au §4.43.a. Le défaut est inerte tant que l'agent tourne, et il repart le jour où il tombe |
+| **5** | **§4.29.i**, le **second tour de questions**, **F7** | *inchangés* | voir la table du §7.0 bis, leurs motifs n'ont pas bougé |
+
+**Ce que la bascule N'A PAS établi**, et qui ne doit pas se lire comme fait :
+aucune mesure de performance, de tenue en charge ni de durabilité de SeaweedFS ;
+aucune requête posée à l'agent contre le nouveau store. Le §5 du compte rendu de
+la bascule les nomme un par un.
 
 **Le rang 1 a été relevé d'un cran par l'audit du lot 6, et le pilote l'a suivi**
 — il passe **devant §4.29.i**, qui était en tête. Le motif : §4.29.i est une

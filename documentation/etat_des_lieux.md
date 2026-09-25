@@ -6,8 +6,11 @@
 > Ce document se lit **sans lancer le projet**. Il ne remplace aucune page
 > détaillée : il dit l'état, renvoie, et s'arrête.
 >
-> Dernière mesure : **3 septembre 2026**, sur `main` — sauf le §7 bis,
-> `mesuré` le **25 septembre 2026** sur le commit de fusion du lot 11. Chaque chiffre ci-dessous a
+> Dernière mesure : **3 septembre 2026**, sur `main` — sauf les §7 bis et
+> §7 ter, `mesuré` le **25 septembre 2026**, le premier sur le commit de fusion
+> du lot 11, le second après la **bascule vers SeaweedFS**. **Le stockage
+> d'objets n'est plus MinIO** : lisez le §7 ter avant de brancher quoi que ce
+> soit. Chaque chiffre ci-dessous a
 > été relevé par une commande dont la sortie a été lue, puis **reproduit par une
 > conversation indépendante**. Un chiffre non remesuré est signalé comme tel.
 
@@ -30,12 +33,12 @@ dans un autre dépôt et lit ces trois stores.
 ```mermaid
 flowchart LR
     A["Datas/<br/>24 chapitres HTML<br/>+ 1 PDF de 71 pages"] --> S["Capteurs Dagster<br/>scan toutes les 30 s"]
-    S --> C["Nettoyage<br/>(HTML seulement)<br/>images extraites vers MinIO"]
+    S --> C["Nettoyage<br/>(HTML seulement)<br/>images extraites vers SeaweedFS"]
     C --> D["Service Docling<br/>1 document à la fois"]
     A --> D
     D --> N["NebulaGraph<br/>15 196 sommets<br/>la structure"]
     D --> V["ChromaDB<br/>4 367 chunks<br/>la recherche"]
-    D --> M["MinIO<br/>212 objets<br/>les images"]
+    D --> M["SeaweedFS<br/>212 objets<br/>les images"]
     N --> AG["rag-agent-chat<br/>autre dépôt"]
     V --> AG
     M --> AG
@@ -54,7 +57,7 @@ stores** ; tout le reste orchestre.
 | documents indexés | **23** — 22 chapitres HTML retenus + le PDF |
 | chunks dans l'index vectoriel | **4 367** |
 | sommets dans le graphe | **15 196**, dont 15 173 liés par `PARENT_OF` |
-| images servables par l'agent | **212 sur 212** |
+| images servables par l'agent | **212 sur 212** — depuis **SeaweedFS**, voir §7 ter |
 | tests automatisés | **884**, tous verts |
 | la porte qualité `make all` | **verte, sans exception à connaître** |
 
@@ -197,26 +200,80 @@ résultat attendu est **zéro `element_id` déplacé** — ce qui, s'il est cons
 retire le dernier doute sur la stabilité des identifiants entre deux ingestions.
 
 
+## 7 ter. SeaweedFS remplace MinIO — en service depuis le 25 septembre 2026
+
+**Le stockage d'objets du pipeline n'est plus MinIO : c'est SeaweedFS**, par sa
+passerelle S3, à l'adresse `seaweedfs:8333`. La solution a été **retenue par le
+propriétaire du chantier** en début de semaine du 21 septembre 2026, et elle est
+en service depuis le 25.
+
+**Ce qui change pour qui lit ce document depuis `rag-agent-chat` :**
+
+| | Avant | Maintenant |
+|---|---|---|
+| adresse du store | `minio:9000` | **`seaweedfs:8333`** |
+| bucket | `documents` | **`documents`** — inchangé |
+| noms des variables | `MINIO_ENDPOINT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET` | **les mêmes** — le renommage est un lot à part |
+| identifiants | un seul jeu racine, partagé | **deux jeux** : le pipeline écrit, **l'agent LIT** |
+| clés d'objet | 212 | **les mêmes 212, à la clé près** |
+| `minio_url` dans le graphe | `http://minio:9000/documents/…` | **`http://seaweedfs:8333/documents/…`** |
+
+**Trois choses à faire côté agent, et une à savoir.**
+
+1. **Son `.env` reçoit `MINIO_ENDPOINT=seaweedfs:8333`** et le **jeu lecture
+   seule** — pas celui du pipeline. Les deux jeux ont des droits distincts :
+   l'agent peut `GetBucketLocation`, `ListBucket`, `GetObject` et `StatObject`,
+   et **rien d'autre**.
+2. **Un témoin l'attend** pour vérifier sans rien deviner : bucket
+   `temoin-bascule`, objet `bascule-2026-09-25.txt`. S'il se lit avec le jeu
+   lecture seule, la passerelle sert l'agent.
+3. **Les adresses stockées dans le graphe ont changé, les clés non.** Si l'agent
+   reconstruit l'URL à partir de la clé, il n'a que l'endpoint à changer ; s'il
+   lit `minio_url` telle quelle, il n'a rien à faire d'autre que basculer son
+   `.env`.
+
+**Et la chose à savoir, parce qu'elle ne fait pas de bruit** : un refus de droit
+est un **403 `AccessDenied`**, et il remonte chez l'agent en **404 silencieux**.
+L'écran dit « image absente », et le corpus a simplement l'air incomplet. Un jeu
+d'identifiants mal posé ne se voit donc **pas à l'usage** : il se voit par appel
+direct, ce que fait `scripts/campagne/essayer-la-passerelle-s3.py`.
+
+**MinIO est conservé, debout, avec ses 212 objets — c'est le retour arrière.**
+Il n'a été ni arrêté, ni recréé, ni purgé pendant la bascule, et rien n'y a été
+écrit. Tant qu'il est là, on peut revenir ; le retour coûte une purge et une
+réingestion complète, parce que les adresses vivent dans le graphe. La
+procédure est au §4.8 du compte rendu,
+[`campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md).
+
+**Ce que la bascule a coûté à l'index : rien.** Les huit comptes, l'empreinte
+des 212 clés et `comparer` contre l'instantané rendent exactement ce qu'ils
+rendaient sur MinIO. Les mesures sont au **§4.43** du registre.
+
+**Ce qui n'a PAS été mesuré**, et ne doit pas se lire comme acquis : ni débit,
+ni latence, ni tenue en charge, ni durabilité de SeaweedFS ; et **aucune requête
+n'a été posée à l'agent** contre le nouveau store.
+
 ## 8. Ce qu'il reste à faire, par ordre
 
 **Ce dépôt-ci est arrivé au bout de son plan.** Les six lots du chantier sont
-fusionnés, et le lot 11 l'est depuis le 25 septembre 2026 (§7 bis). **Ce qui
-vient en premier n'est plus dans ce tableau : c'est la campagne** — purge,
-réingestion sans changement du code d'extraction, puis `comparer` contre
-l'instantané figé, zéro `element_id` déplacé attendu. Ce qui suit n'est pas
-commencé.
+fusionnés, et le lot 11 l'est depuis le 25 septembre 2026 (§7 bis). **La
+campagne annoncée ici est FAITE**, le 25 septembre : purge, réingestion sans
+changement du code d'extraction, `comparer` contre l'instantané figé, **`DEPLACES
+0`**. Et **la bascule vers SeaweedFS est faite le même jour** (§7 ter). Les deux
+premiers rangs ci-dessous en découlent ; ils vivent, l'un comme l'autre, à la
+frontière des deux dépôts.
 
 | | Ce que c'est | Qui | Pourquoi ce rang |
 |---|---|---|---|
-| **1** | réparer la réingestion par le chemin nominal (§4.32.a du registre) | ce dépôt | chemin de récupération cassé vers lequel un message d'erreur pointe |
-| **2** | prouver l'exigence 5 — prévenir l'agent en fin de chaîne | **`rag-agent-chat`** | seule exigence du contrat non prouvée. Le dépôt de l'agent est présent sur le poste, avec un service `agent-api` sur `rag_network`, mais **sans `.env`** : il ne tourne pas |
+| **1** | **basculer l'agent sur SeaweedFS** — son `.env` prend `MINIO_ENDPOINT=seaweedfs:8333` et le jeu **lecture seule** (§7 ter) | **`rag-agent-chat`** | le pipeline écrit déjà là-bas. Tant que l'agent vise `minio:9000`, il sert un store **figé**, et il le fera **sans une erreur** : un 403 remonte en 404 silencieux |
+| **2** | découpler les variables `MINIO_*` — une seule configure le serveur MinIO **et** authentifie auprès de SeaweedFS (§4.43.c du registre) | les deux dépôts | c'est le contrat entre eux : il se coordonne, il ne se décrète pas d'un seul côté |
 | **3** | écrire les trois réserves de `sequence` côté agent (§5.3 ci-dessus) | **`rag-agent-chat`** | le garde existe ici, l'explication manque là-bas. Petit, et ça débloque l'agent |
 | **4** | écrire sous une clé provisoire puis basculer, pour qu'une conversion ratée ne retire plus un document sain (§4.29.i) | ce dépôt | amélioration franche, mais c'est un chantier. La campagne dira si la panne est fréquente |
 | **5** | le second tour de questions — les pièges | humain | c'est la strate où l'on écrit le plus facilement un faux piège. Demande une relecture humaine |
 | **6** | faire lire le `Makefile` et les documents par un test (F7) | ce dépôt | dernier angle mort de la méthode |
 
-**Les points 2 et 3 sont pour `rag-agent-chat`.** Ce document est leur point
-d'entrée : tout ce qu'il faut savoir du pipeline est ci-dessus, et le §0 du
+**Les points 1, 2 et 3 sont pour `rag-agent-chat`, ou à coordonner avec lui.**
+Ce document est leur point d'entrée : tout ce qu'il faut savoir du pipeline est ci-dessus, et le §0 du
 registre porte le contrat mot pour mot.
 
 ## 9. Les cinq choses à ne pas faire
