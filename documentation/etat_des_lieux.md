@@ -6,11 +6,16 @@
 > Ce document se lit **sans lancer le projet**. Il ne remplace aucune page
 > détaillée : il dit l'état, renvoie, et s'arrête.
 >
+> **Pour lancer le projet plutôt que pour le comprendre, allez directement à
+> [`livraison.md`](livraison.md)** : prérequis, `.env`, démarrage, ingestion,
+> réingestion, vérification, retour arrière, défauts connus, prochaines étapes.
+>
 > Dernière mesure : **3 septembre 2026**, sur `main` — sauf les §7 bis et
 > §7 ter, `mesuré` le **25 septembre 2026**, le premier sur le commit de fusion
-> du lot 11, le second après la **bascule vers SeaweedFS**. **Le stockage
-> d'objets n'est plus MinIO** : lisez le §7 ter avant de brancher quoi que ce
-> soit. Chaque chiffre ci-dessous a
+> du lot 11, le second après la **bascule vers SeaweedFS**, dont les quatre
+> instruments ont été **remesurés le 25 septembre 2026 à 09:01 UTC**. **Le
+> stockage d'objets n'est plus MinIO** : lisez le §7 ter avant de brancher quoi
+> que ce soit. Chaque chiffre ci-dessous a
 > été relevé par une commande dont la sortie a été lue, puis **reproduit par une
 > conversation indépendante**. Un chiffre non remesuré est signalé comme tel.
 
@@ -58,8 +63,8 @@ stores** ; tout le reste orchestre.
 | chunks dans l'index vectoriel | **4 367** |
 | sommets dans le graphe | **15 196**, dont 15 173 liés par `PARENT_OF` |
 | images servables par l'agent | **212 sur 212** — depuis **SeaweedFS**, voir §7 ter |
-| tests automatisés | **884**, tous verts |
-| la porte qualité `make all` | **verte, sans exception à connaître** |
+| tests automatisés | **884**, tous verts — et **1 084** au 25 septembre 2026, avec **35 mutations rouges** (§7 bis) |
+| la porte qualité `make all` | **verte, sans exception à connaître** — rejouée `rc=0` le 25 septembre 2026 |
 
 Ces chiffres viennent de la **première campagne de référence**, menée le
 2 septembre 2026 : corpus purgé, réingéré entièrement par le code de `main`,
@@ -78,7 +83,7 @@ Leur site canonique est le §0 de
 | **2** | `element_id` déterministe, dérivé du contenu, 10 caractères hexadécimaux | ✅ **tenue** — 0 identifiant hors format sur 4 367, et 0 désaccord entre l'index et le graphe |
 | **3** | `source_path` est l'identité d'un document, jamais `filename` seul | ✅ **tenue** — `Index.html` et `Preface.html` existent dans les deux ouvrages, et les 23 documents ont 23 identifiants distincts |
 | **4** | `sequence` porte l'ordre de lecture, et il est monotone | ✅ **tenue** — 0 arête sans `sequence` sur 15 173, et 0 inversion de page |
-| **5** | `POST /reindex` sur l'agent en fin de chaîne | ⚠️ **non éprouvée** — l'appel part, mais l'agent ne tourne pas sur ce poste. Voir §8 |
+| **5** | `POST /reindex` sur l'agent en fin de chaîne | ✅ **tenue depuis le 25 septembre 2026** — le service de l'agent tourne désormais sur ce poste, `agent_reindex_sensor` est parti **seul** 24 s après le dernier run d'ingestion, et son run rend `ok — 4367 chunks indexes` (§4.42 du registre). **Réserve** : ce qui est éprouvé est que l'appel part, aboutit et réussit. Que l'index BM25 d'en face serve ces 4 367 chunks est une propriété de l'AUTRE dépôt, et **aucune requête n'a été posée à l'agent** |
 
 **L'exigence 1 mérite un mot, parce que c'est la panne la plus coûteuse du
 système et qu'elle est parfaitement silencieuse.** Les deux modèles candidats
@@ -132,17 +137,24 @@ et sa documentation vit ailleurs. C'est le §6.16 du registre.
 
 | | Ce que c'est | Gravité |
 |---|---|---|
-| **réingérer par le chemin normal ne marche pas, en silence** | le capteur demande 23 ingestions, l'orchestrateur en crée **zéro**, et n'écrit aucune raison. La clé de run dérive de la date du fichier, donc elle est déjà consommée | **grave** — et un message d'erreur du système dit pourtant « réingérez » |
+| ~~réingérer par le chemin normal ne marche pas, en silence~~ — **FERMÉ** | c'était le plus grave de ce document, et il ne l'est plus. Le lot 8 a livré le **marqueur de curseur** (`reingerer:<étiquette>`), et la campagne du 25 septembre 2026 l'a **mesuré** : marqueur posé, **23 runs créés**, 23 `SUCCESS`, clés de run portant l'étiquette et non le `mtime`. §4.32.a et §4.42 du registre | **traité** — le geste est au §3.2 de [`livraison.md`](livraison.md) |
+| **on ne peut pas RELIRE un curseur** | ce qui reste du point ci-dessus : `dagster sensor cursor` n'a que `--set` et `--delete`. On pose le marqueur par une commande officielle, on ne vérifie ni ce qu'on écrase, ni qu'il a été consommé, sans sortir de la CLI (§4.42.a) | gênant — le geste de lecture est au §3.2 de [`livraison.md`](livraison.md) |
 | 52 tables HTML comptées comme des images sans URL | une table HTML est du texte, il n'y a rien à téléverser. C'est le **compteur** qui fusionne deux chemins, pas la chaîne d'images qui est cassée | cosmétique |
 | une conversion qui échoue durablement retire un document sain de l'index | choix assumé : une absence est visible, un document périmé ne l'est pas | assumé |
-| rien ne lit le `Makefile` ni les documents | la documentation peut donc encore dériver sans que rien ne rougisse | angle mort |
+| **presque** rien ne lit les documents, et **rien** ne lit le `Makefile` | la phrase était écrite sans borne, et elle est **fausse pour les documents** : `mesuré le 25 septembre 2026`, **trois** gardes les lisent — deux exigent que le `README` nomme le marqueur `reingerer:` et les capteurs sur lesquels le poser (`test_factory.py:1722`, §4.32.a), un exige que `orchestration.md` annonce la bonne durée de `max_runtime_seconds` (`test_dagster_yaml.py:219`, §4.35.a). Ils **rougissent vraiment** : une réécriture du `README` ce jour-là a fait sortir `make all` en **rc=2**, sur `2 failed, 1082 passed`. Le reste de la documentation, lui, n'est tenu par rien, et le `Makefile` par rien du tout | angle mort, **borné** |
 
-**Le premier point est le plus important de ce document, et il a une ironie qu'il
-faut connaître** : c'est ce défaut qui **protège l'index en ce moment même**. Le
-démon d'orchestration a démarré trois fois sans que personne le décide, et rien
-n'a été réingéré par-dessus la campagne — uniquement parce que la clé de run
-était déjà consommée. **Le jour où on le corrige, il faut avoir décidé si les
-capteurs restent armés.**
+**Le premier point était le plus important de ce document, et sa fermeture
+déplace la question qu'il posait.** Tant qu'il durait, c'est lui qui
+**protégeait l'index** : le démon d'orchestration a démarré trois fois sans que
+personne le décide, et rien n'a été réingéré par-dessus la campagne, uniquement
+parce que la clé de run était déjà consommée. Cette protection fortuite a
+disparu avec le défaut. **Ce qui protège l'index aujourd'hui est que le seul
+déclencheur est un `mtime` ou un marqueur posé à la main** : d'où la règle « ne
+jamais `toucher` le corpus » (§9 ci-dessous, et §6.5 de
+[`livraison.md`](livraison.md)). Et les capteurs, eux, **restent armés** — ils
+sont même passés de `DECLARED_IN_CODE` à `RUNNING` pendant la bascule, ce qui
+persiste leur état en base et **retire au code la décision** (§6.1 de
+[`livraison.md`](livraison.md)).
 
 ## 7. La campagne de référence, et ce qu'elle vaut
 
@@ -249,6 +261,28 @@ procédure est au §4.8 du compte rendu,
 des 212 clés et `comparer` contre l'instantané rendent exactement ce qu'ils
 rendaient sur MinIO. Les mesures sont au **§4.43** du registre.
 
+**Et les quatre instruments que la bascule n'avait PAS rejoués l'ont été,
+derrière SeaweedFS**, en lecture seule, le **25 septembre 2026 entre 09:01 et
+09:02 UTC**. Les quatre rendent, **au dixième et à la ligne près**, ce qu'ils
+rendaient à la campagne du matin :
+
+| Instrument | Résultat derrière SeaweedFS, 25/09/2026 |
+|---|---|
+| `verify_contract` | **`rc=1`** sur la **seule** anomalie connue — 52 sommets visuels sur 264 sans `minio_url` (§4.32.b). Les dix-sept autres lignes sont identiques |
+| `index_report` | **`rc=0`**, identique : 4 367 chunks, 23 documents, médiane 299, 137 tronqués (3,1 %), `text` 2 604 / `code` 975 / `list_item` 484 / `table` 196 / `caption` 108, 4 367 `en` |
+| `verifier-le-jeu-de-questions.py` | **`rc=0`** — **les 44 ancrages concordent** avec l'index, champ par champ |
+| `mesurer-le-rappel-vectoriel.py` | **`rc=0`** — micro **55,3 / 61,7 / 72,3 / 80,9 %** à k = 5, 10, 20, 50 |
+
+Remesurés le même jour à 09:05 UTC : les **huit comptes**, l'**empreinte des 212
+clés** (`c91f5be6…0994`) et `comparer` contre l'instantané (**23 / 23,
+`DEPLACES 0`, `rc=0`**) — tous égaux. Et les **212** sommets porteurs d'une
+`minio_url` (209 `Picture`, 3 `Table`) la portent **tous** sous
+`http://seaweedfs:8333/documents/`, **zéro** sous `minio:9000`.
+
+> **Le mode d'emploi de tout cela** — lancer, ingérer, réingérer, vérifier,
+> revenir sur MinIO, les pièges qui ne font pas de bruit, les défauts connus et
+> les prochaines étapes : [`livraison.md`](livraison.md).
+
 **Ce qui n'a PAS été mesuré**, et ne doit pas se lire comme acquis : ni débit,
 ni latence, ni tenue en charge, ni durabilité de SeaweedFS ; et **aucune requête
 n'a été posée à l'agent** contre le nouveau store.
@@ -270,16 +304,27 @@ frontière des deux dépôts.
 | **3** | écrire les trois réserves de `sequence` côté agent (§5.3 ci-dessus) | **`rag-agent-chat`** | le garde existe ici, l'explication manque là-bas. Petit, et ça débloque l'agent |
 | **4** | écrire sous une clé provisoire puis basculer, pour qu'une conversion ratée ne retire plus un document sain (§4.29.i) | ce dépôt | amélioration franche, mais c'est un chantier. La campagne dira si la panne est fréquente |
 | **5** | le second tour de questions — les pièges | humain | c'est la strate où l'on écrit le plus facilement un faux piège. Demande une relecture humaine |
-| **6** | faire lire le `Makefile` et les documents par un test (F7) | ce dépôt | dernier angle mort de la méthode |
+| **6** | étendre F7 — **trois** gardes de texte existent déjà (§6 ci-dessus), le `Makefile` n'en a **aucun** et le reste de la documentation non plus | ce dépôt | dernier angle mort de la méthode, et il est plus petit qu'annoncé |
 
 **Les points 1, 2 et 3 sont pour `rag-agent-chat`, ou à coordonner avec lui.**
 Ce document est leur point d'entrée : tout ce qu'il faut savoir du pipeline est ci-dessus, et le §0 du
 registre porte le contrat mot pour mot.
 
+> **Ce tableau ordonne par la frontière entre les deux dépôts.** Les prochaines
+> étapes **de ce dépôt-ci**, chacune avec ce qui est déjà décidé, ce qui reste à
+> décider et qui est touché, sont au **§8 de
+> [`livraison.md`](livraison.md)** — renommer le contrat, retirer MinIO,
+> regrouper le code S3, les sources enfichables, les points du §4.41. Le rang 2
+> ci-dessus et le §8.1 de `livraison.md` sont **le même lot**.
+
 ## 9. Les cinq choses à ne pas faire
 
-1. **ne renommez aucun fichier du corpus.** Le chemin entre dans le calcul des
-   identifiants : un renommage après ingestion tue le jeu de 30 questions ;
+1. **ne renommez aucun fichier du corpus, et ne le `touchez` pas.** Le chemin
+   entre dans le calcul des identifiants : un renommage après ingestion tue le
+   jeu de 30 questions. Et le déclencheur d'un capteur est le **`mtime`** : un
+   `touch`, un `cp` qui ne préserve pas les dates, un éditeur qui réenregistre
+   sans rien changer — chacun arme les capteurs et lance une réingestion dans
+   les 30 s, sans que personne l'ait demandé ;
 2. **ne changez pas le modèle d'embedding d'un seul côté.** Voir §4 ;
 3. **ne démarrez pas le démon d'orchestration sans le décider.** Les capteurs
    sont livrés armés : le démarrer déclenche une ingestion ;
