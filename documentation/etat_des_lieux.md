@@ -15,7 +15,9 @@
 > du lot 11, le second après la **bascule vers SeaweedFS**, dont les quatre
 > instruments ont été **remesurés le 25 septembre 2026 à 09:01 UTC**. **Le
 > stockage d'objets est SeaweedFS, et le contrat a été renommé** : lisez le
-> §7 ter avant de brancher quoi que ce soit. Chaque chiffre ci-dessous a
+> §7 ter avant de brancher quoi que ce soit. **MinIO est retiré et
+> supprimé depuis le 25 septembre 2026, 13:55 UTC** — le retrait a été déployé
+> et remesuré, voir la fin du §7 ter. Chaque chiffre ci-dessous a
 > été relevé par une commande dont la sortie a été lue, puis **reproduit par une
 > conversation indépendante**. Un chiffre non remesuré est signalé comme tel.
 
@@ -304,6 +306,18 @@ adresse de média (209 `Picture`, 3 `Table`) la portent **tous** sous
 > revenir en arrière, les pièges qui ne font pas de bruit, les défauts connus et
 > les prochaines étapes : [`livraison.md`](livraison.md).
 
+**Le retrait de l'ancien stockage est DÉPLOYÉ**, le 25 septembre 2026 entre
+13:36 et 13:55 UTC ; compte rendu au §11 de
+[`campagnes/2026-09-25-retrait-du-stockage-precedent.md`](campagnes/2026-09-25-retrait-du-stockage-precedent.md).
+Après fusion, bascule des noms, purge et réingestion (23 runs, tous `SUCCESS`),
+les huit comptes, l'empreinte `c91f5be6…7ed0b994` et `comparer` (**23 / 23,
+`DEPLACES 0`**) rendent exactement les mêmes valeurs ; le graphe porte **212**
+`media_url` et **212** `object_key` — ensemble égal aux clés du bucket — et
+**zéro** `minio_url`, ni au schéma ni dans les données. Le conteneur MinIO, ses
+données et ses images sont **supprimés** ; `docker ps -a` et `docker images`
+n'en montrent plus rien. **Reste chez l'agent** : son `.env` porte encore les
+noms `MINIO_*` (valeur `seaweedfs:8333`) ; il sert ses images (`/media` → 200).
+
 **Ce qui n'a PAS été mesuré**, et ne doit pas se lire comme acquis : ni débit,
 ni latence, ni tenue en charge, ni durabilité de SeaweedFS ; et **aucune requête
 n'a été posée à l'agent** contre le nouveau store.
@@ -320,7 +334,7 @@ frontière des deux dépôts.
 
 | | Ce que c'est | Qui | Pourquoi ce rang |
 |---|---|---|---|
-| **1** | **prendre le contrat renommé** — `S3_*` dans son `.env`, `media_url` et `object_key` dans ce qu'il lit (§7 ter) | **`rag-agent-chat`** | le pipeline écrit déjà ainsi. **L'ordre est impératif** : l'agent doit d'abord servir une version qui lit `media_url`, et l'ancien champ à défaut, avant que ce dépôt ne réingère |
+| **1** | **renommer son `.env`** en `S3_*` — il lit déjà `media_url` (et l'ancien champ à défaut), et la réingestion sans MinIO est faite (§7 ter) | **`rag-agent-chat`** | le pipeline écrit ainsi depuis le 25 septembre 2026 ; l'agent sert ses images, mais sous des noms de variables qui désignent un produit retiré |
 | **3** | écrire les trois réserves de `sequence` côté agent (§5.3 ci-dessus) | **`rag-agent-chat`** | le garde existe ici, l'explication manque là-bas. Petit, et ça débloque l'agent |
 | **4** | écrire sous une clé provisoire puis basculer, pour qu'une conversion ratée ne retire plus un document sain (§4.29.i) | ce dépôt | amélioration franche, mais c'est un chantier. La campagne dira si la panne est fréquente |
 | **5** | le second tour de questions — les pièges | humain | c'est la strate où l'on écrit le plus facilement un faux piège. Demande une relecture humaine |
