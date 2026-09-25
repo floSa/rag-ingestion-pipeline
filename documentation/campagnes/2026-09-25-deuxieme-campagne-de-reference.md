@@ -330,8 +330,16 @@ EMPREINTE DES 44 ANCRAGES : 11c4e1b325732ca6ce273dd08bfaba038473afa3b54b72d5649f
 ```
 
 définie comme le SHA-256 des 44 lignes `element_id<TAB>sha256(texte)`, triées
-par `element_id`, jointes par `\n`, avec `\n` final. **Les 44 sont `label=text`**
-et aucun n'est absent.
+par `element_id`, jointes par `\n`, avec `\n` final. **Aucun n'est absent.**
+
+**Correction.** Cette phrase disait « les 44 sont `label=text` », et elle est
+fausse. `mesuré` sur les métadonnées de l'index, `label` par `element_id` :
+**36** sont `label=text` et **8** sont `label=list_item` — `269b2e32d8`,
+`347b2e3799`, `5558e561d7`, `d5948cc70d`, `d913ef3b4f`, `e1ab19bc3b`,
+`e74bcf1706` et `eda4f1e10c`. 36 + 8 = 44, et la somme se ferme. Ce qui était
+mesuré est la **présence** des 44 et leur **texte** ; leur `label` ne l'était
+pas, et il avait été supposé uniforme. L'empreinte des 44 ancrages ne change
+pas : elle ne porte que l'`element_id` et le condensat du texte.
 
 ### 1.9 Le rappel d'avant, et le commit qui ajoute k = 50
 
@@ -686,7 +694,7 @@ tournait sur aucun conteneur du poste. **Elle l'est désormais.**
 | Ticks | Compte | Ce qu'ils disent |
 |---|---|---|
 | `SKIPPED` avant le geste (03:43:23) | **1** | « Rien de nouveau n'a ete ingere depuis la derniere reindexation reussie. » |
-| `SKIPPED` **consécutifs** de **03:43:59 à 03:50:10** | **13** | chacun **nomme le garde et le run qui bloque** : « Ingestion en cours (`pdfs_job`) : la reindexation attend qu'elle retombe. Le run `ff4429ce…` est en QUEUED » |
+| `SKIPPED` **consécutifs** de **03:43:59 à 03:50:10** | **13** | chacun **nomme le garde et le run qui bloque** : « Ingestion en cours (`<job>`) : la reindexation attend qu'elle retombe. Le run `…` est en QUEUED ». Le job nommé est `livres_html_job` au premier tick et `pdfs_job` aux **12** suivants — voir la correction en fin de §3.6 |
 | `SUCCESS` à **03:50:41** | **1** | le run de réindexation, créé **24 s** après la fin du dernier run d'ingestion (03:50:17,4) |
 | `SKIPPED` après (03:51:11 → 03:52:46) | **4** | « Rien de nouveau… » — l'index est à jour |
 
@@ -696,9 +704,18 @@ et la raison est mesurable : l'ingestion est partie **en une seule vague**, les
 23 runs créés en 25 secondes, sans le trou de 64 s que la première campagne
 avait entre sa partition d'essai et les 22 autres.
 
-**Une précision sur ce que le garde nomme.** Les 13 ticks bloqués citent
-`pdfs_job` alors que son run n'a **démarré** qu'à 03:48:43 : le garde compte un
-run **`QUEUED`** comme « en vol », et c'est correct — un run en file va
+**Une précision sur ce que le garde nomme, et une correction.** Cette phrase
+disait « les 13 ticks bloqués citent `pdfs_job` », et elle est fausse : ils sont
+**12 sur 13**. `mesuré` sur les ticks enregistrés, le **premier** de la série,
+à **03:43:59**, cite `livres_html_job` et le run **`b3d62067`**, alors en
+`QUEUED` — c'est-à-dire le tout premier des 22 runs HTML, et non le run du PDF.
+Les **12** suivants, de 03:44:30 à 03:50:10, citent bien `pdfs_job` et le run
+`ff4429ce`. Le garde nomme le run en vol le plus ancien, et celui-ci change au
+fil de la vague ; il se trouve qu'après 03:44:30 c'est le run du PDF, mis en
+file le premier et exécuté le dernier, qui le reste jusqu'au bout.
+
+`pdfs_job` est donc cité alors que son run n'a **démarré** qu'à 03:48:43 : le
+garde compte un run **`QUEUED`** comme « en vol », et c'est correct — un run en file va
 s'exécuter, et réindexer avant lui indexerait un état incomplet. Le message dit
 d'ailleurs « est en QUEUED », il ne prétend pas qu'il tourne.
 
