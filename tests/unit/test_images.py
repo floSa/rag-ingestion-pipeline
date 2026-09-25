@@ -1,14 +1,14 @@
-"""L'adresse d'un objet, sa CLE, et le seul site qui construit un client S3.
+"""L'adresse d'un objet, sa cle, et le seul site qui construit un client S3.
 
-Trois proprietes que ce lot installe, et qu'aucun test ne tenait :
+Trois proprietes :
 
-- **`object_key` est l'inverse EXACT d'`object_url`.** Le contrat publie les
+- **`object_key` est l'inverse exact d'`object_url`.** Le contrat publie les
   deux, et ils doivent decrire le meme objet. Une derivation approximative
   rendrait une cle que `stat_object` ne retrouve pas, sur un objet present ;
-- **le SDK n'est nomme qu'a UN endroit de `src/`.** Il en etait nomme a trois,
-  dont deux qui construisaient chacun leur client avec leur propre `secure=` ;
-- **un client ne se batit pas sans adresse.** `build_client` est publique, donc
-  joignable avec une adresse lue ailleurs que dans les reglages valides.
+- **la bibliotheque cliente n'est importee qu'a un endroit de `src/`**, pour
+  qu'il n'y ait qu'une construction de client et un seul `secure=` ;
+- **un client ne se construit pas sans adresse.** `build_client` est publique,
+  donc joignable avec une adresse lue ailleurs que dans les reglages valides.
 """
 
 from __future__ import annotations
@@ -23,13 +23,11 @@ from src.reglages_s3 import MESSAGE_ENDPOINT_MANQUANT
 
 RACINE_DEPOT = Path(__file__).resolve().parents[2]
 
-# Le nom du paquet de la bibliotheque cliente. Elle RESTE : c'est un client S3
-# generique, et c'est par elle que la pile a change de stockage sans qu'une
-# ligne de televersement bouge. Ce qui est garde ici est le nombre de ses
-# points d'entree, pas sa presence.
+# Le nom du paquet de la bibliotheque cliente, un client S3 generique. Les tests
+# verifient le nombre de ses points d'entree, pas sa presence.
 PAQUET_DU_SDK = "minio"
 
-# Le SEUL module de `src/` qui a le droit de le nommer.
+# Le seul module de `src/` autorise a l'importer.
 SITE_UNIQUE = "src/docling_service/images.py"
 
 
@@ -50,12 +48,11 @@ class TestLaCleEstLInverseExactDeLAdresse:
         assert images.object_key(images.object_url(cle)) == cle
 
     def test_la_cle_n_est_pas_decodee(self) -> None:
-        """Un `unquote` ici rendrait 404 sur un objet PRESENT.
+        """Un `unquote` rendrait 404 sur un objet present.
 
         `object_url` est une concatenation pure : la cle apparait telle quelle
         dans le chemin. La decoder rendrait une chaine differente de celle
-        passee a `put_object`, et c'est exactement le genre d'ecart qui ne se
-        voit qu'a la lecture, document par document.
+        passee a `put_object`, un ecart qui ne se voit qu'a la lecture.
         """
         cle = "images/livre/100%25_de_marge.png"
 
@@ -69,9 +66,9 @@ class TestLaCleEstLInverseExactDeLAdresse:
         assert images.object_key("http://stockage:8333/documents") == ""
 
     def test_l_adresse_est_en_style_chemin(self) -> None:
-        """LE TEMOIN : la forme publiee est `http://hote/bucket/cle`.
+        """La forme publiee est `http://hote/bucket/cle`.
 
-        Sans lui, un `object_url` qui rendrait n'importe quoi passerait les
+        Sans ce test, un `object_url` qui rendrait n'importe quoi passerait les
         aller-retours ci-dessus, `object_key` etant son inverse.
         """
         rendue = images.object_url("images/a/b.png")
@@ -81,7 +78,7 @@ class TestLaCleEstLInverseExactDeLAdresse:
 
 
 class TestUnClientNeSeBatitPasSansAdresse:
-    """`build_client` est PUBLIQUE, donc joignable hors des reglages valides."""
+    """`build_client` est publique, donc joignable hors des reglages valides."""
 
     def test_une_adresse_vide_est_refusee(self) -> None:
         with pytest.raises(ValueError) as leve:
@@ -94,7 +91,7 @@ class TestUnClientNeSeBatitPasSansAdresse:
             images.build_client("   ", "cle", "secret")
 
     def test_une_adresse_declaree_construit_un_client(self) -> None:
-        """LE TEMOIN. Un `build_client` qui leverait toujours rendrait tout vert.
+        """Contre-epreuve : un `build_client` qui leverait toujours passerait les tests de refus.
 
         Construire n'ouvre aucune connexion : le SDK ne joint le serveur qu'au
         premier appel.
@@ -105,14 +102,12 @@ class TestUnClientNeSeBatitPasSansAdresse:
 
 
 class TestLeSdkEstNommeAUnSeulEndroitDeSrc:
-    """Il l'etait a TROIS, et deux d'entre eux construisaient leur propre client.
+    """Un seul module de `src/` importe la bibliotheque cliente (registre 4.29.b).
 
-    `pipeline/media.py` batissait le sien avec ses propres reglages et son
-    propre `secure=` ; `verify_data.py` le sien encore. Trois sites pour une
-    seule decision, donc trois endroits ou en changer — et `media.py` publiait
-    de surcroit l'adresse avec les reglages d'un AUTRE module (registre 4.29.b).
+    Plusieurs sites de construction voudraient dire plusieurs reglages et
+    plusieurs `secure=` pour une seule decision.
 
-    Le balayage est STATIQUE, a l'AST : il n'importe rien, donc il ne depend ni
+    Le balayage est statique, a l'AST : il n'importe rien, donc il ne depend ni
     du venv ni de l'ordre des tests.
     """
 
@@ -141,10 +136,10 @@ class TestLeSdkEstNommeAUnSeulEndroitDeSrc:
         return porteurs
 
     def test_le_balayage_voit_le_site_connu(self) -> None:
-        """LE TEMOIN, ET IL PASSE EN PREMIER.
+        """Contre-epreuve, placee en premier.
 
-        Un balayage qui ne lirait rien rendrait « zero porteur », et le garde
-        ci-dessous serait vert sans rien garder.
+        Un balayage qui ne lirait rien rendrait « zero porteur », et le test
+        suivant passerait sans rien verifier.
         """
         porteurs = self._modules_qui_importent_le_sdk()
 
@@ -154,7 +149,7 @@ class TestLeSdkEstNommeAUnSeulEndroitDeSrc:
         )
 
     def test_aucun_autre_module_de_src_ne_nomme_le_sdk(self) -> None:
-        """LE GARDE. Un second site de construction rougit ici."""
+        """Un second site d'import fait echouer ce test."""
         porteurs = self._modules_qui_importent_le_sdk()
 
         autres = {nom: lignes for nom, lignes in porteurs.items() if nom != SITE_UNIQUE}
@@ -168,7 +163,6 @@ class TestLeSdkEstNommeAUnSeulEndroitDeSrc:
     def test_le_type_du_client_est_publie_sous_un_nom_generique(self) -> None:
         """Sans lui, un appelant devrait importer le SDK pour annoter son client.
 
-        C'est precisement ce que faisait `media.py`, et c'est ce qui rendait le
-        site unique impossible a tenir.
+        Le site unique serait alors impossible a tenir.
         """
         assert hasattr(images, "ClientS3")

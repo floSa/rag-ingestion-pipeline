@@ -69,11 +69,11 @@ class TestHeadingStack:
         assert placement.depth == 2  # et non 9
 
     def test_depth_counts_every_level_without_a_ceiling(self):
-        """Un plafond rendrait deux profondeurs REELLEMENT differentes egales.
+        """Un plafond rendrait egales deux profondeurs reellement differentes.
 
-        C'est le defaut du registre 4.24 : ``depth = 4`` recouvrait les
-        profondeurs 4 ET 5, et un agent qui lit ``depth`` pour construire un
-        fil d'Ariane comptait faux sans qu'aucune erreur ne le signale.
+        Registre 4.24 : ``depth = 4`` recouvrait les profondeurs 4 et 5, et un
+        agent qui lit ``depth`` pour construire un fil d'Ariane comptait faux
+        sans erreur.
         """
         pile = HeadingStack()
         profondeurs = [pile.place(f"h{index}", index).depth for index in range(6)]
@@ -104,7 +104,7 @@ class TestHeadingStack:
         assert pile.current_id is None
 
     def test_a_document_with_a_single_size_stays_flat(self):
-        """Aucun signal de niveau : on retombe sur le comportement anterieur."""
+        """Aucun signal de niveau : tous les titres restent sous le document."""
         pile = HeadingStack()
         profondeurs = [pile.place(f"h{index}", 0).depth for index in range(5)]
         assert profondeurs == [0, 0, 0, 0, 0]

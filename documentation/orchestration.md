@@ -1,7 +1,7 @@
 # Orchestrateur ETL (Dagster)
 
 ## Présentation du service
-Dagster est le système nerveux central du projet RAG Assistant. C'est l'orchestrateur de données chargé de détecter les ajouts de documents dans les répertoires et d'automatiser (trigger) l'exécution des requêtes vers le service d'extraction, sans intervention humaine.
+Dagster orchestre l'ingestion : il détecte les documents ajoutés ou modifiés dans `Datas/` et soumet chacun au service d'extraction, sans intervention manuelle.
 
 Il se compose de plusieurs sous-services distincts :
 - **postgres-dagster** : Base de données PostgreSQL pour stocker les métadonnées de l'orchestrateur (historique d'exécution, états des senseurs).
@@ -13,11 +13,11 @@ Il se compose de plusieurs sous-services distincts :
 - **Base de données interne** : `postgres-dagster:5432` (credentials : voir `.env`)
 
 ## Structure et définition des données
-Côté développement, les éléments vitaux composant le graphe de données Dagster sont :
+Les éléments qui composent le graphe de données Dagster :
 - **La déclaration des sources (`sources.yaml` + `sources.py`)** : Chaque source de documents (un dossier de PDFs, une capture de site en HTML, un dossier de notes Markdown...) est un bloc YAML : nom, motif glob relatif à `/opt/dagster/app/Datas`, type (`pdf`, `html` ou `md`) et options de nettoyage. Ajouter une source ne demande aucun code Python.
 - **La factory (`factory.py`)** : Pour chaque source déclarée, elle génère les partitions dynamiques (une par fichier), les assets, le job (`{name}_job`) et le sensor (`{name}_sensor`). Les trois types suivent le même mécanisme ; les sources HTML ont simplement un asset de nettoyage (`cleaned_html`) en amont de l'extraction, dont PDF et Markdown n'ont pas besoin.
 - **Le nettoyage HTML (`cleaning.py`)** : Pré-passe déterministe (scripts, styles, nav, images `data:` SingleFile) puis extraction du contenu principal via trafilatura, avec readability-lxml en secours et conservation du HTML pré-nettoyé en dernier recours.
-- **La persistance des tâches (Le Curseur)** : Pour éviter qu'un livre ne soit ingéré à chaque redémarrage, chaque sensor sauvegarde la date de modification (`mtime`) de chaque fichier dans son curseur PostgreSQL. Si le fichier n'a pas été modifié depuis son traitement, Dagster l'ignore de manière silencieuse et robuste.
+- **La persistance des tâches (Le Curseur)** : Pour éviter qu'un livre ne soit ingéré à chaque redémarrage, chaque sensor sauvegarde la date de modification (`mtime`) de chaque fichier dans son curseur PostgreSQL. Si le fichier n'a pas été modifié depuis son traitement, il est ignoré.
 - **Les Partitions** : Définies dynamiquement, chaque fichier est une "Partition" (clé = chemin relatif) pour simplifier la réexécution d'un échec sur un livre précis (au lieu de réexécuter tout le pipeline global).
 - **L'extraction** : L'asset `extracted_document` soumet le document au service Docling (`POST /extract`), qui rend un identifiant de job, puis suit son avancement (`GET /jobs/{id}`) jusqu'à la fin. Le service persiste lui-même les résultats dans NebulaGraph, ChromaDB et le stockage d'objets. Le bilan (éléments, chunks, pages, durée) est publié dans les métadonnées de l'asset.
 
@@ -26,74 +26,62 @@ Côté développement, les éléments vitaux composant le graphe de données Dag
 Un corpus de plusieurs dizaines de livres crée autant de partitions et de runs. Deux limites empilées évitent de saturer la machine :
 
 1. **La file Dagster** — `QueuedRunCoordinator` avec `max_concurrent_runs: 2` dans `dagster.yaml`. Sans limite explicite, le coordinateur en lance jusqu'à dix, soit autant de processus dans le conteneur daemon.
-2. **Le worker du service d'extraction** — un seul document converti à la fois, la conversion saturant déjà le GPU.
+2. **Le worker du service d'extraction** — un seul document converti à la fois, la conversion saturant déjà la machine.
 
 Une fois l'ingestion retombée, `POST /reindex` part sur `rag-agent-chat` pour que son index lexical BM25 — tenu en mémoire — voie les documents qui viennent d'être écrits. L'appel n'est pas dans l'asset d'extraction : il a son job, `agent_reindex_job`, et son sensor, `agent_reindex_sensor`.
 
 Le sensor définit « fin d'ingestion » comme un **état** et non comme un événement, faute de point de fin dans cette architecture — un job par source, un run par fichier, des partitions créées au fil de l'eau. Il arme le job quand aucun run d'ingestion n'est en vol (les statuts non terminaux, `QUEUED` compris : les runs d'une rafale attendent dans la file) et qu'au moins un a réussi depuis la dernière réindexation. Le nombre d'appels ne suit donc pas le nombre de documents.
 
-Le sensor **ne tient aucun curseur**. Il compare deux faits qu'il lit dans l'historique des runs : le repère de la dernière ingestion réussie, et celui de la dernière **réindexation réussie**. Un repère est un `storage_id`, entier croissant attribué à la création d'un run. La conséquence est la propriété qui manquait : tant qu'aucune réindexation n'a réussi, il en reste une à faire, et le sensor rearme au tick suivant. Une réindexation lancée à la main depuis l'interface compte elle aussi, si elle réussit.
+Le sensor **ne tient aucun curseur**. Il compare deux faits qu'il lit dans l'historique des runs : le repère de la dernière ingestion réussie, et celui de la dernière **réindexation réussie**. Un repère est un `storage_id`, entier croissant attribué à la création d'un run. Conséquence : tant qu'aucune réindexation n'a réussi depuis la dernière ingestion réussie, il en reste une à faire, et le sensor réarme au tick suivant. Une réindexation lancée à la main depuis l'interface compte elle aussi, si elle réussit.
 
-L'appel ne peut pas faire échouer une ingestion — il vit dans son propre run. Ce run-là, en revanche, **rougit** quand l'appel n'aboutit pas : c'est ce qui le rend visible, et c'est le fait que le sensor relit pour décider de retenter. Une URL vide ne fait rien rougir : l'appel n'a pas été tenté, c'est un choix de configuration. En cas de succès, le résultat est publié dans les métadonnées de l'asset `agent/lexical_index`, sous la clé `reindex`.
+L'appel ne peut pas faire échouer une ingestion — il vit dans son propre run. Ce run-là, en revanche, **échoue** quand l'appel n'aboutit pas : l'échec est visible dans l'interface, et c'est ce que le sensor relit pour décider de retenter. Une URL vide ne fait rien échouer : l'appel n'est pas tenté, c'est un choix de configuration. En cas de succès, le résultat est publié dans les métadonnées de l'asset `agent/lexical_index`, sous la clé `reindex`.
 
 Les runs en attente sont visibles dans **Runs → Queued**. Relever `max_concurrent_runs` n'accélère rien tant que le service reste mono-worker : c'est un levier à ne toucher que si l'extraction est parallélisée.
 
-### Un run bloqué ne gèle plus la réindexation
+### Un run bloqué ne gèle pas la réindexation
 
-Le sensor de réindexation saute tant qu'un run d'ingestion est non terminal, et
-cette garde est juste. Elle partageait un mode de panne avec un run qui **ne
-revient jamais** — worker tué, daemon interrompu : la réindexation était alors
-bloquée *indéfiniment*, sans délai de garde ni alerte. Le *run monitoring* de
-Dagster, qui reprend ou fait échouer les runs orphelins, était **absent de
-`dagster.yaml`**.
-
-Il y est désormais, et c'est là que la famille entière se ferme d'un geste :
-un sensor qui déciderait lui-même qu'un run est mort empiéterait sur le travail
-du daemon, et il faudrait la même règle dans chaque sensor à venir.
+Le sensor de réindexation saute tant qu'un run d'ingestion est non terminal. Un
+run qui ne revient jamais (worker tué, daemon interrompu) bloquerait donc la
+réindexation indéfiniment. Le *run monitoring* de Dagster, activé dans
+`dagster.yaml`, fait échouer ces runs orphelins. La règle vit à ce seul endroit
+et vaut pour toutes les sources : aucun sensor ne décide lui-même qu'un run est
+mort.
 
 | Réglage | Valeur | Ce qu'il borne |
 |---|---|---|
-| `enabled` | `true` | rien n'était surveillé |
+| `enabled` | `true` | active la surveillance |
+| `poll_interval_seconds` | 60 | intervalle de contrôle du daemon |
 | `start_timeout_seconds` | 900 | un run que le launcher n'arrive jamais à démarrer |
 | `max_runtime_seconds` | 90 000 (**25 h**) | un run qui ne finit jamais |
-| `max_resume_run_attempts` | 0 | `DefaultRunLauncher` ne sait pas reprendre un run ; l'armer donnerait un réglage qui ne fait rien |
+| `max_resume_run_attempts` | 0 | `DefaultRunLauncher` ne sait pas reprendre un run ; un run mort est marqué en échec |
 
 **Pourquoi 90 000 et non une valeur serrée.** `EXTRACTION_TIMEOUT_SECONDS` vaut
 86 400 s (24 h) : c'est le plafond que le pipeline s'accorde lui-même *par
 document*. **Les deux nombres ne sont pas le même plafond** : 90 000 s = 25 h,
-86 400 s = 24 h, l'écart délibéré est d'**une heure**, et c'est donc **25 h** qu'un
-opérateur attend au pire devant un run gelé — pas 24. L'arithmétique est écrite une
-fois pour toutes dans `dagster.yaml`, au-dessus du réglage.
+86 400 s = 24 h, l'écart délibéré est d'**une heure**. C'est donc **25 h** qu'un
+opérateur attend au pire devant un run gelé, et non 24. L'arithmétique est aussi
+écrite dans `dagster.yaml`, au-dessus du réglage.
 
-Un `max_runtime_seconds` plus court tuerait des runs que le pipeline
-considère encore légitimes, et la cause serait cherchée du mauvais côté — deux
-plafonds qui se contredisent sont pires qu'un seul. Ce délai-ci est la **dernière
-ligne** : il ne se déclenche que quand le plafond du pipeline a lui-même échoué à
-se déclencher, donc quand le run est réellement gelé et non lent. Pour mémoire,
-le run le plus long jamais mesuré sur ce corpus vaut **111 s** (`mesuré` le
-1er septembre 2026, 23 runs réussis) : la marge est de 810×.
+Un `max_runtime_seconds` plus court tuerait des runs que le pipeline considère
+encore légitimes. Ce délai est la **dernière ligne** : il ne se déclenche que
+si le plafond du pipeline a lui-même échoué, donc quand le run est réellement
+gelé et non lent. Pour mémoire, le run le plus long mesuré sur ce corpus vaut
+**111 s** (mesuré le 1er septembre 2026, 23 runs réussis) : la marge est de 810×.
 
-`tests/unit/test_dagster_yaml.py` garde ces valeurs, et **trois** gardes s'y
-partagent le travail, parce qu'un seul n'y suffisait pas. Le premier compare les
-**deux fichiers** et tient le *plancher* : la borne ne peut pas descendre sous le
-plafond du pipeline. C'est tout ce qu'il tenait — `mesuré` par l'audit du lot 9,
-porter `max_runtime_seconds` à **500 000** laissait la suite entièrement verte, un
-facteur 5,5 sans un mot. Le deuxième tient donc le *plafond* : l'écart au-dessus du
-plafond du pipeline ne dépasse pas un dixième de celui-ci, faute de quoi la borne
-cesse d'être la dernière ligne et devient un second plafond indépendant. Le
-troisième tient la **prose** : il part de la valeur effective et exige que
-`dagster.yaml` et ce fichier-ci en annoncent les heures justes — sans lui, les
-« 25 h » ci-dessus pouvaient redevenir faux en silence, ce qui est exactement ce
-qui était arrivé (registre §4.35.a).
+`tests/unit/test_dagster_yaml.py` vérifie ces valeurs par trois tests :
 
-**Ce que cela ne corrige pas**, écrit pour que personne ne le croie : un run
-`QUEUED` pendant que le daemon est **arrêté**. Ce n'est pas un défaut de Dagster —
-rien ne dépile une file dont le dépileur est éteint — et le run repart au
+- la borne ne descend pas sous le plafond du pipeline ;
+- l'écart au-dessus de ce plafond ne dépasse pas un dixième de celui-ci, faute
+  de quoi la borne deviendrait un second plafond indépendant ;
+- `dagster.yaml` et ce fichier annoncent, en heures, la valeur effective de
+  `max_runtime_seconds` (registre §4.35.a).
+
+**Limite** : un run `QUEUED` pendant que le daemon est **arrêté** reste en file,
+puisque c'est le daemon qui dépile. Il repart au
 `docker compose start dagster-daemon`.
 
-Enfin, la raison de saut du sensor **nomme le run qui bloque et son âge**. Elle
-ne nommait que le job : un opérateur lisait « Ingestion en cours » à chaque tick,
-pendant des heures, sans rien qui distingue « ça travaille » de « c'est gelé ».
+La raison de saut du sensor **nomme le run qui bloque et son âge** : elle
+distingue un run qui travaille d'un run gelé.
 
 Avant de soumettre, l'asset attend que le service se déclare prêt (`GET /health`) : au démarrage de la stack, le chargement des modèles et l'initialisation du schéma NebulaGraph prennent plusieurs minutes, et le premier run échouerait pour une raison sans rapport avec le document.
 
@@ -129,15 +117,14 @@ Ramené à l'unité, pour estimer une campagne :
 Les écarts entre le meilleur et le pire temps ne viennent pas des documents mais de la concurrence : un chapitre HTML monte à 68 s lorsqu'un PDF de 280 pages occupe le worker au même moment. Le débit global reste stable, c'est la latence individuelle qui varie.
 
 ## Commandes utiles
-Lors des phases d'architecture ou lorsque vous surveillez RAG Assistant :
-- Dans l'interface Web (`http://localhost:3002`), allez dans l'onglet **Overview > Sensors** pour activer/désactiver l'ingestion automatique logicielle.
-- **Vérifier l'état de l'Orchestrateur** (en cas de plantage d'un Job) :
+- Dans l'interface Web (`http://localhost:3002`), l'onglet **Overview > Sensors** active ou désactive l'ingestion automatique.
+- **Vérifier l'état de l'orchestrateur** (en cas d'échec d'un job) :
   ```bash
   docker compose logs dagster-daemon --tail 50
   docker compose logs dagster-webserver --tail 50
   ```
 
 ## Problèmes rencontrés et solutions
-- **Rechargement Intempestif des Tâches lors du Reboot** :
-  - *Problème* : Au redémarrage (ex: fermeture WSL), tous les services Docker n'étaient pas gardés persistants sauf Docling. La base PostgreSQL de Dagster étant perdue lors d'un restart, l'orchestrateur relançait le processus de traitement de tous les livres à zéro car il avait oublié les curseurs.
-  - *Solution* : Ajout de la contrainte `restart: unless-stopped` sur tous les conteneurs dans le `docker-compose.yml`, pour qu'ils soient tous persistants tout comme la base d'états Dagster, verrouillant ainsi et pour de bon les données extraites au premier passage.
+- **Réingestion complète après un redémarrage de la machine** :
+  - *Problème* : sans politique de redémarrage, les conteneurs ne repartaient pas après un arrêt de la machine (par exemple une fermeture de WSL), et les sensors relançaient le traitement de tous les livres.
+  - *Solution* : `restart: unless-stopped` sur les conteneurs de `docker-compose.yml` (`restart: always` pour `docling-service`). La base PostgreSQL de Dagster, persistée dans `Datas/database/postgres/`, conserve les curseurs des sensors : un fichier déjà traité n'est pas réingéré.

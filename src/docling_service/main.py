@@ -4,7 +4,7 @@ L'extraction d'un livre dure des heures : elle ne se fait donc pas dans la
 requete HTTP. ``POST /extract`` met le document en file et rend un identifiant
 de job ; ``GET /jobs/{job_id}`` en expose l'avancement, et c'est l'asset
 Dagster qui interroge jusqu'a la fin. L'event loop reste libre, le healthcheck
-repond meme pendant une conversion, et une coupure reseau ne perd plus un run.
+repond meme pendant une conversion, et une coupure reseau ne perd pas un run.
 
 La logique metier vit dans les modules voisins (``extraction``, ``storage``,
 ``nebula``, ``vectors``, ``chunking``, ``elements``, ``ngql``, ``jobs``) ; ce
@@ -81,7 +81,7 @@ def _init_objects() -> None:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Demarre le worker et lance les initialisations en arriere-plan.
 
-    Le modele d'embedding est verifie AVANT tout le reste, et l'exception n'est
+    Le modele d'embedding est verifie avant tout le reste, et l'exception n'est
     pas rattrapee : le service refuse de demarrer plutot que d'indexer avec un
     modele que rag-agent-chat ne saura pas interroger. C'est deliberement plus
     brutal que le prechargement ci-dessous, qui se contente de journaliser :

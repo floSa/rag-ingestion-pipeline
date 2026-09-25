@@ -1,16 +1,16 @@
 # Ce qui a changé, et ce que ça implique
 
-> **À lire en premier si vous reprenez le projet, ou si vous travaillez sur
+> **À lire en premier pour reprendre le projet, ou pour travailler sur
 > [`rag-agent-chat`](llm_integration_plan.md).**
 >
 > Ce document liste les changements de fond, ce qu'ils impliquent côté agent, et
 > renvoie vers la page détaillée de chacun. Il ne remplace pas ces pages, il sert
 > de point d'entrée.
 >
-> **Si vous cherchez l'ÉTAT plutôt que les CHANGEMENTS** — ce que le pipeline
-> garantit aujourd'hui, ce qu'il ne garantit pas, et ce qu'il reste à faire —
-> c'est [`etat_des_lieux.md`](etat_des_lieux.md). Ce document-ci raconte le
-> chemin ; celui-là dit où on est arrivé.
+> **Pour l'état plutôt que les changements** — ce que le pipeline garantit
+> aujourd'hui, ce qu'il ne garantit pas, et ce qu'il reste à faire — voir
+> [`etat_des_lieux.md`](etat_des_lieux.md). Ce document-ci retrace le chemin ;
+> celui-là décrit le point d'arrivée.
 
 ---
 
@@ -60,7 +60,7 @@ EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2
 La dimension étant identique (384), aucun autre changement n'est nécessaire :
 ni schéma, ni format de collection, ni code de recherche.
 
-> Détail et alternatives écartées : [base_vectorielle.md](base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue) *(l'ancre précédente, `#limite-mesurée--le-modèle-dembedding-ne-parle-quanglais`, ne correspondait à aucun titre de la cible. Le registre §6.14 nomme un seul renvoi mort vers cette ancre ; il y en avait deux, celui-ci et celui du `README.md`.)*
+> Détail et alternatives écartées : [base_vectorielle.md](base_vectorielle.md#pourquoi-un-modèle-dembedding-multilingue)
 
 ---
 
@@ -91,7 +91,7 @@ Désormais un titre est rattaché **au titre qui le domine** :
 > registre le declare mort : c'etait un corpus mixte francais/anglais de 42
 > documents, dont 6 notes Markdown et un PDF de 280 pages. Le corpus actuel est
 > **24 chapitres HTML de deux ouvrages plus un PDF de 71 pages**, entierement en
-> anglais, et `Datas/mds/` est vide. Aucun de ces nombres n'est reproductible
+> anglais, et `Datas/mds/` n'existe pas. Aucun de ces nombres n'est reproductible
 > aujourd'hui (registre §6.10, §6.11).
 >
 > Ils sont **conserves plutot que supprimes**, avec cette reserve : ils
@@ -109,14 +109,13 @@ Désormais un titre est rattaché **au titre qui le domine** :
 ### Ce que ça change pour l'agent
 
 - `reference_id` d'un titre ne vaut plus systématiquement `DOC` ; il désigne
-  souvent un autre titre. **Une remontée récursive est désormais utile** : on
-  peut reconstruire « chapitre > section > sous-section » pour contextualiser
-  une citation.
+  souvent un autre titre. **Une remontée récursive est désormais utile** : elle
+  reconstruit « chapitre > section > sous-section » pour contextualiser une
+  citation.
 - Nouvelle clé `depth` sur chaque chunk : profondeur dans la hiérarchie, 0 pour
-  un titre de tête. *(Cette ligne ajoutait « plafonnée à 3 ». Le plafond a été
-  retiré par le lot 3 — registre §4.24 — et la profondeur atteint 5 sur le
-  corpus actuel. Le site canonique de la règle, et des deux échelles qui s'y
-  croisent, est `ChunkMetadata.depth` dans `src/pipeline/schemas.py`.)*
+  un titre de tête. Elle n'a pas de plafond (registre §4.24) et atteint 5 sur
+  le corpus actuel. La règle et les deux échelles qui s'y croisent sont décrites
+  dans `ChunkMetadata.depth` (`src/pipeline/schemas.py`).
 - Rien ne casse si l'agent l'ignore : `reference_id` reste un identifiant
   d'élément valide.
 
@@ -147,7 +146,7 @@ du document et reçoit **le tokenizer du modèle d'embedding lui-même**.
 > **découpage maison a depuis été retiré du dépôt** (registre §5.1), ce qui rend
 > la colonne de gauche définitivement non reproductible.
 
-**Rien ne change pour l'agent.** Les identifiants restent les nôtres : chaque chunk
+**Rien ne change pour l'agent.** Les identifiants restent ceux du contrat : chaque chunk
 est rattaché à l'élément d'où part sa lecture, et un élément réparti sur plusieurs
 chunks leur donne les suffixes `#0`, `#1` que le contrat prévoit déjà.
 
@@ -184,7 +183,7 @@ Toutes sont optionnelles : un agent qui les ignore fonctionne comme avant.
 **Préface, glossaire et annexes sont conservés**, volontairement : c'est de la
 prose, et un glossaire répond bien aux questions de définition.
 
-> [README.md](../README.md#ce-qui-nest-pas-ingéré--index-sommaire-pages-liminaires)
+> [extraction_donnees.md](extraction_donnees.md#pages-ecartees-dun-pdf)
 
 ---
 
@@ -206,7 +205,7 @@ prose, et un glossaire répond bien aux questions de définition.
 Les vecteurs et le graphe doivent être reconstruits.
 
 > **Piège à connaître.** `docker compose restart` **ne relit pas le fichier `.env`** : il
-> relance le conteneur avec l'environnement qu'il avait déjà. Après avoir changé une
+> relance le conteneur avec l'environnement qu'il avait déjà. Après le changement d'une
 > variable, il faut **recréer** le conteneur, sinon l'ingestion tourne silencieusement avec
 > l'ancienne valeur — rien dans les logs ne le signale sauf la ligne
 > `Chargement du modele d'embedding ...`.

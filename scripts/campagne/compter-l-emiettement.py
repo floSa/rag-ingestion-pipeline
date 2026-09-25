@@ -1,21 +1,20 @@
 """Compte, DEPUIS L'INSTANTANE SEUL, les elements que Docling rend emiettes.
 
-**CE QU'ON COMPTE ET POURQUOI.** Docling decoupe un `<li>` ou un paragraphe mis
-en forme (gras, lien, code en ligne) en PLUSIEURS elements, parfois d'un seul
-caractere — l'exemple du registre est « ) ». Chacun coute une place de fenetre
-et un marqueur `[src:...]` au prompt de l'agent. On le CONSIGNE et on le COMPTE ;
-on ne le corrige pas, parce que le corriger deplacerait des milliers
-d'identifiants (registre 4.37.g, decision du proprietaire du 24 septembre 2026).
+Docling decoupe un `<li>` ou un paragraphe mis en forme (gras, lien, code en
+ligne) en plusieurs elements, parfois d'un seul caractere (par exemple « ) »).
+Chacun coute une place de fenetre et un marqueur `[src:...]` au prompt de
+l'agent. Ce script compte ces elements ; il ne les corrige pas, car la
+correction deplacerait des milliers d'identifiants (registre 4.37.g, 4.38.g ;
+decision du 24 septembre 2026).
 
-**LECTURE SEULE, ET RIEN QUE L'INSTANTANE.** Aucune conversion, aucun store,
-aucun client. L'instantane porte `text50`, TRONQUE A 50 CARACTERES : toute
-longueur STRICTEMENT INFERIEURE a 50 y est donc exacte, et une longueur de 50
-signifie « 50 ou plus », qu'on ne sait pas departager. Tous les comptes de ce
-script portent sur des longueurs exactes ; la borne « moins de 50 » est
-exclusive pour cette raison, et elle est dite a cote de chaque tableau.
+Lecture seule de l'instantane versionne : aucune conversion, aucun store, aucun
+client. L'instantane porte `text50`, tronque a 50 caracteres : une longueur
+strictement inferieure a 50 est exacte, une longueur de 50 signifie « 50 ou
+plus ». Tous les comptes portent sur des longueurs exactes : la borne « moins
+de 50 » est exclusive, et chaque tableau le rappelle.
 
-Il ne touche a rien : il tourne sur l'HOTE, sans docling ni chromadb, parce
-qu'il ne lit que des TSV. `PYTHONPATH=.` parce que le depot n'est pas installe.
+Le script tourne sur l'hote, sans docling ni chromadb, car il ne lit que des
+TSV. `PYTHONPATH=.` est necessaire parce que le depot n'est pas installe.
 
     PYTHONPATH=. uv run python scripts/campagne/compter-l-emiettement.py \\
         documentation/campagnes/2026-09-24-instantane-des-identifiants
@@ -30,7 +29,7 @@ from pathlib import Path
 
 from src.equivalence_des_identifiants import lire_l_instantane
 
-# Les tranches de longueur, bornes INCLUSIVES aux deux bouts. « vide » est a
+# Les tranches de longueur, bornes inclusives aux deux bouts. « vide » est a
 # part : un texte vide n'est pas un texte court, c'est un element sans texte.
 TRANCHES: tuple[tuple[str, int, int], ...] = (
     ("1 car.", 1, 1),

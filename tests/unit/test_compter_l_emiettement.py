@@ -1,14 +1,13 @@
-"""LE COMPTAGE DE L'EMIETTEMENT NE VAUT QUE SI SES BORNES SONT EXACTES.
+"""Tests du comptage de l'emiettement (`scripts/campagne/compter-l-emiettement.py`).
 
-`scripts/campagne/compter-l-emiettement.py` compte, depuis l'instantane
-VERSIONNE et lui seul, les elements que Docling rend emiettes — un `<li>` ou un
-paragraphe mis en forme decoupe en plusieurs elements, parfois d'un seul
-caractere. Chacun coute une place de fenetre et un marqueur au prompt de
-l'agent (registre 4.38.g).
+Le script compte, depuis l'instantane versionne, les elements que Docling rend
+emiettes : un `<li>` ou un paragraphe mis en forme decoupe en plusieurs
+elements, parfois d'un seul caractere (registre 4.38.g).
 
-**CE QUE CES TESTS TIENNENT** : que les tranches ne se recouvrent ni ne laissent
-de trou, que « vide » soit compte A PART des textes courts, et que le script
-tourne bel et bien sur l'instantane du depot — pas sur un tmp_path complaisant.
+Ces tests verifient que les tranches de longueur ne se recouvrent pas et ne
+laissent pas de trou, que « vide » est compte a part des textes courts, que le
+format se lit a la derniere extension, et que le script tourne sur
+l'instantane reel du depot.
 """
 
 from __future__ import annotations
@@ -39,8 +38,8 @@ class TestLesBornesDesTranches:
         """1, 2-5, 6-20, 21-49 doivent couvrir 1 a 49 exactement une fois."""
         import importlib.util
 
-        # Le fichier porte des tirets, comme les autres scripts de campagne : il
-        # se charge par son CHEMIN, et non par un nom de module qui n'existe pas.
+        # Le nom du fichier porte des tirets, comme les autres scripts de
+        # campagne : il se charge par son chemin, pas par un nom de module.
         specification = importlib.util.spec_from_file_location(
             "compter_l_emiettement", RACINE_DEPOT / SCRIPT
         )
@@ -65,7 +64,7 @@ class TestLeComptageTourneSurLInstantaneDuDepot:
         assert empreinte_attendue(INSTANTANE) in sortie
 
     def test_les_tranches_somment_au_total_des_elements(self):
-        """Le piege du comptage : une tranche oubliee ne se voit pas dans un tableau."""
+        """Une tranche oubliee ne se verrait pas dans un tableau : elle est testee."""
         sortie = _executer()
         rangs = {
             ligne.split()[0]: ligne.split()
@@ -84,20 +83,18 @@ class TestLeComptageTourneSurLInstantaneDuDepot:
         assert vide + moins_de_50 + tronques == total_elements, (vide, moins_de_50, tronques)
 
 
-# ─── Sur un JEU D'ESSAI, ou l'on connait les chiffres a l'avance ─────────────
+# ─── Sur un jeu d'essai, dont les chiffres sont connus a l'avance ────────────
 
-# **POURQUOI UN JEU D'ESSAI ET PAS SEULEMENT L'INSTANTANE DU DEPOT.** Aucun
-# chiffre par format ni par label n'etait tenu : le troisieme audit a fait
-# survivre deux mutants sur `compter-l-emiettement.py` — `lo == 0` devenu
-# `lo <= 1`, qui compte les elements d'UN caractere parmi les VIDES, et `rsplit`
-# devenu `split` sur l'extension, qui se trompe de format des qu'un dossier
-# porte un point. Les deux ne se voient que sur un jeu ou l'on sait d'avance ce
-# que chaque case doit valoir (registre 4.39.d).
+# Un jeu d'essai, en plus de l'instantane du depot, permet de verifier chaque
+# chiffre par format et par label. Il detecte deux mutations (registre 4.39.d,
+# A10-a et A10-b) : `lo == 0` devenu `lo <= 1`, qui compterait les elements d'un
+# caractere parmi les vides, et `rsplit` devenu `split` sur l'extension, qui se
+# tromperait de format des qu'un dossier porte un point.
 #
-# LA PROPRIETE QUE LE JEU PORTE : « aucun element vide ni d'un seul caractere
-# dans les PDF ». Elle rend la colonne PDF nulle sur deux lignes, et un
-# `lo <= 1` la casse. Et le PDF est range sous `livres/v1.2/`, un dossier a
-# POINT : un `split` y lirait le format « 2/UN LIVRE.PDF ».
+# Propriete du jeu : aucun element vide ni d'un seul caractere dans les PDF. La
+# colonne PDF vaut donc 0 sur ces deux lignes, ce que `lo <= 1` casserait. Le
+# PDF est range sous `livres/v1.2/`, un dossier avec un point : `split` y lirait
+# le format « 2/UN LIVRE.PDF ».
 PDF_DU_JEU = "livres/v1.2/Un livre.pdf"
 HTML_DU_JEU = "htms/Un ouvrage/1. Un chapitre.html"
 
@@ -143,7 +140,7 @@ def _jeu_d_essai(dossier):
 
 
 def _table_par_format(sortie):
-    """Rend `{tranche: {colonne: valeur}}` du PREMIER tableau, celui par format."""
+    """Rend `{tranche: {colonne: valeur}}` du premier tableau, celui par format."""
     lignes = sortie.split("=== TRANCHES DE LONGUEUR, PAR FORMAT")[1].splitlines()
     entetes = lignes[1].split()
     table = {}
@@ -161,7 +158,7 @@ def _table_par_format(sortie):
 
 class TestLesChiffresParFormatSontTenus:
     def test_aucun_element_vide_ni_d_un_caractere_dans_les_pdf(self, tmp_path):
-        """LA PROPRIETE DU JEU D'ESSAI, et elle tue `lo == 0` devenu `lo <= 1`.
+        """Aucun vide ni caractere seul dans le PDF (detecte la mutation A10-a).
 
         Le HTML porte un vide ET un element d'un caractere ; le PDF n'a ni l'un
         ni l'autre. Un `lo <= 1` ferait passer la case « vide » du HTML de 1 a 2.
@@ -182,10 +179,10 @@ class TestLesChiffresParFormatSontTenus:
         assert table["TOUS"] == {"HTML": "3", "PDF": "2", "total": "5"}, table
 
     def test_le_format_se_lit_a_la_derniere_extension(self, tmp_path):
-        """Tue `rsplit` devenu `split` : `livres/v1.2/Un livre.pdf` est un PDF.
+        """`livres/v1.2/Un livre.pdf` est un PDF (detecte la mutation A10-b).
 
         Un `split(".", 1)[-1]` y rendrait « 2/UN LIVRE.PDF ». Les deux colonnes
-        du tableau sont donc verifiees NOMMEMENT, pas seulement comptees.
+        du tableau sont donc verifiees par leur nom, pas seulement comptees.
         """
         acheve = subprocess.run(
             [sys.executable, SCRIPT, str(_jeu_d_essai(tmp_path / "jeu"))],

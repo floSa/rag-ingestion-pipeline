@@ -1,18 +1,15 @@
 """Tests de l'appel ``POST /reindex`` en fin d'ingestion.
 
-Deux proprietes s'opposent et doivent tenir ensemble, ce qui est tout l'objet
-de ces tests :
+Deux proprietes doivent tenir ensemble :
 
-- **aucun echec ne doit faire echouer une ingestion reussie.** Le document est
-  dans les trois stores ; rougir la partition declencherait des reprises qui
-  reconvertiraient des centaines de pages pour rien ;
-- **aucun echec ne doit passer inapercu.** Un appel rate qui rendrait un objet
-  d'apparence normale serait une degradation silencieuse de plus, dans une
-  chaine qui en compte deja trop.
+- **``request_reindex`` ne leve jamais.** Il rend l'echec dans son resultat, et
+  c'est l'appelant (``reindex_job``) qui decide quoi en faire ;
+- **aucun echec ne passe inapercu.** Un appel rate ne doit pas rendre un objet
+  d'apparence normale.
 
-Un test qui se contenterait de verifier « ca ne leve pas » serait vert sur une
-fonction qui ne fait rien du tout. C'est pourquoi chaque cas d'echec asserte
-AUSSI que ``ok`` est faux et que ``detail`` nomme la cause.
+Verifier seulement « ca ne leve pas » passerait sur une fonction vide. Chaque
+cas d'echec verifie donc aussi que ``ok`` est faux et que ``detail`` nomme la
+cause.
 """
 
 from __future__ import annotations
@@ -84,9 +81,8 @@ class TestAppelReussi:
 
 class TestCleDApi:
     def test_cle_envoyee_quand_elle_est_configuree(self):
-        # `pragma: allowlist secret` : « secret » est le mot litteral, choisi
-        # comme valeur d'essai justement parce qu'il n'est un secret nulle part.
-        # `detect-secrets` ne voit que le nom de l'argument, `api_key`.
+        # `pragma: allowlist secret` : « secret » est une valeur d'essai, pas un
+        # secret. `detect-secrets` reagit au nom de l'argument, `api_key`.
         espion = Espion()
         request_reindex(URL, api_key="secret", post=espion)  # pragma: allowlist secret
         assert espion.appels[0]["headers"][API_KEY_HEADER] == "secret"  # pragma: allowlist secret
@@ -98,7 +94,7 @@ class TestCleDApi:
 
 
 class TestUnEchecNeCasseJamaisLIngestion:
-    """Le document est ingere : rien ici ne doit remonter jusqu'a l'asset."""
+    """Aucune erreur reseau ni aucun statut d'erreur ne remonte en exception."""
 
     @pytest.mark.parametrize(
         "exception",
@@ -121,7 +117,7 @@ class TestUnEchecNeCasseJamaisLIngestion:
 
 
 class TestUnEchecNePasseJamaisInapercu:
-    """« Ne leve pas » ne suffit pas : une fonction vide serait verte."""
+    """« Ne leve pas » ne suffit pas : une fonction vide passerait aussi."""
 
     def test_l_echec_est_marque_comme_tel(self):
         resultat = request_reindex(URL, post=Espion(exception=requests.ConnectionError("refus")))
@@ -137,22 +133,20 @@ class TestUnEchecNePasseJamaisInapercu:
         assert "ConnectionError" in resultat.detail
 
     def test_les_metadonnees_dagster_crient_l_echec(self):
-        # C'est ce que verra l'humain dans l'interface, par partition.
+        # C'est ce qui s'affiche dans l'interface Dagster.
         resultat = request_reindex(URL, post=Espion(exception=requests.Timeout("trop long")))
         assert "ECHEC" in resultat.metadata_value
 
     def test_un_echec_ne_se_rend_jamais_comme_un_succes(self):
-        """LE GARDE DE LA BRANCHE QUE LE LOT 5 A DECIDE DE NE PAS AMPUTER.
+        """La branche « ECHEC » de `metadata_value`, conservee volontairement.
 
-        Le registre 5.7 range cette branche dans le code mort : la production ne
-        l'atteint plus, `reindex_job.lexical_index` levant d'abord. C'est exact.
-        Mais l'etat est atteignable sur l'objet, et sans la branche il tombe sur
-        le cas nominal — `mesure` : `"ok — None chunks indexes"`.
+        La production ne l'atteint pas, car `reindex_job.lexical_index` leve
+        d'abord (registre 5.7). L'etat reste atteignable sur l'objet, et sans la
+        branche il se rendrait `"ok — None chunks indexes"`.
 
-        Le test precedent asserte la PRESENCE de « ECHEC ». Celui-ci asserte la
-        propriete qui compte, et il est plus fort : un echec ne doit pas pouvoir
-        se LIRE comme un succes. Un rendu qui porterait les deux mots passerait
-        le premier et rougirait ici.
+        Le test precedent verifie la presence de « ECHEC ». Celui-ci verifie
+        qu'un echec ne peut pas se lire comme un succes : un rendu portant les
+        deux mots passerait le premier et echouerait ici.
         """
         resultat = request_reindex(URL, post=Espion(exception=requests.Timeout("trop long")))
 
@@ -175,7 +169,7 @@ class TestUnEchecNePasseJamaisInapercu:
 
 
 class TestUrlVide:
-    """Desactiver l'appel est un choix possible ; le taire ne l'est pas."""
+    """Une URL vide desactive l'appel, et le resultat le signale."""
 
     @pytest.mark.parametrize("url", ["", "   "])
     def test_aucun_appel_n_est_tente(self, url):

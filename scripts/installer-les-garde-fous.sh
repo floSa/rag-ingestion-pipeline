@@ -1,45 +1,33 @@
 #!/bin/sh
-# Arme les garde-fous de ce clone, ET VERIFIE QU'ILS SONT ARMES.
+# Installe les hooks git de ce clone (garde-fous), puis verifie l'installation.
 #
-# Ce script est appele par `make install`. Il n'y a donc qu'un geste a taper, et
-# ce geste constate son propre resultat : il sort en erreur si le montage n'est
-# pas celui qu'il annonce.
+# Appele par `make install`. Git n'execute rien de ce qui arrive avec un clone :
+# l'installation est forcement un geste local. Le script fait les deux etapes
+# dans le bon ordre et sort en erreur si le resultat n'est pas celui attendu,
+# car un ordre inverse ne produit aucune erreur, seulement l'absence d'une
+# protection.
 #
-# POURQUOI UN SCRIPT ET PAS DEUX LIGNES DE DOCUMENTATION
+# Ordre des etapes :
 #
-# Git n'execute jamais ce qui arrive avec un clone : il y a forcement UN geste
-# local a faire, et aucune ecriture dans le depot ne peut s'en passer. Ce qui
-# peut etre supprime, en revanche, c'est la MEMOIRE d'un ordre. Le montage
-# ci-dessous ne tient que si deux gestes sont faits dans le bon sens, et
-# l'inversion ne se voit pas : elle ne produit aucune erreur, seulement
-# l'absence d'une protection. C'est le meme defaut que la cible `all` du
-# Makefile a ferme, et la meme phrase s'applique — un garde-fou qui repose sur
-# la memoire du suivant n'est pas un garde-fou.
+#   1. le controle d'identite (scripts/git-hooks/pre-commit) est copie dans le
+#      repertoire des hooks ;
+#   2. `pre-commit install`, sans -f, deplace cette copie en `<type>.legacy`,
+#      l'execute avant ses propres hooks, et s'installe par-dessus.
 #
-# CE QUE CE SCRIPT MONTE, ET POURQUOI DANS CET ORDRE
+# Dans l'ordre inverse, la copie ecraserait le hook du framework, et seul le
+# controle d'identite resterait.
 #
-#   1. le controle d'identite est copie a la main dans le repertoire des hooks ;
-#   2. `pre-commit install`, SANS -f, deplace cette copie en `<type>.legacy`,
-#      continue de l'executer AVANT ses propres hooks, et s'installe par-dessus.
+# Pourquoi la copie `.legacy` : le hook du framework lit sa configuration en
+# chemin relatif (`--config=.pre-commit-config.yaml`), donc dans l'arbre de
+# travail. Un controle declare dans ce fichier ne s'applique pas apres un
+# `git checkout` d'un commit ancien, un `git bisect` ou un HEAD detache dont la
+# configuration ne le porte pas (`mesure` le 31 aout 2026 : aucun des 111
+# commits de `main` d'alors ne le portait). `<type>.legacy` vit hors de l'arbre
+# de travail et s'applique a tout commit.
 #
-# Inverse, l'ordre coute le framework : la copie manuelle ecrase le hook genere,
-# et seul le controle d'identite subsiste.
-#
-# LA COUCHE `.legacy` N'EST PAS UN DOUBLON — C'EST LA PROTECTION
-#
-# Le hook genere par le framework ouvre sa configuration en chemin RELATIF
-# (`--config=.pre-commit-config.yaml`) : un controle declare dans ce fichier ne
-# vaut que pour les arbres de travail dont la configuration le porte. Sur les
-# 111 commits de `main`, aucun ne la porte (`mesure`, 31 aout 2026). Un
-# `git checkout` d'un commit ancien, un `git bisect`, un HEAD detache desarmaient
-# donc le controle d'identite EN SILENCE — et c'est la famille de defaut qui a
-# deja coute un depot entier. `<type>.legacy` vit HORS de l'arbre de travail :
-# c'est la seule couche qui vaille pour tout commit, quelle que soit la branche.
-#
-# NE JAMAIS PASSER -f. `pre-commit install` le suggere lui-meme dans sa sortie
-# — « Use -f to use only pre-commit. » — et c'est precisement le geste qui
-# supprime cette couche. Ce script ne le passe pas, et la verification finale
-# rougit si la couche a disparu.
+# Ne jamais passer -f : `pre-commit install` le suggere (« Use -f to use only
+# pre-commit. »), mais -f supprime la copie `.legacy`. La verification finale
+# echoue si elle a disparu.
 set -eu
 
 racine=$(git rev-parse --show-toplevel)
@@ -47,36 +35,25 @@ cd "$racine"
 
 # `--git-common-dir` et non `--git-dir` : dans un arbre de travail secondaire,
 # `--git-dir` rend `.git/worktrees/<nom>`, qui n'heberge aucun hook. Les hooks
-# vivent dans le repertoire COMMUN, partage par le depot et tous ses arbres de
-# travail — une installation vaut donc pour tous, et il n'y en a qu'une par
-# clone.
+# vivent dans le repertoire commun a tous les arbres de travail : une seule
+# installation par clone.
 commun=$(cd "$(git rev-parse --git-common-dir)" && pwd)
 identite="$racine/scripts/git-hooks/pre-commit"
 
-# Les types de hook qu'il faut armer. `pre-commit` NE SUFFIT PAS : c'est le seul
-# type que `pre-commit install` installe par defaut, et il ne couvre pas les
-# commits de fusion. `git merge --no-ff` declenche `pre-merge-commit`,
+# Les types de hook a installer. `pre-commit` seul ne couvre pas les commits de
+# fusion : `git merge --no-ff` declenche `pre-merge-commit`,
 # `prepare-commit-msg` et `commit-msg`, jamais `pre-commit` (`mesure` le 31 aout
-# 2026, mouchards poses sur chaque hook). Un commit de fusion portant une
-# adresse interdite partait donc sans rien rencontrer — et le geste suivant du
-# chantier est justement une fusion, dont le commit part sur GitHub.
-#
-# La copie manuelle est posee sur les DEUX types, pour que `<type>.legacy` couvre
-# aussi les arbres dont la configuration ne porte pas le hook. Sans cette
-# moitie, la fusion serait gardee sur la branche qui declare le hook, et nulle
-# part ailleurs.
+# 2026). Le controle d'identite est copie sur les deux types, pour que
+# `<type>.legacy` couvre aussi les fusions sur une branche dont la
+# configuration ne declare pas le hook.
 TYPES="pre-commit pre-merge-commit"
 
-# UNE BOUCLE SUR UNE LISTE VIDE VERIFIE ZERO CHOSE, ET ELLE EST VRAIE.
-#
-# La boucle de verification, plus bas, itere CETTE MEME variable. Vide, elle
-# n'arme rien, ne verifie rien, et ce script sort en 0 en annoncant « Garde-fous
-# armes dans ... » suivi d'une liste vide (`mesure` : rc=0, zero `.legacy`). Le
-# framework, lui, resterait installe — sans `--hook-type`, `pre-commit install`
-# retombe sur `default_install_hook_types` — donc le montage aurait exactement
-# l'air du bon, sans la seule couche independante de l'arbre de travail. C'est
-# la forme exacte du defaut que ce lot traque, dans le garde-fou de ce lot.
-# Garde : tests/unit/test_installation_des_garde_fous.py.
+# Une liste vide est refusee. La boucle de verification, plus bas, itere la
+# meme variable : vide, elle ne verifierait rien, et le script sortirait en 0
+# sans aucune copie `.legacy`. Le framework resterait installe (sans
+# `--hook-type`, `pre-commit install` retombe sur `default_install_hook_types`),
+# ce qui masquerait l'absence. Teste par
+# tests/unit/test_installation_des_garde_fous.py.
 if [ -z "$TYPES" ]; then
     echo "ECHEC : aucun type de hook a armer (TYPES est vide)." >&2
     exit 1
@@ -93,11 +70,10 @@ for type in $TYPES; do
     chmod +x "$commun/hooks/$type"
 done
 
-# `PRE_COMMIT` existe pour un seul appelant : le test qui verifie ce script
+# `PRE_COMMIT` sert au test de ce script
 # (`tests/unit/test_installation_des_garde_fous.py`), qui monte un depot
-# temporaire hors du projet `uv` et doit donc nommer l'interpreteur lui-meme.
-# La valeur par defaut est celle du Makefile, et c'est elle que `make install`
-# emprunte.
+# temporaire hors du projet `uv` et doit nommer l'executable lui-meme. La valeur
+# par defaut est celle qu'utilise `make install`.
 pre_commit="${PRE_COMMIT:-uv run pre-commit}"
 
 arguments=""
@@ -107,8 +83,8 @@ done
 
 # Les types sont passes explicitement plutot que laisses a
 # `default_install_hook_types` : cette cle vit dans `.pre-commit-config.yaml`,
-# donc dans l'arbre de travail, et l'installation ne doit rien devoir a la
-# branche sortie au moment ou on l'execute.
+# donc dans l'arbre de travail, et l'installation ne doit pas dependre de la
+# branche sortie au moment ou elle s'execute.
 # shellcheck disable=SC2086
 if ! $pre_commit install $arguments; then
     echo "ECHEC : « $pre_commit install » a rendu une erreur." >&2
@@ -117,8 +93,7 @@ if ! $pre_commit install $arguments; then
     exit 1
 fi
 
-# La verification. C'est elle qui distingue ce script d'une consigne ecrite :
-# elle constate le montage au lieu de le supposer.
+# Verification : constate l'installation au lieu de la supposer.
 erreurs=0
 for type in $TYPES; do
     genere="$commun/hooks/$type"

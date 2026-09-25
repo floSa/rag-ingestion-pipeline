@@ -212,47 +212,35 @@ class TestPolitiqueDeReprise:
 
 
 class TestLesSensorsDIngestionSontLivresArmes:
-    """Tout le pipeline est inerte au deploiement si ces sensors arrivent a l'arret.
+    """Les sensors de source sont livres actifs.
 
-    Un sensor sans ``default_status`` est livre STOPPED : Dagster le charge, il
-    apparait dans l'interface, et il ne tourne jamais. Aucun fichier depose n'est
-    alors ingere, et rien ne rougit — la panne est parfaitement muette.
+    Un sensor sans ``default_status`` est livre STOPPED : Dagster le charge et
+    l'affiche, mais il ne tourne jamais. Aucun fichier depose n'est alors
+    ingere, sans aucune erreur. Meme controle que
+    ``test_reindex_job.py::TestLeSensorEstLivreArme``, pour les sensors de
+    source.
 
-    ``factory.py`` porte la ligne ``default_status=DefaultSensorStatus.RUNNING``
-    et rien ne la gardait : la retirer laissait toute la suite verte. Le meme
-    garde existait pour le seul sensor de reindexation
-    (``test_reindex_job.py::TestLeSensorEstLivreArme``) ; il est ici decline aux
-    sensors de source.
-
-    Les assertions portent sur l'objet PRODUIT par ``build_source`` et sur celui
-    que ``definitions.py`` livre reellement, jamais sur la presence du mot dans
-    la source. Et elles portent sur TOUTES les sources declarees, pas sur une :
-    un harnais qui n'appelle la fabrique qu'avec une source laisserait les deux
-    autres sans garde — c'est le defaut que ``3603492`` a du corriger sur le
-    ``max()`` multi-sources.
+    Les assertions portent sur l'objet produit par ``build_source`` et sur celui
+    que livre ``definitions.py``, et non sur la presence du mot dans la source.
+    Elles couvrent toutes les sources declarees : un harnais limite a une source
+    laisserait les autres sans controle.
     """
 
-    # Les sources declarees aujourd'hui dans ``sources.yaml``. Borne INFERIEURE,
-    # jamais une egalite : une quatrieme source doit etre couverte
-    # automatiquement par les boucles ci-dessous, tandis que la disparition
-    # silencieuse de l'une de ces trois doit rougir. Une egalite serait une
-    # phrase d'exhaustivite, donc un defaut en attente.
+    # Sources declarees dans ``sources.yaml``. Borne inferieure, et non egalite :
+    # une quatrieme source est couverte automatiquement par les boucles
+    # ci-dessous, et la disparition de l'une de ces trois fait echouer le test.
     #
-    # Chacun des deux tests ci-dessous porte SA PROPRE borne, en ligne, sur la
-    # collection qu'il parcourt : `sources` pour le premier, `livres` pour le
-    # second. C'est la seule place ou une borne garde quelque chose — un test de
-    # borne separe reconstruit son propre harnais et reste vert quoi qu'il arrive
-    # a celui des autres.
+    # Chaque test porte sa propre borne, en ligne, sur la collection qu'il
+    # parcourt (`sources` pour le premier, `livres` pour le second) : un test de
+    # borne separe construirait son propre harnais et ne verifierait pas celui
+    # des autres.
     SOURCES_ATTENDUES = {"pdfs", "livres_html", "markdown"}
 
     def test_chaque_source_declaree_est_livree_armee(self):
         sources = load_sources()
-        # La borne est EN LIGNE, et elle porte sur la liste que la boucle
-        # ci-dessous parcourt reellement. Un test de borne separe, qui appelait
-        # `load_sources()` de son cote, ne gardait rien : forcer `sources` a une
-        # liste vide ici et retirer cette ligne laissait 551 tests VERTS
-        # (`mesure`, 31 aout 2026). Il etait vert des deux cotes du defaut, parce
-        # qu'il n'observait jamais ce harnais-ci.
+        # Borne en ligne, sur la liste que la boucle parcourt reellement. Un test
+        # de borne separe, appelant `load_sources()` de son cote, passerait meme
+        # si cette liste etait vide.
         assert {source.name for source in sources} >= self.SOURCES_ATTENDUES
         for source in sources:
             built = build_source(source)
@@ -274,10 +262,9 @@ class TestLesSensorsDIngestionSontLivresArmes:
             )
 
     def test_l_arme_ne_vient_pas_du_defaut_de_dagster(self):
-        # Sinon les assertions ci-dessus seraient vraies sans que la ligne
-        # existe, et elles resteraient vertes si Dagster changeait sa valeur par
-        # defaut : elles seraient vertes des deux cotes du defaut. Dagster livre
-        # bien STOPPED par defaut — c'est ce que ce temoin constate.
+        # Sinon les assertions ci-dessus seraient vraies sans la ligne
+        # `default_status=...`, par exemple si Dagster changeait sa valeur par
+        # defaut. Ce test constate que Dagster livre bien STOPPED par defaut.
         @sensor(name="temoin_sans_default_status", job_name="pdfs_job")
         def temoin(context: SensorEvaluationContext) -> SkipReason:
             return SkipReason("temoin")
@@ -287,12 +274,11 @@ class TestLesSensorsDIngestionSontLivresArmes:
 
 # --- Contexte Dagster bouchonne -----------------------------------------------
 # Les assets sont atteints par `build_source(...).assets[n].op.compute_fn.
-# decorated_fn`, c'est-a-dire le corps REELLEMENT livre, a travers l'objet que
-# `definitions.py` expedie. C'est la meme discipline que
-# `TestLesSensorsDIngestionSontLivresArmes`, qui asserte sur `build_source(...)
-# .sensor` et jamais sur la presence d'un mot dans la source. Un contexte
-# `build_asset_context` ne convient pas : `add_output_metadata` y leve
-# `DagsterInvalidPropertyError` en invocation directe (`mesure`).
+# decorated_fn`, c'est-a-dire le corps reellement livre, a travers l'objet que
+# `definitions.py` expedie (meme principe que
+# `TestLesSensorsDIngestionSontLivresArmes`). `build_asset_context` ne convient
+# pas : `add_output_metadata` y leve `DagsterInvalidPropertyError` en
+# invocation directe (mesure).
 
 
 class JournalEspion:
@@ -329,12 +315,11 @@ def _asset_par_nom(source, nom: str):
 
 
 class TestLeNettoyagePublieCeQuIlAJete:
-    """Registre 4.6 : ni `precleaned_text_chars` ni le ratio n'etaient publies.
+    """Le nettoyage publie son denominateur de perte (registre 4.6).
 
-    `min_text_ratio = 0.05` accepte un candidat qui ne conserve que 5 % du texte.
-    Les metadonnees Dagster portaient `text_chars` sans aucun denominateur : dans
-    l'interface, un chapitre ampute a 5 % et un chapitre nettoye a 99,8 %
-    affichaient tous deux un nombre, et rien ne les distinguait.
+    `min_text_ratio = 0.05` accepte un candidat qui ne conserve que 5 % du
+    texte. Sans `precleaned_text_chars` ni ratio, les metadonnees Dagster ne
+    distinguent pas un chapitre ampute a 5 % d'un chapitre nettoye a 99,8 %.
     """
 
     CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
@@ -372,7 +357,7 @@ class TestLeNettoyagePublieCeQuIlAJete:
         assert 0.0 < contexte.metadonnees["text_ratio"] <= 1.0
 
     def test_les_metadonnees_historiques_sont_conservees(self, tmp_path, monkeypatch):
-        """LE TEMOIN : ajouter deux cles ne doit pas en retirer cinq."""
+        """Les cles historiques restent publiees a cote des deux nouvelles."""
         try:
             contexte = self._executer(tmp_path, monkeypatch)
         finally:
@@ -382,10 +367,9 @@ class TestLeNettoyagePublieCeQuIlAJete:
             assert cle in contexte.metadonnees, f"{cle} a disparu des metadonnees"
 
     def test_le_ratio_publie_est_celui_du_bilan(self, tmp_path, monkeypatch):
-        """Le ratio publie n'est pas recalcule a cote : c'est celui du bilan.
+        """Le ratio publie est celui du bilan, et non un second calcul.
 
-        Sans cette assertion, deux calculs du meme rapport pourraient diverger —
-        et une metadonnee de perte qui se trompe est pire qu'absente.
+        Deux calculs du meme rapport pourraient diverger.
         """
         try:
             contexte = self._executer(tmp_path, monkeypatch)
@@ -397,24 +381,19 @@ class TestLeNettoyagePublieCeQuIlAJete:
 
 
 class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
-    """Registre 4.33.a — le `README` et `wipe_stores` justifiaient un `rmtree` par
-    un mecanisme qui n'existe pas.
+    """`cleaned_html` reecrit toujours sa destination (registre 4.33.a).
 
-    La phrase, mot pour mot : « l'asset `cleaned_html` ne se rematerialise pas si
-    son fichier existe deja ». Elle portait a elle seule la necessite du `rmtree`
-    le plus dangereux du depot — celui dont le registre 4.29.a raconte qu'un
-    reglage mal pose y emportait 24 des 25 fichiers du corpus versionne.
+    La justification du `rmtree` de `wipe_stores` ne peut pas reposer sur l'idee
+    que « l'asset `cleaned_html` ne se rematerialise pas si son fichier existe
+    deja » : c'est faux. Ces tests fixent le comportement reel :
 
-    Les DEUX NATURES sont gardees ici, et une seule serait creuse :
-
-    - ce qui est REECRIT : une destination au contenu different est remplacee.
-      C'est la phrase du `README` mise en defaut, et le garde qui rougit si un
-      court-circuit « le fichier existe » revenait ;
-    - ce qui SURVIT : la copie nettoyee d'un document retire du corpus. C'est la
+    - ce qui est reecrit : une destination au contenu different est remplacee.
+      Le test echoue si un court-circuit « le fichier existe » apparaissait ;
+    - ce qui survit : la copie nettoyee d'un document retire du corpus. C'est la
       seule chose que la purge retire, donc la vraie raison de la garder.
 
-    Le troisieme test borne la premiere : si le capteur voyait `.cleaned/`, les
-    orphelins reviendraient par le glob et l'analyse ci-dessus tomberait.
+    Le troisieme test borne le premier : si le capteur voyait `.cleaned/`, les
+    orphelins reviendraient par le glob et cette analyse ne tiendrait plus.
     """
 
     CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
@@ -441,13 +420,12 @@ class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
     def test_une_destination_perimee_est_reecrite_par_la_materialisation_suivante(
         self, tmp_path, monkeypatch
     ):
-        """LA PHRASE DU `README` MISE EN DEFAUT, et le garde qui la tient fausse.
+        """Une destination deja remplie d'un contenu perime est reecrite.
 
-        Le temoin est le contenu, pas l'horodatage : une destination REMPLIE d'un
-        contenu perime doit avoir disparu. Asserter seulement « le fichier existe
-        encore » serait vert des deux cotes du defaut.
+        Le test compare le contenu, pas l'horodatage : verifier seulement que
+        le fichier existe encore passerait meme avec un court-circuit.
 
-        Mutation qui doit faire rougir ce test : un court-circuit
+        Mutation qui doit faire echouer ce test : un court-circuit
         `if dest_path.exists(): return` en tete de `clean_html_file`.
         """
         cle = "htms/livre/chapitre.html"
@@ -468,17 +446,15 @@ class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
         assert second == premier, "le second nettoyage devait rendre le meme octet"
 
     def test_la_copie_nettoyee_d_un_document_retire_du_corpus_survit(self, tmp_path, monkeypatch):
-        """CE QUE LA PURGE RETIRE, ET ELLE SEULE.
+        """Seule la purge retire la copie nettoyee d'un document retire du corpus.
 
         Deux documents nettoyes, la source de l'un retiree, l'autre
         rematerialise : l'orphelin est toujours la. Aucun chemin du pipeline ne
-        l'efface — `cleaned_html` ne peut pas s'executer pour lui, son controle
-        d'existence portant sur la SOURCE. Seul `purge_cleaned` le retire, et
-        c'est ce que la seconde moitie de ce test asserte.
+        l'efface, car `cleaned_html` controle l'existence de la source. Seul
+        `purge_cleaned` le retire, ce que verifie la seconde moitie du test.
 
-        Si ce test rougissait parce que l'orphelin a disparu tout seul, la raison
-        ecrite a `purge_cleaned` aurait cesse d'etre vraie : c'est exactement ce
-        qu'il est la pour dire.
+        Si l'orphelin disparaissait tout seul, la raison ecrite a
+        `purge_cleaned` ne serait plus vraie, et ce test le signalerait.
         """
         reste = "htms/livre/reste.html"
         parti = "htms/livre/parti.html"
@@ -505,12 +481,12 @@ class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
         assert not vivant.exists()
 
     def test_le_glob_de_la_source_ne_voit_jamais_le_repertoire_nettoye(self, tmp_path, monkeypatch):
-        """LA BORNE de l'analyse ci-dessus : un orphelin n'est atteignable par rien.
+        """Borne de l'analyse precedente : un orphelin n'est atteignable par rien.
 
-        S'il l'etait, le capteur le rendrait a l'ingestion et la purge cesserait
-        d'etre la seule issue. Deux choses l'en empechent, et ce test les tient
-        toutes les deux : le glob est ancre sous le sous-repertoire de la source,
-        et `.cleaned` porte un point de tete que `glob` n'ouvre jamais.
+        S'il l'etait, le capteur le rendrait a l'ingestion et la purge ne serait
+        plus la seule issue. Deux choses l'empechent, toutes deux verifiees : le
+        glob est ancre sous le sous-repertoire de la source, et `.cleaned` porte
+        un point de tete que `glob` n'ouvre jamais.
         """
         cle = "htms/livre/chapitre.html"
         try:
@@ -530,25 +506,24 @@ class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
 
 
 class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
-    """Registre 4.10 : un doublon exact rendait une partition VERTE a zero element.
+    """Un document ecarte comme doublon se distingue d'un document vide (registre 4.10).
 
-    `extraction.extract` retourne `{"elements": 0, "chunks": 0, "duplicate_of":
-    ...}` quand il reconnait un fichier deja ingere. Mais `_record_metadata` ne
-    publiait que `elements`, `chunks`, `pages` et `elapsed_seconds` : dans
-    l'interface Dagster, un document ECARTE et un document ingere VIDE affichaient
-    exactement la meme chose — quatre zeros. Le premier est le comportement voulu,
-    le second est une panne, et rien ne les distinguait.
+    `extraction.extract` rend `{"elements": 0, "chunks": 0, "duplicate_of": ...}`
+    quand il reconnait un fichier deja ingere. Avec seulement `elements`,
+    `chunks`, `pages` et `elapsed_seconds`, un document ecarte et un document
+    ingere vide afficheraient les memes quatre zeros dans l'interface Dagster.
+    Le premier cas est voulu, le second est une panne.
 
-    Le constat nomme cinq cles absentes : `duplicate_of`, `pages_skipped`, `ocr`,
-    `language` et `failed_batches`. Les cinq sont publiees.
+    Les cinq cles supplementaires sont publiees : `duplicate_of`,
+    `pages_skipped`, `ocr`, `language` et `failed_batches`.
     """
 
-    # LA FORME EST CELLE QUE LA PRODUCTION FABRIQUE, et elle a failli m'echapper.
-    # `main._run_extraction` fait `job.report(**result)`, et `Job.report` met tout
-    # dans `progress` : les cinq cles du constat arrivent donc DANS `progress` et
-    # non au premier niveau du `snapshot()`. Une fixture qui les aurait posees au
-    # premier niveau aurait rendu ce garde VERT sur un chemin de production casse.
-    # D'ou `_snapshot_reel` ci-dessous, qui construit la forme par le vrai `Job`.
+    # La fixture reproduit la forme fabriquee en production.
+    # `main._run_extraction` appelle `job.report(**result)`, et `Job.report`
+    # range tout dans `progress` : les cinq cles arrivent donc dans `progress`,
+    # pas au premier niveau du `snapshot()`. Une fixture qui les poserait au
+    # premier niveau passerait sur un chemin de production casse. D'ou
+    # `_snapshot_reel` ci-dessous, qui construit la forme par le vrai `Job`.
     BILAN_DOUBLON_RENDU_PAR_EXTRACT = {
         "elements": 0,
         "chunks": 0,
@@ -588,11 +563,10 @@ class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
         ), contexte.metadonnees
 
     def test_un_document_ingere_ne_porte_pas_de_duplicate_of(self):
-        """LE TEMOIN. Sans lui, publier `duplicate_of` en dur passerait.
+        """`duplicate_of` n'apparait que sur un document reellement ecarte.
 
-        La cle ne doit apparaitre que sur un document reellement ecarte : une
-        cle presente et vide sur les 23 documents redonnerait exactement le
-        defaut, par l'autre bout.
+        Sans ce test, publier `duplicate_of` en dur passerait. Une cle presente
+        et vide sur tous les documents finirait par ne plus etre lue.
         """
         contexte = ContexteEspion("pdfs/livre.pdf")
         _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
@@ -609,8 +583,8 @@ class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
         assert contexte.metadonnees["failed_batches"] == 1
 
     def test_les_lots_en_echec_sont_comptes_et_nommes(self):
-        """Un lot PDF en echec doit se voir dans les metadonnees, pas seulement
-        dans le rouge du run : c'est le compteur du 4.1, cote Dagster."""
+        """Un lot PDF en echec se voit dans les metadonnees, pas seulement dans
+        l'echec du run (compteur du registre 4.1, cote Dagster)."""
         contexte = ContexteEspion("pdfs/livre.pdf")
         _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
 
@@ -618,7 +592,7 @@ class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
         assert "31-35" in str(contexte.metadonnees["failed_batches_detail"])
 
     def test_les_quatre_metadonnees_historiques_survivent(self):
-        """LE TEMOIN : ajouter cinq cles ne doit pas en retirer quatre."""
+        """Les quatre cles historiques restent publiees a cote des cinq nouvelles."""
         contexte = ContexteEspion("pdfs/livre.pdf")
         _record_metadata(contexte, self._snapshot_reel(self.BILAN_PDF_RENDU_PAR_EXTRACT))
 
@@ -628,8 +602,8 @@ class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
         assert contexte.metadonnees["elapsed_seconds"] >= 0.0
 
     def test_un_bilan_minimal_ne_leve_pas(self):
-        """Le cas que le code naturel fait planter : un bilan sans aucune des
-        cles optionnelles — c'est celui d'un HTML nominal."""
+        """Un bilan sans aucune des cles optionnelles (cas d'un HTML nominal)
+        ne fait pas echouer la publication."""
         contexte = ContexteEspion("livre/chapitre.html")
         _record_metadata(contexte, self._snapshot_reel({"elements": 12, "chunks": 30}))
 
@@ -638,16 +612,15 @@ class TestUnDocumentEcarteNeRessembleePlusAUnDocumentVide:
         assert contexte.metadonnees["failed_batches"] == 0
 
 
-# --- La reingestion, et le silence qui la cachait (registre 4.32.a) -----------
+# --- La reingestion, et son refus silencieux par Dagster (registre 4.32.a) ----
 
 
 class JournalDuCapteur(logging.Handler):
     """Retient les lignes que le capteur ecrit reellement a son journal.
 
-    `caplog` ne convient pas : le logger « dagster » ne propage pas
-    (`mesure` — le message atteint stderr, `caplog.records` reste vide). C'est
-    donc un handler attache au logger que le capteur utilise, c'est-a-dire a
-    l'objet rendu par `context.log`, et non une interception du module logging.
+    `caplog` ne convient pas : le logger « dagster » ne propage pas (mesure :
+    le message atteint stderr, `caplog.records` reste vide). Un handler est donc
+    attache au logger utilise par le capteur, l'objet rendu par `context.log`.
     """
 
     def __init__(self) -> None:
@@ -686,18 +659,19 @@ def _corpus(tmp_path, fichiers: int = 3) -> list[str]:
 
 
 class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
-    """Registre 4.32.a : le `run_key` etait deterministe sur `(source, partition, mtime)`.
+    """Geste de reingestion (registre 4.32.a).
 
-    Dagster cherche un `run_key` consomme dans TOUT l'historique, sans borne de
-    temps : un fichier dont le `mtime` n'a pas bouge ne pouvait donc JAMAIS etre
-    reingere par le capteur. `mesure` le 2 septembre 2026, curseur vide et
-    verifie a 0 entree : 23 `run_key` demandees, **0 run cree**,
-    `skip_reason=None` — le site canonique du chiffre est la campagne,
-    `documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`.
+    Dagster cherche un `run_key` consomme dans tout l'historique, sans limite de
+    temps : avec une cle deterministe sur `(source, partition, mtime)`, un
+    fichier dont le `mtime` n'a pas bouge ne peut pas etre reingere. Mesure du
+    2 septembre 2026, curseur vide : 23 `run_key` demandees, aucun run cree,
+    `skip_reason=None` (detail dans
+    `documentation/campagnes/2026-09-02-premiere-campagne-de-reference.md`).
 
-    Les trois tests qui suivent sont les trois questions que la reparation doit
-    fermer, et le quatrieme est leur TEMOIN : sans lui, un `run_key` rendu
-    aleatoire les rendrait tous verts en relancant l'ingestion a chaque tick.
+    Les tests suivent les questions numerotees du bloc de commentaires
+    au-dessus de `factory.PREFIXE_REINGESTION`. Le dernier sert de controle :
+    sans lui, un `run_key` aleatoire les ferait tous passer en relancant
+    l'ingestion a chaque tick.
     """
 
     ETIQUETTE = "2026-09-22-apres-purge"
@@ -709,11 +683,11 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
         return build_source(_html_source(name="reing"))
 
     def test_sans_marqueur_un_corpus_inchange_ne_demande_rien(self, tmp_path, monkeypatch):
-        """QUESTION 2 — ce qui garantit qu'une reingestion ne part pas toute seule.
+        """Question 2 : sans marqueur, aucune reingestion ne part.
 
-        C'est le curseur, et rien d'autre. Il vit dans le stockage de l'instance,
-        il survit au rechargement du code, et aucune ligne de `factory.py` ne
-        l'efface. Dix ticks de suite sur un corpus inchange : zero demande.
+        Le curseur l'empeche. Il vit dans le stockage de l'instance, survit au
+        rechargement du code, et `factory.py` ne l'efface jamais. Dix ticks de
+        suite sur un corpus inchange : aucune demande.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -733,13 +707,11 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
             get_settings.cache_clear()
 
     def test_le_marqueur_redemande_tout_le_corpus_avec_des_cles_neuves(self, tmp_path, monkeypatch):
-        """QUESTION 1 — ce qui declenche une reingestion : le marqueur, pose a la main.
+        """Question 1 : le marqueur, pose a la main, declenche une reingestion.
 
-        L'assertion porte sur les CLES et non sur le nombre de demandes. C'est le
-        point du 4.32.a : le capteur construisait deja ses 23 demandes, et
-        Dagster n'en creait aucun run parce que les cles etaient celles de la
-        premiere ingestion. Un test qui compte les demandes est vert des deux
-        cotes du defaut.
+        L'assertion porte sur les cles, et non sur le nombre de demandes : sans
+        marqueur, le capteur construit aussi ses 23 demandes, mais avec les cles
+        de la premiere ingestion, et Dagster n'en cree aucun run.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -760,11 +732,10 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
             get_settings.cache_clear()
 
     def test_le_marqueur_est_consomme_par_le_tick_qui_l_honore(self, tmp_path, monkeypatch):
-        """QUESTION 3, premiere moitie — le geste ne vaut que pour UN tick.
+        """Question 3, premiere moitie : le marqueur ne vaut que pour un tick.
 
-        Sans cela, le marqueur resterait en place et le capteur relancerait
-        l'ingestion complete a chaque tick, indefiniment : le defaut inverse de
-        celui que ce lot ferme, et le pire des deux.
+        Sinon, le marqueur resterait en place et le capteur relancerait
+        l'ingestion complete a chaque tick, indefiniment.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -784,13 +755,11 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
             get_settings.cache_clear()
 
     def test_un_corpus_vide_consomme_le_marqueur_lui_aussi(self, tmp_path, monkeypatch):
-        """LE CAS QUE LE CODE NATUREL LAISSE BOUCLER.
+        """Sur un corpus vide, le marqueur est quand meme consomme.
 
-        Le capteur n'ecrivait son curseur que s'il avait change. Sur un corpus
-        vide, le curseur calcule vaut `{}` — egal au curseur de depart une fois
-        le marqueur lu — donc le marqueur serait RESTE en place, et chaque tick
-        l'aurait rejoue. Il n'y a pas de demande a perdre, mais le marqueur doit
-        quand meme etre consomme.
+        Le curseur calcule vaut alors `{}`, egal au curseur de depart une fois
+        le marqueur lu. Si le curseur n'etait ecrit que lorsqu'il change, le
+        marqueur resterait en place et chaque tick le rejouerait.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -808,11 +777,11 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
             get_settings.cache_clear()
 
     def test_un_marqueur_sans_etiquette_est_refuse_et_dit_pourquoi(self, tmp_path, monkeypatch):
-        """L'etiquette n'est pas decorative : c'est elle qui distingue deux gestes.
+        """L'etiquette est obligatoire : c'est elle qui distingue deux gestes.
 
         Sans elle, le second geste porterait les memes cles que le premier, et
-        Dagster le refuserait EN SILENCE — exactement le defaut 4.32.a, rouvert
-        par le geste cense le fermer. Le capteur refuse donc, et il le dit.
+        Dagster le refuserait sans avertissement (registre 4.32.a). Le capteur
+        refuse donc le marqueur nu, et le signale.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -832,24 +801,18 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
     def test_l_etiquette_est_la_meme_avec_ou_sans_espace_apres_le_marqueur(
         self, tmp_path, monkeypatch
     ):
-        """LE `.strip()` DE L'ETIQUETTE EST PORTEUR, ET RIEN NE LE GARDAIT.
+        """Le `.strip()` final normalise l'etiquette.
 
-        Le marqueur se pose **a la main**, dans un champ de saisie de l'interface
-        Dagster ou sur une ligne de commande. « reingerer: 2026-09-22 » et
-        « reingerer:2026-09-22 » sont le MEME geste pour celui qui les tape.
-        Sans le `.strip()`, ce sont deux etiquettes differentes, donc deux jeux
-        de cles de run differents — et la propriete que tout le 4.32.a repose
-        dessus tombe : le geste refait a l'identique cesse d'etre bruyant, il
-        reingere tout une seconde fois **en silence**, parce que l'espace en
-        trop a rendu ses cles neuves. `mesure` : retirer ce `.strip()` laissait
-        la suite entierement verte.
+        Le marqueur se pose a la main (champ de saisie de l'interface Dagster ou
+        ligne de commande). « reingerer: 2026-09-22 » et « reingerer:2026-09-22 »
+        doivent donner les memes cles de run. Sans ce `.strip()`, l'espace en
+        trop rendrait les cles neuves, et un geste repete reingererait tout sans
+        avertissement au lieu d'etre refuse et signale.
 
-        La borne de ce garde est exacte, et elle corrige une lecture repandue :
-        `reingerer:` suivi de SEULS espaces ne teste PAS ce `.strip()`-ci — le
-        `curseur.strip()` de la ligne precedente a deja mange ces espaces, et
-        l'etiquette est vide dans les deux cas. Ce qui est en jeu est la
-        NORMALISATION d'une etiquette reelle, pas le refus du marqueur nu, que
-        `test_un_marqueur_sans_etiquette_est_refuse_et_dit_pourquoi` garde.
+        Un marqueur suivi de seuls espaces ne teste pas ce `.strip()` : le
+        `curseur.strip()` precedent a deja retire ces espaces, et l'etiquette
+        est vide dans les deux cas. Ce cas est couvert par
+        `test_un_marqueur_sans_etiquette_est_refuse_et_dit_pourquoi`.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -869,26 +832,22 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
             get_settings.cache_clear()
 
     def test_le_marqueur_est_honore_avec_un_espace_de_tete(self, tmp_path, monkeypatch):
-        """LE PREMIER `curseur.strip()`, ET IL ETAIT NU (H21).
+        """Le premier `curseur.strip()` accepte un espace en tete (registre, H21).
 
-        Deux `.strip()` vivent dans `_etiquette_de_reingestion`, et le test
-        voisin ne garde que le SECOND — celui qui normalise l'etiquette. Le
-        premier absorbe un espace de TETE, et coller une chaine dans un champ de
-        l'interface Dagster est le geste manuel le plus banal qui soit. `mesure`
-        le 22 septembre 2026 : le retirer laissait les 904 tests verts.
+        `_etiquette_de_reingestion` contient deux `.strip()` ; le test precedent
+        ne couvre que le second. Le premier absorbe un espace de tete, frequent
+        apres un copier-coller dans un champ de l'interface Dagster.
 
-        CE QUE LA SUBSTITUTION PRODUIT, ET C'EST MESURE. Sur une instance dont
-        l'historique porte deja les cles nominales — la production, donc — le
-        curseur « ␣␣reingerer:2026-09-22 » cesse d'etre un ordre : il repart en
-        curseur JSON, echoue a se decoder, et le capteur redemande le corpus
-        avec les cles NOMINALES. Dagster n'en cree aucun run. Le geste
-        **n'a pas lieu**, et il le dit — mais il le dit de travers, par
-        « Invalid cursor format, resetting » puis « 3 demande(s) de run sur 3
-        portent un run_key DEJA CONSOMME ». Aucune des deux lignes ne nomme
-        l'espace, et le geste refait echoue a l'identique.
+        Sans lui, sur une instance dont l'historique porte deja les cles
+        nominales (la production), le curseur « ␣␣reingerer:2026-09-22 » n'est
+        plus un ordre : il est traite comme un curseur JSON, echoue a se
+        decoder, et le capteur redemande le corpus avec les cles nominales, dont
+        Dagster ne cree aucun run. Le geste n'a pas lieu, et les messages
+        (« Invalid cursor format, resetting », puis « ... run_key DEJA
+        CONSOMME ») ne nomment pas l'espace.
 
-        L'assertion porte sur la FORME des cles, et non sur leur nombre : les
-        trois demandes existent des deux cotes du defaut.
+        L'assertion porte sur la forme des cles, et non sur leur nombre : les
+        trois demandes existent dans les deux cas.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -907,18 +866,15 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
         assert cles == attendues, (cles, attendues)
 
     def test_le_marqueur_n_est_honore_qu_en_tete_du_curseur(self, tmp_path, monkeypatch):
-        """`startswith` EST PORTEUR, ET `in` SURVIVAIT A TOUTE LA SUITE.
+        """Le marqueur n'est un ordre qu'en tete du curseur (`startswith`, et non `in`).
 
-        Un curseur qui **contient** `reingerer:` sans commencer par lui n'est pas
-        un ordre de reingestion : c'est un curseur mal forme, et le capteur doit
-        le traiter comme tel — repartir du corpus avec les cles NOMINALES, que
-        l'historique porte deja, donc sans rien relancer.
+        Un curseur qui contient `reingerer:` sans commencer par lui est un
+        curseur mal forme : le capteur repart du corpus avec les cles nominales,
+        deja dans l'historique, donc sans rien relancer.
 
-        Avec `in` a la place de `startswith`, le meme curseur est lu comme un
-        ordre, et l'etiquette devient la decoupe a l'aveugle de dix caracteres —
-        ici « er:2026-09-22-apres-purge ». Le capteur reingere alors **tout le
-        corpus** sur un curseur que personne n'a voulu marquer. `mesure` : la
-        substitution laissait la suite entierement verte.
+        Avec `in`, le meme curseur serait lu comme un ordre, avec une etiquette
+        decoupee a l'aveugle (ici « er:2026-09-22-apres-purge »), et le capteur
+        reingererait tout le corpus sans que personne l'ait demande.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -929,9 +885,9 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
                 resultat = built.sensor(egare)
                 cles = {r.run_key for r in resultat.run_requests}
 
-            # Les cles se reconstruisent A LA MAIN, et surtout pas par un second
-            # appel a `_corpus` : celui-ci REECRIT les fichiers, donc deplacerait
-            # les `mtime` que cette assertion compare.
+            # Cles reconstruites a la main, et non par un second appel a
+            # `_corpus`, qui reecrirait les fichiers et deplacerait les `mtime`
+            # que cette assertion compare.
             attendues = {
                 f"reing_captures/page_{numero:02d}.html_"
                 f"{os.path.getmtime(tmp_path / f'captures/page_{numero:02d}.html')}"
@@ -943,18 +899,15 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
             get_settings.cache_clear()
 
     def test_le_tick_qui_honore_le_marqueur_le_confirme_au_journal(self, tmp_path, monkeypatch):
-        """LA SEULE CONFIRMATION QUE L'OPERATEUR RECOIT, ET RIEN NE LA GARDAIT.
+        """Le capteur confirme la lecture du marqueur dans son journal.
 
-        Le geste est manuel et il est irreversible a l'echelle du corpus : celui
-        qui l'a pose n'a que cette ligne pour savoir qu'il a ete **lu**, avec
-        quelle etiquette et sur combien de fichiers.
+        Le geste est manuel et touche tout le corpus : cette ligne est la seule
+        confirmation qu'il a ete lu, avec quelle etiquette et sur combien de
+        fichiers.
 
-        `mesure` : supprimer cette ligne laissait la suite verte — et faisait
-        apparaitre a sa place « Invalid cursor format, resetting. », qui dit le
-        CONTRAIRE de ce qui se passe. La seconde assertion garde donc aussi
-        l'absence de ce message-la : un marqueur bien forme n'est pas un curseur
-        invalide, et le journaliser ainsi apprendrait a l'operateur que son geste
-        a echoue au moment meme ou il reussit.
+        La seconde assertion verifie l'absence de « Invalid cursor format,
+        resetting. » : un marqueur bien forme n'est pas un curseur invalide, et
+        ce message laisserait croire que le geste a echoue.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -980,18 +933,17 @@ class TestLaReingestionSeDemandeEtNeSeDeclenchePasSeule:
 
 
 class TestLeTickQuiPerdSesRunsLeDit:
-    """Registre 4.32.a, seconde moitie : **22 runs perdus sans un mot**.
+    """Le capteur signale les demandes que Dagster refusera (registre 4.32.a).
 
-    Le tick qui perd ses runs porte `skip_reason=None` : le journal du daemon ne
-    dit rien, et « Sensor function returned an empty result » n'apparait qu'aux
-    ticks SUIVANTS, pour une autre raison. Sans cette ligne-ci, personne
-    n'aurait jamais trouve le reste du constat.
+    Le tick qui perd ses runs porte `skip_reason=None` : le daemon n'ecrit rien
+    quand il ecarte une demande dont la cle est deja consommee (22 runs perdus
+    ainsi). Le capteur verifie donc lui-meme, et l'annonce.
 
-    Le controle reproduit la regle du daemon, et non une approximation : il
-    interroge `RunsFilter(tags={RUN_KEY_TAG: cle})` puis retient les runs dont
-    `SENSOR_NAME_TAG` est celui du capteur — c'est mot pour mot
-    `dagster/_daemon/sensor.py::fetch_existing_runs` (`mesure`, dagster 1.13.16,
-    lignes 1290-1333).
+    Le controle reproduit la regle du daemon : il interroge
+    `RunsFilter(tags={RUN_KEY_TAG: cle})` puis retient les runs dont
+    `SENSOR_NAME_TAG` est celui du capteur, comme
+    `dagster/_daemon/sensor.py::fetch_existing_runs` (dagster 1.13.16, lignes
+    1290-1333).
     """
 
     ETIQUETTE = "geste-refait"
@@ -999,13 +951,11 @@ class TestLeTickQuiPerdSesRunsLeDit:
     def _instance_avec_les_cles(self, instance, cles, nom_du_capteur: str) -> None:
         """Consomme ces `run_key` comme le daemon les consomme : par des runs tagues.
 
-        LE STATUT EST TERMINAL, ET IL NE L'ETAIT PAS. `create_run_for_test` cree
-        un run `NOT_STARTED` par defaut, c'est-a-dire un run EN VOL — et cette
-        fixture modelise l'inverse : une ingestion PASSEE, dont les cles sont
-        deja consommees et que l'on redemande maintenant. Le defaut n'a jamais
-        gene tant que rien ne regardait les statuts ; la garde de concurrence du
-        4.33.c les regarde, et elle skippait donc ces quatre tests au lieu de les
-        laisser mesurer ce qu'ils mesurent.
+        Les runs crees sont en statut terminal : `create_run_for_test` cree par
+        defaut un run `NOT_STARTED`, donc en vol, alors que cette fixture
+        modelise une ingestion passee dont les cles sont deja consommees. Un
+        run en vol ferait refuser le marqueur par le controle d'ingestion en
+        cours (registre 4.33.c), et ces tests ne mesureraient plus rien.
         """
         for cle in cles:
             create_run_for_test(
@@ -1016,20 +966,16 @@ class TestLeTickQuiPerdSesRunsLeDit:
             )
 
     def test_des_cles_deja_consommees_sont_annoncees_avec_leur_compte(self, tmp_path, monkeypatch):
-        """QUESTION 3, seconde moitie — le geste refait a l'identique.
+        """Question 3, seconde moitie : le geste repete a l'identique est signale.
 
-        Deux fois le MEME marqueur : le second tick reconstruit les memes cles,
-        Dagster n'en creera aucun run. Le capteur doit le dire, et dire COMBIEN.
+        Deux fois le meme marqueur : le second tick reconstruit les memes cles,
+        et Dagster n'en creera aucun run. Le capteur doit le signaler, avec le
+        nombre de demandes perdues.
 
-        L'assertion est POSITIONNELLE, et ce n'est pas un detail de style. Elle
-        a d'abord ete ecrite `"3" in perdu[0]` — or le message porte « {N}
-        demande(s) de run sur {M} », et M vaut 3 ici : le DENOMINATEUR
-        satisfaisait le test a lui seul, quel que soit le numerateur. `mesure` :
-        remplacer `{len(perdues)}` par le litteral `zero` laissait la suite
-        entierement verte. Un garde qui lit un chiffre sans savoir lequel ne
-        garde rien. Le numerateur est desormais lu a sa place, et
-        `test_le_compte_annonce_est_celui_des_perdues_et_non_du_total` le
-        separe du denominateur en les rendant differents.
+        L'assertion lit le numerateur a sa place dans « {N} demande(s) de run
+        sur {M} ». Un simple `"3" in message` serait satisfait par le
+        denominateur (M = 3). `test_le_compte_annonce_est_celui_des_perdues_et_non_du_total`
+        rend les deux differents.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1058,14 +1004,13 @@ class TestLeTickQuiPerdSesRunsLeDit:
             get_settings.cache_clear()
 
     def test_le_compte_annonce_est_celui_des_perdues_et_non_du_total(self, tmp_path, monkeypatch):
-        """LE NUMERATEUR ET LE DENOMINATEUR SONT RENDUS DIFFERENTS, EXPRES.
+        """Numerateur et denominateur sont rendus differents, volontairement.
 
-        Tant que les deux valent 3, aucune assertion ne peut distinguer « le
-        capteur compte ses pertes » de « le capteur recopie le total ». Ici
-        **deux** cles sur trois ont ete consommees : le message doit dire 2 sur
-        3. Le README et le registre 4.32.a promettent tous deux que le capteur
-        le DIT *avec le nombre* ; c'est ce test-ci qui tient cette promesse, et
-        aucun autre.
+        Tant que les deux valent 3, rien ne distingue « le capteur compte ses
+        pertes » de « le capteur recopie le total ». Ici, deux cles sur trois
+        sont consommees : le message doit dire 2 sur 3. C'est ce test qui
+        verifie que le capteur annonce le bon nombre, comme le promettent le
+        README et le registre 4.32.a.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1078,8 +1023,8 @@ class TestLeTickQuiPerdSesRunsLeDit:
                 )
                 cles = [r.run_key for r in built.sensor(premier).run_requests]
                 assert len(cles) == 3, cles
-                # DEUX seulement : la troisieme demande passera, les deux autres
-                # sont perdues, et c'est 2 que le capteur doit annoncer.
+                # Deux seulement : la troisieme demande passera, les deux autres
+                # sont perdues, et le capteur doit annoncer 2.
                 self._instance_avec_les_cles(instance, cles[:2], "reing_sensor")
 
                 second = build_sensor_context(
@@ -1095,18 +1040,13 @@ class TestLeTickQuiPerdSesRunsLeDit:
             get_settings.cache_clear()
 
     def test_l_alerte_nomme_les_trois_premieres_cles_perdues(self, tmp_path, monkeypatch):
-        """LE DIAGNOSTIC, ET IL ETAIT NU (H3).
+        """L'alerte nomme les trois premieres cles perdues (registre, H3).
 
-        `perdues[:3]` n'etait garde par rien : `mesure` le 22 septembre 2026,
-        le remplacer par `perdues[:0]` laissait les 904 tests verts. L'alerte
-        annoncait alors son compte et **plus aucune cle** — le chiffre restait,
-        le diagnostic etait ampute, et l'operateur n'avait plus de quoi savoir
-        quelle partition avait ete perdue.
-
-        Les DEUX bornes sont tenues ici, et la seconde sans la premiere serait
-        creuse : l'alerte nomme **trois** cles quand quatre sont perdues, et ce
-        sont les trois PREMIERES dans l'ordre des demandes. Une borne haute
-        seule laisserait passer zero.
+        Sans ces cles, l'alerte donnerait son compte sans permettre de savoir
+        quelle partition a ete perdue. Les deux bornes sont verifiees : l'alerte
+        nomme trois cles quand quatre sont perdues, et ce sont les trois
+        premieres dans l'ordre des demandes. Une borne haute seule laisserait
+        passer zero cle.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1135,10 +1075,10 @@ class TestLeTickQuiPerdSesRunsLeDit:
         assert nommees == cles[:3], (nommees, cles)
 
     def test_des_cles_neuves_ne_declenchent_aucun_avertissement(self, tmp_path, monkeypatch):
-        """LE TEMOIN. Sans lui, un avertissement pose en dur passerait le test ci-dessus.
+        """Des cles neuves ne declenchent aucun avertissement.
 
-        Un capteur qui crie a chaque tick est aussi muet qu'un capteur qui se
-        tait : l'oeil s'habitue, et la ligne cesse d'etre lue.
+        Sans ce test, un avertissement emis en dur passerait le test precedent.
+        Un capteur qui avertit a chaque tick finit par ne plus etre lu.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1160,8 +1100,8 @@ class TestLeTickQuiPerdSesRunsLeDit:
     def test_une_cle_consommee_par_un_autre_capteur_ne_compte_pas(self, tmp_path, monkeypatch):
         """Le daemon filtre sur `SENSOR_NAME_TAG`, et ce controle doit filtrer pareil.
 
-        Sans ce filtre, le controle annoncerait des pertes qui n'en sont pas —
-        une alerte fausse se desapprend aussi vite qu'une alerte absente.
+        Sans ce filtre, le controle annoncerait des pertes qui n'en sont pas, et
+        une fausse alerte finit par ne plus etre lue.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1186,20 +1126,18 @@ class TestLeTickQuiPerdSesRunsLeDit:
     def test_une_instance_deja_peuplee_par_ce_capteur_ne_fait_pas_crier(
         self, tmp_path, monkeypatch
     ):
-        """LE CAS ORDINAIRE DE TOUS LES JOURS, ET AUCUN TEST NE LE MONTAIT.
+        """Cas courant : historique sous les cles de ce capteur, demande a cles neuves.
 
-        Les deux temoins voisins ne discriminent pas : l'un part d'une instance
-        **vierge**, l'autre filtre sur l'autre axe — un AUTRE capteur, pas
-        d'AUTRES cles. Il manquait celui-ci : le capteur a deja des runs derriere
-        lui, sous SES propres cles et SON propre nom, et la demande du jour porte
-        des cles NEUVES.
+        Les deux tests voisins ne couvrent pas ce cas : l'un part d'une instance
+        vierge, l'autre varie le nom du capteur, pas les cles. Ici, le capteur a
+        deja des runs sous ses propres cles et son propre nom, et la demande du
+        jour porte des cles neuves.
 
-        `mesure` : sans ce garde, remplacer `RunsFilter(tags={RUN_KEY_TAG: cle})`
-        par `RunsFilter(tags={SENSOR_NAME_TAG: nom_du_capteur})` — la requete
-        cesse alors de porter sur la cle — laissait la suite entierement verte.
-        Le mutant leve une alerte FAUSSE a chaque tick des que le capteur a un
-        seul run derriere lui, c'est-a-dire toujours en production. Et une alerte
-        fausse se desapprend aussi vite qu'une alerte absente.
+        Sans ce test, une requete filtrant sur le seul nom du capteur
+        (`RunsFilter(tags={SENSOR_NAME_TAG: nom_du_capteur})`, sans la cle)
+        passerait la suite, alors qu'elle leverait une fausse alerte a chaque
+        tick des que le capteur a un run derriere lui, c'est-a-dire toujours en
+        production.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1207,13 +1145,13 @@ class TestLeTickQuiPerdSesRunsLeDit:
             _corpus(tmp_path, 3)
             built = build_source(_html_source(name="reing"))
             with DagsterInstance.ephemeral() as instance:
-                # L'HISTORIQUE ORDINAIRE : la premiere ingestion a eu lieu, ses
-                # trois runs portent les cles NOMINALES et le nom de CE capteur.
+                # Historique ordinaire : la premiere ingestion a eu lieu, ses
+                # trois runs portent les cles nominales et le nom de ce capteur.
                 nominal = build_sensor_context(instance=instance)
                 deja = [r.run_key for r in built.sensor(nominal).run_requests]
                 self._instance_avec_les_cles(instance, deja, "reing_sensor")
 
-                # LA DEMANDE DU JOUR : une reingestion a etiquette neuve. Ses
+                # Demande du jour : une reingestion a etiquette neuve, dont les
                 # cles n'existent nulle part dans l'historique.
                 marque = build_sensor_context(
                     instance=instance, cursor=f"{PREFIXE_REINGESTION}{self.ETIQUETTE}"
@@ -1232,31 +1170,24 @@ class TestLeTickQuiPerdSesRunsLeDit:
 
 
 class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
-    """Registre 4.33.c — le seul des cinq constats qui puisse couter des DONNEES.
+    """Refus du marqueur quand une ingestion de la source est en cours (registre 4.33.c).
 
-    Un second marqueur, etiquette NEUVE, pose pendant qu'une reingestion tourne
-    encore, produisait un second jeu COMPLET de demandes : les cles etant
-    neuves, Dagster n'en refusait aucune, donc les runs etaient reellement
-    crees. `mesure` : `pdfs_sensor` ne porte qu'UN fichier, donc une seule
-    partition, et `dagster.yaml` fixe `max_concurrent_runs: 2` SANS aucune cle
-    de concurrence par partition. Deux runs simultanes sur la MEME partition
-    sont atteignables, et ils ecriraient tous les deux `Datas/.cleaned/<fichier>`
-    en meme temps.
+    Un second marqueur d'etiquette neuve, pose pendant une reingestion,
+    produirait un second jeu complet de demandes, a cles neuves, que Dagster
+    accepterait. `dagster.yaml` fixe `max_concurrent_runs: 2` sans cle de
+    concurrence par partition : deux runs simultanes pourraient alors ecrire le
+    meme `Datas/.cleaned/<fichier>`. Meme principe que `reindex_job.py` : une
+    operation en cours n'est ni faite ni perdue, on attend son issue.
 
-    Le depot portait deja le patron, avec son motif :
-    `reindex_job.py` — « une reindexation en vol n'est ni faite ni perdue : on
-    attend son issue ».
+    Quatre cas sont couverts :
 
-    Les QUATRE natures sont echantillonnees ici, et il en faut quatre :
-
-    - le refus, quand un run de CE job est non terminal ;
-    - le temoin : la meme etiquette, une fois le run terminal, emet ses
-      demandes. Sans lui, un garde qui refuserait toujours rendrait la
-      reingestion impossible — le 4.32.a par l'autre bout ;
-    - le marqueur n'est PAS consomme par le tick qui refuse : le geste est
-      DIFFERE, pas perdu ;
-    - un run d'un AUTRE job ne bloque rien : le filtre porte sur `job_name`, et
-      une garde qui verrait tous les runs bloquerait sur la reindexation.
+    - le refus, quand un run de ce job est non terminal ;
+    - la meme etiquette, une fois le run termine, emet ses demandes (sans ce
+      test, un controle qui refuserait toujours rendrait la reingestion
+      impossible) ;
+    - le marqueur n'est pas consomme par le tick qui refuse : le geste est
+      differe, pas perdu ;
+    - un run d'un autre job ne bloque rien : le filtre porte sur `job_name`.
     """
 
     ETIQUETTE = "2026-09-22-seconde-vague"
@@ -1276,10 +1207,10 @@ class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
     def test_un_marqueur_lu_pendant_un_run_en_vol_n_emet_rien_et_le_dit(
         self, tmp_path, monkeypatch
     ):
-        """LA PROPRIETE. Le refus doit etre NOMME, pas un resultat vide.
+        """Le refus est un `SkipReason` qui nomme le run en cours.
 
-        Un `SensorResult` sans demande porterait `skip_reason=None` — le silence
-        exact du 4.32.a. C'est un `SkipReason`, et il nomme le run en vol.
+        Un `SensorResult` sans demande porterait `skip_reason=None`, sans
+        explication (registre 4.32.a).
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1294,11 +1225,10 @@ class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
         assert f"{PREFIXE_REINGESTION}{self.ETIQUETTE}" in resultat.skip_message
 
     def test_le_marqueur_n_est_pas_consomme_par_le_tick_qui_refuse(self, tmp_path, monkeypatch):
-        """LE GESTE EST DIFFERE, PAS PERDU.
+        """Le geste est differe, pas perdu : le marqueur reste en place.
 
-        Si le tick qui refuse consommait le curseur, l'operateur aurait pose son
-        marqueur pour rien et ne le saurait qu'en relisant le journal. Le
-        marqueur reste, donc le tick suivant le relira.
+        Si le tick qui refuse consommait le curseur, le marqueur aurait ete pose
+        pour rien, sans que rien ne le signale. Le tick suivant le relira.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1313,12 +1243,11 @@ class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
     def test_le_meme_marqueur_emet_ses_demandes_une_fois_le_run_terminal(
         self, tmp_path, monkeypatch
     ):
-        """LE TEMOIN, et sans lui le garde serait la panne qu'il pretend eviter.
+        """Une fois le run termine, le meme marqueur produit ses demandes.
 
-        Le run en vol est termine entre les deux ticks. Le MEME marqueur, relu,
-        doit alors produire le jeu complet de demandes. Un garde qui refuserait
-        toujours rendrait la reingestion impossible — c'est le 4.32.a par
-        l'autre bout, celui que le lot 8 vient de fermer.
+        Le run en cours se termine entre les deux ticks ; le marqueur, relu,
+        doit alors produire le jeu complet de demandes. Un controle qui
+        refuserait toujours rendrait la reingestion impossible.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1343,12 +1272,11 @@ class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
         assert curseur != f"{PREFIXE_REINGESTION}{self.ETIQUETTE}", curseur
 
     def test_un_run_d_un_autre_job_ne_bloque_pas_le_marqueur(self, tmp_path, monkeypatch):
-        """LE SECOND TEMOIN : le filtre porte sur `job_name`.
+        """Un run d'un autre job ne bloque pas le marqueur : le filtre porte sur `job_name`.
 
-        Sans lui, une garde qui verrait TOUS les runs non terminaux serait verte
-        sur le premier test et bloquerait la reingestion des qu'une
-        reindexation, ou l'ingestion d'une AUTRE source, serait en cours. Le
-        4.15 a deja paye ce prix une fois.
+        Un controle qui verrait tous les runs non terminaux passerait le premier
+        test, mais bloquerait la reingestion des qu'une reindexation, ou
+        l'ingestion d'une autre source, serait en cours (cf. registre 4.15).
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1366,15 +1294,12 @@ class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
         assert len(resultat.run_requests) == 3, resultat.run_requests
 
     def test_le_chemin_nominal_n_est_pas_garde_et_c_est_borne_expres(self, tmp_path, monkeypatch):
-        """LA BORNE DE CE GARDE, ecrite comme un test plutot que comme une phrase.
+        """Limite du controle : le chemin nominal n'est pas bloque.
 
-        La garde porte sur le MARQUEUR et sur lui seul. Le chemin nominal n'en a
-        pas besoin pour ne pas repartir — sa cle est `(source, partition, mtime)`,
-        donc un corpus inchange ne redemande rien. Il en aurait besoin pour autre
-        chose : un fichier MODIFIE pendant une reingestion produit bien une cle
-        neuve sur une partition en vol. Ce cas reste OUVERT, il est au registre,
-        et ce test dit exactement ou passe la limite plutot que de laisser croire
-        que le 4.33.c est clos des deux cotes.
+        Le controle ne porte que sur le marqueur. Un fichier modifie pendant une
+        reingestion produit une cle neuve sur une partition en cours, et sa
+        demande part. Ce cas reste ouvert au registre ; ce test fixe la limite
+        exacte du controle.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1390,11 +1315,10 @@ class TestUneReingestionDejaEnVolNEnDeclenchePasUneSeconde:
 
 
 class TestLeCurseurAvanceEtLOrdreNeBougePas:
-    """Deux bornes du capteur que la mutation a trouvees nues (registre 4.33, H7 et H13).
+    """Deux details du capteur (registre 4.33, H7 et H13).
 
-    Elles n'ont rien de commun sauf cela : chacune laissait les 904 tests verts,
-    `mesure` le 22 septembre 2026, et chacune arme une reingestion perpetuelle
-    ou un diagnostic qui bouge d'un tick a l'autre.
+    Sans eux, le capteur rearme une reingestion a chaque tick, ou produit un
+    diagnostic qui change d'un tick a l'autre. Aucun autre test ne les couvre.
     """
 
     def _capteur(self, tmp_path, monkeypatch, fichiers: int = 3):
@@ -1406,17 +1330,15 @@ class TestLeCurseurAvanceEtLOrdreNeBougePas:
     def test_un_fichier_modifie_voit_son_nouveau_mtime_ecrit_au_curseur(
         self, tmp_path, monkeypatch
     ):
-        """H7 — `str(mtime)` et non `str(last_mtime or mtime)`.
+        """H7 : le curseur recoit `str(mtime)`, et non `str(last_mtime or mtime)`.
 
-        La substitution ne se voit pas au premier tick : `last_mtime` y est
-        `None`, donc les deux expressions coincident. Elle ne se voit que sur un
-        fichier **deja connu** et **modifie** — le capteur reecrit alors son
-        ANCIEN mtime au curseur, donc le retrouve en retard au tick suivant, donc
-        le redemande. A chaque tick, indefiniment, toutes les 30 secondes.
+        La difference ne se voit pas au premier tick (`last_mtime` y vaut
+        `None`), seulement sur un fichier deja connu et modifie : le capteur
+        reecrirait son ancien mtime au curseur, le trouverait en retard au tick
+        suivant, et le redemanderait toutes les 30 secondes, indefiniment.
 
-        Le troisieme tick est ce qui fait de ce test un garde et non une lecture :
-        asserter la seule valeur du curseur dirait que le capteur a ECRIT le bon
-        nombre, pas qu'il en a FINI avec ce fichier.
+        Le troisieme tick verifie que le capteur en a fini avec ce fichier, et
+        pas seulement qu'il a ecrit la bonne valeur.
         """
         cle = "captures/page_00.html"
         try:
@@ -1427,7 +1349,7 @@ class TestLeCurseurAvanceEtLOrdreNeBougePas:
                 built.sensor(premier)
                 curseur = premier.cursor
 
-                # Le fichier est MODIFIE : contenu ET mtime, comme un vrai depot.
+                # Le fichier est modifie : contenu et mtime, comme un vrai depot.
                 chemin.write_text("<html>modifie</html>", encoding="utf-8")
                 plus_tard = os.path.getmtime(chemin) + 10
                 os.utime(chemin, (plus_tard, plus_tard))
@@ -1448,19 +1370,16 @@ class TestLeCurseurAvanceEtLOrdreNeBougePas:
     def test_l_ordre_des_demandes_est_celui_du_tri_et_non_celui_du_disque(
         self, tmp_path, monkeypatch
     ):
-        """H13 — `sorted(glob(...))` et non `list(glob(...))`.
+        """H13 : `sorted(glob(...))`, et non `list(glob(...))`.
 
-        `glob` rend l'ordre de `os.scandir`, qui est celui du systeme de
-        fichiers : il n'est ni trie, ni stable d'une machine ou d'un tick a
-        l'autre. Sans le tri, l'ordre des demandes de run et celui des
-        « premieres cles perdues » de l'alerte du 4.32.a changent sans que rien
-        n'ait change — et un diagnostic qui bouge tout seul ne se compare pas
-        d'un tick au suivant.
+        `glob` rend l'ordre de `os.scandir`, celui du systeme de fichiers : ni
+        trie, ni stable d'une machine ou d'un tick a l'autre. Sans tri, l'ordre
+        des demandes de run et celui des « premieres cles perdues » de l'alerte
+        (registre 4.32.a) changeraient sans raison, et le diagnostic ne se
+        comparerait plus d'un tick a l'autre.
 
-        Le desordre est POSE, il n'est pas espere : compter sur `scandir` pour
-        rendre un ordre faux serait un test qui passe par accident. C'est
-        `glob` qui est bouchonne — l'environnement — et non le capteur, qui
-        reste celui qui produit l'ordre asserte.
+        Le desordre est impose en remplacant `glob` (l'environnement), et non
+        le capteur, qui reste le producteur de l'ordre verifie.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch, fichiers=5)
@@ -1481,26 +1400,19 @@ class TestLeCurseurAvanceEtLOrdreNeBougePas:
 
 
 class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
-    """Registre 4.33 — trois curseurs BIEN FORMES faisaient planter le tick.
+    """Curseurs JSON valides qui ne sont pas des curseurs (registre 4.33).
 
-    Antériorité verifiee : la ligne `float(last_mtime)` vient de `b157e84`,
-    11 juin 2026. NON imputable au lot 8 — mais elle est sur le chemin du geste
-    qu'il a ouvert, et le cas declencheur est exactement la maladresse que ce
-    geste invite : poser le marqueur DANS le JSON au lieu de remplacer le
-    curseur.
+    Cas typique : le marqueur pose dans le JSON au lieu de remplacer le curseur
+    entier. Le tick echoue, et echoue de nouveau au tick suivant :
+    `update_cursor` n'est pas atteint, le curseur fautif reste en place, et
+    l'echec se repete toutes les 30 secondes jusqu'a correction. Rattraper
+    l'erreur pour reinitialiser le curseur ferait redemander tout le corpus
+    sans avertissement. L'erreur, en revanche, nomme la cle fautive et le
+    geste correct.
 
-    **CE QUI N'EST PAS CHANGE, ET C'EST LE PLUS IMPORTANT.** Le tick echoue
-    toujours, et il echoue encore au tick suivant : `update_cursor` n'est jamais
-    atteint, le curseur fautif reste en place, et chaque tick echoue a son tour
-    toutes les 30 secondes jusqu'a correction manuelle. Rattraper l'erreur pour
-    « reinitialiser le curseur » aurait remplace cette sortie bruyante par un
-    SILENCE qui redemande tout le corpus — le 4.32.a par l'autre bout. Ce qui
-    change est ce que l'echec DIT.
-
-    Le TEMOIN de cette classe est le dernier test : un curseur qui n'est pas du
-    JSON du tout continue de repartir a zero avec son avertissement. Sans lui,
-    un capteur qui leverait sur TOUT curseur non nominal rendrait les trois
-    premiers verts.
+    Le dernier test sert de controle : un curseur qui n'est pas du JSON repart
+    toujours a zero avec un avertissement. Sans lui, un capteur qui leverait
+    sur tout curseur non nominal ferait passer les trois premiers.
     """
 
     def _capteur(self, tmp_path, monkeypatch):
@@ -1522,11 +1434,10 @@ class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
     def test_le_marqueur_pose_dans_le_json_est_nomme_et_le_geste_explique(
         self, tmp_path, monkeypatch
     ):
-        """LE CAS DECLENCHEUR, et le message doit porter les trois choses utiles.
+        """Cas typique : le message nomme la cle fautive, sa valeur et le geste correct.
 
-        La cle fautive, sa valeur, et le geste a refaire. `ValueError: could not
-        convert string to float: 'reingerer:2026-09-22'` n'en portait qu'une, la
-        moins actionnable des trois.
+        Le `ValueError: could not convert string to float:
+        'reingerer:2026-09-22'` brut ne donnait que la valeur.
         """
         curseur = json.dumps({"captures/page_00.html": f"{PREFIXE_REINGESTION}2026-09-22"})
         try:
@@ -1544,11 +1455,10 @@ class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
     def test_le_curseur_fautif_n_est_pas_consomme_par_le_tick_qui_echoue(
         self, tmp_path, monkeypatch
     ):
-        """CE QUI REND L'ECHEC PERSISTANT, donc visible, donc reparable.
+        """Le curseur fautif reste en place, donc l'echec reste visible.
 
-        Un tick qui avalerait le curseur fautif en le remplacant ferait
-        disparaitre la trace du geste rate — et, le curseur vide, redemanderait
-        tout le corpus au tick suivant. C'est la forme qu'il ne faut PAS prendre.
+        Un tick qui remplacerait le curseur fautif effacerait la trace du geste
+        rate et, le curseur vide, redemanderait tout le corpus au tick suivant.
         """
         curseur = json.dumps({"captures/page_00.html": "hier"})
         try:
@@ -1563,10 +1473,10 @@ class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
     def test_un_json_bien_forme_qui_n_est_pas_un_objet_est_refuse_pareil(
         self, tmp_path, monkeypatch
     ):
-        """Les deux autres curseurs mesures, et ils levaient un `TypeError` NU.
+        """Les deux autres curseurs mesures (liste, entier) levent un message explicite.
 
-        Il tombait hors du `try`, sur `dict(cursor_data)`, donc aucun `except` ne
-        le couvrait. Le message ne nommait pas meme le curseur.
+        Sans controle, ils levaient un `TypeError` brut sur `dict(cursor_data)`,
+        hors de tout `try`, sans nommer le curseur.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1585,12 +1495,12 @@ class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
     def test_un_curseur_qui_n_est_pas_du_json_repart_a_zero_comme_avant(
         self, tmp_path, monkeypatch
     ):
-        """LE TEMOIN. Un garde qui leverait sur tout curseur non nominal serait creux.
+        """Un curseur qui n'est pas du JSON avertit et repart a zero.
 
-        Ce cas-la n'est PAS traite par ce lot : il avertit et repart a zero,
-        exactement comme avant. La distinction est ce que cette classe garde —
-        « ce n'est pas du JSON » et « c'est du JSON qui n'est pas un curseur »
-        ne demandent pas le meme geste.
+        Ce comportement est distinct du precedent : « ce n'est pas du JSON » et
+        « c'est du JSON qui n'est pas un curseur » ne demandent pas le meme
+        geste. Sans ce test, un capteur qui leverait sur tout curseur non
+        nominal passerait les autres.
         """
         try:
             built = self._capteur(tmp_path, monkeypatch)
@@ -1607,17 +1517,16 @@ class TestUnCurseurJsonQuiNEstPasUnCurseurEchoueEnLeDisant:
 
 
 class TestLaCleNominaleEstInchangee:
-    """CE QUI REND PREUVABLE LE PREMIER TICK APRES LA FUSION.
+    """La cle de run nominale garde sa forme exacte.
 
-    Fusionner dans `main` est un deploiement : les conteneurs montent `src/`
-    depuis le clone principal (`mesure` le 22 septembre 2026,
-    `docker inspect`). Le premier tick apres la fusion ne doit rien faire — et
-    il ne le peut que si, SANS marqueur, la cle construite est exactement celle
-    que l'historique porte deja.
+    Fusionner dans `main` deploie le code : les conteneurs montent `src/` depuis
+    le clone principal (mesure du 22 septembre 2026, `docker inspect`). Le
+    premier tick apres un deploiement ne doit rien relancer, ce qui suppose que,
+    sans marqueur, la cle construite soit exactement celle deja presente dans
+    l'historique.
 
-    Ce test fige donc la forme litterale de la cle nominale. Il rougit si un lot
-    futur la touche, et c'est bien ce qu'on lui demande : la toucher relancerait
-    l'ingestion complete du corpus au chargement du code.
+    Ce test fige donc la forme litterale de la cle nominale : la modifier
+    relancerait l'ingestion complete du corpus au chargement du code.
     """
 
     def test_la_cle_sans_marqueur_est_source_partition_mtime(self, tmp_path, monkeypatch):
@@ -1636,21 +1545,17 @@ class TestLaCleNominaleEstInchangee:
 
 
 class TestLaCleDeReingestionNePorteQueLEtiquette:
-    """LE PENDANT DE `TestLaCleNominaleEstInchangee`, ET IL MANQUAIT.
+    """La cle de reingestion garde sa forme exacte : fonction de l'etiquette seule.
 
-    La cle nominale etait figee, la cle de reingestion ne l'etait pas : seule
-    sa forme APPROXIMATIVE etait gardee — « elle contient l'etiquette » et
-    « elle differe des nominales ». `mesure` : lui rajouter le `mtime`,
-    `..._reingestion_{etiquette}_{mtime}`, laissait la suite entierement verte.
+    Pendant de `TestLaCleNominaleEstInchangee`. Verifier seulement que la cle
+    « contient l'etiquette » et « differe des nominales » laisserait passer
+    `..._reingestion_{etiquette}_{mtime}`.
 
-    Ce que cette laxite coute est precisement ce que le 4.32.a punit. Toute la
-    repetabilite du geste tient a ce que **la meme etiquette redonne les memes
-    cles** : c'est ce qui rend le geste refait a l'identique bruyant au lieu de
-    muet. Une cle qui reprend le `mtime` cesse d'etre fonction de la seule
-    etiquette — un `touch`, une restauration de sauvegarde, une copie du corpus
-    suffisent alors a rendre neuves des cles que l'operateur croit rejouer, et
-    la reingestion repart en silence. Le `mtime` est justement l'entree dont
-    tout le 4.32.a demande de se defaire dans ce chemin-la.
+    Or la repetabilite du geste repose sur ce que la meme etiquette redonne les
+    memes cles : c'est ce qui fait signaler un geste repete a l'identique. Une
+    cle qui inclurait le `mtime` changerait apres un `touch`, une restauration
+    de sauvegarde ou une copie du corpus, et la reingestion repartirait sans
+    avertissement.
     """
 
     ETIQUETTE = "2026-09-22-apres-purge"
@@ -1673,12 +1578,11 @@ class TestLaCleDeReingestionNePorteQueLEtiquette:
             get_settings.cache_clear()
 
     def test_deux_gestes_de_meme_etiquette_redonnent_les_memes_cles(self, tmp_path, monkeypatch):
-        """LE TEMOIN DE LA FORME : c'est cette egalite-la qui rend la repetition bruyante.
+        """Les cles de reingestion ne dependent pas du `mtime`.
 
-        Le `mtime` des fichiers est deplace ENTRE les deux ticks — c'est ce
-        qu'un `touch`, une restauration ou une recopie du corpus produisent.
-        Les cles ne doivent pas bouger pour autant : elles sont fonction de
-        l'etiquette, et de rien d'autre.
+        Le `mtime` des fichiers change entre les deux ticks (comme apres un
+        `touch`, une restauration ou une recopie du corpus). Les cles ne
+        doivent pas changer : elles ne dependent que de l'etiquette.
         """
         monkeypatch.setenv("SOURCE_DIR", str(tmp_path))
         get_settings.cache_clear()
@@ -1706,17 +1610,12 @@ class TestLaCleDeReingestionNePorteQueLEtiquette:
 
 
 class TestLaDocumentationNommeLeGesteQuExisteVraiment:
-    """Registre 4.32.a — **une documentation qui prescrit un chemin mort EST le defaut.**
+    """Le README prescrit le marqueur que le capteur lit (registre 4.32.a).
 
-    Le `README` donnait la purge par `wipe_stores`, puis « redemarrer, puis
-    reingerer », sans une ligne sur ce qui provoque la reingestion. Le chemin
-    nominal etait le capteur, et il en etait incapable. Un operateur qui purgeait
-    puis attendait gardait des stores VIDES indefiniment.
-
-    Ce garde ne verifie pas que le README « parle de reingestion » — il en
-    parlait deja, et c'est bien le probleme. Il verifie que le marqueur qu'il
-    prescrit est celui que le capteur LIT, en interrogeant la constante qui en
-    est le seul site canonique.
+    Apres une purge par `wipe_stores`, la reingestion passe par le marqueur de
+    reingestion pose sur le curseur de chaque capteur ; attendre ne suffit pas.
+    Ce test verifie que le README cite le marqueur que le capteur lit, via la
+    constante `PREFIXE_REINGESTION`, sa seule definition.
     """
 
     README = Path(__file__).resolve().parents[2] / "README.md"
@@ -1730,11 +1629,10 @@ class TestLaDocumentationNommeLeGesteQuExisteVraiment:
         )
 
     def test_le_readme_nomme_les_capteurs_sur_lesquels_le_poser(self):
-        """Le marqueur se pose SUR UN CAPTEUR, un par source.
+        """Le README nomme le capteur de chaque source, ou poser le marqueur.
 
-        Sans les nommer, le README prescrirait un geste qu'on ne sait ou faire.
-        La borne est INFERIEURE et porte sur les sources reellement declarees :
-        une quatrieme source devra etre nommee elle aussi.
+        Borne inferieure, sur les sources reellement declarees : une quatrieme
+        source devra etre nommee elle aussi.
         """
         texte = self.README.read_text(encoding="utf-8")
         manquants = [

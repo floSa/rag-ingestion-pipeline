@@ -1,25 +1,18 @@
 """Le modele d'embedding, et le refus d'en charger un autre.
 
-Un desaccord de modele entre ce pipeline et ``rag-agent-chat`` est la panne la
-plus couteuse de la chaine, et la seule qui ne laisse aucune trace : pas
-d'exception, pas de ligne de journal, aucune sonde qui la voie. La recherche
-rend des passages plausibles et faux, et rien ne le signale.
+Un desaccord de modele entre ce pipeline et ``rag-agent-chat`` ne laisse
+aucune trace : pas d'exception, pas de ligne de journal, aucune sonde qui le
+voie. La recherche rend des passages plausibles et faux.
 
-Elle est muette pour une raison precise, et cette raison dicte la forme du
-garde-fou : ``all-MiniLM-L6-v2``, le modele anglais d'avant la reingestion
-multilingue, produit lui aussi des vecteurs de **384 dimensions**. ChromaDB les
-accepte sans broncher. Verifier la dimension ne protege donc de rien — c'est le
-controle qui serait vert des deux cotes du defaut. C'est le NOM qui discrimine.
+La dimension ne suffit pas a le detecter : ``all-MiniLM-L6-v2``, l'ancien
+modele anglais, produit lui aussi des vecteurs de 384 dimensions, et ChromaDB
+les accepte. C'est le nom du modele qui discrimine.
 
-Le chemin reel de la derive n'est pas le code mais l'environnement.
+La derive vient en pratique de l'environnement, pas du code.
 ``DoclingSettings`` derive de ``BaseSettings`` : ``EMBEDDING_MODEL_NAME`` ecrase
-le defaut du code. Un ``.env`` reste a ``all-MiniLM-L6-v2`` a survecu ici a
-toute la reingestion multilingue sans qu'aucun commit ne puisse le corriger,
-puisque ce fichier n'est pas versionne. Un garde-fou qui ne couvrirait que la
-mutation du code manquerait donc exactement la panne qui s'est produite.
-
-D'ou deux verifications, toutes deux posees du cote qui PRODUIT les vecteurs,
-et non sur le fichier de configuration qui les decrit :
+le defaut du code, et le ``.env`` n'est pas versionne. Les verifications
+portent donc sur le modele reellement demande et charge, pas sur la
+configuration :
 
 - :func:`verify_model_name`, appelee avant le chargement, donc sur tout chemin qui
   mene a un vecteur. Le service l'appelle aussi au demarrage et refuse de
@@ -46,12 +39,11 @@ CONTRACT_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
 
 # Prefixe d'organisation que Hugging Face admet sur le meme modele.
 # « sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 » et le nom nu
-# designent le meme artefact : refuser le premier serait un faux positif, et un
-# garde-fou qui cure-dent finit desactive.
+# designent le meme artefact : refuser le premier serait un faux positif.
 HF_ORG_PREFIX = "sentence-transformers/"
 
 # Dimension de sortie du modele du contrat. all-MiniLM-L6-v2 rend exactement la
-# meme : ce nombre ne sert donc PAS a distinguer les deux modeles, seulement a
+# meme : ce nombre ne sert donc pas a distinguer les deux modeles, seulement a
 # detecter un artefact qui ne serait pas celui qu'il annonce.
 CONTRACT_DIMENSION = 384
 
@@ -94,17 +86,17 @@ def verify_model_name(nom: str) -> None:
 
 
 def index_model_gap(modele_courant: str, modele_enregistre: str | None) -> str | None:
-    """Compare le modele courant a celui qui a REELLEMENT produit l'index.
+    """Compare le modele courant a celui qui a reellement produit l'index.
 
-    :func:`verify_model_name` garde le chargement ; elle ne dit rien de ce qui a
-    ete ecrit hier. Un ``.env`` change entre deux ingestions laisse une
+    :func:`verify_model_name` controle le chargement ; elle ne dit rien de ce
+    qui a deja ete ecrit. Un ``.env`` change entre deux ingestions laisse une
     collection qui porte des vecteurs de **deux** modeles, tous deux en 384
     dimensions : ChromaDB accepte, aucune sonde ne voit rien, et la recherche
-    rend des passages plausibles et faux. C'est l'exigence 1 du contrat, et rien
-    ne la verifiait apres coup.
+    rend des passages plausibles et faux. Cette fonction verifie apres coup
+    l'exigence 1 du contrat.
 
     Rend un message plutot que de lever : ce controle sert un rapport qui
-    enumere TOUTES ses anomalies avant de sortir en erreur, et lever ici
+    enumere toutes ses anomalies avant de sortir en erreur, et lever ici
     masquerait celles qui suivent.
 
     Args:

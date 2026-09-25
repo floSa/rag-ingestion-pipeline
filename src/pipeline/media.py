@@ -35,11 +35,9 @@ class ExportateurDImages:
     Compatible avec le protocole ``ImageExporter`` de ``cleaning`` :
     l'instance est appelable avec (payload, mime, index).
 
-    **CETTE CLASSE NE CONSTRUIT PLUS SON CLIENT ELLE-MEME.** Elle en batissait
-    un second, avec son propre ``secure=`` et son propre appel au SDK : deux
-    sites pour la meme decision. `images.build_client` est desormais le seul
-    site de construction du depot, et c'est aussi ce qui garde ce module libre
-    de toute mention du SDK — son type arrive par `ClientS3`.
+    Le client S3 est construit par `images.build_client`, seul endroit du depot
+    ou il l'est (reglage ``secure=`` compris). Ce module ne mentionne donc pas
+    la bibliotheque cliente : son type arrive par `ClientS3`.
     """
 
     def __init__(self, doc_key: str) -> None:
@@ -74,9 +72,7 @@ class ExportateurDImages:
             print(f"Export d'image vers le stockage objet echoue ({object_name}): {exc}")
             return None
         self.exported += 1
-        # La forme de l'adresse a UN seul site, `images.object_url`, qui dit
-        # aussi ce qu'elle est : interne, authentifiee, et destinee a l'agent
-        # comme proxy (registre 4.25). Elle etait reconstruite ici a l'identique
-        # par une seconde f-string — deux sites pour la forme que le contrat
-        # publie, donc deux facons de deriver.
+        # La forme de l'adresse est definie en un seul endroit,
+        # `images.object_url`, qui documente aussi sa nature : interne,
+        # authentifiee, destinee a l'agent qui sert de proxy (registre 4.25).
         return object_url(object_name)

@@ -13,7 +13,7 @@ Trois signaux, essayes dans cet ordre, du plus fiable au plus indirect :
    d'apres les dieses : 1 pour ``##``, 2 pour ``###``.
 3. **La taille de police.** Sur les PDF, Docling ne declare aucun parent et
    met tous les titres au meme niveau. La taille, elle, est ecrite en clair
-   dans le fichier. On classe les tailles **du document courant**, sans
+   dans le fichier. Les tailles sont classees **dans le document courant**, sans
    aucune valeur en dur : un ouvrage compose en 24/22/20 points se segmente
    exactement comme un ouvrage en 20/18/16.
 
@@ -25,8 +25,8 @@ Deux garde-fous sur le troisieme signal, qui est le seul indirect :
   niveau. Sans cela, un faux titre detecte en pleine page creerait une
   branche parasite.
 
-Quand aucun signal ne repond, tous les titres recoivent le rang 0 et l'on
-retombe sur le comportement anterieur : tout sous le document.
+Quand aucun signal ne repond, tous les titres recoivent le rang 0 et sont
+rattaches au document.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ HEADING_LABELS: frozenset[str] = frozenset({"title", "section_header", "heading"
 def docling_parent_rank(item: Any, document: Any) -> int | None:
     """Rang deduit du parent que Docling declare.
 
-    On remonte la chaine des parents en comptant les titres traverses. Les
+    La chaine des parents est remontee en comptant les titres traverses. Les
     conteneurs anonymes (listes, groupes de mise en page) sont franchis sans
     etre comptes : ils n'ont pas de sens editorial.
 
@@ -152,19 +152,14 @@ def fallback_rank(size_ranks: dict[float, int]) -> int | None:
     """Rang attribue a un titre que le document ne sait pas classer.
 
     Il se range sous le titre courant plutot que d'ouvrir un niveau. Lui donner
-    le rang 0 en ferait un chapitre et remettrait l'arbre a zero : c'est ce que
-    faisait « Then: », faux titre detecte en pleine page.
+    le rang 0 en ferait un chapitre et remettrait l'arbre a zero (exemple :
+    « Then: », faux titre detecte en pleine page).
 
-    Cette fonction existe pour que la DECISION et le COMPTEUR lisent la meme
-    valeur. `mesure` le 31 aout 2026, par le compteur livre, a la source : **39
-    titres sur 87, soit 45 %** recoivent ce rang et non un rang mesure — le PDF
-    ne classe que trois niveaux. Les profondeurs relevees dans le graphe
-    melangent donc trois niveaux mesures et un empilement par defaut, et rien ne
-    le comptait (registre 4.21, site canonique de ce chiffre).
-
-    Le lot 1 annonçait 40 sur 86, en retrouvant les tailles APRES coup. Ce n'est
-    pas « un ecart d'une unite » : 46 mesures + 40 replis d'un cote, 48 + 39 de
-    l'autre — DEUX titres changent de classe, et un titre de plus est vu.
+    La decision et le compteur de replis lisent cette meme fonction. Mesure le
+    31 aout 2026 a la source : 39 titres sur 87 (45 %) recoivent ce rang et non
+    un rang mesure, le PDF ne classant que trois niveaux. Les profondeurs du
+    graphe melangent donc trois niveaux mesures et un empilement par defaut
+    (registre 4.21, site de reference de ce chiffre).
 
     Args:
         size_ranks: Rang de chaque taille de titre du document.

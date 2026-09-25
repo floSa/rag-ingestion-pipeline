@@ -178,8 +178,8 @@ class TestChunkMetadata:
         assert meta.reference_id == "DOC"
 
     def test_positions_are_carried(self):
-        # Regression : page_position et ref_position n'etaient jamais ecrites,
-        # et rag-agent-chat les lisait donc toujours a 0.
+        # Regression : sans ces champs, rag-agent-chat lit page_position et
+        # ref_position a 0.
         meta = ChunkMetadata(
             element_id="abc1234567",
             graph_node_id="abc1234567",
@@ -200,11 +200,10 @@ class TestChunkMetadata:
             "filename",
             "label",
             "page_no",
-            # Le contrat publie l'ADRESSE et la CLE. La premiere s'est appelee
-            # du nom d'un produit, ce qui obligeait a renommer une propriete du
-            # graphe et une metadonnee de chaque chunk le jour ou le produit
-            # changeait ; la seconde est l'identite de l'objet, qui survit au
-            # deplacement du stockage.
+            # Le contrat publie l'adresse et la cle de l'objet. Le nom de
+            # l'adresse est generique (pas celui du logiciel de stockage) ; la
+            # cle est l'identite de l'objet, qui survit a un deplacement du
+            # stockage.
             "media_url",
             "object_key",
             "page_position",

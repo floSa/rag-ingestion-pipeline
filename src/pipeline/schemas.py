@@ -37,23 +37,19 @@ class DocumentElement(BaseModel):
 
     id: str
     label: str
-    # PREMIERE page de l'element : celle ou la lecture commence, et celle dont
+    # Premiere page de l'element : celle ou la lecture commence, et celle dont
     # `compute_id` derive son identifiant.
     page_no: int = 1
-    # DERNIERE page couverte. Egale a `page_no` sauf pour un element que Docling
-    # a fusionne par-dessus une frontiere de page — auquel cas une citation
-    # « page N » couvre en realite N a `page_no_end`. Six pages du PDF du corpus
-    # n'avaient aucun element propre pour cette raison, et rien ne le disait
-    # (registre 4.22).
+    # Derniere page couverte. Egale a `page_no`, sauf pour un element que
+    # Docling a fusionne par-dessus une frontiere de page : une citation
+    # « page N » couvre alors N a `page_no_end`. Six pages du PDF du corpus
+    # n'ont aucun element propre pour cette raison (registre 4.22).
     page_no_end: int = 1
     bbox: BoundingBox | None = None
     text: str = ""
     order: int = 0
-    # Adresse de l'objet visuel, et CLE de ce meme objet. Ce champ a porte le
-    # NOM DU PRODUIT qui stockait les octets, ce qui obligeait a renommer une
-    # propriete du graphe et une metadonnee de tous les chunks le jour ou le
-    # produit changeait. `object_key` est arrive avec ce renommage-la — voir
-    # `ChunkMetadata.object_key`, site du motif.
+    # Adresse de l'objet visuel, et cle de ce meme objet dans le stockage.
+    # Voir `ChunkMetadata.media_url` et `ChunkMetadata.object_key`.
     media_url: str | None = None
     object_key: str | None = None
     content: str | None = None
@@ -100,93 +96,67 @@ class ChunkMetadata(BaseModel):
     # Code ISO 639-1 de la langue du document (``en``, ``fr``...), vide si
     # indeterminee.
     #
-    # **LE MOTIF ECRIT ICI ETAIT UN VESTIGE, ET IL ETAIT FAUX** (registre 6.15).
-    # Il disait « le modele d'embedding actuel n'etant entraine que sur de
-    # l'anglais » : c'etait vrai d'`all-MiniLM-L6-v2`, remplace depuis
-    # `7b72854`. Le modele du contrat est
-    # `paraphrase-multilingual-MiniLM-L12-v2`, MULTILINGUE — une question
-    # francaise retrouve les passages anglais, et reciproquement. Le contrat
-    # met explicitement en garde contre le modele dont ce commentaire portait
-    # encore la trace, et c'est ce fichier qui EST le contrat de reference.
-    #
-    # La cle reste utile, pour deux raisons qui n'ont rien a voir avec celle-la :
-    # l'agent peut FILTRER par langue quand l'utilisateur le demande, et il peut
-    # DIRE a l'utilisateur dans quelle langue est la source qu'il cite.
+    # Le modele d'embedding du contrat, `paraphrase-multilingual-MiniLM-L12-v2`,
+    # est multilingue : une question francaise retrouve les passages anglais, et
+    # reciproquement (registre 6.15). La cle ne sert donc pas a la recherche
+    # vectorielle. Elle permet a l'agent de filtrer par langue sur demande, et
+    # d'indiquer la langue de la source qu'il cite.
     language: str = ""
     label: str = ""
-    # PREMIERE page du chunk. `page_no_end` donne la derniere : un chunk peut
-    # porter du texte de DEUX pages, Docling fusionnant les paragraphes qui
+    # Premiere page du chunk. `page_no_end` donne la derniere : un chunk peut
+    # porter du texte de deux pages, car Docling fusionne les paragraphes qui
     # enjambent une frontiere de page. Citer « page N » seule est donc inexact
-    # des que les deux diffèrent (registre 4.22).
+    # des que les deux different (registre 4.22).
     page_no: int = 0
     page_no_end: int = 0
-    # Adresse de l'objet visuel — INTERNE et AUTHENTIFIEE, jamais publique. Un
-    # `GET` anonyme y rend **403**, y compris depuis un conteneur du reseau
-    # `rag_network` (`mesure`), et l'hote est un nom de service Docker qui ne
-    # resout pas au-dehors. L'agent est le PROXY : il lit l'objet avec ses
-    # identifiants S3 — son propre jeu, en lecture seule — et le re-sert. Il ne
-    # passe jamais cette adresse a un navigateur. Registre 4.25, et
-    # `images.object_url` en est le seul site.
+    # Adresse de l'objet visuel : interne et authentifiee, jamais publique. Un
+    # `GET` anonyme y rend 403, y compris depuis un conteneur du reseau
+    # `rag_network` (mesure), et l'hote est un nom de service Docker qui ne se
+    # resout pas hors de ce reseau. L'agent sert de proxy : il lit l'objet avec
+    # ses propres identifiants S3, en lecture seule, et le re-sert ; il ne passe
+    # jamais cette adresse a un navigateur (registre 4.25). La forme de
+    # l'adresse est construite en un seul endroit, `images.object_url`.
     #
-    # **CE CHAMP A PORTE LE NOM D'UN PRODUIT, ET C'ETAIT LE DEFAUT DE FOND.**
-    # Un contrat public nommait le logiciel qui stockait les octets. Le
-    # 25 septembre 2026 ce logiciel a change, et le nom a rendu faux tout ce
-    # qu'il touchait :
-    # une propriete du graphe, une metadonnee sur chaque chunk, et le vocabulaire
-    # de l'agent. Un contrat nomme ce qu'il publie — une adresse de media — et
-    # non le logiciel qui la sert. C'est ce que `media_url` dit.
+    # Le nom du champ est generique : un contrat nomme ce qu'il publie (une
+    # adresse de media), pas le logiciel de stockage qui la sert. Un changement
+    # de logiciel ne renomme donc ni ce champ, ni la propriete du graphe.
     media_url: str = ""
-    # **LA CLE NUE DE L'OBJET, ET ELLE EST ARRIVEE PAR LA MEME PORTE.**
-    # `media_url` porte l'hote, donc elle PERIME : la bascule a change l'hote de
-    # 212 objets d'un coup. Un consommateur qui veut atteindre l'objet — le
-    # relire, le compter, le rapprocher d'un listing — devait jusqu'ici defaire
-    # l'adresse lui-meme, chacun a sa facon. La cle, elle, est l'identite de
-    # l'objet et survit au deplacement du stockage.
+    # Cle nue de l'objet dans le stockage. `media_url` contient l'hote, qui
+    # change quand le stockage est deplace (212 objets lors du passage a
+    # SeaweedFS) ; la cle, elle, reste l'identite de l'objet. Elle evite a
+    # chaque consommateur (relecture, comptage, rapprochement avec un listing)
+    # de decomposer l'adresse a sa facon.
     #
-    # C'est EXACTEMENT ce qui a ete passe a `put_object`, sans reencodage :
-    # `images.object_key` est l'inverse exact de `images.object_url`, et son
-    # docstring dit pourquoi un `unquote` y serait un defaut.
+    # C'est exactement la cle passee a `put_object`, sans reencodage :
+    # `images.object_key` est l'inverse exact de `images.object_url`, et sa
+    # docstring explique pourquoi un `unquote` y serait une erreur.
     object_key: str = ""
     reference_id: str = "DOC"
-    # Profondeur dans la hierarchie des titres. C'est le nombre d'aretes
-    # ``PARENT_OF`` qui separent l'element de la racine de son document, et
-    # DEUX ECHELLES S'Y CROISENT — a lire avant de s'en servir :
+    # Profondeur dans la hierarchie des titres : le nombre d'aretes
+    # ``PARENT_OF`` entre l'element et la racine de son document. Elle n'est
+    # pas plafonnee. Deux echelles s'y croisent :
     #
-    # - sur un TITRE, 0 designe un titre rattache au document, 1 un titre
-    #   rattache a celui-la, et ainsi de suite sans plafond ;
-    # - sur tout AUTRE element, la valeur est celle de son titre + 1. Un
+    # - sur un titre, 0 designe un titre rattache au document, 1 un titre
+    #   rattache a celui-la, et ainsi de suite ;
+    # - sur tout autre element, la valeur est celle de son titre + 1. Un
     #   element rattache a un titre de premier niveau vaut donc 1, comme un
-    #   sous-titre. La valeur seule ne dit pas laquelle des deux echelles on
-    #   lit : c'est ``label`` qui le dit.
+    #   sous-titre. C'est ``label`` qui indique l'echelle.
     #
-    # Et ``depth`` ne decrit JAMAIS un titre par cette voie : aucun
-    # ``section_header`` n'est jamais un chunk (registre 4.24, mesure). Le
-    # niveau d'un titre se lit sur le sommet du graphe, ou se compte sur la
-    # chaine ``PARENT_OF`` — le seul signal exact.
+    # En pratique, ``depth`` ne decrit jamais un titre ici : aucun
+    # ``section_header`` n'est un chunk (registre 4.24, mesure). Le niveau d'un
+    # titre se lit sur le sommet du graphe, ou se compte sur la chaine
+    # ``PARENT_OF``.
     #
-    # ── SITE CANONIQUE DE LA DISTRIBUTION, ET IL EN FALLAIT UN ───────────────
-    # `mesure` le 2 septembre 2026 sur l'index vivant
-    # (`collection.get(include=["metadatas"])`, distribution de `depth`) :
+    # Distribution de reference (ce commentaire est le seul endroit ou elle est
+    # ecrite ; la documentation y renvoie). Mesure du 2 septembre 2026 sur
+    # l'index vivant (`collection.get(include=["metadatas"])`) :
     #
     #     {1: 912, 2: 1993, 3: 1164, 4: 256, 5: 40}   maximum 5
     #
-    # Soit 296 chunks sur 4 365 — 6,8 % — AU-DELA DE 3. Ce chiffre decide, parce
-    # que QUATRE documents annoncaient encore « la profondeur est plafonnee a
-    # 3 » : `README.md`, `documentation/graphe_connaissances.md`,
-    # `documentation/extraction_donnees.md` (dans un TITRE de section) et
-    # `documentation/CHANGEMENTS.md`. Le lot 3 a retire `MAX_DEPTH` et corrige
-    # `schemas.py`, `services/nebulagraph.md` et `llm_integration_plan.md` ;
-    # perimetre strict, il a laisse les quatre autres. Ils renvoient ici
-    # desormais, et ce commentaire est le seul endroit ou la distribution est
-    # ecrite.
-    #
-    # Le motif ecrit du plafond — « au-dela, un RAG n'y gagne rien : l'objectif
-    # est de reconstruire un bloc avec ses titres parents, pas de reproduire une
-    # arborescence complete » — decrivait une limitation de l'ARBRE QUI N'A
-    # JAMAIS EXISTE : `parent_id` n'a jamais ete plafonne, donc les aretes du
-    # graphe etaient les memes avec ou sans lui. Son seul effet mesurable etait
-    # de rendre `depth` NON INJECTIF : la valeur 4 recouvrait les profondeurs
-    # reelles 4 ET 5, et c'est exactement ce que les 40 chunks a 5 montrent.
+    # Soit 296 chunks sur 4 365 (6,8 %) au-dela de 3. Plafonner les titres a 3
+    # rendrait `depth` non injectif : la valeur 4 recouvrirait les profondeurs
+    # reelles 4 et 5, sans rien changer aux aretes du graphe (`parent_id`
+    # n'est pas plafonne).
     depth: int = 0
     section_title: str = ""
     page_position: int = 0

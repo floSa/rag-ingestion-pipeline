@@ -1,15 +1,10 @@
 """Le controle avant-vol ne doit rien faire tant qu'on ne l'appelle pas.
 
-``verify_data`` n'avait pas de ``main`` : ouvrir une connexion ChromaDB, lister
-un bucket du stockage objet et interroger NebulaGraph etaient des instructions
-de niveau
-module. Un simple ``import`` declenchait les trois controles et pouvait appeler
-``sys.exit(1)`` — et rien n'etait testable, puisqu'un test qui importe le module
-aurait exige les trois stores debout (registre 4.5).
+Importer ``verify_data`` ne doit ouvrir aucune connexion ni appeler
+``sys.exit`` : les controles vivent dans ``main`` (registre 4.5).
 
-La verification passe par un SOUS-PROCESSUS : un import de plus dans
-l'interpreteur courant ne rejouerait pas le module deja charge, donc le test
-serait vert des deux cotes du defaut.
+La verification passe par un sous-processus : un second import dans
+l'interpreteur courant ne reexecuterait pas un module deja charge.
 """
 
 from __future__ import annotations
@@ -24,10 +19,10 @@ from src.verify_data import report
 RACINE = Path(__file__).resolve().parents[2]
 
 # Bouchons des trois clients de stores, ecrits sur disque et places en tete de
-# PYTHONPATH. Le meme montage que `test_wipe_stores.py`, et pour les memes deux
-# raisons : `chromadb` et `nebula3` ne sont pas dans le venv du depot, et
-# bouchonner `sys.modules` dans l'interpreteur courant laisserait les bouchons
-# derriere soi — l'ordre des tests deviendrait significatif.
+# PYTHONPATH. Meme montage que `test_wipe_stores.py`, pour les memes raisons :
+# `chromadb` et `nebula3` ne sont pas dans le venv du depot, et bouchonner
+# `sys.modules` dans l'interpreteur courant laisserait les bouchons en place pour
+# les tests suivants.
 #
 # `VD_ECHECS` nomme les stores qui doivent tomber en panne.
 _COMMUN = """
@@ -57,9 +52,8 @@ class HttpClient:
     def get_collection(self, nom):
         return _Collection()
 """,
-    # Le bouchon porte le nom du PAQUET, `minio` : c'est la bibliotheque
-    # cliente S3, qui reste. La cle d'echec, elle, nomme le STORE — c'est de lui
-    # que parle le reste de ce fichier.
+    # Le bouchon porte le nom du paquet, `minio` (la bibliotheque cliente S3).
+    # La cle d'echec nomme le store, comme dans le reste de ce fichier.
     "minio/__init__.py": """
 from _bouchon_vd import doit_echouer
 
@@ -135,9 +129,9 @@ def _controler(tmp_path: Path, echecs: str = "", reglages: dict[str, str] | None
         echecs: Stores qui doivent echouer, separes par des virgules, parmi
             `chroma`, `stockage`, `nebula` et `nebula_requete`.
         reglages: Variables d'environnement a poser pour le sous-processus.
-            `NEBULA_USER` et `NEBULA_PASSWORD` sont d'abord RETIRES de
-            l'environnement herite : sans ce retrait, un poste qui les declare
-            rendrait le temoin des defauts vert ou rouge selon la machine.
+            `NEBULA_USER` et `NEBULA_PASSWORD` sont d'abord retires de
+            l'environnement herite, pour que le test des valeurs par defaut ne
+            depende pas de la machine.
 
     Returns:
         Le processus termine.
@@ -181,7 +175,7 @@ class TestLImportNeFaitRien:
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
 
     def test_importing_the_module_prints_nothing(self):
-        """Le module affichait « --- ChromaDB --- » a l'import."""
+        """L'import n'affiche rien (en particulier pas « --- ChromaDB --- »)."""
         acheve = subprocess.run(
             [sys.executable, "-c", "import src.verify_data"],
             cwd=RACINE,
@@ -192,11 +186,10 @@ class TestLImportNeFaitRien:
 
 
 class TestReport:
-    """Les echecs se notent dans une liste PASSEE, et non dans un etat de module.
+    """Les echecs se notent dans une liste passee en argument, pas au niveau module.
 
-    Un etat de module survit a l'appel : deux executions dans un meme processus
-    cumuleraient leurs echecs, et la seconde sortirait en erreur pour ceux de la
-    premiere.
+    Un etat de module cumulerait les echecs de deux executions dans un meme
+    processus, et la seconde sortirait en erreur pour ceux de la premiere.
     """
 
     def test_a_successful_check_notes_nothing(self):
@@ -218,7 +211,7 @@ class TestReport:
 
 
 class TestLesBouchonsFonctionnent:
-    """Sans ceci, « les trois stores repondent » serait vrai pour la mauvaise raison."""
+    """Les controles s'executent reellement contre les bouchons."""
 
     def test_le_sous_processus_a_bien_charge_les_bouchons(self, tmp_path):
         acheve = _controler(tmp_path)
@@ -226,19 +219,17 @@ class TestLesBouchonsFonctionnent:
         assert "--- ChromaDB ---" in acheve.stdout
         assert "--- Stockage objet (" in acheve.stdout
         assert "--- NebulaGraph ---" in acheve.stdout
-        # Les valeurs viennent bien des bouchons, donc les controles ont TOURNE.
+        # Les valeurs viennent des bouchons : les controles ont donc tourne.
         assert "4365" in acheve.stdout
         assert "15196" in acheve.stdout
 
 
 class TestLeControleNommeLeServeurQuIlInterroge:
-    """Ce bloc affichait le nom d'un PRODUIT, ecrit dans le code.
+    """L'en-tete du stockage objet affiche `S3_ENDPOINT`.
 
-    Il l'aurait affiche a l'identique en interrogeant un tout autre serveur : un
-    controle avant-vol qui nomme un serveur qu'il ne joint pas ne rassure sur
-    rien, et il a rassure a tort pendant toute une bascule. Ce qui est affiche
-    est desormais `S3_ENDPOINT`, c'est-a-dire la seule valeur qui designe
-    reellement ce qui est interroge.
+    Un nom de produit ecrit dans le code s'afficherait a l'identique quel que
+    soit le serveur interroge. `S3_ENDPOINT` designe le serveur reellement
+    interroge.
     """
 
     def test_l_adresse_configuree_est_dans_la_sortie(self, tmp_path):
@@ -248,12 +239,11 @@ class TestLeControleNommeLeServeurQuIlInterroge:
         assert "--- Stockage objet (un-autre-stockage:9999) ---" in acheve.stdout
 
     def test_sans_s3_endpoint_le_controle_ne_demarre_pas(self, tmp_path):
-        """LE GARDE DU DEFAUT ABSENT, sur le chemin d'un vrai processus.
+        """Sans `S3_ENDPOINT`, le processus echoue avant d'interroger un store.
 
-        `S3_ENDPOINT` n'a plus de valeur par defaut : sans elle, `get_settings()`
-        leve avant le premier appel a un store. Un controle avant-vol qui
-        repartirait sur une adresse ecrite dans le code dirait « les trois
-        stores repondent » a propos du mauvais.
+        `S3_ENDPOINT` n'a pas de valeur par defaut : `get_settings()` leve
+        avant le premier appel. Une adresse par defaut ferait conclure « les
+        trois stores repondent » sur un serveur non choisi.
         """
         environnement = {"S3_ENDPOINT": ""}
         acheve = _controler(tmp_path, reglages=environnement)
@@ -263,19 +253,19 @@ class TestLeControleNommeLeServeurQuIlInterroge:
 
 
 class TestLesIdentifiantsDuGrapheViennentDesReglages:
-    """Registre 4.3 : les identifiants du graphd etaient ecrits en dur.
+    """Registre 4.3 : les identifiants du graphd viennent de l'environnement.
 
-    Le bouchon `nebula3` imprime ce qu'il recoit, si bien que la propriete est
-    assertee de bout en bout — `python -m src.verify_data` lance pour de bon —
-    et non sur une relecture du fichier.
+    Le bouchon `nebula3` imprime ce qu'il recoit : la propriete est verifiee de
+    bout en bout, en lancant `python -m src.verify_data`, et non en relisant le
+    fichier.
     """
 
     def test_le_env_decide_des_identifiants(self, tmp_path):
         acheve = _controler(
             tmp_path,
-            # `phrase` est la valeur d'essai que le bouchon doit rendre : ce
-            # test existe pour prouver que le sous-processus la lit dans
-            # l'environnement. Aucun store reel n'est joint.
+            # `phrase` est une valeur d'essai : le test verifie que le
+            # sous-processus la lit dans l'environnement. Aucun store reel
+            # n'est joint.
             reglages={
                 "NEBULA_USER": "lecteur",
                 "NEBULA_PASSWORD": "phrase",  # pragma: allowlist secret
@@ -285,11 +275,11 @@ class TestLesIdentifiantsDuGrapheViennentDesReglages:
         assert "IDENTIFIANTS=lecteur/phrase" in acheve.stdout
 
     def test_sans_variables_les_defauts_de_la_pile_valent(self, tmp_path):
-        """LE TEMOIN : les defauts historiques sont conserves.
+        """Sans variables, les valeurs par defaut habituelles sont utilisees.
 
-        Sans lui, exposer les reglages avec de mauvais defauts casserait tout
-        poste dont le `.env` ne les declare pas, et le test ci-dessus resterait
-        vert puisqu'il fournit les deux variables.
+        Le test precedent fournit les deux variables : il ne verrait pas un
+        mauvais defaut, qui casserait tout poste dont le `.env` ne les declare
+        pas.
         """
         acheve = _controler(tmp_path)
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
@@ -297,17 +287,11 @@ class TestLesIdentifiantsDuGrapheViennentDesReglages:
 
 
 class TestLeCodeDeSortieEstLeComportement:
-    """M20 : `sys.exit(1)` de `main()` n'etait asserte NULLE PART.
+    """Mutation M20 : `main()` sort en 1 quand un controle echoue.
 
-    `mesure` : le remplacer par `sys.exit(0)` laissait 639 tests verts. C'est mot
-    pour mot la leçon que le lot 0 a payee sur `wipe_stores` — « un code de sortie
-    documente et justifie n'etait asserte nulle part » — et l'equivalent y est
-    garde par cinq tests depuis `1c002f2`.
-
-    Le code de sortie EST le comportement, pas son temoin : c'est ce qu'un
-    `docker compose exec` remonte et ce qu'un `&&` lit dans une procedure
-    d'avant-vol. Un `import` laisserait attraper `SystemExit` — prouver qu'un
-    objet a ete leve, pas que la commande echoue. D'ou le sous-processus.
+    Le code de sortie est ce qu'un `&&` lit dans une procedure d'avant-vol. Un
+    `import` ne verrait qu'un `SystemExit` leve : d'ou le sous-processus. Ces
+    tests echouent si `sys.exit(1)` devient `sys.exit(0)`.
     """
 
     def test_les_trois_stores_debout_sortent_en_zero(self, tmp_path):
@@ -325,21 +309,21 @@ class TestLeCodeDeSortieEstLeComportement:
         assert acheve.returncode == 1
 
     def test_un_graphd_injoignable_fait_sortir_en_un(self, tmp_path):
-        """Le `pool.init` qui rend False, et non une exception : l'autre branche."""
+        """Un `pool.init` qui rend False, sans lever, sort aussi en 1."""
         acheve = _controler(tmp_path, echecs="nebula")
         assert acheve.returncode == 1
 
     def test_une_requete_ngql_rejetee_fait_sortir_en_un(self, tmp_path):
-        """Les stores repondent, mais le graphe refuse : un cas distinct des trois.
+        """Les stores repondent, mais une requete du graphe echoue : sortie en 1.
 
-        Sans lui, un garde qui n'observerait que les connexions serait vert sur
-        un graphd debout dont le space n'existe pas.
+        Cas d'un graphd debout dont le space n'existe pas : un test limite aux
+        connexions ne le verrait pas.
         """
         acheve = _controler(tmp_path, echecs="nebula_requete")
         assert acheve.returncode == 1
 
     def test_le_bilan_nomme_les_controles_en_echec(self, tmp_path):
-        """Le code de sortie dit QU'il y a un probleme ; le bilan dit lequel."""
+        """Le code de sortie signale un probleme ; le bilan dit lequel."""
         acheve = _controler(tmp_path, echecs="chroma,stockage")
         assert acheve.returncode == 1
         assert "2 controle(s) en echec" in acheve.stdout

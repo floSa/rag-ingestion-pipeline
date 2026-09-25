@@ -1,52 +1,36 @@
 """Verification mecanique du contrat d'interface avec rag-agent-chat.
 
-A lancer depuis le reseau Docker, apres une ingestion :
+A lancer apres une ingestion, dans un conteneur jetable du service
+d'extraction :
 
-    docker compose exec docling-service python -m src.verify_contract
+    docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \\
+      docling-service python -m src.verify_contract
 
 Le contrat vit dans ``src/pipeline/schemas.py`` et dans
 ``documentation/axes_amelioration.md`` §0. Ce script verifie qu'il est tenu dans
-les faits — c'est le genre de derive qui ne se voit autrement qu'a l'usage, dans
-les reponses de l'agent.
+les donnees. Sans lui, une derive ne se verrait qu'a l'usage, dans les reponses
+de l'agent.
 
-**Ce qu'il verifiait, et ce qu'il laissait passer.** Il ne regardait que la
-FORME des identifiants et la presence des ancres. Il rendait donc rc=0 et
-« Contrat respecte » sur un index ou **199 images sur 209 n'avaient pas d'URL**
-(`mesure`, 31 aout 2026), ou rien ne verifiait l'ordre de ``sequence``
-(exigence 4), ni que ``source_path`` etait renseigne (exigence 3), ni quel
-modele avait produit les vecteurs (exigence 1) — la panne la plus couteuse du
-systeme, et la seule parfaitement silencieuse.
+Controles, tous sur la totalite de l'index (aucun echantillon) :
 
-**L'echantillon est SUPPRIME.** Il etait justifie par une phrase
-d'exhaustivite — « une rupture de contrat est systematique », vraie d'un FORMAT
-et fausse d'un ORDRE — puis borne au seul controle « dont le cout croit vraiment
-avec le corpus », la presence des ancres. Cette derniere justification est
-demolie par la mesure : le controle COMPLET des 3 750 identifiants tient en une
-requete nGQL, **0,053 s** — contre 0,008 s pour 400, soit 6,6 fois le cout pour
-9,4 fois la couverture. Un echantillon de 400 sur 3 750 avec `random.seed(0)`
-laissait les MEMES 89 % jamais verifies, execution apres execution. **Tout est
-desormais verifie sur la totalite.**
+- un index vide est une anomalie ;
+- forme de ``element_id``, egalite ``element_id == graph_node_id``, cles de
+  metadonnees attendues ;
+- ``source_path`` renseigne (exigence 3) ;
+- bornes de ``chunk_index`` / ``chunk_count``, et jeux de chunks complets par
+  element (:func:`jeux_de_chunks_incomplets`) ;
+- modele qui a produit les vecteurs (exigence 1) ;
+- dans le graphe : ``sequence`` presente et ordre de lecture tenu (exigence 4),
+  ``depth`` et ``page_no_end`` renseignes, colonnes du tag ``Document``,
+  ``media_url`` et ``object_key`` des sommets visuels, presence de toutes les
+  ancres.
 
-**Cinq trous fermes par la reparation du lot 3**, et le premier est le pire :
+Controler toutes les ancres coute une requete nGQL : 0,053 s pour 3 750
+identifiants, contre 0,008 s pour un echantillon de 400 (`mesure` le 31 aout
+2026). Un echantillon a graine fixe laissait les memes 89 % jamais verifies.
 
-1. **il rendait rc=0 SUR UN INDEX VIDE**, et tous les controles vivent derriere
-   ce garde. Une purge, une ingestion echouee ou un nom de collection errone
-   passaient pour « Contrat respecte » ;
-2. **il LEVAIT au lieu de rapporter quand ``sequence`` est absente.** L'exigence
-   4 est « absente OU non monotone » : la moitie « absente » avortait le rapport
-   sur une `InvalidValueTypeException` ;
-3. **``chunks_incoherents`` ne voyait pas la panne que ce docstring nomme.** Un
-   morceau qui MANQUE est invisible depuis un chunk isole, chaque chunk present
-   satisfaisant ses bornes. Voir :func:`jeux_de_chunks_incomplets` ;
-4. **``depth`` n'etait pas verifie non nul sur les sommets**, alors que le schema
-   migre en place et les donnees non (registre §4.11) ;
-5. **le tag ``Document`` n'etait pas couvert.** ``NebulaWriter._verifier_les_tags``
-   ne recoit que les 11 tags d'element ; les quatre `ALTER TAG Document ADD`
-   restaient `required=False` sans constatation — dont ``source_path``, exigence
-   3 du contrat.
-
-Sort en code d'erreur si une anomalie est detectee, pour un usage en
-pre-deploiement. **Un index vide en est une.**
+Sort en code 1 si une anomalie est detectee, pour un usage en
+pre-deploiement.
 """
 
 from __future__ import annotations
@@ -58,22 +42,14 @@ from typing import Any
 
 FORMAT_ELEMENT_ID = re.compile(r"^[a-f0-9]{10}$")
 
-# LE GESTE QUI DECLENCHE VRAIMENT UNE REINGESTION, ET IL MANQUAIT (registre
-# 4.32.a). Les deux branches d'`anomalie_de_colonne` prescrivaient « reingerer »
-# sans dire par quoi, et le chemin nominal — le capteur de source — en etait
-# incapable : son `run_key` etait deterministe sur le `mtime`, donc deja
-# consomme, donc zero run cree et `skip_reason=None`. Un operateur qui lisait ce
-# message et purgeait gardait des stores VIDES indefiniment, en ayant suivi la
-# consigne a la lettre. Une documentation qui prescrit un chemin mort EST le
-# defaut, pas son symptome.
+# Le geste qui declenche une reingestion (registre 4.32.a). Le capteur de
+# source ne relance pas seul un fichier deja vu : son `run_key` depend du
+# `mtime`, donc une purge suivie d'une attente laisserait les stores vides.
 #
-# La chaine « reingerer: » n'est PAS recopiee d'un autre site : elle est celle
-# que `src/pipeline/factory.py` lit, et `test_verify_contract.py` compare les
-# deux — plus un temoin qui exerce le CAPTEUR sur ce marqueur, sans quoi les
-# deux constantes pourraient deriver ensemble vers une chaine que personne
-# n'honore. Elle est recopiee ici parce que ce module tourne dans le conteneur
-# d'extraction, ou Dagster n'est pas installe : l'importer le rendrait
-# inexecutable la ou il sert.
+# Le prefixe « reingerer: » est celui que lit `src/pipeline/factory.py`. Il est
+# recopie ici parce que ce module tourne dans le conteneur d'extraction, ou
+# Dagster n'est pas installe. `test_verify_contract.py` compare les deux
+# constantes et exerce le capteur sur ce prefixe.
 COMMENT_REINGERER = (
     "La reingestion ne part pas toute seule, elle SE DEMANDE : posez le curseur du "
     "capteur de la source (pdfs_sensor, livres_html_sensor, ...) sur "
@@ -84,81 +60,47 @@ COMMENT_REINGERER = (
     "perdues."
 )
 
-# L'ECHANTILLON D'ANCRES EST SUPPRIME, et c'est une dette tranchee sur une
-# mesure.
-#
-# Il valait 400 sur 3 750 avec `random.seed(0)`, donc LES MEMES 89 % N'ETAIENT
-# JAMAIS VERIFIES, execution apres execution — une graine fixe ne fait pas d'un
-# echantillon une couverture, elle fait d'un angle mort un angle mort STABLE.
-#
-# Sa justification etait « le seul controle dont le cout croit vraiment avec le
-# corpus ». Elle est demolie par la mesure : le controle COMPLET sur les 3 750
-# identifiants tient en UNE requete nGQL, en **0,053 s** — contre 0,008 s pour
-# 400 (`mesure` le 31 aout 2026 sur l'index complet, chronometre autour du seul
-# `session.execute`). Il n'y avait donc rien a echantillonner.
-#
-# Ce qui reste vrai de l'ancienne justification, et qui est ecrit ici pour que
-# personne ne la reintroduise : une ancre absente traduit un desaccord de CALCUL
-# d'identifiant, qui est systematique. C'est exactement pourquoi un echantillon
-# semblait suffire — et c'est une phrase d'exhaustivite : elle est vraie d'un
-# desaccord de formule, fausse d'une perte qui ne touche qu'un document.
+# Les ancres sont toutes verifiees, sans echantillon. Un desaccord de formule
+# d'identifiant serait systematique et se verrait sur un echantillon ; une perte
+# qui ne touche qu'un document, non. Le controle complet coute une requete
+# (0,053 s pour 3 750 identifiants, `mesure` le 31 aout 2026).
 
 
 def inversions_de_page(aretes: Sequence[tuple[str, int, int]]) -> list[tuple[str, int, int, int]]:
     """Verifie l'ordre de lecture porte par ``sequence`` (exigence 4).
 
-    La propriete exigee est : **trie par ``sequence``, ``page_no`` ne decroit
-    jamais**. Ce n'est PAS « aucun parent ne porte deux fois la meme valeur »,
-    qui est l'unicite sous un parent : une numerotation aleatoire distincte par
-    parent la satisferait sans porter aucun ordre (registre 6.16).
+    La propriete exigee est : trie par ``sequence``, ``page_no`` ne decroit
+    jamais. L'unicite de ``sequence`` sous un parent ne suffirait pas : une
+    numerotation aleatoire distincte la satisferait sans porter aucun ordre
+    (registre 6.16).
 
-    **SITE CANONIQUE DES TROIS RESERVES DE LECTURE DE ``sequence``** (registre
-    6.16). Elles dictent la forme de ce controle, et elles disent a un agent ce
-    qu'il ne doit PAS conclure. Leurs chiffres etaient ceux du lot 1, mesures sur
-    **3 documents et 2 285 aretes** et repris au registre sans ce perimetre :
-    remesures ici sur le corpus complet, le 2 septembre 2026, sur le graphe
-    vivant — **15 173 aretes, 763 parents, 23 documents, 0 arete sans
-    ``sequence``**, valeurs de 0 a 1 269.
+    Site de reference des trois reserves de lecture de ``sequence``
+    (registre 6.16). `mesure` le 2 septembre 2026 sur le graphe complet :
+    15 173 aretes, 763 parents, 23 documents, 0 arete sans ``sequence``,
+    valeurs de 0 a 1 269.
 
-    1. **``sequence`` repart a 0 dans chaque document.** Elle n'est donc pas
-       globalement monotone, et tout « avant / apres » doit etre BORNE AU
-       DOCUMENT. `mesure` : **23 aretes portent ``sequence == 0`` pour exactement
-       23 documents**. Sans ce groupement, deux documents entrelaces rendraient
-       des inversions fausses ;
-    2. **elle n'est pas contigue sous un parent, par construction** — c'est un
-       ordre de lecture global, pas un rang sous le parent. `mesure` : **167 des
-       763 parents (21,9 %) portent des ``sequence`` non contigues**, et l'ecart
-       est chaque fois la taille du sous-arbre du frere precedent. Le lot 1
-       mesurait 44 sur 185 ; la proportion tient, le compte est quatre fois plus
-       grand ;
-    3. **le plus grand ecart entre deux ``sequence`` consecutives sous un meme
-       parent vaut 994**, et il faut dire ce que « ecart » veut dire, parce que
-       les deux lectures ne donnent pas le meme nombre : c'est la DIFFERENCE
-       entre les deux valeurs, `1197 - 203 = 994`, soit **993 valeurs
-       intercalaires**. Un controle qui exigerait la contiguite rougirait sur un
+    1. ``sequence`` repart a 0 dans chaque document. Tout « avant / apres » se
+       lit donc a l'interieur d'un document, d'ou le groupement par document.
+       `mesure` : 23 aretes portent ``sequence == 0``, pour 23 documents.
+    2. ``sequence`` n'est pas contigue sous un parent. C'est un ordre de lecture
+       global, pas un rang sous le parent : l'ecart entre deux freres vaut la
+       taille du sous-arbre du frere precedent. `mesure` : 167 parents sur 763
+       (21,9 %) portent des valeurs non contigues.
+    3. Le plus grand ecart entre deux ``sequence`` consecutives sous un meme
+       parent vaut 994 (difference `1197 - 203`, soit 993 valeurs
+       intercalaires). Il se trouve sous la racine d'un chapitre HTML,
+       ``doc_htms/MLOps with Databricks/7. Foundation Models and Context
+       Engineering``. Un controle qui exigerait la contiguite echouerait sur un
        graphe sain.
 
-       **Et ce n'est pas le PDF.** Ce docstring a d'abord ecrit « le trou venant
-       du PDF dont les sous-arbres dominent ». `mesure` le 2 septembre 2026 sur
-       le graphe vivant : l'ecart maximal est sous
-       ``doc_htms/MLOps with Databricks/7. Foundation Models and Context
-       Engineering`` — **un chapitre HTML**, et le parent est la RACINE du
-       document elle-meme, entre ses deux enfants de rang 203 et 1197. Le sous-
-       arbre qui explique le trou est celui du frere precedent, comme le dit la
-       reserve 2 ; il n'a rien de particulier au PDF.
+    Consequences pour un agent : une « fenetre d'elements » calculee comme « les
+    enfants de P dont ``sequence`` est dans [s-k, s+k] » rend moins d'elements
+    que demande ; une ``sequence`` non contigue n'indique pas une perte de
+    donnees.
 
-    **CE QUE CES DEUX DERNIERES INTERDISENT A UN AGENT, et c'est le motif de
-    §6.16.** Un agent qui implemente « la fenetre d'elements » comme « les
-    enfants de P dont ``sequence`` est dans [s-k, s+k] » rendra SILENCIEUSEMENT
-    moins d'elements que demande ; un agent qui lit la contiguite comme un indice
-    d'integrite conclura a une perte de donnees qui n'existe pas.
-
-    **§6.16 RESTE OUVERT, ET CE MODULE NE PEUT PAS LE FERMER.** La moitie qui
-    manque est la documentation de ``rag-agent-chat``, dans l'AUTRE depot : ces
-    reserves decrivent la facon dont l'agent LIT ``sequence``, et rien ici ne
-    peut l'y ecrire. Ce depot les rend trouvables — ici pour les chiffres, et
-    dans ``documentation/llm_integration_plan.md`` pour l'enonce destine a
-    l'agent. Le geste qui reste est de les reporter la-bas.
+    Le registre 6.16 reste ouvert : ces reserves doivent aussi figurer dans la
+    documentation de ``rag-agent-chat``, dans l'autre depot. Ici, l'enonce
+    destine a l'agent est dans ``documentation/llm_integration_plan.md``.
 
     Args:
         aretes: Triplets ``(document, sequence, page_no)``, dans n'importe quel
@@ -186,10 +128,10 @@ def racine_de_chaque_element(peres: Mapping[str, str]) -> dict[str, str]:
     """Rattache chaque element au document d'ou part sa chaine de parents.
 
     ``sequence`` repart a 0 dans chaque document (registre 6.16, reserve 1) :
-    l'ordre ne se verifie donc qu'a l'INTERIEUR d'un document, et il faut savoir
-    lequel. Le graphe est un arbre par document — 0 sommet a deux parents,
-    acyclique, une racine ``Document`` par document (`mesure` par l'audit du
-    lot 1) — donc remonter les parents suffit.
+    l'ordre ne se verifie qu'a l'interieur d'un document, et il faut savoir
+    lequel. Le graphe est un arbre par document (aucun sommet a deux parents,
+    acyclique, une racine ``Document`` par document) : remonter les parents
+    suffit.
 
     Args:
         peres: Le parent de chaque element, tel que le rendent les aretes.
@@ -219,18 +161,12 @@ def rattacher_au_document(
 ) -> list[tuple[str, int, int]]:
     """Remplace l'extremite fille de chaque arete par le document qui la porte.
 
-    C'EST LA COMPOSITION, ET C'EST ELLE QUI PORTE LE DEFAUT. Prise seule,
-    :func:`racine_de_chaque_element` a l'air d'une commodite ; c'est en la
-    composant avec :func:`inversions_de_page` qu'on voit ce qu'elle garde.
-    Neutraliser sa remontee rend chaque element a lui-meme, donc chaque
-    « document » du groupement ne porte plus qu'UNE arete, donc plus aucune
-    inversion n'est possible : **le seul controle d'ordre du contrat (exigence 4)
-    devient inerte, en rendant zero anomalie.** `mesure` : sur un graphe portant
-    une vraie inversion, le code livre rapporte ``[('doc', 2, 9, 2)]`` et la
-    mutation rapporte ``[]``.
-
-    Cette fonction existe donc pour que la composition soit testable sans graphd,
-    et non pour factoriser une ligne.
+    Cette fonction existe pour tester sans graphd la composition de
+    :func:`racine_de_chaque_element` et :func:`inversions_de_page`. Sans la
+    remontee, chaque element serait son propre « document », chaque groupe ne
+    porterait qu'une arete, et :func:`inversions_de_page` ne pourrait plus
+    trouver aucune inversion : le controle d'ordre (exigence 4) rendrait zero
+    anomalie sur un graphe fautif.
 
     Args:
         peres: Le parent de chaque element, tel que le rendent les aretes.
@@ -262,9 +198,9 @@ def sources_sans_chemin(metadatas: Sequence[Mapping[str, Any]]) -> int:
 def chunks_incoherents(metadatas: Sequence[Mapping[str, Any]]) -> list[tuple[int, int]]:
     """Releve les couples ``chunk_index`` / ``chunk_count`` impossibles.
 
-    Controle de FORME, borne a ce qu'un couple dit de lui-meme. La panne que le
-    docstring de ce module nomme — un morceau qui manque — ne se voit pas ici :
-    voir :func:`jeux_de_chunks_incomplets`, qui regarde l'element entier.
+    Controle de forme, limite a ce qu'un couple dit de lui-meme. Un morceau
+    manquant ne se voit pas ici : voir :func:`jeux_de_chunks_incomplets`, qui
+    regarde l'element entier.
 
     Args:
         metadatas: Metadonnees des chunks.
@@ -286,25 +222,22 @@ def jeux_de_chunks_incomplets(
 ) -> list[tuple[str, int, list[int]]]:
     """Releve les elements dont le jeu ``{chunk_index}`` n'est pas complet.
 
-    LE CONTROLE DE BORNES NE VOIT PAS LA PANNE QUE CE MODULE ANNONCE, et c'est
-    mesure. L'agent reconstitue un element decoupe en concatenant ses chunks dans
-    l'ordre de ``chunk_index`` ; ce qui le casse est un morceau qui MANQUE, pas
-    un index hors bornes. Or chaque chunk PRESENT satisfait ``0 <= index <
-    count`` meme quand un de ses freres a disparu : le trou est invisible depuis
-    un chunk isole, il ne se voit qu'en regardant l'element entier.
+    L'agent reconstitue un element decoupe en concatenant ses chunks dans
+    l'ordre de ``chunk_index``. Un morceau manquant casse cette reconstitution,
+    mais chaque chunk present satisfait encore ``0 <= index < count`` : le trou
+    ne se voit qu'en regardant l'element entier.
 
-    `mesure` le 31 aout 2026 sur l'index complet — 4 365 chunks, 3 750 elements,
-    produit par le code du lot 3 : ``chunks_incoherents`` rend **0 chunk
-    fautif**, et **2 elements** ont un jeu troue —
+    `mesure` le 31 aout 2026 sur l'index complet (4 365 chunks, 3 750
+    elements) : ``chunks_incoherents`` rendait 0 chunk fautif, et 2 elements
+    avaient un jeu troue.
 
         element_id=aa3de10738  chunk_count=7  presents=[0,1,2,3,5,6]  manque 4
         element_id=eb52c4ec8f  chunk_count=4  presents=[0,1,2]        manque 3
 
-    La CAUSE n'est pas ici : ``anchoring.resolve_anchors`` fixe ``chunk_count``
-    AVANT que ``vectors.build_chunks`` ne jette les chunks echouant ``has_content``
-    ou plus courts que ``min_chunk_chars``. Le compte annonce est donc celui
-    d'avant le filtrage. C'est une perte de texte silencieuse, elle est consignee
-    au registre pour le lot 4, et ce controle ne fait que la rendre bruyante.
+    Cause constatee alors : ``anchoring.resolve_anchors`` fixait
+    ``chunk_count`` avant que ``vectors.build_chunks`` ne retire les chunks sans
+    contenu ou plus courts que ``min_chunk_chars``. Ce controle signale la
+    perte ; il ne la repare pas.
 
     Args:
         metadatas: Metadonnees des chunks, tout l'index.
@@ -331,15 +264,12 @@ def jeux_de_chunks_incomplets(
 def sommets_sans_profondeur(profondeurs: Sequence[int | None]) -> int:
     """Compte les sommets dont ``depth`` n'est pas renseigne.
 
-    C'est la charge utile du §4.11 : ``depth`` a ete ajoute au schema pour que
-    l'agent puisse lire le niveau d'un titre, aucun ``section_header`` n'etant
-    jamais un chunk (§4.24). Or **le schema migre en place et les donnees non** :
-    un `ALTER TAG ... ADD` laisse a NULL tous les sommets deja ecrits, et seule
-    une reingestion les renseigne.
-
-    Un index a moitie migre est donc parfaitement possible, et rien ne le
-    signalait : l'agent lirait `depth` sur les sommets recents et `NULL` sur les
-    anciens, sans qu'aucune erreur ne distingue « profondeur 0 » de « profondeur
+    ``depth`` permet a l'agent de lire le niveau d'un titre, aucun
+    ``section_header`` n'etant un chunk (registre 4.11, 4.24). Le schema migre
+    en place, les donnees non : un `ALTER TAG ... ADD` laisse a NULL les
+    sommets deja ecrits, et seule une reingestion les renseigne. Sans ce
+    compte, un index a moitie migre ne se distinguerait pas d'un index complet,
+    et l'agent ne pourrait pas separer « profondeur 0 » de « profondeur
     inconnue ».
 
     Args:
@@ -355,13 +285,10 @@ def sommets_sans_profondeur(profondeurs: Sequence[int | None]) -> int:
 def images_sans_url(urls: Sequence[str | None]) -> int:
     """Compte les sommets visuels qui ne portent aucune URL d'objet.
 
-    ``RESTRICT_MEDIA_TO_GRAPH`` etant actif cote agent, il ne sert que ce que le
-    graphe reference : une image sans URL est televersee, payee en place et en
-    temps, et reste **inatteignable**. C'est ce que l'ancien controle laissait
-    passer au vert.
-
-    La REPARATION de la chaine d'images n'est pas ici — c'est une perte de
-    donnees, registre 3.5. Ce compteur la rend seulement bruyante.
+    ``RESTRICT_MEDIA_TO_GRAPH`` etant actif cote agent, l'agent ne sert que ce
+    que le graphe reference : une image televersee sans URL dans le graphe
+    reste inatteignable. Ce compteur signale la perte (registre 3.5) ; il ne
+    la repare pas.
 
     Args:
         urls: Valeurs d'une colonne de media — ``media_url`` ou ``object_key``
@@ -391,12 +318,9 @@ def main() -> None:
     chunk_ids = result["ids"]
 
     if not metadatas:
-        # UN INDEX VIDE N'EST PAS UN INDEX CONFORME, et ce garde rendait rc=0.
-        # Tous les controles de ce module vivent derriere lui : une purge, une
-        # ingestion echouee ou un nom de collection errone passaient donc pour
-        # « Contrat respecte » dans un outil dont le docstring dit « pour un
-        # usage en pre-deploiement ». Le defaut preexistait sur `main:52-54`,
-        # mais sa portee s'est elargie a tout ce que le lot 3 a ajoute.
+        # Un index vide n'est pas conforme : une purge, une ingestion en echec
+        # ou un nom de collection errone ne doivent pas passer pour « Contrat
+        # respecte ».
         print(f"chunks examines                : 0 dans la collection {COLLECTION_NAME}")
         print()
         print(
@@ -443,8 +367,8 @@ def main() -> None:
     if incoherents:
         anomalies.append(f"chunk_index incoherents (ex. {incoherents[:3]})")
 
-    # Le controle de bornes ci-dessus ne voit PAS un morceau qui manque : chaque
-    # chunk present satisfait ses bornes meme quand un de ses freres a disparu.
+    # Le controle de bornes ci-dessus ne voit pas un morceau manquant : chaque
+    # chunk present satisfait ses bornes meme quand un frere a disparu.
     troues = jeux_de_chunks_incomplets(metadatas)
     print(f"elements au jeu de chunks troue: {len(troues)}")
     if troues:
@@ -454,7 +378,7 @@ def main() -> None:
             "texte troue sans erreur. Cause au registre, lot 4"
         )
 
-    # Exigence 1 : le modele qui a REELLEMENT produit les vecteurs.
+    # Exigence 1 : le modele qui a produit les vecteurs.
     ecart = index_model_gap(settings.embedding_model_name, _modele_enregistre(collection))
     print(f"modele des vecteurs            : {_modele_enregistre(collection) or 'NON TRACE'}")
     if ecart:
@@ -481,7 +405,7 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
     """Controle les proprietes que seul le graphe porte.
 
     Args:
-        metadatas: Metadonnees des chunks, pour l'echantillon d'ancres.
+        metadatas: Metadonnees des chunks, pour le controle des ancres.
 
     Returns:
         Les anomalies constatees.
@@ -503,14 +427,14 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
     try:
         session.execute(f"USE {SPACE};")
 
-        # L'ordre de lecture, sur la TOTALITE des aretes : une inversion peut
-        # n'affecter qu'un document sur vingt, et un echantillon la manquerait.
+        # L'ordre de lecture, sur toutes les aretes : une inversion peut ne
+        # toucher qu'un document sur vingt, et un echantillon la manquerait.
         aretes, sans_sequence = _lire_les_aretes(session)
         print(f"aretes PARENT_OF examinees     : {len(aretes) + len(sans_sequence)}")
         if not aretes and not sans_sequence:
             anomalies.append("aucune arete PARENT_OF : le graphe n'a pas de hierarchie")
-        # L'exigence 4 est « sequence ABSENTE ou non monotone ». Les deux moities
-        # se rapportent ; ce module levait sur la premiere.
+        # L'exigence 4 est « sequence absente ou non monotone » : les deux cas
+        # sont rapportes.
         print(f"aretes sans sequence           : {len(sans_sequence)}")
         if sans_sequence:
             anomalies.append(
@@ -522,7 +446,7 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
         if inversions:
             anomalies.append(f"sequence non monotone (ex. {inversions[:3]})")
 
-        # La charge utile du §4.11 : le schema migre en place, les DONNEES non.
+        # Registre 4.11 : le schema migre en place, les donnees non.
         profondeurs = _lire_les_profondeurs(session)
         sans_depth = sommets_sans_profondeur(profondeurs)
         print(f"sommets sans depth             : {sans_depth}/{len(profondeurs)}")
@@ -534,18 +458,11 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
                 "de « profondeur inconnue »"
             )
 
-        # LE MEME CONTROLE POUR `page_no_end`, ET POUR LA MEME RAISON. La colonne
-        # est ajoutee par le lot 4 (registre 4.22) : le schema migre en place, les
-        # DONNEES non, donc un index ecrit avant ce lot porte NULL partout. Sans
-        # ce compteur, l'agent lirait une page de fin sur les sommets recents et
-        # NULL sur les anciens, et rien ne distinguerait « cet element tient sur
-        # une page » de « on ne sait pas ou il finit ». C'est mot pour mot le
-        # quatrieme des cinq trous que l'audit du lot 3 a trouves, sur la colonne
-        # que ce lot-ci ajoute : ne pas l'ecrire aurait ete refaire le defaut
-        # dans le geste qui le connait.
-        # LE DESCRIBE VIENT AVANT LE COMPTAGE, et c'est tout le point : compter
-        # des NULL ne dit pas si la colonne existe, et les deux etats demandent
-        # des gestes differents (registre 4.29.e).
+        # Meme controle pour `page_no_end` (registre 4.22), et pour la meme
+        # raison : un index ecrit avant l'ajout de la colonne porte NULL
+        # partout. Le DESCRIBE precede le comptage : des NULL ne disent pas si
+        # la colonne existe, et les deux etats demandent des gestes differents
+        # (registre 4.29.e).
         tags_sans_fin = _lire_les_tags_sans_la_colonne(session, "page_no_end")
         fins = _lire_un_entier_sur_les_sommets(session, "page_no_end")
         sans_fin = sommets_sans_profondeur(fins)
@@ -564,14 +481,11 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
 
         anomalies.extend(_verifier_le_tag_document(session))
 
-        # LES DEUX COLONNES DE MEDIA, ET NON PLUS LA SEULE ADRESSE. Le contrat
-        # publie `media_url` ET `object_key` : une adresse sans cle est un
-        # element a demi renseigne, que rien ne rattrape sans reingestion. Les
-        # deux comptes sont separes parce qu'ils accusent des choses
-        # differentes — une adresse manquante vient de la chaine d'images
-        # (registre 3.5), une cle manquante d'un sommet ecrit AVANT l'arrivee
-        # de la colonne, donc d'une purge ou d'une reingestion qui n'a pas eu
-        # lieu.
+        # Le contrat publie `media_url` et `object_key`. Les deux comptes sont
+        # separes parce qu'ils ont des causes differentes : une adresse
+        # manquante vient de la chaine d'images (registre 3.5) ; une cle
+        # manquante vient d'un sommet ecrit avant l'ajout de la colonne, donc
+        # d'une reingestion qui n'a pas eu lieu.
         urls, cles = _lire_les_medias_visuels(session)
         sans_url = images_sans_url(urls)
         print(f"sommets visuels sans media_url : {sans_url}/{len(urls)}")
@@ -607,7 +521,7 @@ def _lire(session: Any, requete: str) -> list[Any]:
 
 
 def _lire_les_aretes(session: Any) -> tuple[list[tuple[str, int, int]], list[str]]:
-    """Lit TOUTES les aretes PARENT_OF, avec leur sequence et leur page.
+    """Lit toutes les aretes PARENT_OF, avec leur sequence et leur page.
 
     Une seule requete pour tout le graphe, puis le rattachement au document se
     calcule en memoire par :func:`racine_de_chaque_element` : une requete de
@@ -615,8 +529,7 @@ def _lire_les_aretes(session: Any) -> tuple[list[tuple[str, int, int]], list[str
 
     Returns:
         Les aretes rattachees a leur document, et la liste des extremites dont
-        ``sequence`` est ABSENTE — la moitie de l'exigence 4 sur laquelle ce
-        module levait au lieu de rapporter.
+        ``sequence`` est absente (premier cas de l'exigence 4).
     """
     peres: dict[str, str] = {}
     brut: list[tuple[str, int, int]] = []
@@ -628,12 +541,8 @@ def _lire_les_aretes(session: Any) -> tuple[list[tuple[str, int, int]], list[str
     ):
         pere, fils = ligne[0].as_string(), ligne[1].as_string()
         peres[fils] = pere
-        # `seq` N'AVAIT PAS DE GARDE `is_null()`, alors que `page` en avait un a
-        # la ligne suivante. L'exigence 4 est « sequence ABSENTE ou non
-        # monotone » : sur la moitie « absente », `as_int()` levait
-        # `InvalidValueTypeException` (`mesure` sur un space jetable) et le
-        # rapport AVORTAIT sur une trace Python — au lieu de rapporter
-        # precisement le defaut qu'il existe pour trouver.
+        # Sur une valeur NULL, `as_int()` leve `InvalidValueTypeException` :
+        # une `sequence` absente est donc testee avant, et rapportee.
         if ligne[2].is_null():
             sans_sequence.append(fils)
             continue
@@ -646,13 +555,12 @@ def _lire_les_aretes(session: Any) -> tuple[list[tuple[str, int, int]], list[str
 def _lire_les_profondeurs(session: Any) -> list[int | None]:
     """Lit ``depth`` sur tous les sommets d'element.
 
-    Le filtrage se fait EN PYTHON et non par un `WHERE` nGQL, et c'est un piege
-    de mesure a connaitre : sur `rag_space`, un
-    ``MATCH (v:Tag) WHERE v.Tag.<prop> == ...`` rend **`IndexNotFound`** sur un
-    tag qui ne porte AUCUN index de tag, alors qu'un simple
-    ``RETURN v.Tag.<prop>`` passe. `mesure` le 31 aout 2026 : le filtre passe sur
-    `Document`, qui porte `doc_index`, et echoue sur `SectionHeader`, qui n'en a
-    pas. Registre §4.27.
+    Le filtrage se fait en Python et non par un `WHERE` nGQL : sur
+    `rag_space`, ``MATCH (v:Tag) WHERE v.Tag.<prop> == ...`` rend
+    `IndexNotFound` sur un tag sans index de tag, alors qu'un simple
+    ``RETURN v.Tag.<prop>`` passe. `mesure` le 31 aout 2026 : le filtre passe
+    sur `Document`, qui porte `doc_index`, et echoue sur `SectionHeader`
+    (registre 4.27).
     """
     return _lire_un_entier_sur_les_sommets(session, "depth")
 
@@ -687,25 +595,19 @@ def anomalie_de_colonne(
 ) -> str | None:
     """Distingue « le tag n'a pas la colonne » de « les donnees sont a NULL ».
 
-    **LE MESSAGE PRECEDENT CONFONDAIT LES DEUX, ET IL PRESCRIVAIT LE GESTE QUI NE
-    SUFFIT PAS** (registre 4.29.e). Il disait, des que des sommets n'avaient pas
-    de `page_no_end` : « le tag a migre, les donnees non — il faut une
-    reingestion pour peupler la colonne ». Or dans le cas mesure le 1er septembre
-    2026, **le tag n'avait PAS migre** : `DESCRIBE TAG Paragraph` rendait
-    `label, page_no, <adresse du media>, depth` — cinq colonnes, sans
-    `page_no_end`.
+    Les deux etats demandent des gestes differents (registre 4.29.e) :
 
-    Les deux etats demandent des gestes DIFFERENTS, et c'est pour cela qu'il faut
-    les separer :
-
-    - **la colonne n'existe pas** : c'est `init_schema()` qui joue les
-      `ALTER TAG ... ADD`, et il n'est appele **qu'au demarrage du service**
-      (`main.py`, dans le `lifespan`). Le geste est donc **redemarrer
-      `docling-service`, PUIS reingerer**. Un operateur qui lit « il faut une
-      reingestion » et s'execute ecrit contre un tag qui n'a pas la colonne, et
-      le graphd rejette chaque `INSERT` ;
-    - **la colonne existe, les valeurs sont a NULL** : le schema a migre, les
+    - la colonne n'existe pas : `init_schema()` joue les `ALTER TAG ... ADD`,
+      et il n'est appele qu'au demarrage du service (`main.py`, dans le
+      `lifespan`). Il faut redemarrer `docling-service`, puis reingerer. Une
+      reingestion seule ecrirait contre un tag sans la colonne, et le graphd
+      rejetterait chaque `INSERT` ;
+    - la colonne existe, les valeurs sont a NULL : le schema a migre, les
       donnees non. Une reingestion suffit.
+
+    Cas constate le 1er septembre 2026 : `DESCRIBE TAG Paragraph` ne portait
+    pas `page_no_end`, alors que le message d'alors prescrivait une
+    reingestion seule.
 
     Args:
         colonne: Nom de la colonne controlee.
@@ -739,23 +641,14 @@ def anomalie_de_colonne(
 def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
     """Rend les tags d'element dont ``DESCRIBE TAG`` ne porte pas la colonne.
 
-    Le mecanisme existait deja pour le tag ``Document``
-    (:func:`_verifier_le_tag_document`) et pour le schema entier
-    (``ngql.missing_vertex_columns``) : il manquait a ce controle-ci, qui
-    comptait des NULL sans jamais demander au graphe si la colonne etait la.
+    Meme mecanisme que :func:`_verifier_le_tag_document` et
+    ``ngql.missing_vertex_columns``, applique aux tags d'element.
 
-    **CET INVARIANT ETAIT ENONCE ICI ET GARDE PAR RIEN — le treizieme garde
-    creux du chantier** — le compte est derive au registre 4.31.B4, il ne se
-    recopie pas. `mesure` le 2 septembre 2026 sur le code livre, AVANT ce garde :
-    remplacer `if colonne not in colonnes` par `if colonnes and colonne not in
-    colonnes` laissait `make all` en `rc=0`, 857 tests, zero rouge. Le motif est
-    celui des douze precedents — *le test observe une absence.* Ce que la
-    mutation coutait : un graphd qui refuse le `DESCRIBE` faisait prendre a
-    :func:`anomalie_de_colonne` sa SECONDE branche, donc prescrire « reingerez »
-    la ou il faut « redemarrez PUIS reingerez » — le registre 4.29.e rouvert par
-    le commit qui le ferme. Le garde est
-    `TestUnDescribeEnEchecCompteCommeUneColonneAbsente`, et il rougit a
-    3 tests sous cette mutation.
+    Un ``DESCRIBE`` en echec compte comme une colonne absente. Sinon,
+    :func:`anomalie_de_colonne` prendrait sa seconde branche et prescrirait une
+    reingestion seule, la ou il faut redemarrer puis reingerer (registre
+    4.29.e, 4.31.B4). Ce cas est teste par
+    `TestUnDescribeEnEchecCompteCommeUneColonneAbsente`.
 
     Args:
         session: Session NebulaGraph.
@@ -780,14 +673,12 @@ def _lire_les_tags_sans_la_colonne(session: Any, colonne: str) -> list[str]:
 def _verifier_le_tag_document(session: Any) -> list[str]:
     """Constate que le tag ``Document`` porte toutes ses colonnes.
 
-    LE DEFAUT QUE `_verifier_les_tags` A FERME RESTAIT OUVERT D'UN TAG.
-    `NebulaWriter._verifier_les_tags` recoit ``sorted(set(TAG_MAP.values()))``,
-    c'est-a-dire les **11 tags d'element** — le tag ``Document`` n'en fait pas
-    partie, son schema lui etant propre. Or ses quatre `ALTER TAG Document ADD`
-    (`nebula.py:333-340`) sont `required=False` par construction, « la colonne
-    existe deja » etant leur cas nominal : une migration REELLEMENT refusee ne
-    disait donc rien. Parmi ces colonnes, `source_path` **est l'exigence 3 du
-    contrat** — l'identite d'un document.
+    `NebulaWriter._verifier_les_tags` ne controle que les 11 tags d'element
+    (``sorted(set(TAG_MAP.values()))``) ; le tag ``Document`` a son propre
+    schema. Ses `ALTER TAG Document ADD` sont `required=False`, « la colonne
+    existe deja » etant le cas nominal : une migration refusee n'y leve rien.
+    Ce controle constate donc les colonnes apres coup. Parmi elles,
+    `source_path` est l'exigence 3 du contrat.
 
     Returns:
         Les anomalies constatees.
@@ -812,9 +703,8 @@ def _verifier_le_tag_document(session: Any) -> list[str]:
 def _lire_les_medias_visuels(session: Any) -> tuple[list[str | None], list[str | None]]:
     """Lit ``media_url`` ET ``object_key`` sur tous les sommets Picture et Table.
 
-    Les deux colonnes sont lues par la MEME requete, et c'est ce qui rend les
-    deux comptes comparables : deux requetes successives liraient deux etats du
-    graphe, et un ecart entre elles se lirait comme une anomalie de donnees.
+    Les deux colonnes sont lues par la meme requete, pour que les deux comptes
+    portent sur le meme etat du graphe.
 
     Returns:
         Les adresses et les cles, dans le meme ordre et de meme longueur.
@@ -833,11 +723,10 @@ def _lire_les_medias_visuels(session: Any) -> tuple[list[str | None], list[str |
 
 
 def _verifier_les_ancres(session: Any, metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Verifie que TOUTES les ancres existent comme noeuds du graphe.
+    """Verifie que toutes les ancres existent comme noeuds du graphe.
 
-    Sur la TOTALITE des identifiants, et non sur un echantillon : voir le
-    commentaire en tete de module. Une seule requete, `mesure` a 0,053 s sur les
-    3 750 identifiants de l'index complet.
+    Sur tous les identifiants, sans echantillon : voir le commentaire en tete
+    de module. Une seule requete.
     """
     identifiants = sorted({str(m["element_id"]) for m in metadatas})
     if not identifiants:

@@ -1,24 +1,21 @@
-"""Gardes de l'orchestration d'extraction.
+"""Tests de l'orchestration d'extraction.
 
-Ce fichier n'existait pas, et pour la raison MECANIQUE que ce chantier connait :
-``extraction.py`` importait ``docling`` au niveau du module, or ``docling`` n'est
-pas dans le venv du depot — les deps lourdes vivent dans ``Dockerfile.docling``.
-Aucun test ne pouvait donc importer le module. C'etait le sixieme et dernier
-module dans ce cas, apres ``index_report`` (registre 3.4), ``verify_contract``
-(4.4), ``verify_data`` (4.5), ``vectors`` (4.4) et ``nebula`` (4.28.d).
-*Ce qu'un test n'importe pas, il ne teste pas.*
+``extraction.py`` importe ``docling`` localement (``get_converter``) : ``docling``
+n'est pas dans le venv du depot, et un import de module rendrait le module
+intestable cote hote (meme cas que ``index_report``, registre 3.4,
+``verify_contract`` 4.4, ``verify_data`` 4.5, ``vectors`` 4.4 et ``nebula``
+4.28.d).
 
-Ce qu'il garde, et que rien ne gardait :
+Proprietes verifiees :
 
-- **registre 4.2** — un document est OUBLIE des deux stores avant d'etre
+- **registre 4.2** — un document est purge des deux stores avant d'etre
   reecrit. Sans cela, un texte modifie produit de nouveaux identifiants et les
   anciens survivent en orphelins. Le capteur declenchant sur ``mtime``, c'est le
-  chemin NOMINAL qui cassait ;
-- **registre 4.1** — un lot PDF en echec fait RETIRER le document partiel. Sans
-  cela, la partition est rouge ET l'ouvrage est dans l'index, tronque, et
-  ``verify_contract`` ne peut pas le voir : les ``element_id`` ecrits sont
-  valides. C'est le pire des deux etats, parce qu'il ressemble a des stores
-  vides.
+  cas nominal ;
+- **registre 4.1** — un lot PDF en echec fait retirer le document partiel. Sans
+  cela, la partition est en echec et l'ouvrage reste tronque dans l'index, ce
+  que ``verify_contract`` ne peut pas voir : les ``element_id`` ecrits sont
+  valides.
 """
 
 from __future__ import annotations
@@ -34,7 +31,7 @@ from src.docling_service import extraction, images
 from src.docling_service.elements import DocumentIdentity
 
 # PyMuPDF n'est pas dans le venv du depot : le PDF est bouchonne. Seule sa
-# PAGINATION compte ici — la boucle de lots et la decision de retrait sont
+# pagination compte ici — la boucle de lots et la decision de retrait sont
 # celles du code livre.
 PAGES_DU_PDF_BOUCHONNE = 10
 
@@ -105,13 +102,11 @@ class TestUnDocumentEstOublieAvantDEtreReecrit:
     def test_un_doublon_exact_n_oublie_rien(
         self, tmp_path: Path, fichier_html: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE TEMOIN, et il porte l'ordre des deux controles.
+        """L'ordre des deux controles : le doublon avant la purge.
 
-        Un doublon exact sort avant la purge : reingerer un fichier INCHANGE ne
-        doit rien detruire pour le reecrire a l'identique. Une purge posee avant
-        le controle de doublon rendrait ce test rouge, et le chemin du doublon
-        deviendrait une destruction suivie d'une non-reecriture — la perte
-        silencieuse d'un document, par le geste qui existe pour l'eviter.
+        Un doublon exact sort avant la purge : reingerer un fichier inchange ne
+        doit rien detruire. Une purge placee avant le controle de doublon ferait
+        echouer ce test : le doublon serait detruit sans etre reecrit.
         """
         oublies: list[DocumentIdentity] = []
 
@@ -150,10 +145,10 @@ class TestUnDocumentEstOublieAvantDEtreReecrit:
 
 
 class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
-    """Registre 4.1 : la partition rougissait, et l'ouvrage restait dans l'index.
+    """Registre 4.1 : un lot en echec ne laisse pas l'ouvrage tronque dans l'index.
 
     Le chemin est reconstitue au niveau de ``_extract_pdf`` : la conversion
-    Docling et les stores sont bouchonnes, mais la BOUCLE DE LOTS et la decision
+    Docling et les stores sont bouchonnes, mais la boucle de lots et la decision
     de retrait sont celles du code livre.
     """
 
@@ -169,15 +164,15 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
         Args:
             monkeypatch: Le patcheur de pytest.
             lots_qui_echouent: Premieres pages des lots qui doivent lever.
-            pages_sans_element: Pages pour lesquelles le bouchon ne rend AUCUN
+            pages_sans_element: Pages pour lesquelles le bouchon ne rend aucun
                 element, ni comme page d'entree ni comme page de fin. C'est la
                 seule facon de fabriquer une perte reelle, celle que le compteur
-                du registre 4.22 existe pour crier.
+                du registre 4.22 signale.
             pages_ecartees: Pages que `_front_back_matter_pages` declare sautees.
         """
         trace: dict[str, Any] = {"persistes": [], "oublies": [], "convertis": []}
 
-        # `fitz` est pose par `monkeypatch.setitem`, donc REVOQUE a la fin du
+        # `fitz` est pose par `monkeypatch.setitem`, donc revoque a la fin du
         # test : contrairement a un bouchon pose a la main dans `sys.modules`,
         # il ne survit pas et l'ordre des tests ne devient pas significatif.
         monkeypatch.setitem(sys.modules, "fitz", _FitzBouchonne())
@@ -257,12 +252,12 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
     def test_les_lots_suivants_sont_quand_meme_tentes(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE TEMOIN de la conception d'origine, qui reste juste.
+        """Un lot en echec n'arrete pas la conversion des suivants.
 
-        Une page illisible ne doit pas condamner les autres : on note l'echec, on
-        continue, et le job echoue a la FIN avec la liste des pages manquantes.
-        Sans ce temoin, un correctif qui leve au premier echec passerait le test
-        precedent en changeant le comportement voulu.
+        Une page illisible ne doit pas condamner les autres : l'echec est note,
+        la conversion continue, et le job echoue a la fin avec la liste des
+        pages manquantes. Sans ce test, une version qui leverait au premier echec
+        passerait le test precedent.
         """
         trace = self._monter(monkeypatch, lots_qui_echouent={1})
         pdf = tmp_path / "livre.pdf"
@@ -276,12 +271,11 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
     def test_un_pdf_entierement_converti_n_est_pas_retire(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE SECOND TEMOIN, et c'est le plus important des trois.
+        """Contre-epreuve principale : un PDF sans echec n'est pas retire.
 
-        Sans lui, un retrait pose inconditionnellement — hors du `if
-        failed_batches` — detruirait CHAQUE document juste apres l'avoir ecrit,
-        et le test principal resterait vert. Ce serait la perte silencieuse de
-        tout le corpus, par le geste qui existe pour l'empecher.
+        Sans ce test, un retrait inconditionnel (hors du `if failed_batches`)
+        detruirait chaque document juste apres l'avoir ecrit, et le test
+        principal passerait encore.
         """
         trace = self._monter(monkeypatch, lots_qui_echouent=set())
         pdf = tmp_path / "livre.pdf"
@@ -298,8 +292,7 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
         """L'echec d'extraction reste la cause levee, et le second est chaine.
 
         Un `raise` depuis le bloc de purge masquerait les pages manquantes
-        derriere une panne de store — et c'est la panne de store qu'on
-        chercherait a corriger.
+        derriere une panne de store, qui deviendrait la seule piste.
         """
         self._monter(monkeypatch, lots_qui_echouent={6})
 
@@ -319,24 +312,17 @@ class TestUnLotPdfEnEchecRetireLeDocumentPartiel:
 
 
 class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
-    """Registre 4.22, ET LE MOTIF EXACT QUE J'AVAIS DEJA FERME AILLEURS.
+    """Registre 4.22 : le compteur de pages perdues, a son site d'appel.
 
-    `pages_sans_element` est gardee en unitaire — `test_elements.py` couvre le
-    calcul, l'enjambement, les pages ecartees, la plage vide. **Son SITE D'APPEL
-    ne l'etait pas**, et c'est la que la perte se voit ou ne se voit pas : c'est
-    `_extract_pdf` qui accumule la couverture lot par lot, qui appelle le
-    compteur, qui crie, et qui rend `pages_without_element` dans son bilan — donc
-    dans les metadonnees Dagster.
+    `test_elements.py` couvre `pages_sans_element` seule (calcul, enjambement,
+    pages ecartees, plage vide). Ces tests couvrent `_extract_pdf`, qui
+    accumule la couverture lot par lot, appelle le compteur, journalise et rend
+    `pages_without_element` dans son bilan, donc dans les metadonnees Dagster.
+    C'est cette boucle qui produit le chiffre, pas la fonction pure.
 
-    C'est le motif que j'ai trouve et ferme pour la chaine d'images
-    (`TestLaCorrespondancePositionnelleEstGardeeParUnRefus`) et laisse ouvert sur
-    mon propre fil conducteur. *Mute le producteur, pas le consommateur* : le
-    producteur du chiffre est cette boucle, pas la fonction pure.
-
-    Le harnais existant pilote `_extract_pdf` avec des bouchons ; il gagne ici de
-    quoi fabriquer un TROU — des pages pour lesquelles la conversion ne rend
-    aucun element. Sans trou, le compteur est vrai a zero des deux cotes du
-    defaut.
+    Le harnais pilote `_extract_pdf` avec des bouchons, et sait fabriquer un
+    trou : des pages pour lesquelles la conversion ne rend aucun element. Sans
+    trou, le compteur vaudrait zero que le code soit juste ou non.
     """
 
     IDENTITE = TestUnLotPdfEnEchecRetireLeDocumentPartiel.IDENTITE
@@ -361,11 +347,10 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
     def test_les_pages_sans_aucun_element_sont_comptees_dans_le_bilan(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE GARDE. Le bilan est ce que Dagster publie : c'est le chiffre qui sort.
+        """Le bilan est ce que Dagster publie : il doit compter les pages perdues.
 
-        Trois pages muettes sur les dix du PDF bouchonne. Le compte annonce doit
-        etre 3, et pas 0 — un run vert sur un corpus troue est exactement ce que
-        ce lot ferme.
+        Trois pages muettes sur les dix du PDF bouchonne : le compte annonce doit
+        etre 3, et pas 0.
         """
         bilan = self._bilan(tmp_path, monkeypatch, pages_sans_element={2, 5, 9})
 
@@ -377,12 +362,12 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
     def test_la_couverture_est_accumulee_sur_tout_le_document_et_pas_par_lot(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """La seconde moitie du garde, et elle porte sur `pages_couvertes.extend`.
+        """La couverture est accumulee lot par lot (`pages_couvertes.extend`).
 
-        Les elements ne survivent pas a leur lot — ils sont persistes puis jetes —
+        Les elements ne survivent pas a leur lot (ils sont persistes puis jetes),
         donc la couverture doit etre retenue lot par lot. Sans l'`extend`, le
-        compteur ne voit RIEN de couvert et annonce toutes les pages perdues :
-        un compteur qui crie sur un document sain, qu'on cesse d'ecouter.
+        compteur ne verrait rien de couvert et annoncerait toutes les pages
+        perdues sur un document sain.
 
         Le PDF bouchonne fait 10 pages et les lots en font moins : le document
         traverse donc plusieurs lots, et c'est ce que ce test exige d'abord.
@@ -399,11 +384,11 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
     def test_un_document_entierement_couvert_n_annonce_aucune_perte(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE TEMOIN, et sans lui un compteur toujours bavard passerait les deux.
+        """Contre-epreuve : un compteur qui signalerait toujours passerait les deux precedents.
 
-        C'est aussi le cas du corpus reel : les six pages du PDF qui paraissaient
-        vides (8, 18, 19, 25, 68, 69) sont ENJAMBEES, donc couvertes, donc ce
-        compteur doit se taire dessus. Il ne parle que d'une perte reelle.
+        C'est aussi le cas du corpus reel : les six pages du PDF sans element de
+        debut (8, 18, 19, 25, 68, 69) sont enjambees, donc couvertes, et ne sont
+        pas signalees.
         """
         bilan = self._bilan(tmp_path, monkeypatch)
 
@@ -414,12 +399,11 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
     def test_une_page_enjambee_n_est_pas_une_page_perdue_au_site_d_appel(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Le second temoin, sur le mecanisme meme du registre 4.22.
+        """Une page enjambee n'est pas perdue, verifie sur la boucle d'accumulation.
 
-        Une page qu'aucun element ne prend pour page d'ENTREE mais qu'un element
-        voisin couvre par sa page de FIN n'est pas perdue. C'est le cas des six
-        pages du corpus, et c'est ce que `page_no_end` a rendu distinguable. Le
-        garde unitaire le dit sur la fonction ; celui-ci le dit sur la boucle qui
+        Une page qu'aucun element ne prend pour page d'entree mais qu'un element
+        voisin couvre par sa page de fin n'est pas perdue (registre 4.22). Le test
+        unitaire le verifie sur la fonction ; celui-ci sur la boucle qui
         accumule, ou l'enjambement doit traverser la frontiere des lots.
         """
         TestUnLotPdfEnEchecRetireLeDocumentPartiel._monter(monkeypatch, lots_qui_echouent=set())
@@ -435,7 +419,7 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
             body_size: Any,
             size_ranks: Any,
         ) -> Any:
-            # Chaque element couvre sa page ET la suivante, et AUCUN element ne
+            # Chaque element couvre sa page et la suivante, et aucun element ne
             # prend les pages paires pour page d'entree.
             elements = [
                 {
@@ -467,12 +451,11 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
     def test_une_page_ecartee_volontairement_n_est_pas_comptee_perdue(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Le troisieme temoin : le front/back matter est saute VOLONTAIREMENT.
+        """Le front/back matter, saute volontairement, n'est pas compte comme perdu.
 
-        Le compter comme une perte rendrait le compteur bavard sur chaque PDF —
-        et un compteur qu'on n'ecoute plus ne compte rien. Ce test verrouille que
-        les pages ecartees traversent bien jusqu'au compteur depuis le site
-        d'appel, `skipped` etant calcule la et nulle part ailleurs.
+        Le compter rendrait le compteur bruyant sur chaque PDF. Ce test verifie
+        que les pages ecartees parviennent au compteur depuis le site d'appel,
+        `skipped` etant calcule la et nulle part ailleurs.
         """
         bilan = self._bilan(tmp_path, monkeypatch, pages_sans_element={2, 3}, pages_ecartees={2, 3})
 
@@ -484,28 +467,21 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
 
 
 class TestLesUrlDImagesHtmlAtteignentLeGraphe:
-    """Registre 3.5 : 199 images de capture HTML sans adresse dans le graphe.
+    """Registre 3.5 : les URL des images de capture HTML atteignent le graphe.
 
-    `cleaning.py` reecrit `img src` avec l'adresse de l'objet ; `extraction.py` ne
-    propageait cette URL que si `item.image.uri` commence par `http`. Cette
-    description du code est exacte et TROMPEUSE comme cause : le test du prefixe
-    n'est JAMAIS atteint, parce que `item.image` vaut `None`.
+    `cleaning.py` reecrit `img src` avec l'adresse de l'objet, mais Docling ne
+    la rend pas. Mesure le 1er septembre 2026, conversion reelle de 4 chapitres
+    nettoyes dans l'image d'extraction : `item.image` vaut `None` sur les 24
+    `picture`, et `item.source`, `item.references` et `item.meta` sont vides.
 
-    Remesure de mes mains le 1er septembre 2026, conversion reelle de 4 chapitres
-    nettoyes dans l'image d'extraction : `item.image` non `None` sur **0 / 24**.
-    `item.source`, `item.references` et `item.meta` sont vides aussi — l'URL
-    n'atterrit nulle part d'exploitable. Le registre est reproduit.
+    Le HTML nettoye porte les URL dans l'ordre du document, et Docling rend ses
+    `picture` dans le meme ordre. Mesure sur 4 chapitres : `img` en `http` =
+    `picture` rendus, 4 fois sur 4 (4/4, 1/1, 9/9, 10/10). La correspondance
+    est donc positionnelle.
 
-    **LA MESURE QUI DECIDE DE LA FORME DU CORRECTIF.** Le HTML nettoye porte les
-    URL, dans l'ordre du document ; Docling rend ses `picture` dans le meme
-    ordre. Mesure sur 4 chapitres : `img` en `http` = `picture` rendus, **4
-    chapitres sur 4** — 4/4, 1/1, 9/9, 10/10. La correspondance est donc
-    POSITIONNELLE, et c'est la seule voie qui reste.
-
-    Une correspondance positionnelle est fragile par nature : elle est donc
-    GARDEE par un refus. Si les deux comptes divergent, aucune URL n'est posee —
-    une URL fausse sur une image est pire qu'une URL absente, parce que l'agent
-    servirait l'illustration d'un autre passage sans qu'aucune erreur ne le dise.
+    Elle est fragile : si les deux comptes divergent, aucune URL n'est posee.
+    Une URL fausse est pire qu'une URL absente : l'agent servirait
+    l'illustration d'un autre passage sans erreur.
     """
 
     HTML_NETTOYE = (
@@ -556,13 +532,13 @@ class TestLesUrlDImagesHtmlAtteignentLeGraphe:
 
 
 class TestLAdresseEtLaCleSontPoseesEnsemble:
-    """Le contrat publie DEUX champs de media, et ils vont par paire.
+    """Le contrat publie deux champs de media, et ils vont par paire.
 
     Un element dont seule l'adresse serait renseignee est a demi ecrit, et rien
     ne le rattrape : le graphe et ChromaDB sont ecrits une fois par ingestion.
-    Les TROIS chemins d'image — crop PDF, balise Markdown, correspondance
-    positionnelle du HTML — passent par `poser_le_media`, qui est le seul site
-    de la paire. Trois sites seraient trois facons d'en oublier un.
+    Les trois chemins d'image (crop PDF, balise Markdown, correspondance
+    positionnelle du HTML) passent par `poser_le_media`, seul site de la
+    paire.
     """
 
     def test_l_adresse_et_la_cle_sont_posees_du_meme_geste(self) -> None:
@@ -587,7 +563,7 @@ class TestLAdresseEtLaCleSontPoseesEnsemble:
         assert element["object_key"] == cle
 
     def test_un_televersement_en_echec_ne_pose_ni_adresse_ni_cle(self) -> None:
-        """LE TEMOIN : une cle posee sur un objet jamais ecrit serait pire que rien.
+        """Un televersement en echec ne laisse pas de cle vers un objet inexistant.
 
         `crop_and_upload` rend None sur une zone vide ou un envoi refuse. La
         cle doit suivre l'adresse dans son absence, sans quoi le graphe
@@ -622,11 +598,11 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
         assert [e["media_url"] for e in elements] == ["", self.URLS[0], "", self.URLS[1]]
 
     def test_aucune_url_n_est_posee_quand_les_comptes_divergent(self) -> None:
-        """LE GARDE, et c'est lui qui rend la methode defendable.
+        """Des comptes divergents ne posent aucune URL.
 
-        Une URL fausse sur une image est PIRE qu'une URL absente : l'agent
-        servirait l'illustration d'un autre passage, et rien ne le dirait. Devant
-        un desaccord, on refuse plutot que de deviner.
+        Une URL fausse est pire qu'une URL absente : l'agent servirait
+        l'illustration d'un autre passage sans que rien ne le dise. En cas de
+        desaccord, la fonction refuse plutot que de deviner.
         """
         elements = [
             {"label": "picture", "media_url": ""},
@@ -651,7 +627,7 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
         assert any("3" in m and "2" in m for m in messages), messages
 
     def test_le_chemin_nominal_ne_journalise_rien(self, caplog) -> None:
-        """LE TEMOIN : une alerte a chaque chapitre rendrait la vraie invisible."""
+        """Contre-epreuve : une alerte a chaque chapitre rendrait la vraie invisible."""
         elements = [{"label": "picture", "media_url": ""} for _ in range(2)]
 
         with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
@@ -660,7 +636,7 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
         assert [e.getMessage() for e in caplog.records] == []
 
     def test_les_tables_ne_recoivent_pas_les_url_des_images(self) -> None:
-        """Un `table` est un element VISUEL mais n'est pas une `<img>` du HTML.
+        """Un `table` est un element visuel mais n'est pas une `<img>` du HTML.
 
         Le compter parmi les cibles decalerait toutes les URL, et la premiere
         image recevrait l'URL destinee a la table.
@@ -687,17 +663,11 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
 
 
 class TestLaCompositionEstGardee:
-    """Les deux fonctions ci-dessus sont ATTEINTES par `_extract_flat`.
+    """Les deux fonctions ci-dessus sont appelees par `_extract_flat`.
 
-    **`mesure` : sans cette classe, retirer l'appel de `_extract_flat` laissait
-    la suite ENTIEREMENT VERTE.** Les deux fonctions etaient gardees prises
-    isolement, et la composition ne l'etait pas — c'est mot pour mot le defaut
-    que l'audit du lot 3 a trouve sur `verify_contract.racine_de_chaque_element`,
-    et le registre 4.4 le dit : « le garde asserte la COMPOSITION, et pas la
-    fonction seule ».
-
-    Une fonction pure qui propage des URL a l'air d'une commodite. Ce qui compte
-    est qu'elle TOURNE sur le chemin du document.
+    Tester les fonctions isolement ne suffit pas : ces tests verifient la
+    composition, c'est-a-dire qu'elles tournent sur le chemin du document
+    (registre 4.4).
     """
 
     HTML_NETTOYE = (
@@ -765,7 +735,7 @@ class TestLaCompositionEstGardee:
     ) -> None:
         """Le contrat publie la cle, et c'est sur ce chemin-ci qu'elle est derivee.
 
-        L'adresse du HTML nettoye est LUE, pas construite : c'est le seul des
+        L'adresse du HTML nettoye est lue, pas construite : c'est le seul des
         trois chemins ou la cle ne vient pas du televersement lui-meme. Si elle
         devait manquer quelque part, ce serait ici.
         """
@@ -778,7 +748,7 @@ class TestLaCompositionEstGardee:
     def test_un_element_qui_n_est_pas_une_image_ne_recoit_pas_d_url(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """LE TEMOIN : une URL posee partout serait vraie du premier test."""
+        """Contre-epreuve : une URL posee partout passerait le premier test."""
         elements = self._convertir(tmp_path, monkeypatch, ["text", "picture"])
 
         textes = [e for e in elements if e["label"] == "text"]

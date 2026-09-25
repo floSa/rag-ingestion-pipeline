@@ -1,21 +1,17 @@
 """Ecriture des chunks et de leurs embeddings dans ChromaDB.
 
-Deux corrections par rapport a la version initiale :
+Deux choix de conception :
 
-- **plus de troncature a 1000 caracteres** : les textes longs sont decoupes en
-  fenetres recouvrantes au lieu d'etre coupes, dans l'embedding comme dans le
-  document stocke. Cette ligne disait « plus de troncature », SANS BORNE : une
-  phrase d'exhaustivite, et elle est fausse — une part des chunks depasse la
-  fenetre du modele, qui les tronque lui-meme. **Le chiffre et ses deux causes
-  vivent a :func:`get_chunker`, leur SEUL site.** Ils etaient ici aussi, et un
-  nombre a deux sites dans le meme fichier finit par diverger : c'est le motif du
-  lot 5, applique a ce fichier-ci ;
+- **pas de coupe arbitraire du texte** : le document est decoupe par
+  ``HybridChunker`` (:func:`get_chunker`), et le texte stocke est integral.
+  Une part des chunks depasse toutefois la fenetre du modele, qui les tronque
+  a l'encodage ; les chiffres et leurs causes sont a :func:`get_chunker` ;
 - **encodage par lots** : ``SentenceTransformer.encode`` recoit toute la liste
   d'un coup au lieu d'un appel par element, ce qui exploite reellement le GPU.
 
-Les echecs ne sont plus avales : ils remontent, comme ceux de NebulaGraph. Une
-exception avalee d'un cote et levee de l'autre laissait graphe et vecteurs se
-desynchroniser sans bruit.
+Les echecs remontent, comme ceux de NebulaGraph. Une exception avalee d'un
+cote et levee de l'autre laisserait graphe et vecteurs se desynchroniser sans
+bruit.
 """
 
 from __future__ import annotations
@@ -49,17 +45,15 @@ _collection_lock = threading.Lock()
 def get_collection() -> Any:
     """Retourne la collection ChromaDB, ouverte au premier appel.
 
-    Le client est conserve : en ouvrir un par lot d'ecriture rouvrait une
+    Le client est conserve : en ouvrir un par lot d'ecriture rouvrirait une
     connexion HTTP toutes les quelques pages.
 
-    `chromadb` est importe ICI et non au niveau du module, et ce n'est pas un
-    detail de style. Il n'est pas dans le venv du depot — les deps lourdes
-    d'extraction vivent dans ``Dockerfile.docling`` — donc un import de module
-    rendait ``src.docling_service.vectors`` INIMPORTABLE cote hote, et
-    ``_inscrire_le_modele`` intestable. C'est le meme defaut mecanique que
-    ``index_report``, ``verify_contract`` et ``verify_data`` (registre §3.4,
-    §4.4, §4.5), sur le quatrieme module — et le seul des quatre dont le contrat
-    est un `raise`. *Ce qu'un test n'importe pas, il ne teste pas.*
+    `chromadb` est importe ici et non au niveau du module : il n'est pas dans
+    le venv du depot (les dependances lourdes d'extraction sont dans
+    ``Dockerfile.docling``). Un import de module rendrait
+    ``src.docling_service.vectors`` inimportable cote hote, et
+    ``_inscrire_le_modele`` intestable (registre §3.4, §4.4, §4.5 pour le meme
+    cas dans ``index_report``, ``verify_contract`` et ``verify_data``).
     """
     import chromadb
 
@@ -76,19 +70,18 @@ def get_collection() -> Any:
 def _inscrire_le_modele(collection: Any, modele: str) -> None:
     """Inscrit sur la collection le modele qui produit ses vecteurs, et refuse d'en melanger deux.
 
-    L'exigence 1 du contrat n'etait verifiable par personne apres coup : rien
-    n'enregistrait quel modele avait ecrit l'index. Un ``.env`` change entre
-    deux ingestions laissait une collection qui portait des vecteurs de deux
-    modeles, tous deux en 384 dimensions, sans qu'aucune erreur ne le signale.
+    Rend l'exigence 1 du contrat verifiable apres coup : sans cette
+    inscription, rien n'enregistre quel modele a ecrit l'index. Un ``.env``
+    change entre deux ingestions laisserait une collection portant des vecteurs
+    de deux modeles, tous deux en 384 dimensions, sans aucune erreur.
 
     Trois cas, et un seul refuse :
 
-    - la collection ne porte rien : on l'inscrit. C'est le cas de tout index
-      ecrit avant ce garde ;
+    - la collection ne porte rien : le modele y est inscrit (cas de tout index
+      ecrit avant cette inscription) ;
     - elle porte le meme modele : rien a faire ;
-    - **elle porte un AUTRE modele : on leve.** Ecrire par-dessus melangerait
-      deux espaces vectoriels dans une meme collection, et c'est la panne la
-      plus couteuse du systeme.
+    - **elle porte un autre modele : leve.** Ecrire par-dessus melangerait deux
+      espaces vectoriels dans une meme collection.
 
     Args:
         collection: Collection ChromaDB ouverte.
@@ -120,53 +113,34 @@ def get_chunker() -> Any:
     fenetre du modele d'embedding. Il recoit le tokenizer du modele lui-meme,
     et non une approximation.
 
-    Ce docstring affirmait que « c'est ce qui garantit qu'aucun chunk ne sera
-    tronque a l'encodage ». **C'est faux, et de deux facons distinctes**, toutes
-    deux mesurees le 31 aout 2026 sur les 4 365 chunks du corpus :
+    Ce n'est pas une garantie contre la troncature a l'encodage. Mesure le
+    31 aout 2026 sur les 4 365 chunks du corpus, deux causes :
 
     1. **Le decoupeur ne peut pas fractionner une table.** Une table serialisee
-       en Markdown est un bloc indivisible pour lui : il la rend telle quelle,
-       plus longue que la fenetre. Les **65** chunks qui depassent deja sur le
-       texte stocke sont **65 sur 65 des tables** — aucun autre label. Ce n'est
-       pas un reglage a corriger ici : reduire la fenetre ne fractionne pas
-       davantage, et refaire le decoupage des tables est un chantier a part
-       (registre 7.1). Ce qui manquait etait de le MESURER et de l'ecrire ;
-    2. **le titre de section est prefixe APRES le decoupage.** ``HybridChunker``
+       en Markdown est un bloc indivisible : il la rend telle quelle, plus
+       longue que la fenetre. Les **65** chunks qui depassent sur le texte
+       stocke sont tous des tables. Reduire la fenetre n'y change rien ; le
+       decoupage des tables est un chantier a part (registre 7.1) ;
+    2. **le titre de section est prefixe apres le decoupage.** ``HybridChunker``
        compte ses tokens sur sa propre serialisation ; ``write_elements``
        prepose ensuite le titre pour l'encodage. **72** chunks franchissent la
-       fenetre par ce seul prefixe, et le decoupeur ne pouvait pas le prevoir.
+       fenetre par ce seul prefixe.
 
-    Le nombre reel de chunks tronques par le modele est donc **137 (3,1 %)**, et
-    ``index_report`` le dit desormais — il en annoncait 65, soit un facteur 2,1.
-    Les maxima suivent le meme ecart : **140** tokens sur le texte stocke contre
-    **149** sur le texte encode.
+    Le nombre reel de chunks tronques par le modele est donc **137 (3,1 %)**,
+    celui que rapporte ``index_report``. Les maxima suivent le meme ecart :
+    **140** tokens sur le texte stocke contre **149** sur le texte encode.
 
-    **CE DOCSTRING EST LE SITE CANONIQUE DE CES CINQ NOMBRES** — 65, 72, 137,
-    140, 149 — et de la fenetre de **128** tokens.
+    Ce docstring est le site de reference de ces cinq nombres (65, 72, 137,
+    140, 149) et de la fenetre de **128** tokens ; les autres documents y
+    renvoient.
 
-    Ces nombres vivaient a **sept** autres sites, donc sept occasions de
-    diverger, et deux avaient DEJA diverge : l'en-tete de ce module,
-    ``chunking.embedding_inputs``, ``index_report.mesurer_la_fenetre``,
-    `architecture.md`, `services/chromadb.md` (fenetre de **256**),
-    `llm_integration_plan.md` (**256**) et `extraction_donnees.md` (**0,8 %**
-    des chunks, et **256**). Tous renvoient ici desormais.
+    La fenetre n'est pas un reglage : c'est ``modele.max_seq_length``, lu a
+    l'execution sur le modele du contrat (registre 5.1).
 
-    L'affirmation, elle, vivait a **trois** sites de plus qui ne portaient aucun
-    chiffre — donc rien a remesurer, seulement une phrase a corriger :
-    ``build_chunks`` dans ce fichier (« remplit la fenetre du modele sans jamais
-    la depasser », a cent-cinquante lignes d'ici), le commentaire de
-    ``settings.graph_text_max_chars`` (« decoupe et sans troncature ») et
-    `base_vectorielle.md` (« Rien n'est tronque »).
-
-    La fenetre, elle, **n'est pas un reglage** : c'est ``modele.max_seq_length``,
-    lu au runtime sur le modele du contrat. Aucun `settings.py` ne la porte, et
-    l'annoncer configurable etait la famille des `CHUNK_SIZE=900` (registre 5.1).
-
-    **Remesure du 2 septembre 2026**, sur l'index vivant, avec le code de cette
-    branche monte dans l'image d'extraction (le geste du registre 4.27) :
-    ``python -m src.index_report`` rend « limite : 128 tokens », « chunks
-    tronques par le modele : 137 (3.1 %) », « tokens : mediane 95, maximum
-    149 ». Les trois concordent avec les valeurs ci-dessus.
+    Remesure le 2 septembre 2026 sur l'index vivant, avec ce code monte dans
+    l'image d'extraction (registre 4.27) : ``python -m src.index_report`` rend
+    « limite : 128 tokens », « chunks tronques par le modele : 137 (3.1 %) »,
+    « tokens : mediane 95, maximum 149 ».
     """
     from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
     from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
@@ -190,16 +164,9 @@ def build_chunks(
     Le decoupage est confie a ``HybridChunker`` : il regroupe ce qui va
     ensemble et respecte la structure du document.
 
-    **CE DOCSTRING AJOUTAIT « et remplit la fenetre du modele SANS JAMAIS LA
-    DEPASSER ». C'EST LA TROISIEME FOIS QUE CE FICHIER PORTE CETTE PHRASE, ET LE
-    LOT 3 N'EN AVAIT CORRIGE QUE DEUX.** Il a repris l'en-tete du module et
-    :func:`get_chunker`, et laisse celle-ci — a cent-cinquante lignes de la
-    premiere, dans le meme fichier, qu'elle contredit. Le chiffre et les deux
-    causes vivent a :func:`get_chunker`, leur SEUL site : ne les recopie pas
-    ici, une phrase d'exhaustivite se referme d'autant plus vite qu'elle est
-    breve. Nos identifiants restent les notres —
-    chaque chunk est rattache a l'element d'ou part sa lecture, via la
-    reference interne Docling.
+    Les chunks peuvent depasser la fenetre du modele (voir :func:`get_chunker`).
+    Chaque chunk est rattache, via la reference interne Docling, a l'element
+    du service d'ou part sa lecture.
 
     Args:
         elements: Elements produits par ``DocumentAccumulator``.
@@ -239,49 +206,26 @@ def build_chunks(
         if ancre is None:
             continue
 
-        # LE FILTRE NE VAUT QUE POUR UN CHUNK AUTONOME, et c'est la correction du
-        # registre 4.28.a. `resolve_anchors` fixe `chunk_count` AVANT ce filtrage :
-        # jeter un chunk qui a des freres laissait un TROU dans le jeu, avec un
-        # compte qui annonce le morceau manquant. `mesure` sur l'index vivant,
-        # 4 365 chunks : `aa3de10738` annonce 7 chunks et n'en a que 6 (index 4
-        # manquant), `eb52c4ec8f` annonce 4 et n'en a que 3 (index 3). L'agent
-        # concatene ce qu'il trouve et rend un texte troue, sans aucune erreur.
+        # Le filtre ne vaut que pour un chunk autonome (registre 4.28.a).
+        # `resolve_anchors` fixe `chunk_count` avant ce filtrage : jeter un chunk
+        # qui a des freres laisserait un trou dans le jeu, avec un compte qui
+        # annonce le morceau manquant, et l'agent concatenerait un texte troue.
+        # Cas mesure sur l'index vivant : deux blocs de code dont une fenetre du
+        # milieu etait courte.
         #
-        # LES DEUX ELEMENTS SONT DES BLOCS DE CODE, et leurs chunks se raccordent
-        # bord a bord : le morceau manquant est une fenetre du MILIEU d'un texte
-        # continu, entre deux fenetres conservees. Le motif ecrit du filtre —
-        # « trop court pour porter du sens » — suppose un chunk AUTONOME, et cette
-        # supposition est fausse pour une fenetre du milieu.
-        #
-        # RECALCULER LE COMPTE APRES FILTRAGE aurait ete l'autre issue. Elle est
-        # ECARTEE : elle rendrait le compte exact et la perte SILENCIEUSE a
-        # nouveau — l'agent concatenerait 6 chunks annonces 6 et obtiendrait un
-        # texte troue qu'il ne peut plus detecter, et le controle
-        # `jeux_de_chunks_incomplets` redeviendrait vert sur un index toujours
-        # casse. C'est ajuster le compteur a la perte au lieu de la fermer.
-        #
-        # Ici, le compte devient exact PARCE QUE RIEN NE MANQUE.
-        #
-        # Prix assume : quelques vecteurs de faible valeur pour une recherche, en
-        # echange d'un texte entier. Sur l'index mesure, 2 chunks sur 4 365.
+        # Recalculer le compte apres filtrage rendrait la perte indetectable
+        # (le controle `jeux_de_chunks_incomplets` ne la verrait plus). Garder
+        # la fenetre ne coute que quelques vecteurs de faible valeur : 2 chunks
+        # sur 4 365 sur l'index mesure.
         autonome = ancre.count == 1
         if autonome and (not has_content(texte) or len(texte) < settings.min_chunk_chars):
             continue
 
         element = ancre.element
         element_id = str(element["id"])
-        # LA FORME DE L'ID VIENT DE `chunking.chunk_id`, ET ELLE ETAIT EN LIGNE
-        # ICI. `chunking` portait la meme forme, testee, et sans appelant : deux
-        # sites pour une clause du contrat, dont celui-ci — le seul qui ecrit —
-        # n'etait garde par rien. `mesure` sur `main` a `27a6304` : un suffixe
-        # inconditionnel y laissait 857 tests verts, rc=0 (registre 5.1).
-        #
-        # Ce que ce suffixe coute NE VA PAS jusqu'a la duplication, et ce
-        # commentaire l'a d'abord ecrit : `extraction.extract` purge le document
-        # par `storage.forget_document` AVANT la conversion depuis le lot 4, et
-        # `delete_document` supprime par `source_path` et jamais par id. Ce qui
-        # est casse est la clause elle-meme, que `verify_contract` compte —
-        # 974 ids suffixes sur 4 365 (`mesure`).
+        # La forme de l'id est une clause du contrat, fixee par
+        # `chunking.chunk_id` seul (registre 5.1) ; `verify_contract` compte les
+        # ids suffixes (974 sur 4 365, mesure le 2 septembre 2026).
         ids.append(chunking.chunk_id(element_id, ancre.index, ancre.count))
         texts.append(texte)
         metadatas.append(
@@ -314,12 +258,11 @@ def build_chunks(
 def delete_document(identity: DocumentIdentity, collection: Any = None) -> int:
     """Retire de l'index vectoriel tous les chunks d'un document.
 
-    **Le pendant de ``NebulaWriter.delete_document``, et il n'existait pas.**
-    Les identifiants derivent du TEXTE (``elements.py``) : un texte modifie
-    produit de nouveaux identifiants, et `upsert` ecrit les nouveaux sans
-    toucher aux anciens, qui survivent en orphelins. Le capteur Dagster
-    declenchant sur ``mtime``, mettre a jour un document est le chemin NOMINAL
-    (registre 4.2).
+    Pendant de ``NebulaWriter.delete_document``. Les identifiants derivent du
+    texte (``elements.py``) : un texte modifie produit de nouveaux
+    identifiants, et `upsert` ecrit les nouveaux sans toucher aux anciens, qui
+    survivraient en orphelins. Le capteur Dagster declenchant sur ``mtime``,
+    mettre a jour un document est le cas nominal (registre 4.2).
 
     La suppression vise ``source_path`` et jamais ``filename`` : ``source_path``
     est l'identite d'un document (contrat, exigence 3), et le corpus porte deux
@@ -331,8 +274,8 @@ def delete_document(identity: DocumentIdentity, collection: Any = None) -> int:
             pour que la decision soit eprouvable sans ChromaDB.
 
     Returns:
-        Nombre de chunks retires. C'est un compteur la ou il y a perte : une
-        purge muette ne dit pas si elle a retire trois chunks ou trois mille.
+        Nombre de chunks retires : une purge muette ne dirait pas si elle a
+        retire trois chunks ou trois mille.
     """
     cible = get_collection() if collection is None else collection
     clause = {"source_path": identity.source_path}
@@ -373,9 +316,8 @@ def write_elements(
     # reste le texte brut : le passage s'affiche tel quel cote agent.
     #
     # La construction vit dans chunking.embedding_inputs et non ici, parce que
-    # index_report doit tokeniser EXACTEMENT le meme texte pour compter les
-    # troncatures. Quand les deux decidaient chacun de leur cote, l'instrument
-    # en annoncait la moitie (registre 3.4).
+    # index_report doit tokeniser exactement le meme texte pour compter les
+    # troncatures (registre 3.4).
     embed_texts = chunking.embedding_inputs(texts, metadatas, settings.embed_section_context)
 
     vectors = get_embedding_model().encode(

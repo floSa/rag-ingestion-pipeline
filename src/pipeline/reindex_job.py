@@ -1,68 +1,56 @@
-"""Quand ``POST /reindex`` part : un job a part, arme quand l'ingestion se tait.
+"""Declenchement de ``POST /reindex`` : un job dedie, arme quand l'ingestion est retombee.
 
-Le contrat avec ``rag-agent-chat`` dit « en fin de pipeline, une fois
-l'ingestion terminee ». Le code disait la meme chose et faisait autre chose :
-``factory._record_metadata`` postait, et il tourne UNE FOIS PAR PARTITION.
-Cela faisait donc autant de reconstructions BM25 completes et synchrones cote
-agent qu'il y a de documents, a 300 s de plafond chacune, dont seule la
-derniere servait — et le cout suivait la taille du corpus, quelle qu'elle soit.
-Et une fonction nommee « publier le bilan d'extraction » n'est pas a la hauteur
-d'un appel reseau vers un autre service.
+Le contrat avec ``rag-agent-chat`` place l'appel « en fin de pipeline, une fois
+l'ingestion terminee ». Un appel par partition declencherait une reconstruction
+BM25 complete et synchrone cote agent par document (300 s de plafond chacune),
+dont seule la derniere servirait. Ce module fait un appel par rafale
+d'ingestion.
 
-**Ce que « fin d'ingestion » veut dire ici.** L'architecture n'offre aucun point
-de fin evident : un job par source, un run par fichier, des partitions
-dynamiques creees au fil de l'eau par un sensor. Il n'existe pas d'instant ou
-Dagster sait que « le pipeline a fini » — il n'y a que des runs qui vont et
-viennent. La fin d'ingestion est donc definie ici comme un ETAT et non comme un
-evenement : *aucun run d'ingestion n'est en vol, et au moins un a reussi depuis
-la derniere reindexation*. C'est la lecture la plus proche du contrat que cette
-architecture permette, et elle a la propriete que l'appel par document n'avait
-pas : le nombre d'appels ne depend plus du nombre de documents.
+**Definition de « fin d'ingestion ».** L'architecture n'offre aucun instant ou
+Dagster sait que « le pipeline a fini » : un job par source, un run par fichier,
+des partitions dynamiques creees au fil de l'eau par un sensor. La fin
+d'ingestion est donc un etat, pas un evenement : *aucun run d'ingestion n'est en
+vol, et au moins un a reussi depuis la derniere reindexation*. Le nombre
+d'appels ne depend plus du nombre de documents.
 
-Elle a aussi une limite, qu'il vaut mieux ecrire que decouvrir : un corpus qui
-arrive en goutte-a-goutte — un fichier, une pause, un fichier — est une suite
-de rafales, donc une suite de reindexations. C'est le comportement voulu (un
-document ingere doit devenir cherchable), pas un defaut, mais ce n'est pas
-« une seule fois » dans l'absolu : c'est « une seule fois par rafale ».
+Limite : un corpus qui arrive au goutte-a-goutte (un fichier, une pause, un
+fichier) forme une suite de rafales, donc une suite de reindexations. C'est
+voulu, car un document ingere doit devenir cherchable : l'appel a lieu une fois
+par rafale, pas une fois dans l'absolu.
 
 **Pourquoi un job separe plutot qu'un asset aval.** Un asset aval de
-``extracted_document`` se materialiserait dans le run de la partition, donc une
-fois par document : le defaut serait deplace, pas corrige. Un
-``run_status_sensor`` sur SUCCESS se declenche lui aussi une fois par run et
-demanderait la meme garde « rien d'autre en vol » que ce sensor porte, pour un
-harnais de test plus lourd. Un asset check verifie, il n'agit pas. Restait le
-job separe, arme par un sensor qui lit l'etat des runs d'ingestion.
+``extracted_document`` se materialiserait dans le run de chaque partition, donc
+une fois par document. Un ``run_status_sensor`` sur SUCCESS se declencherait lui
+aussi une fois par run, et demanderait le meme controle « rien d'autre en vol »,
+avec un harnais de test plus lourd. Un asset check verifie, il n'agit pas. Reste
+un job separe, arme par un sensor qui lit l'etat des runs d'ingestion.
 
-**Pourquoi pas de dependance declaree vers les assets d'ingestion.** Le
-declenchement est temporel (« plus rien en vol »), pas dimensionnel. Dagster n'a
-pas de facon d'exprimer « toutes les partitions, quand il n'y en a plus une
-seule en cours » : une dependance sur des partitions dynamiques ferait croire a
-une fraicheur par partition que ce job ne rend pas.
+**Pourquoi aucune dependance declaree vers les assets d'ingestion.** Le
+declenchement est temporel (« plus rien en vol »), pas lie aux partitions.
+Dagster ne sait pas exprimer « toutes les partitions, quand plus aucune n'est en
+cours » : une dependance sur des partitions dynamiques ferait croire a une
+fraicheur par partition que ce job ne fournit pas.
 
-Les trois proprietes de l'appel survivent, et deux se renforcent :
+Proprietes de l'appel :
 
-1. **Un echec ne fait jamais echouer une ingestion reussie.** Il ne le peut
-   plus : l'appel vit dans son propre run, et ``request_reindex`` ne leve
-   toujours pas. C'est le run de reindexation qui rougit, jamais celui qui a
-   converti les pages.
-2. **Un echec rougit son run, et il est retente jusqu'a ce qu'il passe.** Voir
-   ci-dessous : c'est la propriete qui manquait, et son absence perdait la
-   reindexation pour toujours.
-3. **Une URL vide desactive l'appel, et c'est annonce au chargement** par
-   ``definitions.py``. Le sensor le redit a chaque tick dans sa raison de saut,
-   plutot que de lancer des runs qui n'ont rien a faire.
+1. **Un echec ne fait jamais echouer une ingestion reussie.** L'appel vit dans
+   son propre run, et ``request_reindex`` ne leve pas. Seul le run de
+   reindexation passe en echec, jamais celui qui a converti les pages.
+2. **Un run de reindexation en echec est retente jusqu'a ce qu'il reussisse**
+   (voir ci-dessous).
+3. **Une URL vide desactive l'appel.** ``definitions.py`` l'annonce au
+   chargement, et le sensor le repete a chaque tick dans sa raison de saut au
+   lieu de lancer des runs inutiles.
 
-**Pourquoi le sensor ne tient aucun etat a lui.** La premiere version posait un
-curseur a l'EMISSION de la demande : le repere avancait des que la demande
-partait, avant meme que le run n'ait tourne. Un agent injoignable, ou un run de
-reindexation rouge, laissait donc le curseur en avance sur ce qui avait
-reellement ete fait — et le tick suivant repondait « rien de nouveau ». La perte
-etait definitive, parce qu'un ``run_key`` consomme l'est pour toujours : Dagster
-le cherche dans TOUT l'historique et refuse de recreer un run pour une cle deja
-vue. Remettre le curseur a zero n'y aurait rien change.
+**Pourquoi le sensor ne garde aucun etat propre.** Un curseur avance a
+l'emission de la demande serait en avance sur le travail reellement fait si le
+run echoue ou si l'agent est injoignable : le tick suivant repondrait « rien de
+nouveau », et la reindexation serait perdue. Un ``run_key`` consomme l'est pour
+toujours (Dagster le cherche dans tout l'historique), donc remettre le curseur a
+zero n'y changerait rien.
 
-Le sensor compare donc desormais deux FAITS, tous deux lus dans l'historique des
-runs, qu'aucun tick n'a besoin d'ecrire :
+Le sensor compare donc deux faits lus dans l'historique des runs, qu'aucun tick
+n'a besoin d'ecrire :
 
 - le repere de la derniere **ingestion** reussie ;
 - le repere de la derniere **reindexation** reussie.
@@ -73,20 +61,19 @@ n'est en vol, donc son run est toujours cree apres l'ingestion qu'elle traite :
 comparer les deux reperes revient a demander « la derniere reindexation reussie
 est-elle posterieure a la derniere ingestion reussie ? ».
 
-Trois consequences, toutes voulues :
+Consequences voulues :
 
-- **une reindexation echouee est retentee au tick suivant**, indefiniment, tant
-  qu'elle n'a pas reussi. Un agent arrete pendant deux heures produit des runs
-  rouges pendant deux heures — c'est bruyant, et c'est le prix a payer pour ne
-  jamais perdre en silence ce que le contrat exige. Rendre la reprise finie,
-  c'est reintroduire la perte, juste plus tard ;
-- **le ``run_key`` varie a chaque tentative** : il porte le repere de la derniere
-  tentative en plus de celui de la rafale. Il reste deterministe a l'interieur
-  d'un tick — deux evaluations concurrentes du sensor ne creeraient pas deux
-  runs —, mais il n'est plus consomme d'avance ;
+- **une reindexation echouee est retentee au tick suivant**, sans limite, tant
+  qu'elle n'a pas reussi. Un agent arrete deux heures produit deux heures de
+  runs en echec : c'est bruyant, mais une reprise bornee finirait par perdre la
+  reindexation en silence ;
+- **le ``run_key`` change a chaque tentative** : il porte le repere de la
+  derniere tentative en plus de celui de la rafale. Il reste deterministe au
+  sein d'un tick, donc deux evaluations concurrentes du sensor ne creent pas
+  deux runs ;
 - **une reindexation lancee a la main depuis l'interface compte**. Si elle
-  reussit, le sensor n'en redemande pas une : l'index EST reconstruit, et c'est
-  le fait qui decide, pas l'auteur du run.
+  reussit, le sensor n'en redemande pas : l'index est reconstruit, quel que soit
+  l'auteur du run.
 
 NB : pas de ``from __future__ import annotations`` ici — Dagster valide le type
 reel de l'argument ``context``, pas sa forme differee en chaine.
@@ -138,15 +125,13 @@ STATUTS_TERMINES = frozenset(
 )
 
 # « En cours » se definit par soustraction, et non par une liste des etats
-# actifs. Une enumeration en dur serait une phrase d'exhaustivite : le jour ou
-# Dagster ajoute un statut, elle le classerait comme termine et le sensor
-# reindexerait au milieu d'une ingestion. Par soustraction, un statut inconnu
-# est prudemment compte comme en vol.
+# actifs : un statut ajoute par une version future de Dagster est ainsi compte
+# comme en vol, et non comme termine.
 #
-# QUEUED en fait partie, et c'est le cas de production : le sensor de source
-# cree tous les runs d'un depot de fichiers en un seul passage, et la file
-# Dagster n'en execute que deux a la fois (`max_concurrent_runs` dans
-# dagster.yaml). Les autres attendent, et attendre n'est pas avoir fini.
+# QUEUED en fait partie, et c'est le cas courant en production : le sensor de
+# source cree tous les runs d'un depot de fichiers en un seul passage, et la
+# file Dagster n'en execute que deux a la fois (`max_concurrent_runs` dans
+# dagster.yaml). Les autres attendent en QUEUED.
 STATUTS_EN_COURS = tuple(statut for statut in DagsterRunStatus if statut not in STATUTS_TERMINES)
 
 
@@ -179,18 +164,14 @@ class ReindexDefinitions:
 def lexical_index(context: AssetExecutionContext) -> None:
     """Demande a l'agent de reconstruire son index lexical, et rend compte.
 
-    **Leve si l'appel a ete tente et n'a pas abouti.** La regle precedente etait
-    « ne leve jamais », et elle avait une raison qui a disparu avec le
-    demenagement : l'appel vivait alors dans le run de la partition, ou une
-    reprise aurait reconverti des centaines de pages pour un appel HTTP. Ici,
-    une reprise coute UN appel HTTP.
+    **Leve si l'appel a ete tente et n'a pas abouti.** Ce run ne contient que
+    l'appel HTTP : une reprise ne coute qu'un appel.
 
-    Rougir est ce qui rend l'echec visible. Un run vert portant « ECHEC » dans
-    une metadonnee ne declenche aucune alerte, n'apparait dans aucun filtre
-    d'echec, et laissait le sensor croire la rafale traitee. Le run rouge est en
-    outre le fait que le sensor relit pour decider s'il doit retenter : sans
-    lui, il n'a aucun moyen de distinguer une reindexation faite d'une
-    reindexation perdue.
+    L'echec du run rend la panne visible : un run reussi portant « ECHEC » dans
+    une metadonnee ne declenche aucune alerte et n'apparait dans aucun filtre
+    d'echec. C'est aussi ce que le sensor relit pour decider s'il doit
+    retenter : sans lui, une reindexation perdue ressemblerait a une
+    reindexation faite.
 
     Une URL vide ne leve pas : l'appel n'a pas ete tente, c'est un choix de
     configuration annonce au chargement, pas une panne.
@@ -234,10 +215,10 @@ agent_reindex_job = define_asset_job(
 def _decrire_le_run(record: Any) -> str:
     """Nomme un run et son age, pour une raison de saut lisible.
 
-    Un `SkipReason` qui ne nomme que le job est illisible en exploitation : il
-    est identique au tick 1 et au tick 10 000. Nommer le run et son age est ce
-    qui rend un blocage VISIBLE sans delai de garde — et le delai de garde, lui,
-    vit dans `dagster.yaml` (registre 4.15).
+    Un `SkipReason` qui ne nomme que le job est le meme au premier tick et au
+    dix-millieme. Le run et son age rendent un blocage visible. Le delai au-dela
+    duquel un run bloque est passe en echec vit dans `dagster.yaml`
+    (registre 4.15).
 
     Args:
         record: Enregistrement de run rendu par `get_run_records`.
@@ -332,18 +313,14 @@ def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
                 RunsFilter(job_name=nom, statuses=list(STATUTS_EN_COURS)), limit=1
             )
             if en_cours:
-                # L'ALERTE QUI MANQUAIT (registre 4.15). Cette raison nommait le
-                # job et rien d'autre : un operateur lisait « Ingestion en
-                # cours » a chaque tick, pendant des heures, sans rien qui
-                # distingue « ca travaille » de « c'est gele ». Le run et son age
-                # le distinguent — 111 s est le run le plus long jamais mesure
-                # sur ce corpus, donc un age de plusieurs heures se lit tout
-                # seul.
+                # Nommer le run et son age distingue un run qui travaille d'un
+                # run bloque (registre 4.15) : le run le plus long mesure sur ce
+                # corpus dure 111 s, donc un age de plusieurs heures signale un
+                # blocage.
                 #
-                # Le DELAI DE GARDE, lui, ne peut pas vivre ici : un sensor qui
-                # deciderait qu'un run est mort empieterait sur le travail du
-                # daemon, et il faudrait la meme regle dans chaque sensor. Il vit
-                # dans `dagster.yaml`, ou la famille entiere se ferme d'un geste.
+                # Le delai au-dela duquel un run est declare mort vit dans
+                # `dagster.yaml` (run monitoring du daemon), et non dans chaque
+                # sensor.
                 return SkipReason(
                     f"Ingestion en cours ({nom}) : la reindexation attend qu'elle "
                     f"retombe. {_decrire_le_run(en_cours[0])}"
@@ -353,9 +330,9 @@ def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
         if repere is None:
             return SkipReason("Aucune ingestion reussie a reindexer.")
 
-        # Une reindexation en vol n'est ni faite ni perdue : on attend son
-        # issue. Sans cette garde, la reprise en lancerait une nouvelle a chaque
-        # tick pendant que la premiere travaille.
+        # Une reindexation en vol n'est ni faite ni perdue : attendre son issue.
+        # Sans ce controle, chaque tick en lancerait une nouvelle pendant que la
+        # premiere travaille.
         derniere_tentative = _dernier_repere(context.instance, REINDEX_JOB_NAME)
         en_vol = _dernier_repere(context.instance, REINDEX_JOB_NAME, STATUTS_EN_COURS)
         if en_vol is not None:
@@ -367,18 +344,17 @@ def build_reindex(ingestion_job_names: Sequence[str]) -> ReindexDefinitions:
                 f"Une reindexation est deja en vol : la suivante attend son issue. {details}"
             )
 
-        # Le fait qui ferme la rafale est un run de reindexation REUSSI, pas une
-        # demande emise. Tant qu'il n'existe pas, il reste quelque chose a faire
-        # et le sensor rearme.
+        # Seul un run de reindexation reussi clot la rafale, pas une demande
+        # emise. Tant qu'il n'existe pas, le sensor rearme.
         reussie = _dernier_repere(context.instance, REINDEX_JOB_NAME, [DagsterRunStatus.SUCCESS])
         if reussie is not None and reussie > repere:
             return SkipReason(
                 "Rien de nouveau n'a ete ingere depuis la derniere reindexation reussie."
             )
 
-        # La cle porte la rafale ET la tentative. Un run_key consomme l'est pour
-        # toujours : une cle qui ne bougerait pas d'une tentative a l'autre
-        # serait une reprise qui n'a jamais lieu.
+        # La cle porte la rafale et la tentative. Un run_key consomme l'est pour
+        # toujours : une cle identique d'une tentative a l'autre empecherait
+        # toute reprise.
         return RunRequest(run_key=f"reindex-{repere}-apres-{derniere_tentative or 0}")
 
     return ReindexDefinitions(

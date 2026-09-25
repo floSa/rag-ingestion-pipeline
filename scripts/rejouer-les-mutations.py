@@ -1,42 +1,31 @@
 """Rejoue la table des mutations du lot 11 : chacune DOIT rougir son test.
 
-**POURQUOI CE SCRIPT EXISTE.** Le premier passage du lot 11 a annonce 33
-mutations sans les versionner, et l'audit n'a pas pu les rejouer — le defaut
-nomme au registre 4.35.e. Une mutation qu'on ne peut pas rejouer n'est pas une
-mesure, c'est une affirmation.
-
-**IL N'ECRIT PLUS JAMAIS DANS L'ARBRE DE TRAVAIL, et c'est la reparation du
-troisieme audit (registre 4.39.c).** La version precedente mutait les fichiers
-de PRODUCTION en place et les restaurait dans un `finally`. Trois defauts
-mesures : `extraction.py` restait mute 0,66 s sur disque a chaque passage ;
-apres un `SIGKILL`, le fichier restait mute et le lancement suivant le prenait
-pour l'origine, donc le « restaurait » MUTE ; et le controle final par `git
-diff` (arbre contre index) laissait passer un residu INDEXE, tout en rendant un
-faux « ECHEC » devant une modification legitime non commitee.
-
-Le rejeu se fait desormais sur une COPIE JETABLE, dans un repertoire temporaire.
-`mesure` du 24 septembre 2026 : 0,018 s pour `src/`, `tests/`, `scripts/`,
-`documentation/campagnes/` et `pyproject.toml`, contre 0,335 s pour un
-`git worktree add --detach`. La copie est retiree a la sortie ; apres un
-`SIGKILL` elle SURVIT dans le repertoire temporaire du systeme — et c'est sans
-consequence, puisqu'elle ne partage aucun fichier avec l'arbre. Le script le
-verifie lui-meme : il releve les `mtime` de `src/` et de `tests/` avant et
-apres, et rougit si l'un d'eux a bouge.
+Une mutation est une modification volontaire d'une ligne de code de
+production. Elle est « rouge » quand le test qui la vise echoue, « survivante »
+sinon : un test qui passe sous la mutation ne protege pas la ligne. La table
+versionnee permet de rejouer chaque mutation (registre 4.35.e).
 
 Pour chaque entree de `tests/mutations/table-des-mutations.json` :
 
-1. applique la mutation au fichier de PRODUCTION nomme, DANS LA COPIE ;
-2. lance le test vise dans la copie, et exige un ECHEC de TEST ;
+1. applique la mutation au fichier de production nomme, dans une copie ;
+2. lance le test vise dans la copie, et exige un echec de test ;
 3. rend la copie a son etat d'origine pour l'entree suivante.
 
-Un motif qui n'apparait pas EXACTEMENT UNE FOIS fait echouer le rejeu : une
-mutation qui ne mute rien ressemble a un garde qui ne voit rien. Et le verdict
-exige `failed` dans la derniere ligne avec `rc=1` : une mutation qui CASSE LA
-SYNTAXE ressemble a un garde qui voit, et passait pour « ROUGE » (registre
-4.39.c).
+Le rejeu n'ecrit jamais dans l'arbre de travail (registre 4.39.c). Il travaille
+sur une copie jetable dans un repertoire temporaire : `src/`, `tests/`,
+`scripts/`, `documentation/campagnes/` et `pyproject.toml` (0,018 s, `mesure`
+le 24 septembre 2026, contre 0,335 s pour un `git worktree add --detach`). Apres
+un `SIGKILL`, la copie reste dans le repertoire temporaire du systeme, sans
+effet sur l'arbre. Le script releve les `mtime` des sources de `src/` et
+`tests/` avant et apres, et echoue si l'un d'eux a change.
 
-Le code de sortie EST le comportement : 0 si toutes les mutations rougissent,
-1 si l'une d'elles survit, 2 sur une table invalide.
+Un motif qui n'apparait pas exactement une fois fait echouer le rejeu : une
+mutation qui ne modifie rien ne prouve rien. Le verdict exige `rc=1` et
+`failed` dans la derniere ligne de pytest : une mutation qui casse la syntaxe
+fait aussi echouer pytest, mais ce n'est pas un echec de test.
+
+Code de sortie : 0 si toutes les mutations sont rouges, 1 si l'une survit ou si
+l'arbre de travail a change, 2 sur une table invalide.
 
     uv run python scripts/rejouer-les-mutations.py [--id A1-a] [--table <chemin>]
 """
@@ -56,13 +45,13 @@ RACINE = Path(__file__).resolve().parents[1]
 TABLE = RACINE / "tests/mutations/table-des-mutations.json"
 TESTS = "tests/unit/test_equivalence_des_identifiants.py"
 
-# CE QUE LA COPIE PORTE. `src/` et `tests/` sont l'objet du rejeu ; `scripts/` et
-# `documentation/campagnes/` parce que des tests les LISENT — le repertoire de
-# campagne est resolu depuis l'emplacement du module, donc depuis la COPIE.
+# Contenu de la copie. `src/` et `tests/` sont l'objet du rejeu ; `scripts/` et
+# `documentation/campagnes/` parce que des tests les lisent (le repertoire de
+# campagne est resolu depuis l'emplacement du module, donc dans la copie).
 # `pyproject.toml` parce qu'il porte `addopts` et `testpaths`.
 COPIES: tuple[str, ...] = ("src", "tests", "scripts", "documentation/campagnes")
 FICHIERS: tuple[str, ...] = ("pyproject.toml",)
-# Les arbres dont on releve les `mtime` : ceux que l'ancienne version mutait.
+# Les arbres dont les `mtime` sont releves : ceux ou vivent les fichiers mutes.
 SURVEILLES: tuple[str, ...] = ("src", "tests")
 
 
@@ -71,19 +60,12 @@ class TableInvalideError(ValueError):
 
 
 def empreinte_des_mtime(racine: Path) -> dict[str, float]:
-    """Le `mtime` de chaque fichier SOURCE des arbres surveilles. La sonde du script.
+    """Le `mtime` de chaque fichier source des arbres surveilles.
 
-    **`__pycache__` EN EST EXCLU, et c'est le defaut B1 du quatrieme audit.** La
-    sonde faisait un `rglob("*")` nu : sur 162 fichiers surveilles, 78 etaient
-    des `.pyc`, que l'interpreteur reecrit de lui-meme des qu'un module est
-    importe. `mesure` de l'audit : un `python -c "import src.index_report"`
-    lance depuis l'arbre PENDANT `make mutations` faisait rendre 2 a `make` —
-    le rejeu se declarait « ECHEC : le rejeu a TOUCHE l'arbre de travail »
-    alors qu'il n'avait touche que sa copie.
-
-    Un garde qui rougit sur ce qu'il ne garde pas finit par etre desarme, et
-    c'est ce qu'il aurait emporte avec lui : la sonde garde les SOURCES, les
-    seules que le rejeu pourrait muter.
+    `__pycache__` est exclu (defaut B1) : l'interpreteur reecrit les `.pyc` des
+    qu'un module est importe. Un simple `python -c "import src.index_report"`
+    lance depuis l'arbre pendant `make mutations` faisait sinon echouer le
+    rejeu a tort. Seules les sources peuvent etre mutees.
     """
     releve: dict[str, float] = {}
     for arbre in SURVEILLES:
@@ -96,9 +78,9 @@ def empreinte_des_mtime(racine: Path) -> dict[str, float]:
 def ce_qui_a_bouge(avant: dict[str, float], apres: dict[str, float]) -> list[str]:
     """Les fichiers surveilles dont le `mtime` a change, ou qui ont disparu.
 
-    C'est la sonde qui remplace le `git diff` de la version precedente : celui-ci
-    comparait l'arbre a l'INDEX, donc laissait passer un residu indexe et
-    rougissait devant une modification legitime non commitee.
+    Cette comparaison remplace un `git diff`, qui compare l'arbre a l'index :
+    il laisserait passer un residu indexe et echouerait devant une modification
+    legitime non commitee.
     """
     return sorted(
         [nom for nom, t in apres.items() if avant.get(nom) != t] + list(set(avant) - set(apres))
@@ -115,7 +97,7 @@ def preparer_la_copie(destination: Path) -> None:
 
 
 def _muter(chemin: Path, mutation: dict[str, str]) -> str:
-    """Applique la mutation et rend le texte d'ORIGINE, pour la restauration."""
+    """Applique la mutation et rend le texte d'origine, pour la restauration."""
     origine = chemin.read_text(encoding="utf-8")
     if "ajouter" in mutation:
         chemin.write_text(origine + mutation["ajouter"], encoding="utf-8")
@@ -132,16 +114,14 @@ def _muter(chemin: Path, mutation: dict[str, str]) -> str:
 
 
 def verdict(code_de_retour: int, derniere: str) -> tuple[bool, str]:
-    """Le test a-t-il ECHOUE, et pas seulement casse ?
+    """Le test a-t-il echoue, et pas seulement casse ?
 
-    **UN rc NON NUL NE SUFFIT PAS.** `mesure` du troisieme audit : une mutation
-    qui casse la SYNTAXE du fichier de production empeche la collecte, rend un rc
-    non nul et une derniere ligne en `error` — et passait pour « ROUGE ». Un
-    garde qui ne voit rien et un fichier qu'on ne peut plus lire se ressemblent
-    au seul rc.
+    Un rc non nul ne suffit pas : une mutation qui casse la syntaxe du fichier
+    de production empeche la collecte, et rend un rc non nul avec une derniere
+    ligne en `error` (registre 4.39.c).
 
-    Le verdict exige donc les trois : `rc == 1`, `failed` dans la derniere ligne,
-    et AUCUN `error`.
+    Le verdict exige donc `rc == 1`, `failed` dans la derniere ligne, et aucun
+    `error`.
     """
     if " no tests ran" in derniere or (
         "deselected" in derniere and "passed" not in derniere and "failed" not in derniere
@@ -159,8 +139,9 @@ def verdict(code_de_retour: int, derniere: str) -> tuple[bool, str]:
 def rejouer(copie: Path, mutation: dict[str, str], fichier_de_test: str) -> tuple[bool, str]:
     """Rend `(rougit, detail)` : le test vise a-t-il bien echoue sous la mutation ?
 
-    Une entree peut nommer SON fichier de test (`fichier_de_test`) : les gardes
-    d'un script de campagne ne vivent pas dans le fichier de test du harnais.
+    Une entree peut nommer son propre fichier de test (`fichier_de_test`) : les
+    tests d'un script de campagne ne sont pas dans le fichier de test par
+    defaut.
     """
     chemin = copie / mutation["fichier"]
     fichier = mutation.get("fichier_de_test", fichier_de_test)
@@ -183,9 +164,9 @@ def main() -> int:
     analyseur = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analyseur.add_argument("--id", default=None, help="ne rejouer qu'une mutation")
     analyseur.add_argument("--fichier-de-test", default=TESTS)
-    # UNE AUTRE TABLE, pour que les tests de ce script puissent lui en donner une
-    # qui casse la syntaxe : le verdict ne se verifie pas sur la table du depot,
-    # qui est verte par construction.
+    # Une autre table, pour que les tests de ce script puissent lui en donner
+    # une qui casse la syntaxe : la table du depot ne contient que des
+    # mutations rouges.
     analyseur.add_argument("--table", type=Path, default=TABLE)
     arguments = analyseur.parse_args()
 
@@ -196,7 +177,7 @@ def main() -> int:
             print(f"aucune mutation « {arguments.id} » dans {arguments.table}")
             return 2
 
-    # LA SONDE, avant toute chose : l'arbre d'ou l'on lance ne doit pas bouger.
+    # Releve des `mtime` avant tout : l'arbre de travail ne doit pas changer.
     avant = empreinte_des_mtime(RACINE)
 
     survivants: list[str] = []
@@ -219,10 +200,8 @@ def main() -> int:
     duree = time.monotonic() - depart
     print(f"\n{len(table)} mutation(s) rejouee(s) en {duree:.1f} s")
 
-    # LA SONDE SE RELIT : le rejeu n'ecrit plus rien dans l'arbre de travail, et
-    # c'est MESURE et non promis. `git diff` ne pouvait pas le dire — il compare
-    # l'arbre a l'index, donc laisse passer un residu indexe et rougit devant
-    # une modification legitime non commitee.
+    # Second releve : verifie que le rejeu n'a rien ecrit dans l'arbre de
+    # travail (voir `ce_qui_a_bouge` pour le choix face a `git diff`).
     bouges = ce_qui_a_bouge(avant, empreinte_des_mtime(RACINE))
     if bouges:
         print(f"ECHEC : le rejeu a TOUCHE l'arbre de travail : {bouges[:8]}")

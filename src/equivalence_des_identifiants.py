@@ -1,67 +1,54 @@
-"""Le harnais qui dit, avant et apres une reingestion, quels `element_id` ont bouge.
+"""Harnais qui dit, avant et apres une reingestion, quels `element_id` ont bouge.
 
-**SA VALEUR EST SA CAPACITE A DIRE NON.** La campagne a venir purgera les stores
-puis reingerera tout le corpus. Le jeu de questions de l'agent pointe sur des
-`element_id` : ce harnais doit prouver AVANT que la production redonne les
-identifiants du graphe, et dire APRES exactement lesquels ont bouge.
+Le jeu de questions de l'agent pointe sur des `element_id`. Avant de purger les
+stores et de reingerer le corpus, le harnais prouve que la production redonne
+les identifiants du graphe ; apres, il dit exactement lesquels ont bouge. Sa
+valeur tient a sa capacite a rendre un rouge.
 
-**LA VERSION PRECEDENTE ETAIT TAUTOLOGIQUE APRES LA CAMPAGNE, et c'est le defaut
-qui donne a ce module sa forme** (registre 4.37). Elle reextrayait avec le code X
-et comparait au graphe... ecrit par ce meme code X. Elle ne pouvait voir qu'un
-non-determinisme, jamais un deplacement : trois `ListItem` qui recoivent du
-texte entre l'avant et l'apres rendaient `IDENTIQUES 30`, `OK`, rc=0. Et elle
-JETAIT l'`element["id"]` emis par la production pour le recalculer avec
-`compute_id` : une derive au site d'appel lui etait invisible.
+Il ne compare jamais le code du jour a une reextraction du meme code : une telle
+comparaison ne voit qu'un non-determinisme, jamais un deplacement (registre
+4.37). D'ou trois gestes :
 
-D'ou les trois gestes de ce module :
-
-1. :func:`ecrire_l_instantane` FIGE, avant la campagne, un releve par element —
-   l'identifiant EMIS, la cle du document, `page_no`, `position_in_page`,
-   `text50`, le label, et `self_ref` pour l'appariement. Le graphe ne stocke pas
-   `position_in_page` : l'instantane vient donc de l'EMISSION de la production,
-   et il n'est ecrit qu'apres que :func:`confronter_au_graphe` a prouve que ces
-   identifiants emis sont ceux du graphe ;
+1. :func:`ecrire_l_instantane` fige, avant la campagne, un releve par element :
+   l'identifiant emis par la production (pas un recalcul par `compute_id`), la
+   cle du document, `page_no`, `position_in_page`, `text50`, le label, et
+   `self_ref` pour l'appariement. Le graphe ne stocke pas `position_in_page` :
+   le releve vient donc de l'emission, et n'est ecrit qu'apres que
+   :func:`confronter_au_graphe` a montre que ces identifiants sont ceux du graphe ;
 2. apres la campagne, :func:`comparer_les_releves` confronte le nouveau releve a
-   CET instantane, jamais a une reextraction du meme code. Les identifiants
-   compares sont ceux que la production passe a `persist` ; `compute_id` ne sert
-   plus qu'a l'attribution ;
-3. :func:`trancher` rend vert si et seulement si l'ensemble deplace EGALE
-   l'ensemble DECLARE — vide par defaut. Un identifiant declare qui ne bouge pas
-   est rouge : sinon une reparation non appliquee passerait en silence.
+   cet instantane. `compute_id` ne sert qu'a l'attribution ;
+3. :func:`trancher` rend vert si et seulement si l'ensemble deplace egale
+   l'ensemble declare (vide par defaut). Un identifiant declare qui ne bouge pas
+   est un rouge : sinon une reparation non appliquee passerait en silence.
 
-**L'ATTRIBUTION EST EXACTE, et l'heuristique par jumeaux est supprimee.** Chaque
-element d'avant est apparie a son homologue d'apres par `self_ref` (rang
-d'occurrence compris : un PDF converti par lots repete les memes `self_ref` d'un
-lot a l'autre), puis les QUATRE entrees de la formule sont comparees
-directement. L'ancienne heuristique attribuait la mutation `filename` a
-`position_in_page` 60 fois sur 60. **Sa borne reelle** : l'attribution est aussi
-juste que l'appariement, et l'appariement par `self_ref` suppose que Docling
-rend le meme arbre — meme version, meme entree. Si Docling change, le COMPTE
-reste exact (c'est une comparaison d'ensembles) et l'attribution peut designer
-des termes qui n'ont pas bouge.
+Attribution : chaque element d'avant est apparie a son homologue d'apres par
+`self_ref` et rang d'occurrence (un PDF converti par lots repete ses `self_ref`
+d'un lot a l'autre), puis les quatre entrees de la formule sont comparees
+directement. Limite : l'appariement suppose que Docling rend le meme arbre
+(meme version, meme entree). Si Docling change, le compte reste exact (c'est une
+difference d'ensembles) mais l'attribution peut designer des termes qui n'ont
+pas bouge.
 
-**CE MODULE N'ECRIT DANS AUCUN STORE, ET C'EST UNE BARRIERE A L'EXECUTION.**
-:func:`armer_les_barrieres` pose DEUX couches, dans cet ordre :
+Le harnais n'ecrit dans aucun store. :func:`armer_les_barrieres` pose deux
+couches, dans cet ordre :
 
-1. :func:`barrer_les_sdk_de_store` fait LEVER les constructeurs des trois SDK —
-   `minio` (le client S3 generique), `nebula3`, `chromadb` — enumeres depuis le
-   SDK INSTALLE. Apres elle,
-   aucune construction de client ne passe dans ce processus, quel que soit le
-   chemin : alias d'import, `getattr`, niveau de module, paquet quelconque. Elle
-   remplace une derivation AST des porteurs, a laquelle quatre portes neuves sur
-   cinq echappaient (registre 4.39.b) ;
-2. les barrieres par SITE remplacent chaque porte d'ecriture A TOUS LES SITES OU
-   ELLE EST LIEE, imports par nom compris : `storage` et `extraction` importent
-   `nebula.get_writer` par nom. Toute porte touchee est JOURNALISEE, parce
-   qu'une levee peut etre avalee par un `except Exception` de la production.
+1. :func:`barrer_les_sdk_de_store` fait lever les constructeurs des trois SDK
+   (`minio`, client S3 generique ; `nebula3` ; `chromadb`), enumeres depuis le
+   SDK installe. Aucune construction de client ne passe ensuite dans ce
+   processus, quel que soit le chemin : alias d'import, `getattr`, niveau de
+   module, paquet quelconque (registre 4.39.b) ;
+2. les barrieres par site remplacent chaque porte d'ecriture (fonction de
+   `src.docling_service` qui ecrit dans un store) a tous les sites ou elle est
+   liee, imports par nom compris. Toute porte touchee est journalisee, car une
+   levee peut etre avalee par un `except Exception` de la production.
 
-Les SEULS clients permis sont ceux de LECTURE, construits AVANT l'armement et
+Seuls sont permis les clients de lecture, construits avant l'armement et
 enveloppes : :class:`SessionEnLecture` pour le graphe, :class:`LectureSeule`
-pour le stockage objet. LA BORNE : un client construit dans un SOUS-PROCESSUS, ou par une
-bibliotheque tierce hors de ces trois SDK, n'est pas atteint.
+pour le stockage objet. Limite : un client construit dans un sous-processus, ou
+par une bibliotheque tierce hors de ces trois SDK, n'est pas atteint.
 
-Ce module s'importe cote hote : aucune dependance lourde au niveau du module,
-les modules de production sont importes dans la fonction qui en a besoin.
+Le module s'importe cote hote : aucune dependance lourde au niveau du module,
+les modules de production sont importes dans les fonctions qui en ont besoin.
 """
 
 from __future__ import annotations
@@ -79,11 +66,10 @@ from typing import Any
 
 from src.docling_service.elements import compute_id
 
-# Une ligne de releve : les QUATRE entrees de `compute_id` telles que la
-# production les a passees, l'identifiant qu'elle a EMIS, et deux champs qui
-# n'entrent pas dans la formule — le label, pour lire un rouge, et `self_ref`,
-# pour apparier l'avant et l'apres. `text50` et non `text` : c'est la troncature
-# qui entre dans la formule.
+# Une ligne de releve : les quatre entrees de `compute_id` telles que la
+# production les a passees, l'identifiant qu'elle a emis, et deux champs hors
+# formule : le label, pour lire un rouge, et `self_ref`, pour apparier l'avant et
+# l'apres. `text50` et non `text` : c'est la troncature qui entre dans la formule.
 Ligne = dict[str, Any]
 
 # Les quatre entrees de `compute_id(filename, page_no, position_in_page, text)`.
@@ -97,52 +83,43 @@ _CHAMP_DU_TERME = {
     "text50": "text50",
 }
 
-# Le terme impute quand l'identifiant emis change ALORS QUE les quatre entrees
+# Le terme impute quand l'identifiant emis change alors que les quatre entrees
 # sont identiques : la production a calcule sur autre chose que ce qu'elle
-# declare. C'est le scenario `.cleaned/<cle>` de l'audit du lot 11.
+# declare (par exemple sur `.cleaned/<cle>` au lieu de `<cle>`).
 SITE_D_APPEL = "site d'appel"
 
 FORMAT = "instantane-des-identifiants/1"
 MANIFESTE = "MANIFESTE.tsv"
 CLES_D_OBJET = "cles-d-objet.tsv"
-# ─── LE SITE DE L'EMPREINTE ATTENDUE, ET POURQUOI IL NE DEPEND PLUS DE L'ARGUMENT
 
-# LA VERSION PRECEDENTE LISAIT LA TABLE A COTE DU DOSSIER QU'ON LUI DESIGNAIT,
-# donc a un site que l'appelant choisissait. `mesure` du troisieme audit du lot
-# 11, contre les vrais stores : `figer /sp/bis/2026-09-24-instantane-des-identifiants`
-# (rc=0), un `sha256sum` et un `printf` dans `/sp/bis/empreintes-des-instantanes.tsv`,
-# puis `comparer /sp/bis/…` — rc=0, `OK`, 23 / 23. Le harnais etait de nouveau
-# TAUTOLOGIQUE : il comparait le code du jour a un instantane ecrit par le code
-# du jour, authentifie par une table ecrite par la meme main.
+# ─── L'empreinte attendue ───────────────────────────────────────────────────
 #
-# DEUX SITES FIXES LE REMPLACENT, et aucun des deux ne se deduit de l'argument :
+# L'instantane et son empreinte attendue vivent a des sites fixes, qu'aucun
+# argument ne peut deplacer. Sinon, figer un instantane ailleurs puis y ecrire sa
+# propre empreinte rendrait `comparer` vert en comparant le code du jour a
+# lui-meme.
 #
-# 1. `REPERTOIRE_DE_CAMPAGNE`, resolu depuis L'EMPLACEMENT DE CE MODULE. Tout
-#    dossier hors de lui est REFUSE, pour `figer` comme pour `comparer` : les
-#    trois gestes de l'audit rendent desormais 1. `src/` est monte en LECTURE
-#    SEULE dans l'image d'extraction, et c'est lui qui EST le harnais ;
-# 2. `EMPREINTES_ATTENDUES`, une constante de ce module — plus un fichier voisin.
-#    LA BORNE RESTANTE S'ECRIT ICI, ET ELLE EST VOULUE : modifier une empreinte
-#    exige un commit sur `src/`, revu comme du code. Un instantane refige sans
-#    commit porte une autre empreinte, donc rougit.
+# 1. `REPERTOIRE_DE_CAMPAGNE` est resolu depuis l'emplacement de ce module. Tout
+#    dossier hors de lui est refuse, pour `figer` comme pour `comparer` ;
+# 2. `EMPREINTES_ATTENDUES` est une constante de ce module. Modifier une
+#    empreinte exige donc un commit sur `src/`, revu comme du code. Un instantane
+#    refige sans commit porte une autre empreinte, donc rougit.
 REPERTOIRE_DE_CAMPAGNE = Path(__file__).resolve().parents[1] / "documentation/campagnes"
-#
-# LE `pragma` CI-DESSOUS EST UN FAUX POSITIF MOTIVE, et il suit la doctrine du
-# depot (`.pre-commit-config.yaml`, hook `detect-secrets`) : un faux positif se
-# declare AU SITE, avec sa raison, jamais dans une baseline. Cette chaine est le
-# SHA-256 d'un manifeste VERSIONNE, recalculable par `sha256sum` sur un fichier
-# que tout le monde lit — c'est l'exact contraire d'un secret : sa valeur EST sa
-# publicite. Le hook ne voit qu'une chaine hexadecimale de haute entropie.
+
+# Le `pragma` ci-dessous declare un faux positif du hook `detect-secrets`, au
+# site et avec sa raison (regle du depot : jamais de baseline). La chaine est le
+# SHA-256 d'un manifeste versionne, recalculable par `sha256sum` : ce n'est pas
+# un secret, mais le hook y voit un hexadecimal de haute entropie.
 EMPREINTES_ATTENDUES: dict[str, str] = {}
-# L'AFFECTATION EST SEPAREE POUR UNE SEULE RAISON : le `pragma` doit tenir sur la
-# ligne de la chaine, et cette ligne-ci fait exactement 100 caracteres. Dans le
-# dictionnaire, l'indentation en ajoutait quatre et `ruff` rougissait (E501).
+# Affectation separee : le `pragma` doit tenir sur la ligne de la chaine, qui
+# fait deja 100 caracteres (limite de `ruff`, E501). Dans le dictionnaire,
+# l'indentation la ferait deborder.
 EMPREINTES_ATTENDUES["2026-09-24-instantane-des-identifiants"] = (
     "e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d"  # pragma: allowlist secret
 )
-# `label` EN DERNIER, et ce n'est pas cosmetique : il n'est jamais vide, donc
-# aucune ligne ne finit par une espace que le hook `trailing-whitespace`
-# retirerait au commit en alterant l'instantane.
+# `label` en dernier : il n'est jamais vide, donc aucune ligne ne finit par une
+# espace que le hook `trailing-whitespace` retirerait au commit en alterant
+# l'instantane.
 COLONNES: tuple[str, ...] = (
     "element_id",
     "page_no",
@@ -156,8 +133,8 @@ COLONNES: tuple[str, ...] = (
 class MutationNulleError(AssertionError):
     """Une mutation du controle negatif n'a deplace aucun identifiant.
 
-    C'est un ECHEC DU CONTROLE, pas un resultat : une mutation qui ne mute rien
-    rend le controle negatif vert sans rien prouver.
+    C'est un echec du controle, pas un resultat : une mutation qui ne mute rien
+    rendrait le controle negatif vert sans rien prouver.
     """
 
 
@@ -178,8 +155,8 @@ class Emission:
         cle: `identity.key`, la cle qui entre dans la formule.
         lignes: Un releve par element, dans l'ordre d'emission.
         cles_d_objet: Les cles d'objet que la production aurait ecrites.
-        empreinte_de_l_entree: SHA-256 du fichier REELLEMENT converti — la copie
-            nettoyee pour un HTML. Elle dit, devant un rouge, si c'est l'entree
+        empreinte_de_l_entree: SHA-256 du fichier reellement converti (la copie
+            nettoyee pour un HTML). Devant un rouge, elle dit si c'est l'entree
             ou le code qui a change.
     """
 
@@ -193,7 +170,7 @@ class Emission:
 def releve_de_l_emission(elements: Iterable[Mapping[str, Any]], cle: str) -> list[Ligne]:
     """Rend le releve des elements que la production passe a `persist`.
 
-    **L'identifiant est celui qu'elle a EMIS**, `element["id"]`, et non un
+    L'identifiant est celui qu'elle a emis, `element["id"]`, et non un
     recalcul : c'est ce qui rend visible une derive au site d'appel de
     `compute_id`. Les champs sont lus par indexation, pas par `.get` : un champ
     disparu du contrat doit lever, pas devenir un zero.
@@ -220,10 +197,9 @@ def releve_de_l_emission(elements: Iterable[Mapping[str, Any]], cle: str) -> lis
 
 
 def identifiant_par_la_formule(ligne: Mapping[str, Any]) -> str:
-    """L'identifiant que `compute_id` donne aux entrees DECLAREES par la ligne.
+    """L'identifiant que `compute_id` donne aux entrees declarees par la ligne.
 
-    Sert a l'attribution et a elle seule : la comparaison porte sur
-    l'identifiant emis.
+    Ne sert qu'a l'attribution : la comparaison porte sur l'identifiant emis.
     """
     return compute_id(
         str(ligne["cle"]),
@@ -235,11 +211,10 @@ def identifiant_par_la_formule(ligne: Mapping[str, Any]) -> str:
 
 # ─── L'instantane ───────────────────────────────────────────────────────────
 #
-# Un fichier TSV par document, un manifeste, un fichier de cles d'objet. Le choix
-# du format est justifie au registre (4.37.a) ; en deux mots : un fichier par
-# document tient sous le plafond de 500 Ko du hook `check-added-large-files`, et
-# des colonnes SANS guillemets ne declenchent pas `detect-secrets`, qui voit un
-# secret dans tout hexadecimal entre guillemets (`mesure` au commit).
+# Un fichier TSV par document, un manifeste, un fichier de cles d'objet
+# (registre 4.37.a). Un fichier par document tient sous le plafond de 500 Ko du
+# hook `check-added-large-files`, et des colonnes sans guillemets ne declenchent
+# pas `detect-secrets`, qui voit un secret dans tout hexadecimal entre guillemets.
 
 
 def _echapper(valeur: str) -> str:
@@ -306,7 +281,7 @@ def lire_le_releve(texte: str, cle: str) -> list[Ligne]:
 def ecrire_l_instantane(
     dossier: Path, emissions: Sequence[Emission], entete: Mapping[str, str]
 ) -> str:
-    """Ecrit l'instantane et rend son EMPREINTE, le SHA-256 du manifeste.
+    """Ecrit l'instantane et rend son empreinte, le SHA-256 du manifeste.
 
     Le manifeste porte le SHA-256 de chaque autre fichier : son empreinte les
     couvre donc tous, et c'est elle que le registre consigne.
@@ -373,20 +348,16 @@ class EmpreinteInattendueError(ValueError):
 
 
 class DossierHorsCampagneError(ValueError):
-    """Le dossier designe n'est pas dans le repertoire de campagne FIXE."""
+    """Le dossier designe n'est pas dans le repertoire de campagne fixe."""
 
 
 def dossier_de_campagne(dossier: Path, repertoire: Path = REPERTOIRE_DE_CAMPAGNE) -> Path:
-    """Rend le dossier RESOLU, et refuse tout ce qui est hors du repertoire fixe.
+    """Rend le dossier resolu, et refuse tout ce qui est hors du repertoire fixe.
 
-    **C'EST LA REPARATION DU TROISIEME AUDIT**, et elle porte sur les DEUX
-    gestes : `figer` dans un scratchpad puis `comparer` contre lui y rendait
-    rc=0 des deux cotes. Le repertoire ne se deduit plus de l'argument : il est
-    resolu depuis l'emplacement de CE module.
-
-    Le parent doit etre le repertoire, et non un ancetre quelconque : un
-    `…/campagnes/bis/instantane` porterait sa propre table voisine, ce que la
-    version precedente acceptait.
+    Vaut pour `figer` comme pour `comparer` : sans ce refus, figer dans un
+    dossier quelconque puis comparer contre lui rendrait vert des deux cotes.
+    Le parent doit etre le repertoire lui-meme, et non un ancetre quelconque :
+    un `…/campagnes/bis/instantane` n'est pas accepte.
 
     Raises:
         DossierHorsCampagneError: Si le dossier n'est pas un enfant direct du
@@ -402,14 +373,12 @@ def dossier_de_campagne(dossier: Path, repertoire: Path = REPERTOIRE_DE_CAMPAGNE
 
 
 def empreinte_attendue(dossier: Path) -> str:
-    """L'empreinte que CE MODULE attend pour ce dossier d'instantane.
+    """L'empreinte que ce module attend pour ce dossier d'instantane.
 
-    Prise dans :data:`EMPREINTES_ATTENDUES`, une constante de ce module, et non
-    plus dans un fichier voisin du dossier designe : l'argument ne peut plus
-    deplacer la table qui l'authentifie.
-
-    Un dossier ABSENT de la constante est refuse : c'est exactement le cas du
-    second instantane qu'on vient d'ecrire.
+    Prise dans :data:`EMPREINTES_ATTENDUES`, une constante de ce module : aucun
+    argument ne peut deplacer la table qui authentifie l'instantane. Un dossier
+    absent de la constante est refuse, ce qui refuse aussi un second instantane
+    tout juste ecrit.
 
     Raises:
         DossierHorsCampagneError: Si le dossier est hors du repertoire fixe.
@@ -426,7 +395,7 @@ def empreinte_attendue(dossier: Path) -> str:
 
 
 def lire_l_instantane(dossier: Path) -> Instantane:
-    """Relit un instantane et VERIFIE chaque fichier contre le manifeste.
+    """Relit un instantane et verifie chaque fichier contre le manifeste.
 
     Raises:
         InstantaneCorrompuError: Si un fichier a change depuis l'ecriture, ou si
@@ -483,7 +452,7 @@ class Confrontation:
 
 
 def confronter_au_graphe(lignes: Sequence[Ligne], ids_du_graphe: Iterable[str]) -> Confrontation:
-    """Confronte les identifiants EMIS a ceux que le graphe porte."""
+    """Confronte les identifiants emis a ceux que le graphe porte."""
     emis = {str(ligne["element_id"]) for ligne in lignes}
     graphe = set(ids_du_graphe)
     return Confrontation(
@@ -533,7 +502,7 @@ def _cle_d_appariement(lignes: Sequence[Ligne]) -> list[tuple[str, int]]:
 
 
 def termes_changes(avant: Mapping[str, Any], apres: Mapping[str, Any]) -> tuple[str, ...]:
-    """Les entrees de la formule qui different, comparees DIRECTEMENT.
+    """Les entrees de la formule qui different, comparees directement.
 
     Aucune heuristique : les deux lignes portent les quatre entrees. Si aucune
     ne differe et que l'identifiant emis change, c'est le site d'appel.
@@ -547,9 +516,9 @@ def termes_changes(avant: Mapping[str, Any], apres: Mapping[str, Any]) -> tuple[
 def comparer_les_releves(
     partition_key: str, avant: Sequence[Ligne], apres: Sequence[Ligne]
 ) -> Bilan:
-    """Compare l'apres a l'instantane, pour UN document.
+    """Compare l'apres a l'instantane, pour un document.
 
-    Le COMPTE est une difference d'ensembles d'identifiants emis ; l'appariement
+    Le compte est une difference d'ensembles d'identifiants emis ; l'appariement
     ne sert qu'a l'attribution.
     """
     ids_apres = {str(ligne["element_id"]) for ligne in apres}
@@ -576,12 +545,11 @@ def comparer_les_releves(
         for ligne in apres
         if ligne["element_id"] not in ids_avant and id(ligne) not in contreparties
     ]
-    # UN IDENTIFIANT PRESENT DES DEUX COTES PEUT DESIGNER UN AUTRE ELEMENT, et
-    # une difference d'ensembles le compte comme identique. `mesure` au chantier
-    # B de la reprise du lot 11 : ne plus emettre les puces vides decale leurs
-    # voisins, et deux lignes de code VIDES tombent a la position de la puce
-    # retiree — meme cle, meme page, meme rang, meme `text50` "", donc MEME
-    # identifiant. Un ancrage sur cette puce designerait du code, sans un rouge.
+    # Un identifiant present des deux cotes peut designer un autre element, et
+    # une difference d'ensembles le compterait comme identique. Cas observe :
+    # quand les puces vides ne sont plus emises, une ligne de code vide peut
+    # tomber a la position d'une puce retiree (meme cle, page, rang et `text50`
+    # "", donc meme identifiant). Un ancrage sur cette puce designerait du code.
     par_id_apres = {str(ligne["element_id"]): ligne for ligne in apres}
     reassignes = [
         (ligne, par_id_apres[str(ligne["element_id"])])
@@ -616,10 +584,10 @@ class Verdict:
 
 
 def lire_les_deplacements_annonces(chemin: Path | None) -> set[str]:
-    """Lit la liste DECLAREE des deplacements attendus : un identifiant par ligne.
+    """Lit la liste declaree des deplacements attendus : un identifiant par ligne.
 
     `#` ouvre un commentaire, pour que chaque identifiant porte sa raison. Sans
-    fichier, la liste est VIDE : aucun deplacement n'est attendu.
+    fichier, la liste est vide : aucun deplacement n'est attendu.
     """
     if chemin is None:
         return set()
@@ -634,22 +602,19 @@ def lire_les_deplacements_annonces(chemin: Path | None) -> set[str]:
 def trancher(
     bilans: Sequence[Bilan], declares: set[str], autres_raisons: Sequence[str] = ()
 ) -> Verdict:
-    """Vert si et seulement si l'ensemble deplace EGALE l'ensemble declare.
+    """Vert si et seulement si l'ensemble deplace egale l'ensemble declare.
 
-    Quatre rouges, et aucun n'est tolerable :
+    Quatre causes de rouge :
 
-    - un deplacement NON declare : l'agent perd un ancrage sans que personne l'ait
-      decide ;
-    - un identifiant declare qui NE BOUGE PAS : la reparation annoncee n'a pas ete
-      appliquee, et un vert le cacherait ;
-    - un identifiant APPARU sans contrepartie deplacee : un element que
+    - un deplacement non declare : l'agent perd un ancrage sans decision ;
+    - un identifiant declare qui ne bouge pas : la reparation annoncee n'est pas
+      appliquee ;
+    - un identifiant apparu sans contrepartie deplacee : un element que
       l'instantane ne connait pas. La declaration ne porte que sur l'instantane,
-      donc un element ajoute n'est pas declarable ; c'est une borne voulue, qui
-      force a refiger l'instantane plutot qu'a l'etendre en silence ;
-    - un identifiant REASSIGNE : present des deux cotes, il designe apres un
+      donc un ajout n'est pas declarable : il faut refiger l'instantane ;
+    - un identifiant reassigne : present des deux cotes, il designe apres un
       autre element (autre label ou autre `self_ref`). Non declarable non plus :
-      un ancrage qui glisse en silence vers un autre passage est pire qu'un
-      ancrage mort.
+      un ancrage qui glisse vers un autre passage est pire qu'un ancrage mort.
     """
     deplaces = {str(d.avant["element_id"]) for bilan in bilans for d in bilan.deplaces}
     raisons = list(autres_raisons)
@@ -681,12 +646,12 @@ def trancher(
 
 @dataclass(frozen=True)
 class Mutation:
-    """Une derive simulee de la production, sur UNE entree de la formule.
+    """Une derive simulee de la production, sur une entree de la formule.
 
     Attributes:
         nom: Le nom sous lequel le controle negatif la designe.
-        terme: Le terme que l'attribution DOIT designer, et lui seul.
-        ligne: Transforme une ligne EN PLACE — ses entrees, et son identifiant
+        terme: Le terme que l'attribution doit designer, et lui seul.
+        ligne: Transforme une ligne en place : ses entrees, et son identifiant
             emis recalcule comme la production derivee le calculerait.
     """
 
@@ -708,7 +673,7 @@ def _muter_filename(ligne: Ligne) -> None:
 
 def _muter_page_no(ligne: Ligne) -> None:
     # Aucune condition sur `page_no` : un chapitre HTML est tout entier en page 1,
-    # et c'est ce qui avait rendu nulle la mutation historique `page_no >= 12`.
+    # donc une condition comme `page_no >= 12` rendrait la mutation nulle.
     if int(ligne["position_in_page"]) >= 1:
         ligne["page_no"] = int(ligne["page_no"]) + 1
         _reemettre(ligne)
@@ -730,10 +695,9 @@ def _muter_text50(ligne: Ligne) -> None:
 
 
 def _muter_site_d_appel(ligne: Ligne) -> None:
-    # LE SCENARIO DE L'AUDIT : la production calcule sur `.cleaned/<cle>` mais
-    # declare la bonne cle. Les quatre entrees de la ligne sont intactes, seul
-    # l'identifiant emis change — l'ancien harnais, qui recalculait, ne le voyait
-    # pas.
+    # La production calcule sur `.cleaned/<cle>` mais declare la bonne cle. Les
+    # quatre entrees de la ligne sont intactes, seul l'identifiant emis change :
+    # un harnais qui recalculerait l'identifiant ne le verrait pas.
     ligne["element_id"] = compute_id(
         f".cleaned/{ligne['cle']}",
         int(ligne["page_no"]),
@@ -752,12 +716,11 @@ MUTATIONS: dict[str, Mutation] = {
 
 
 def appliquer_la_mutation(mutation: Mutation, lignes: Sequence[Ligne]) -> list[Ligne]:
-    """Applique une mutation a une COPIE, et refuse une mutation sans effet.
+    """Applique une mutation a une copie, et refuse une mutation sans effet.
 
     Raises:
-        MutationNulleError: Si aucun identifiant ne bouge — le defaut du lot qui
-            a ecrit la premiere version, `page_no >= 12` sur un document tout
-            entier en page 1.
+        MutationNulleError: Si aucun identifiant ne bouge (par exemple une
+            condition `page_no >= 12` sur un document tout entier en page 1).
     """
     copies = [dict(ligne) for ligne in lignes]
     for ligne in copies:
@@ -777,12 +740,12 @@ class Controle:
 
     Attributes:
         nom: La mutation.
-        mutes: Identifiants d'avant ABSENTS du releve mute, recomptes ici par
+        mutes: Identifiants d'avant absents du releve mute, recomptes ici par
             une difference d'ensembles nue, independante de
-            :func:`comparer_les_releves`. **Ce n'est pas le nombre de lignes
-            touchees** : muter `position_in_page` de +1 fait tomber l'identifiant
+            :func:`comparer_les_releves`. Ce n'est pas le nombre de lignes
+            touchees : muter `position_in_page` de +1 fait tomber l'identifiant
             d'un element sur celui de son voisin quand les deux partagent leur
-            `text50` — les lignes blanches d'un bloc de code partagent `""`. Ces
+            `text50` (les lignes blanches d'un bloc de code partagent `""`). Ces
             collisions sont comptees a part.
         collisions: Lignes dont l'identifiant a change vers un identifiant que
             l'avant portait deja.
@@ -802,11 +765,11 @@ class Controle:
 
 
 def controle_negatif(partition_key: str, lignes: Sequence[Ligne]) -> list[Controle]:
-    """Chaque mutation doit etre VUE en totalite et attribuee a SON terme, seul.
+    """Chaque mutation doit etre vue en totalite et attribuee a son seul terme.
 
-    C'est ce qui prouve, sur le releve reel du jour, que la comparaison sait
-    dire « different » et sait dire POURQUOI. Une mutation nulle est un echec du
-    controle, rendu comme `mutes = 0`.
+    Prouve, sur le releve reel du jour, que la comparaison sait dire
+    « different » et pourquoi. Une mutation nulle est un echec du controle,
+    rendu comme `mutes = 0`.
     """
     ids_avant = {str(ligne["element_id"]) for ligne in lignes}
     resultats: list[Controle] = []
@@ -836,68 +799,49 @@ def controle_negatif(partition_key: str, lignes: Sequence[Ligne]) -> list[Contro
 
 
 # ─── Les barrieres sur les SDK de store eux-memes ───────────────────────────
+#
+# Les barrieres par site (plus bas) remplacent des fonctions nommees de
+# `src.docling_service`. Aucune analyse statique du Python ne suffit a trouver
+# tous les porteurs de client : un alias d'import, un `getattr(minio, "Minio")`,
+# un client construit au niveau du module ou une porte hors de
+# `src/docling_service/` lui echappent. La barriere se pose donc sur les
+# constructeurs des SDK eux-memes : une fois armee, toute construction de client
+# de store dans ce processus leve, quel que soit le chemin. Les barrieres par
+# site restent comme seconde couche.
+#
+# Limite : un client construit dans un sous-processus, ou par une bibliotheque
+# tierce hors de ces trois SDK (un client S3 `boto3`, un client HTTP ecrit a la
+# main), n'est pas atteint. La barriere ne tient que sur ce qui est importe dans
+# le processus du harnais.
 
-# **POURQUOI LA BARRIERE DESCEND AU SDK, ET POURQUOI LA DERIVATION AST EST PARTIE.**
+# ─── Classification des dependances tierces ─────────────────────────────────
 #
-# Les barrieres par SITE (plus bas) remplacent des fonctions NOMMEES de
-# `src.docling_service`. Pour savoir lesquelles nommer, la version precedente
-# derivait les porteurs de client par lecture AST de `src/docling_service/*.py`.
-# Le troisieme audit du lot 11 lui a fait passer QUATRE portes neuves sur cinq :
-# un alias d'import (`from minio import Minio as _M`), un `getattr(minio,
-# "Minio")(...)`, un client construit au niveau du module, et une porte deposee
-# dans `src/pipeline/`. AUCUNE analyse statique du Python n'est complete —
-# `getattr` suffit a la tromper — et chaque audit trouverait le trou suivant.
-#
-# DECISION DU PILOTE, 24 septembre 2026 : on ne rafistole pas l'analyse
-# statique. La barriere se pose sur les CONSTRUCTEURS des SDK eux-memes. Une
-# fois armee, toute construction de client de store DANS CE PROCESSUS leve,
-# quel que soit le chemin qui y mene — alias, `getattr`, niveau de module,
-# n'importe quel paquet. Les barrieres par site restent, comme SECONDE COUCHE.
-#
-# LA BORNE RESTANTE S'ECRIT ICI : un client construit dans un SOUS-PROCESSUS,
-# ou par une bibliotheque tierce qui parle a un store hors de ces trois SDK
-# (un client S3 `boto3`, un driver HTTP ecrit a la main), n'est pas atteint.
-# La barriere tient sur ce qui est IMPORTE dans le processus du harnais.
+# Liste d'autorisation, pas d'interdiction : une liste d'interdictions ne dit
+# rien de ce qu'elle ne connait pas, donc un SDK neuf (un `import boto3` ajoute a
+# `storage.py`) passerait en silence (registre 4.40.b). Chaque module tiers
+# de premier niveau importe par `src/` (hors bibliotheque standard, hors `src`)
+# doit figurer dans l'une des deux classes ci-dessous. Le test enumere les
+# imports reels de `src/` par l'AST et les confronte a ces deux ensembles, dans
+# les deux sens : une dependance nouvelle ou disparue rougit tant qu'elle n'est
+# pas classee.
 
-# ─── La CLASSIFICATION des dependances tierces, et c'est une AUTORISATION ───
-#
-# **LA POLARITE EST LE GARDE, et c'est la reparation B2 du quatrieme audit.** Ce
-# site portait `SDK_DE_STORE`, une liste d'INTERDICTIONS, qu'aucun site ne lisait
-# et dont le test portait sa propre copie en dur. Son expression,
-# `importe & set(SDK_DE_STORE) ^ set(SDK_DE_STORE)`, valait
-# `SDK_DE_STORE - importe` : `&` lie plus fort que `^`. Elle ne pouvait donc voir
-# qu'un SDK DISPARU, jamais un SDK NEUF — un `import boto3` ajoute a
-# `storage.py` la laissait verte, et la vider aussi.
-#
-# Une liste d'interdictions se trompe en SILENCE : elle ne dit rien de ce qu'elle
-# ne connait pas, et c'est exactement ce qu'on lui demande de voir. La voici
-# retournee. Chaque module tiers de premier niveau importe par `src/` — hors
-# bibliotheque standard, hors `src` — doit figurer ICI, dans l'une des deux
-# classes. Une dependance tierce NOUVELLE OU DISPARUE rougit tant que personne
-# ne l'a classee, qu'on ait pense a elle ou non.
-#
-# Le test ne lit aucune liste en dur : il ENUMERE les imports reels de `src/` par
-# l'AST et les confronte a ces deux ensembles, dans les deux sens.
-
-# Les SDK de store, et ils sont couverts par la barriere des constructeurs
-# ci-dessous — voir `CONSTRUCTEURS_DES_SDK`, qui nomme le module ou chacun
-# publie les siens. Un SDK absent du processus n'y construit rien : son absence
-# est RENDUE, jamais tue.
+# Les SDK de store, couverts par la barriere des constructeurs (voir
+# `CONSTRUCTEURS_DES_SDK`, qui nomme le module ou chacun publie les siens). Un SDK
+# absent du processus n'y construit rien ; son absence est rendue, pas tue.
 SDK_DE_STORE: tuple[str, ...] = ("minio", "nebula3", "chromadb")
 
-# Les dependances tierces qui NE PARLENT A AUCUN STORE, donc que la barriere n'a
+# Les dependances tierces qui ne parlent a aucun store, donc que la barriere n'a
 # pas a couvrir : extraction et conversion de documents (`docling`,
 # `docling_core`, `fitz`), nettoyage HTML (`bs4`, `readability`, `trafilatura`),
 # calcul de plongements (`sentence_transformers`), orchestration (`dagster`),
 # service HTTP (`fastapi`, `uvicorn`), modeles et configuration (`pydantic`,
 # `pydantic_settings`, `yaml`), et le client HTTP generique (`requests`).
 #
-# **`requests` PORTE LA BORNE DE CETTE CLASSE, et elle s'ecrit ici** : un client
-# HTTP generique PEUT ecrire dans un store par son API REST, sans passer par
-# aucun SDK. Il est classe « pas un store » sur l'usage qu'en fait `src/`
-# aujourd'hui, pas sur une impossibilite. La barriere des constructeurs ne
-# l'atteint pas ; les portes d'ecriture de `src.docling_service` (`PORTES`), qui
-# sont barrees a tous leurs sites, sont la seconde couche qui le couvre.
+# Limite de cette classe : `requests`, client HTTP generique, peut ecrire dans un
+# store par son API REST sans passer par aucun SDK. Il est classe « pas un
+# store » d'apres l'usage qu'en fait `src/` aujourd'hui. La barriere des
+# constructeurs ne l'atteint pas ; les portes d'ecriture (`PORTES`), barrees a
+# tous leurs sites, sont la couche qui le couvre.
 PAS_UN_STORE: tuple[str, ...] = (
     "bs4",
     "dagster",
@@ -922,8 +866,9 @@ DEPENDANCES_TIERCES_CLASSEES: frozenset[str] = frozenset(SDK_DE_STORE) | frozens
 def _classes_hors_exception(module: Any) -> list[str]:
     """Les classes publiques du module qui ne sont pas des exceptions.
 
-    La regle de `minio` : le module publie `Minio` et `MinioAdmin` a cote de ses
-    seules erreurs. Aucun nom en dur — un client de plus est pris tel quel.
+    Regle pour la bibliotheque `minio` : le module publie `Minio` et
+    `MinioAdmin` a cote de ses seules erreurs. Aucun nom en dur : un client de
+    plus est pris tel quel.
     """
     return sorted(
         nom
@@ -937,9 +882,9 @@ def _classes_hors_exception(module: Any) -> list[str]:
 def _pools_et_connexions(module: Any) -> list[str]:
     """Les classes publiques dont le nom finit par `Pool`, plus `Connection`.
 
-    La regle de `nebula3.gclient.net` : on n'entre dans le graphe que par un
-    pool — `ConnectionPool`, `SessionPool` — ou par la connexion nue. `Session`
-    n'est pas la : elle ne se construit pas, elle se demande a un pool barre.
+    Regle pour `nebula3.gclient.net` : on n'entre dans le graphe que par un
+    pool (`ConnectionPool`, `SessionPool`) ou par la connexion nue. `Session`
+    n'est pas retenue : elle ne se construit pas, elle se demande a un pool.
     """
     return sorted(
         nom
@@ -951,13 +896,13 @@ def _pools_et_connexions(module: Any) -> list[str]:
 
 
 def _fabriques_de_client(module: Any) -> list[str]:
-    """Les FONCTIONS publiques dont le nom finit par `Client`.
+    """Les fonctions publiques dont le nom finit par `Client`.
 
-    La regle de `chromadb` : ses clients sont des fabriques (`HttpClient`,
+    Regle pour `chromadb` : ses clients sont des fabriques (`HttpClient`,
     `Client`, `PersistentClient`, `EphemeralClient`, `CloudClient`,
-    `AsyncHttpClient`, `AdminClient`), la ou les noms en `Client` qui sont des
-    CLASSES sont les interfaces abstraites (`ClientAPI`, `AsyncClientCreator`),
-    qu'on n'instancie pas. `mesure` le 24 septembre 2026, chromadb 0.6.3 :
+    `AsyncHttpClient`, `AdminClient`) ; les noms en `Client` qui sont des
+    classes sont des interfaces abstraites (`ClientAPI`, `AsyncClientCreator`),
+    qu'on n'instancie pas. Mesure du 24 septembre 2026, chromadb 0.6.3 :
     7 fabriques, 4 interfaces.
     """
     return sorted(
@@ -968,20 +913,20 @@ def _fabriques_de_client(module: Any) -> list[str]:
 
 
 def _classes_de_client(module: Any) -> list[str]:
-    """Les CLASSES publiques dont le nom finit par `Client`.
+    """Les classes publiques dont le nom finit par `Client`.
 
-    **LA REGLE DE `chromadb.api.client`, et elle existe pour N3.** Les noms que
-    `chromadb` publie sont des FABRIQUES — des fonctions — donc sans `__init__`
-    a barrer : seul le rebondage des noms les prend, et il laisse passer les
-    huit chemins qui ne passent par aucun nom. Les classes CONCRETES qu'elles
-    construisent vivent dans `chromadb.api.client`, et ce sont elles qu'on barre.
+    Regle pour `chromadb.api.client` (registre 4.40.f). Les noms publics de
+    `chromadb` sont des fabriques, donc sans `__init__` a barrer : seul le
+    rebondage des noms les prend, et il laisse passer les chemins qui ne passent
+    par aucun nom. Les classes concretes qu'elles construisent vivent dans
+    `chromadb.api.client` : ce sont elles qu'on barre.
 
-    **LA REGLE EST ETROITE, ET C'EST VOULU.** `_classes_hors_exception` prendrait
-    ici `Collection`, `Settings`, `System`, `GetResult` — tout ce dont la LECTURE
-    a besoin — et casserait le harnais au lieu de le garder. Le suffixe `Client`
-    ne retient que les trois classes de client : `Client`, `AdminClient` et leur
-    base `SharedSystemClient`. `mesure` dans l'image, 24 septembre 2026,
-    chromadb 0.6.3 : 3 classes retenues sur 20 noms publics du module.
+    La regle est volontairement etroite. `_classes_hors_exception` prendrait
+    ici `Collection`, `Settings`, `System`, `GetResult`, dont la lecture a
+    besoin, et casserait le harnais. Le suffixe `Client` ne retient que
+    `Client`, `AdminClient` et leur base `SharedSystemClient`. Mesure dans
+    l'image du 24 septembre 2026, chromadb 0.6.3 : 3 classes retenues sur 20
+    noms publics du module.
     """
     return sorted(
         nom
@@ -990,20 +935,19 @@ def _classes_de_client(module: Any) -> list[str]:
     )
 
 
-# Par SDK : le module a barrer, et la regle qui ENUMERE ses constructeurs depuis
-# le SDK INSTALLE. Une liste de noms en dur se tromperait en silence le jour ou
+# Par SDK : le module a barrer, et la regle qui enumere ses constructeurs depuis
+# le SDK installe. Une liste de noms en dur se tromperait en silence le jour ou
 # le SDK en publie un de plus ; une regle, non.
-# `nebula3` en DEUX sites : `SessionPool` est une classe d'un SOUS-MODULE, que
-# `nebula3.gclient.net` n'expose pas — l'y chercher ne rendrait que le module.
+# `nebula3` en deux sites : `SessionPool` est une classe d'un sous-module, que
+# `nebula3.gclient.net` n'expose pas (l'y chercher ne rendrait que le module).
 CONSTRUCTEURS_DES_SDK: tuple[tuple[str, Callable[[Any], list[str]]], ...] = (
     ("minio", _classes_hors_exception),
     ("nebula3.gclient.net", _pools_et_connexions),
     ("nebula3.gclient.net.SessionPool", _pools_et_connexions),
     ("chromadb", _fabriques_de_client),
-    # `chromadb` EN DEUX SITES, pour la meme raison que `nebula3` : ses noms
-    # publics sont des FABRIQUES, que seul le rebondage prend. Les classes
-    # concretes qu'elles construisent sont dans `chromadb.api.client`, et c'est
-    # a elles que la barriere descend (reparation N3).
+    # `chromadb` en deux sites : ses noms publics sont des fabriques, que seul
+    # le rebondage prend ; les classes concretes qu'elles construisent sont dans
+    # `chromadb.api.client` (voir `_classes_de_client`).
     ("chromadb.api.client", _classes_de_client),
 )
 
@@ -1014,16 +958,16 @@ class ArmementDesSdk:
 
     Attributes:
         barres: Par module de SDK, les noms qualifies des constructeurs barres.
-        sites: Par constructeur, les `module.attribut` re-lies — un
-            `from minio import Minio` deja execute est un site de plus.
+        sites: Par constructeur, les `module.attribut` re-lies (un
+            `from minio import Minio` deja execute est un site de plus).
         absents: Par module absent du processus, la raison. Un SDK qui ne s'importe
             pas n'y construit aucun client : c'est une constatation, pas un saut.
-        classes: Les noms qualifies dont la CLASSE elle-meme est barree — leur
-            `__init__` leve. C'est la couche qui prend les chemins que le
+        classes: Les noms qualifies dont la classe elle-meme est barree (leur
+            `__init__` leve). C'est la couche qui prend les chemins que le
             rebondage des noms ne voit pas.
-        sans_classe: Par nom qualifie que la classe n'a PAS pu prendre, la raison.
-            Une fabrique n'est pas une classe ; une classe d'extension C peut
-            refuser qu'on lui pose un attribut. Rendu, jamais tu.
+        sans_classe: Par nom qualifie dont la classe n'a pas pu etre barree, la
+            raison. Une fabrique n'est pas une classe ; une classe d'extension C
+            peut refuser qu'on lui pose un attribut.
     """
 
     barres: dict[str, list[str]]
@@ -1034,32 +978,32 @@ class ArmementDesSdk:
 
 
 def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
-    """Fait LEVER tout constructeur de client de store, par quelque chemin que ce soit.
+    """Fait lever tout constructeur de client de store, par quelque chemin que ce soit.
 
-    DEUX COUCHES, et il faut les deux :
+    Deux couches, toutes deux necessaires :
 
-    1. **la CLASSE**, dont l'`__init__` leve (:func:`_barrer_la_classe`). C'est
-       elle qui prend les chemins ne passant par AUCUN nom : une sous-classe,
-       un dictionnaire, un attribut de classe, un argument par defaut, une
-       fermeture ou un `partial` captures AVANT l'armement, `type(client)(…)`,
-       `client.__class__(…)`. `mesure` du 24 septembre 2026 sur `minio` :
-       **8 de ces 10 chemins echappaient** au seul rebondage des noms ;
-    2. **les NOMS**, re-lies partout (:func:`_barrer_le_constructeur`) : dans le
-       module du SDK — ce qui prend tout import POSTERIEUR et tout
-       `getattr(minio, "Minio")` — et dans tout module DEJA charge qui porte
+    1. la classe, dont l'`__init__` leve (:func:`_barrer_la_classe`). Elle prend
+       les chemins qui ne passent par aucun nom : sous-classe, dictionnaire,
+       attribut de classe, argument par defaut, fermeture ou `partial` captures
+       avant l'armement, `type(client)(…)`, `client.__class__(…)`. Mesure du
+       24 septembre 2026 sur `minio` : 8 chemins sur 10 echappaient au seul
+       rebondage des noms ;
+    2. les noms, re-lies partout (:func:`_barrer_le_constructeur`) : dans le
+       module du SDK, ce qui prend tout import posterieur et tout
+       `getattr(minio, "Minio")`, et dans tout module deja charge qui porte
        l'objet d'origine, alias compris. C'est la seule couche pour les
        constructeurs qui ne sont pas des classes, comme les fabriques
        `chromadb`.
 
-    **CE QUE LA PREMIERE COUCHE NE CASSE PAS** : les clients de LECTURE du
-    harnais, construits AVANT l'armement. Leur `__init__` a deja tourne ; un
-    `__init__` qui leve n'empeche que les constructions a venir.
+    Les clients de lecture du harnais, construits avant l'armement, survivent :
+    leur `__init__` a deja tourne, et un `__init__` qui leve n'empeche que les
+    constructions a venir.
 
     Irreversible dans le processus, comme :func:`armer_les_barrieres`.
 
     Args:
         journal: Rempli a chaque constructeur touche, meme si la production
-            avale la levee. **Un journal non vide est un rouge.**
+            avale la levee. Un journal non vide est un rouge.
     """
     barres: dict[str, list[str]] = {}
     sites: dict[str, list[str]] = {}
@@ -1069,10 +1013,10 @@ def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
     for chemin, enumerer in CONSTRUCTEURS_DES_SDK:
         try:
             module = importlib.import_module(chemin)
-        # UN `except Exception` LARGE, ET C'EST MOTIVE : l'absence d'un SDK se
-        # manifeste par un `ModuleNotFoundError`, mais aussi par tout ce que son
-        # import declenche chez un tiers. Elle est RENDUE dans `absents`, jamais
-        # tue — et un SDK absent du processus n'y construit aucun client.
+        # `except Exception` large : l'absence d'un SDK se manifeste par un
+        # `ModuleNotFoundError`, mais aussi par tout ce que son import declenche
+        # chez un tiers. Elle est rendue dans `absents` ; un SDK absent du
+        # processus n'y construit aucun client.
         except Exception as exc:
             absents[chemin] = f"{type(exc).__name__}: {exc}"
             continue
@@ -1080,8 +1024,8 @@ def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
         barres[chemin] = [f"{chemin}.{nom}" for nom in noms]
         for nom in noms:
             qualifie = f"{chemin}.{nom}"
-            # LA CLASSE D'ABORD : elle prend les chemins qui ne passent par
-            # aucun nom. Sur l'ORIGINAL, avant que le rebondage ne le remplace.
+            # La classe d'abord, sur l'original, avant que le rebondage des noms
+            # ne le remplace.
             raison = _barrer_la_classe(getattr(module, nom), qualifie, journal)
             if raison is None:
                 classes.append(qualifie)
@@ -1097,30 +1041,22 @@ def barrer_les_sdk_de_store(journal: list[str]) -> ArmementDesSdk:
     )
 
 
-# L'attribut ou la levee se pose, et le nommer n'est pas une coquetterie :
-# voir le commentaire de `_barrer_la_classe`.
+# L'attribut ou la levee se pose. Nomme en constante pour la raison donnee dans
+# `_barrer_la_classe`.
 INITIALISEUR = "__init__"
 
 
 def _barrer_la_classe(original: Any, qualifie: str, journal: list[str]) -> str | None:
-    """Pose la levee sur l'`__init__` de la CLASSE. Rend la raison d'un echec, ou None.
+    """Pose la levee sur l'`__init__` de la classe. Rend la raison d'un echec, ou None.
 
-    **C'EST LA PREMIERE COUCHE, et c'est la reparation N3 du quatrieme audit.**
-    Le rebondage des NOMS ne prend que les noms : `mesure` du 24 septembre 2026
-    sur `minio`, 8 chemins de construction sur 10 lui echappaient — une
-    sous-classe, un dictionnaire, un attribut de classe, un argument par
-    defaut, une fermeture et un `partial` captures AVANT l'armement,
-    `type(client)(…)` et `client.__class__(…)`. Tous passent par la CLASSE,
-    aucun ne passe par le nom.
-
-    Poser la levee sur `__init__` les prend tous les huit, y compris les
-    captures anterieures a l'armement, parce qu'elles capturent la classe et
+    Premiere couche (registre 4.40.f). Les chemins de construction qui
+    echappent au rebondage des noms (voir :func:`barrer_les_sdk_de_store`)
+    passent tous par la classe. Poser la levee sur `__init__` les prend tous, y
+    compris les captures anterieures a l'armement, qui capturent la classe et
     non ses methodes.
 
-    **ET LE CLIENT DE LECTURE SURVIT** : il est construit AVANT l'armement,
-    donc son `__init__` a deja tourne. Un `__init__` qui leve n'empeche que les
-    constructions A VENIR. `mesure` sur `minio` : le client de lecture LIT
-    encore apres l'armement.
+    Le client de lecture, construit avant l'armement, survit : son `__init__` a
+    deja tourne. Mesure sur `minio` : il lit encore apres l'armement.
     """
     if not inspect.isclass(original):
         return "n'est pas une classe (fabrique ou fonction) — seul le rebondage des noms la prend"
@@ -1133,29 +1069,25 @@ def _barrer_la_classe(original: Any, qualifie: str, journal: list[str]) -> str |
         )
 
     try:
-        # LE GESTE PASSE PAR `setattr` ET PAR UNE CONSTANTE, et les deux sont
-        # contraints : `original.__init__ = …` est refuse par `mypy --strict`
-        # (`method-assign`), et `setattr(original, "__init__", …)` est refuse par
-        # `ruff` (B010, qui veut l'affectation). Aucune des deux ne se tait sans
-        # un `type: ignore` ou un `noqa`, que ce depot n'admet pas. Nommer
-        # l'attribut leve la contradiction sans rien desarmer : le geste pose est
-        # exactement le meme.
+        # `setattr` avec une constante : `original.__init__ = …` est refuse par
+        # `mypy --strict` (`method-assign`), et `setattr(original, "__init__", …)`
+        # par `ruff` (B010). Le depot n'admet ni `type: ignore` ni `noqa` ; nommer
+        # l'attribut satisfait les deux sans changer le geste.
         setattr(original, INITIALISEUR, _leve_init)
-    # UN `except TypeError` MOTIVE : une classe d'extension C refuse qu'on lui
-    # pose un attribut, et c'est un `TypeError`. La raison est RENDUE dans
-    # `sans_classe`, jamais tue — le rebondage des noms reste la seconde couche.
+    # Une classe d'extension C refuse qu'on lui pose un attribut (`TypeError`).
+    # La raison est rendue dans `sans_classe` ; le rebondage des noms reste la
+    # seconde couche.
     except TypeError as exc:
         return f"{type(exc).__name__}: {exc}"
     return None
 
 
 def _barrer_le_constructeur(module: Any, nom: str, qualifie: str, journal: list[str]) -> list[str]:
-    """Pose la levee sur `module.nom` ET sur tout module deja charge qui le porte.
+    """Pose la levee sur `module.nom` et sur tout module deja charge qui le porte.
 
-    **SECONDE COUCHE.** La premiere est :func:`_barrer_la_classe`, qui pose la
-    levee sur la CLASSE. Celle-ci reste, et elle est ce qui tient les
-    constructeurs qui ne sont PAS des classes — les fabriques de `chromadb` —
-    ainsi que les modules qui portent deja l'objet d'origine sous un autre nom.
+    Seconde couche, apres :func:`_barrer_la_classe`. Elle tient les
+    constructeurs qui ne sont pas des classes (les fabriques de `chromadb`) et
+    les modules qui portent deja l'objet d'origine sous un autre nom.
     """
     original = getattr(module, nom)
 
@@ -1167,12 +1099,9 @@ def _barrer_le_constructeur(module: Any, nom: str, qualifie: str, journal: list[
         )
 
     _leve.__name__ = nom
-    # LE BALAYAGE SUFFIT, ET C'EST UNE MUTATION QUI L'A MONTRE. Un
-    # `setattr(module, nom, _leve)` explicite figurait ici ; le retirer ne
-    # rougissait AUCUNE des sept portes neuves, parce que le module du SDK est
-    # lui-meme dans `sys.modules` et que le balayage ci-dessous le re-lie comme
-    # les autres. Une ligne qu'aucune mutation ne tient est une ligne qui ne
-    # garde rien : elle est partie (registre 4.39.b).
+    # Pas de `setattr(module, nom, _leve)` explicite : le module du SDK est
+    # lui-meme dans `sys.modules`, et le balayage ci-dessous le re-lie comme les
+    # autres (registre 4.39.b).
     sites: list[str] = []
     for nom_du_module, charge in sorted(sys.modules.items()):
         if charge is None:
@@ -1188,37 +1117,29 @@ def _barrer_le_constructeur(module: Any, nom: str, qualifie: str, journal: list[
     return sorted(set(sites) | {qualifie})
 
 
-# ─── Les clients de LECTURE, construits AVANT l'armement ────────────────────
+# ─── Les clients de lecture, construits avant l'armement ────────────────────
 
-# Les verbes nGQL qui LISENT. Tout le reste — `INSERT`, `UPDATE`, `UPSERT`,
-# `DELETE`, `DROP`, `CREATE`, `REBUILD`, `SUBMIT` — est refuse.
-#
-# LES TROIS SEPARATEURS, et il en manquait DEUX — c'est le defaut B3 du
-# quatrieme audit. Le controle ne connaissait que `;`, alors que nGQL compose
-# aussi par le TUBE `|`, qui passe le resultat d'une lecture a une ecriture, et
-# par le simple SAUT DE LIGNE. `mesure` sur une session factice, 24 septembre
-# 2026 : 12 formes d'ecriture composee passaient, dont
-# `GO … | DELETE VERTEX $-.d`, `SHOW SPACES | DROP SPACE $-.Name` et
-# `YIELD "x" AS d | DELETE VERTEX $-.d`. Le commentaire qui tenait ici
-# affirmait que le garde « refuserait plus, JAMAIS moins » : il refusait moins.
+# Les separateurs de composition nGQL : `;`, le tube `|` (qui passe le resultat
+# d'une lecture a une ecriture, comme `GO … | DELETE VERTEX $-.d`) et le saut de
+# ligne. Chaque fragment est controle (registre 4.40.c).
 SEPARATEURS: tuple[str, ...] = (";", "|", "\n")
 
-# LA BORNE, ecrite au site, et elle est desormais VRAIE — `mesure` au test
-# `test_un_separateur_cite_fait_refuser_plus_jamais_moins`. Le controle porte sur
-# le PREMIER MOT de chaque fragment, et un separateur a l'interieur d'une chaine
-# citee compte comme un separateur : la requete est alors refusee alors qu'elle
-# lisait. C'est le sens sur lequel un garde peut se tromper sans danger, et
-# l'argument tient en une ligne — un separateur de plus ne fait qu'AJOUTER un
-# fragment, donc une exigence ; le premier fragment commence toujours a la
-# position 0, donc le premier mot de la requete est controle dans tous les cas.
-# Decouper ne peut jamais retirer une exigence.
+# Les verbes nGQL qui lisent. Tout le reste (`INSERT`, `UPDATE`, `UPSERT`,
+# `DELETE`, `DROP`, `CREATE`, `REBUILD`, `SUBMIT`...) est refuse.
+#
+# Limite : le controle porte sur le premier mot de chaque fragment, et un
+# separateur dans une chaine citee compte comme un separateur. Une telle requete
+# de lecture est alors refusee. L'erreur va dans le sens sans danger : un
+# separateur de plus ne fait qu'ajouter un fragment, donc une exigence, et le
+# premier mot de la requete est toujours controle. Tenu par le test
+# `test_un_separateur_cite_fait_refuser_plus_jamais_moins`.
 VERBES_DE_LECTURE: frozenset[str] = frozenset(
     {"USE", "MATCH", "GO", "LOOKUP", "FETCH", "SHOW", "DESCRIBE", "DESC", "RETURN", "YIELD"}
 )
 
 
 def fragments_de_la_requete(requete: str) -> list[str]:
-    """Decoupe la requete sur TOUS les separateurs de composition nGQL."""
+    """Decoupe la requete sur tous les separateurs de composition nGQL."""
     fragments = [requete]
     for separateur in SEPARATEURS:
         fragments = [morceau for f in fragments for morceau in f.split(separateur)]
@@ -1226,18 +1147,16 @@ def fragments_de_la_requete(requete: str) -> list[str]:
 
 
 class SessionEnLecture:
-    """Une session Nebula qui ne laisse passer que des requetes de LECTURE.
+    """Une session Nebula qui ne laisse passer que des requetes de lecture.
 
-    Une enveloppe par methodes nommees ne suffirait pas ici : `execute` est une
-    methode de lecture qui accepte n'importe quelle requete d'ecriture. Le
-    controle porte donc sur la REQUETE, verbe par verbe.
+    Une enveloppe par methodes nommees ne suffirait pas : `execute` accepte
+    aussi bien une requete d'ecriture. Le controle porte donc sur la requete,
+    verbe par verbe.
 
-    **LA BORNE DE L'ENVELOPPE S'ECRIT ICI.** Elle protege contre une ecriture
-    ACCIDENTELLE, pas contre une ecriture DELIBEREE : `._session` reste
-    atteignable et rend la session NUE, sur laquelle tout `execute` passe. Un
-    nom prefixe d'un souligne est une convention, pas une serrure ; la barriere
-    des constructeurs et celle des portes sont ce qui tient devant un appelant
-    decide, et l'enveloppe est ce qui attrape la main qui derape.
+    Limite : l'enveloppe protege contre une ecriture accidentelle, pas
+    deliberee. `._session` reste atteignable et rend la session nue. Devant un
+    appelant decide, ce sont la barriere des constructeurs et celle des portes
+    qui tiennent.
     """
 
     def __init__(self, session: Any, journal: list[str]) -> None:
@@ -1245,12 +1164,11 @@ class SessionEnLecture:
         self._journal = journal
 
     def execute(self, requete: str) -> Any:
-        """Execute la requete si, et seulement si, chacun de ses fragments LIT.
+        """Execute la requete si, et seulement si, chacun de ses fragments lit.
 
-        Les fragments sont ceux de :data:`SEPARATEURS` — `;`, le TUBE `|` et le
-        saut de ligne. Le tube manquait, et c'est par lui que passaient les
-        ecritures COMPOSEES : `GO … | DELETE VERTEX $-.d` est une ecriture dont
-        le premier mot lit.
+        Les fragments sont decoupes sur :data:`SEPARATEURS` :
+        `GO … | DELETE VERTEX $-.d`, par exemple, est une ecriture dont le
+        premier mot lit.
         """
         for fragment in fragments_de_la_requete(requete):
             mots = fragment.strip().split(None, 1)
@@ -1268,29 +1186,23 @@ class SessionEnLecture:
 
 
 class LectureSeule:
-    """Une enveloppe qui ne laisse passer que des methodes de LECTURE NOMMEES.
+    """Une enveloppe qui ne laisse passer que des methodes de lecture nommees.
 
-    Tout le reste leve et se journalise. C'est la preuve demandee pour les
-    clients que le harnais construit AVANT l'armement : ils survivent a la
-    barriere des SDK, donc ils doivent porter la leur.
+    Tout le reste leve et se journalise. Les clients que le harnais construit
+    avant l'armement survivent a la barriere des SDK : ils portent donc la leur.
 
-    **ELLE ECRIT DANS LE JOURNAL PARTAGE, et c'est la reparation N2 du quatrieme
-    audit.** Elle tenait son PROPRE `self._journal`, que personne ne lisait :
-    une ecriture d'objet refusee ici, puis AVALEE par la production, ne
-    devenait aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement, et
-    c'est celui-la que les deux enveloppes doivent remplir —
-    :class:`SessionEnLecture` le faisait deja.
+    Elle ecrit dans le journal partage de l'armement, celui sur lequel `figer`
+    et `comparer` rougissent : une ecriture refusee ici puis avalee par la
+    production devient ainsi un rouge (registre 4.40.e).
 
-    **LA BORNE DE L'ENVELOPPE S'ECRIT ICI.** Elle protege contre une ecriture
-    ACCIDENTELLE, pas contre une ecriture DELIBEREE : `._client` reste
-    atteignable et rend l'objet NU, sur lequel toute methode passe. Un nom
-    prefixe d'un souligne est une convention, pas une serrure ; la barriere des
-    constructeurs et celle des portes sont ce qui tient devant un appelant
-    decide, et l'enveloppe est ce qui attrape la main qui derape.
+    Limite : l'enveloppe protege contre une ecriture accidentelle, pas
+    deliberee. `._client` reste atteignable et rend l'objet nu. Devant un
+    appelant decide, ce sont la barriere des constructeurs et celle des portes
+    qui tiennent.
 
     Args:
-        journal: le journal PARTAGE de l'armement. **Un journal non vide est un
-            rouge**, et c'est ce qui donne sa portee a cette enveloppe.
+        journal: Le journal partage de l'armement. Un journal non vide est un
+            rouge.
     """
 
     def __init__(self, client: Any, methodes: Iterable[str], nom: str, journal: list[str]) -> None:
@@ -1312,9 +1224,9 @@ class LectureSeule:
 # ─── Les barrieres ──────────────────────────────────────────────────────────
 
 # Les portes d'ecriture des trois stores, par nom qualifie sous
-# `src.docling_service`. Le test de la porte qualite ne se fie PAS a cette liste :
-# il classe lui-meme chaque fonction des modules de stores, et rougit sur toute
-# porte qui reste liee quelque part a son original.
+# `src.docling_service`. Le test ne se fie pas a cette liste : il classe lui-meme
+# chaque fonction des modules de stores, et rougit sur toute porte qui reste liee
+# quelque part a son original.
 PORTES: tuple[str, ...] = (
     "storage.persist",
     "storage.forget_document",
@@ -1325,23 +1237,23 @@ PORTES: tuple[str, ...] = (
     "nebula.NebulaWriter",
     "images.upload_file",
 )
-# `images.get_client` n'est pas une barriere mais un TEMOIN : voir
-# TemoinDuStockageObjet.
+# `images.get_client` n'est pas barre mais remplace par un client inerte qui
+# enregistre les envois : voir `TemoinDuStockageObjet`.
 TEMOIN_DU_STOCKAGE = "images.get_client"
 
 # Pour chaque porte, tout ce qui a ete pose a sa place, l'original en tete : un
 # remplacement ulterieur (la capture de `persist` apres sa barriere) doit
-# retrouver les sites de TOUS les objets precedents.
+# retrouver les sites de tous les objets precedents.
 _POSES: dict[str, list[object]] = {}
 
 
 def remplacer_partout(nom: str, remplacant: object) -> list[str]:
-    """Remplace une porte a TOUS les sites ou elle est liee, et rend ces sites.
+    """Remplace une porte a tous les sites ou elle est liee, et rend ces sites.
 
-    Parcourt chaque module `src.*` charge et remplace tout attribut qui EST
-    l'original ou un remplacant precedent — l'import par nom
+    Parcourt chaque module `src.*` charge et remplace tout attribut qui est
+    l'original ou un remplacant precedent. L'import par nom
     (`from src.docling_service.nebula import get_writer`) cree un second site, que
-    remplacer dans `nebula` seul ne touche pas. Un module importe APRES lit la
+    remplacer dans `nebula` seul ne touche pas. Un module importe apres lit la
     porte dans son module d'origine, donc le remplacant.
 
     Args:
@@ -1367,18 +1279,17 @@ def remplacer_partout(nom: str, remplacant: object) -> list[str]:
 
 
 class TemoinDuStockageObjet:
-    """Un client S3 INERTE : il enregistre `put_object` et leve sur tout le reste.
+    """Un client S3 inerte : il enregistre `put_object` et leve sur tout le reste.
 
-    **POURQUOI UN TEMOIN ET NON UNE BARRIERE.** `crop_and_upload` est sur le
-    chemin NOMINAL d'un PDF. La version precedente le remplacait par une copie
-    qui calculait la cle — et l'enregistrait la ou la production aurait rendu
-    None (zone vide, crop en echec), puisque la copie ne croppait pas. Ce temoin
-    est pose UNE COUCHE PLUS BAS : `crop_and_upload` de PRODUCTION tourne en
-    entier, crop compris, et ses cas None restent les siens. Seul l'envoi est
-    remplace. Les cles enregistrees sont ensuite confrontees au listing du
-    stockage objet, en lecture seule, par le script.
+    `crop_and_upload` est sur le chemin nominal d'un PDF : il n'est donc pas
+    barre. Le client inerte est pose une couche plus bas, a la place du client
+    S3 : `crop_and_upload` de production tourne en entier, crop compris, et ses
+    cas None (zone vide, crop en echec) restent les siens. Seul l'envoi est
+    remplace. Le script confronte ensuite les cles enregistrees au listing du
+    stockage objet, en lecture seule.
 
-    Toute autre methode leve et se journalise : `remove_object`, `make_bucket`...
+    Toute autre methode (`remove_object`, `make_bucket`...) leve et se
+    journalise.
     """
 
     def __init__(self, journal: list[str]) -> None:
@@ -1404,7 +1315,7 @@ class Armement:
         sites: Par porte, les `module.attribut` remplaces.
         temoin: Le client S3 inerte.
         journal: Chaque porte touchee, meme si la production a avale la levee.
-            **Un journal non vide est un rouge**, quel que soit le reste.
+            Un journal non vide est un rouge, quel que soit le reste.
     """
 
     barrieres: dict[str, Callable[..., Any]]
@@ -1415,35 +1326,33 @@ class Armement:
 
 
 def armer_les_barrieres(journal: list[str] | None = None) -> Armement:
-    """Barre les CONSTRUCTEURS des SDK, puis chaque porte d'ecriture a tous ses sites.
+    """Barre les constructeurs des SDK, puis chaque porte d'ecriture a tous ses sites.
 
-    **« Ce qui ecrirait leve », et c'est la seule forme de preuve qui tienne
-    ici.** DEUX COUCHES, et l'ordre compte :
+    La preuve de non-ecriture est a l'execution : ce qui ecrirait leve. Deux
+    couches, dans cet ordre :
 
-    1. :func:`barrer_les_sdk_de_store`, la couche qui PORTE la preuve : apres
-       elle, aucune construction de client de store ne passe dans ce processus,
-       quel que soit le chemin — alias d'import, `getattr`, niveau de module,
-       paquet quelconque. Elle est posee EN PREMIER, avant meme le chargement
-       d'`extraction`, pour qu'un client construit a l'import leve a l'import ;
-    2. les barrieres par SITE, seconde couche : elles nomment les portes de
+    1. :func:`barrer_les_sdk_de_store` : apres elle, aucune construction de
+       client de store ne passe dans ce processus, quel que soit le chemin.
+       Elle est posee en premier, avant meme le chargement d'`extraction`, pour
+       qu'un client construit a l'import leve a l'import ;
+    2. les barrieres par site : elles nomment les portes de
        `src.docling_service` et rendent leur levee lisible au journal.
 
     Irreversible dans le processus : desarmer serait offrir le moyen d'ecrire.
-    **CONSEQUENCE, ecrite ici pour que personne ne la decouvre :** l'effet
-    survit dans `sys.modules`, donc armer dans un processus partage contamine
-    tout ce qui suit — `mesure` par le lot 11 : arme dans le processus de pytest,
-    six tests de `tests/unit/test_storage.py` tombent. Le harnais tourne dans un
-    processus dedie, et la porte qualite arme en SOUS-PROCESSUS.
+    L'effet survit dans `sys.modules`, donc armer dans un processus partage
+    contamine tout ce qui suit (arme dans le processus de pytest, six tests de
+    `tests/unit/test_storage.py` tombent). Le harnais tourne donc dans un
+    processus dedie, et les tests arment en sous-processus.
 
     Args:
-        journal: Le journal a remplir. Celui d'un appelant qui a deja enveloppe
-            ses clients de lecture, ou un neuf. **Un journal non vide est un
-            rouge**, quel que soit le reste.
+        journal: Le journal a remplir : celui d'un appelant qui a deja enveloppe
+            ses clients de lecture, ou un neuf. Un journal non vide est un
+            rouge, quel que soit le reste.
     """
     journal = [] if journal is None else journal
     sdk = barrer_les_sdk_de_store(journal)
 
-    # Charger `extraction` APRES la barriere des SDK et AVANT de poser les
+    # Charger `extraction` apres la barriere des SDK et avant de poser les
     # barrieres par site : c'est lui qui cree les sites par nom (`get_writer`
     # dans `extraction` et `storage`). Un module charge apres lirait la porte
     # deja remplacee dans son module d'origine.
@@ -1472,8 +1381,8 @@ def armer_les_barrieres(journal: list[str] | None = None) -> Armement:
 def installer_la_capture() -> list[list[dict[str, Any]]]:
     """Remplace `storage.persist` par une CAPTURE, a tous ses sites.
 
-    La capture valide les elements comme `persist` (c'est pur), les copie, et ne
-    rappelle jamais la production.
+    La capture valide les elements comme `persist` (validation pure), les copie,
+    et ne rappelle jamais la production.
 
     Returns:
         La liste des lots captures, remplie au fil des appels.
@@ -1499,17 +1408,17 @@ def reextraire(
     lots: list[list[dict[str, Any]]],
     temoin: TemoinDuStockageObjet,
 ) -> Emission:
-    """Reextrait un document par le chemin de PRODUCTION et rend ce qu'il a EMIS.
+    """Reextrait un document par le chemin de production et rend ce qu'il a emis.
 
     Les fonctions appelees sont `_extract_flat` et `_extract_pdf` : seule la
-    frontiere des stores est remplacee. **Les identifiants rendus sont ceux que
-    la production passe a `persist`.**
+    frontiere des stores est remplacee. Les identifiants rendus sont ceux que
+    la production passe a `persist`.
 
     Args:
         partition_key: Chemin du document relatif a `Datas/`.
         corpus: Racine du corpus, en lecture.
-        nettoyes: Racine des copies nettoyees : c'est ELLE que le pipeline
-            convertit pour un HTML, et non la source.
+        nettoyes: Racine des copies nettoyees : pour un HTML, c'est la copie
+            nettoyee que le pipeline convertit, et non la source.
         lots: La liste que :func:`installer_la_capture` remplit, videe ici.
         temoin: Le client S3 inerte, dont les cles sont videes ici.
 
@@ -1593,20 +1502,20 @@ def raisons_des_cles_d_objet(
     return raisons
 
 
-# ─── L'orchestration : ce que le script execute, et ce que la porte rejoue ──
+# ─── L'orchestration : ce que le script execute, et ce que les tests rejouent
 
 
 @dataclass
 class Monde:
-    """Ce que le harnais lit du monde. Le script branche les vrais ; la porte, des faux.
+    """Ce que le harnais lit du monde. Le script branche les vrais ; les tests, des faux.
 
     Attributes:
         documents_du_corpus: Les partitions que le capteur decouvrirait.
         documents_du_graphe: Les partitions dont le graphe porte un `Document`.
         ids_du_graphe: Par cle de document, les identifiants de ses elements.
-        objets_listes: Par partition, les cles que le stockage objet LISTE sous le prefixe
-            de ses crops, ou None si le document n'en produit pas (un HTML : ses
-            images sont envoyees par le nettoyage, pas par l'extraction).
+        objets_listes: Par partition, les cles que le stockage objet liste sous
+            le prefixe de ses crops, ou None si le document n'en produit pas (un
+            HTML : ses images sont envoyees par le nettoyage, pas l'extraction).
         reextraire: Reextrait une partition par le chemin de production.
     """
 
@@ -1618,17 +1527,12 @@ class Monde:
 
 
 def _ecarts_de_couverture(**ensembles: set[str]) -> list[str]:
-    """Les documents qu'une source porte et qu'une autre n'a pas, DANS LES DEUX SENS.
+    """Les documents qu'une source porte et qu'une autre n'a pas, dans les deux sens.
 
     Aucune liste en dur : le corpus, le graphe et l'instantane se controlent
-    l'un l'autre, et un document manquant d'un cote est un rouge.
-
-    **LA VERSION PRECEDENTE NE COMPARAIT QUE `a - b` POUR `a < b`** en ordre
-    alphabetique : `instantane - corpus`, `instantane - graphe` et
-    `graphe - corpus` n'etaient jamais calcules. `mesure` du second audit du
-    lot 11 : avec un `/corpus` VIDE, `comparer` rendait rc=0 et `OK` sans qu'un
-    seul identifiant ait ete compare. Le corpus arrive par un MONTAGE, et ce
-    depot a deja connu une purge qui emportait 24 fichiers sur 25.
+    l'un l'autre, et un document manquant d'un cote est un rouge. Les deux sens
+    comptent : le corpus arrive par un montage, et un `/corpus` vide ne doit pas
+    rendre vert sans qu'un seul identifiant ait ete compare (registre 4.38.a).
     """
     raisons: list[str] = []
     noms = sorted(ensembles)
@@ -1647,9 +1551,9 @@ def _ecarts_de_couverture(**ensembles: set[str]) -> list[str]:
 def _verifier_l_emission(
     monde: Monde, emission: Emission, dire: Callable[[str], None]
 ) -> list[str]:
-    """Les controles communs aux deux phases, sur l'emission d'UN document.
+    """Les controles communs aux deux phases, sur l'emission d'un document.
 
-    L'emission doit etre CELLE du graphe ; les cles d'objet, celles que le
+    L'emission doit etre celle du graphe ; les cles d'objet, celles que le
     stockage objet liste ; et chaque mutation doit etre vue et attribuee a son
     terme.
     """
@@ -1664,9 +1568,9 @@ def _verifier_l_emission(
     dire(f"    emis == graphe           : {confrontation.identiques}")
     dire(f"    emis seul / graphe seul  : {confrontation.emis_seul} / {confrontation.graphe_seul}")
     dire(f"    id emis != formule       : {ecarts_de_formule}")
-    # Une emission VIDE contre un graphe vide passe cette confrontation : c'est
+    # Une emission vide contre un graphe vide passe cette confrontation : c'est
     # le controle negatif plus bas qui la rougit, toutes ses mutations y etant
-    # nulles. Un second garde ici serait un garde qu'aucun test ne peut isoler.
+    # nulles. Un second controle ici ne pourrait etre isole par aucun test.
     if confrontation.emis_seul or confrontation.graphe_seul:
         raisons.append(
             f"{emission.partition_key} : l'emission n'est pas le graphe "
@@ -1690,7 +1594,7 @@ def _verifier_l_emission(
             if controle.mutes
             else 0
         )
-        # La confrontation au graphe compte les identifiants MUTES absents du
+        # La confrontation au graphe compte les identifiants mutes absents du
         # graphe, pas les anciens disparus : les deux different par les collisions,
         # donc seul un zero y est un rouge.
         etat = "vu" if controle.ok and vu_du_graphe > 0 else "NON VU"
@@ -1712,7 +1616,7 @@ def figer(
     journal: list[str],
     dire: Callable[[str], None] = print,
 ) -> int:
-    """AVANT la campagne : prouve que l'emission est le graphe, PUIS fige l'instantane.
+    """Avant la campagne : prouve que l'emission est le graphe, puis fige l'instantane.
 
     Rien n'est ecrit au moindre rouge : un instantane d'une emission qui n'est
     pas le graphe figerait autre chose que ce que l'agent lit.
@@ -1741,8 +1645,8 @@ def figer(
     try:
         empreinte = ecrire_l_instantane(dossier, emissions, entete)
     except FileExistsError as exc:
-        # Une trace d'appel n'est pas un verdict : le code de sortie EST le
-        # comportement de ce script. `mesure` du second audit du lot 11.
+        # Une trace d'appel n'est pas un verdict : le code de sortie est le
+        # comportement du script.
         dire(f"ECHEC, aucun instantane ecrit — {exc}")
         return 1
     dire(f"OK : instantane ecrit dans {dossier}, empreinte {empreinte}")
@@ -1757,13 +1661,12 @@ def comparer(
     journal: list[str],
     dire: Callable[[str], None] = print,
 ) -> int:
-    """APRES la campagne : confronte l'emission du jour a l'INSTANTANE.
+    """Apres la campagne : confronte l'emission du jour a l'instantane.
 
     Args:
-        attendue: L'empreinte que la table versionnee attend, rendue par
-            :func:`empreinte_attendue`. **C'est une MESURE, plus une consigne :**
-            un instantane refige apres la campagne porte une autre empreinte,
-            donc rougit ici au lieu de re-tautologiser le harnais.
+        attendue: L'empreinte attendue, rendue par :func:`empreinte_attendue`.
+            Un instantane refige apres la campagne porte une autre empreinte,
+            donc rougit ici au lieu de comparer le code du jour a lui-meme.
 
     Returns:
         0 si et seulement si l'ensemble deplace egale l'ensemble declare, que
@@ -1780,10 +1683,9 @@ def comparer(
     for partition_key in sorted(corpus | graphe | fige):
         dire(f"=== {partition_key}")
         if partition_key not in fige or partition_key not in corpus:
-            # JAMAIS UN `continue` NU : sauter en silence un document de
-            # l'instantane etait le faux vert bloquant du second audit du lot 11
-            # — un corpus vide rendait rc=0 et `OK`. Un document que l'instantane
-            # porte et qu'on ne compare pas est une RAISON.
+            # Pas de `continue` silencieux : un document que l'instantane porte
+            # et qu'on ne compare pas est une raison de rouge (sinon un corpus
+            # vide rendrait vert).
             manque = "de l'instantane" if partition_key not in fige else "du corpus"
             dire(f"    NON COMPARE : absent {manque}")
             if partition_key in fige:

@@ -1,22 +1,20 @@
-"""Tests du DECLENCHEMENT de ``POST /reindex`` : quand, et combien de fois.
+"""Tests du declenchement de ``POST /reindex`` : quand, et combien de fois.
 
-``test_reindex.py`` couvre ce que fait l'appel. Ce fichier couvre la seule
-propriete que le contrat avec ``rag-agent-chat`` enonce et que le code n'avait
-jamais tenue : l'appel a lieu **en fin d'ingestion**, pas une fois par document.
+``test_reindex.py`` couvre ce que fait l'appel. Ce fichier couvre la propriete
+que le contrat avec ``rag-agent-chat`` enonce : l'appel a lieu **en fin
+d'ingestion**, pas une fois par document.
 
-Le defaut precedent est instructif. Un test qui verifie « l'appel a lieu »
-serait reste vert avec un appel par document comme avec un seul : il est vert des deux
-cotes du defaut. Les tests ci-dessous asserttent donc un NOMBRE, et ils le
-font depuis le cote qui le PRODUIT — l'asset qui ingere pour le zero, le
-sensor qui arme la reindexation pour le un.
+Verifier seulement « l'appel a lieu » passerait avec un appel par document
+comme avec un seul. Les tests verifient donc un nombre d'appels, du cote qui le
+produit : l'asset d'ingestion pour zero, le sensor de reindexation pour un.
 
-Deux precautions, sans lesquelles ces tests seraient creux :
+Deux controles empechent un faux succes :
 
-- ``TestLEspionFonctionne`` prouve que l'interception voit reellement passer un
-  appel. Sans elle, une interception cassee rendrait « zero appel » vrai pour
-  la mauvaise raison, et le test serait vert quoi qu'il arrive ;
-- ``test_l_ingestion_a_bien_eu_lieu`` prouve que les materialisations ont
-  vraiment tourne. Un compte de zero appel sur zero ingestion ne dit rien.
+- ``TestLEspionFonctionne`` verifie que l'interception voit reellement passer
+  un appel ; sinon, une interception cassee rendrait « zero appel » vrai pour
+  une mauvaise raison ;
+- ``test_l_ingestion_a_bien_eu_lieu`` verifie que les materialisations ont
+  reellement tourne : zero appel sur zero ingestion ne prouve rien.
 """
 
 from __future__ import annotations
@@ -60,10 +58,9 @@ BILAN = {"progress": {"elements": 12, "chunks": 34, "pages": 5}, "elapsed_second
 # Nom du job d'ingestion surveille par le sensor dans ces tests.
 JOB_INGESTION = "pdfs_job"
 
-# Tailles de rafale exercees. Elles ne mesurent aucun corpus et ne pretendent
-# pas en decrire un : ce sont trois ordres de grandeur, choisis pour que le
-# compte d'appels puisse diverger du nombre de documents. Un test parametre sur
-# une seule taille resterait vert si l'appel repartait une fois par document.
+# Tailles de rafale exercees : trois ordres de grandeur, sans lien avec un
+# corpus reel, pour que le nombre d'appels puisse differer du nombre de
+# documents. Avec une seule taille (1), un appel par document passerait.
 RAFALES = (1, 3, 12)
 
 # Toujours posee explicitement. Un `.env` local a AGENT_SERVICE_URL vide
@@ -89,9 +86,8 @@ def _rafale(
 ) -> None:
     """Simule une rafale : `documents` runs d'ingestion, un par fichier.
 
-    **Elle ne pose AUCUN `start_time`**, et c'est ce qui a rendu creux le garde
-    de l'age du run : `create_run_for_test` ecrit une ligne de run, pas un
-    evenement de demarrage. Pour un run qui porte son horodatage, voir
+    Les runs crees n'ont pas de `start_time` : `create_run_for_test` ecrit une
+    ligne de run, pas un evenement de demarrage. Pour un run horodate, voir
     :func:`_demarrer_un_run`.
     """
     for _ in range(documents):
@@ -99,18 +95,16 @@ def _rafale(
 
 
 def _demarrer_un_run(instance, job_name: str = JOB_INGESTION) -> str:
-    """Un run REELLEMENT demarre : en `STARTED`, et portant son `start_time`.
+    """Un run reellement demarre : en `STARTED`, avec son `start_time`.
 
-    C'est le mecanisme de Dagster lui-meme, et non un champ pose a la main :
-    `start_time` est renseigne par le stockage quand il traite un evenement
-    `PIPELINE_START` (`sql_run_storage.py`, branche
+    L'horodatage est pose par le mecanisme de Dagster, et non a la main : le
+    stockage renseigne `start_time` en traitant un evenement `PIPELINE_START`
+    (`sql_run_storage.py`, branche
     `event.event_type == DagsterEventType.PIPELINE_START`). Le meme evenement
     fait passer le run en `STARTED`, donc en vol pour le sensor.
 
-    Sans cela, `_decrire_le_run` prend sa branche DEGRADEE et le message dit
-    « depuis une date inconnue » — la branche qui calcule l'age n'etant jamais
-    executee par la suite. *Mute le producteur, pas le consommateur* : c'est bien
-    le producteur de l'horodatage qu'il fallait reproduire.
+    Sans horodatage, `_decrire_le_run` prend sa branche degradee (« depuis une
+    date inconnue ») et la branche qui calcule l'age n'est jamais testee.
 
     Args:
         instance: Instance Dagster ephemere.
@@ -133,12 +127,11 @@ def _demarrer_un_run(instance, job_name: str = JOB_INGESTION) -> str:
 class _Capteur:
     """Le sensor tel que Dagster le fait tourner : des ticks qui se suivent.
 
-    Le curseur laisse par un tick est repasse au suivant, comme le daemon le
-    fait. C'est indispensable et non cosmetique : un harnais qui reconstruit un
-    contexte neuf a chaque tick efface l'etat que le sensor a pu poser, et rend
-    alors verts des tests d'enchainement qui devraient etre rouges. Le harnais
-    ne suppose rien de ce que le sensor met dans son curseur — il le transporte,
-    quel qu'il soit, y compris vide.
+    Le curseur laisse par un tick est repasse au suivant, comme le fait le
+    daemon. Un harnais qui reconstruirait un contexte neuf a chaque tick
+    effacerait l'etat pose par le sensor, et des tests d'enchainement
+    passeraient a tort. Le harnais transporte le curseur tel quel, vide
+    compris, sans rien supposer de son contenu.
     """
 
     def __init__(self, instance, job_names=(JOB_INGESTION,), sensor=None) -> None:
@@ -182,9 +175,8 @@ class EspionReseau:
 def espion(monkeypatch):
     """Intercepte l'envoi au plus bas niveau accessible : ``requests.post``.
 
-    Pas ``request_reindex``, pas ``_reindex`` : bouchonner l'une ou l'autre
-    rendrait intestable ce que ces tests pretendent verifier, puisque c'est
-    justement le nombre de fois que le producteur les appelle qui est en cause.
+    Ni ``request_reindex`` ni ``_reindex`` ne sont remplaces : c'est justement
+    le nombre de fois qu'ils sont appeles que ces tests verifient.
     """
     espion = EspionReseau()
     monkeypatch.setattr(requests, "post", espion)
@@ -256,20 +248,19 @@ class TestIngererNeReindexePas:
             assert materialisations[0].metadata["chunks"].value == 34
 
     def test_les_metadonnees_ne_parlent_plus_de_reindexation(self, espion, monkeypatch, tmp_path):
-        # « publier le bilan d'extraction » ne poste pas sur le reseau : la cle
-        # `reindex` dans les metadonnees de l'asset etait la trace de ce
-        # melange de hauteurs.
+        # Publier le bilan d'extraction ne fait aucun appel reseau : aucune cle
+        # `reindex` ne doit figurer dans les metadonnees de l'asset.
         resultats = _ingerer(monkeypatch, tmp_path, 1)
         materialisations = resultats[0].asset_materializations_for_node("pdfs__extracted_document")
         assert "reindex" not in materialisations[0].metadata
 
 
 class TestLeSensorNArmeQuUneFois:
-    """L'autre moitie de la propriete : une rafale de N documents, UNE demande.
+    """L'autre moitie de la propriete : une rafale de N documents, une demande.
 
-    L'asset d'ingestion ne poste plus rien (ci-dessus) ; c'est ici que le
-    nombre d'appels se decide. Le compte est asserte pour chaque taille de
-    ``RAFALES`` : s'il suivait le nombre de documents, seul N = 1 resterait vert.
+    L'asset d'ingestion ne fait aucun appel (ci-dessus) ; le nombre d'appels
+    se decide ici. Le compte est verifie pour chaque taille de ``RAFALES`` :
+    s'il suivait le nombre de documents, seul N = 1 passerait.
     """
 
     @pytest.mark.parametrize("documents", RAFALES)
@@ -303,7 +294,7 @@ class TestLeSensorNArmeQuUneFois:
         assert "Ingestion en cours" in str(resultat.skip_message)
 
     def test_queued_compte_comme_en_vol(self):
-        # C'est LE cas de production : le sensor de source cree les N runs en un
+        # Cas courant en production : le sensor de source cree les N runs en un
         # passage, la file n'en execute que deux, les autres attendent. Un run
         # QUEUED ne peut pas etre fabrique sur une instance de test (Dagster
         # exige une origine de job distante), d'ou l'assertion sur la table des
@@ -315,10 +306,9 @@ class TestLeSensorNArmeQuUneFois:
         assert set(STATUTS_EN_COURS) | STATUTS_TERMINES == set(DagsterRunStatus)
 
     def test_un_second_tick_ne_redemande_rien_une_fois_la_rafale_reindexee(self):
-        # « Ne redemande rien » se merite : c'est la reindexation REUSSIE qui
-        # ferme la rafale, pas l'emission de la demande. Sans le run reussi
-        # ci-dessous, le sensor doit rearmer — c'est le sujet de
-        # TestUnEchecDeReindexationNEstPasPerdu.
+        # Seule une reindexation reussie clot la rafale, pas l'emission de la
+        # demande. Sans le run reussi ci-dessous, le sensor doit rearmer (voir
+        # TestUnEchecDeReindexationNEstPasPerdu).
         with DagsterInstance.ephemeral() as instance:
             capteur = _Capteur(instance)
             _rafale(instance, 3)
@@ -370,8 +360,8 @@ class TestLeSensorNArmeQuUneFois:
         assert "Aucune ingestion" in str(resultat.skip_message)
 
     def test_une_rafale_partiellement_rouge_reindexe_quand_meme(self):
-        # Les documents deja passes sont dans les stores : les taire en
-        # recherche lexicale serait pire que le document manquant.
+        # Les documents deja ingeres sont dans les stores : les laisser
+        # invisibles en recherche lexicale serait pire que le document manquant.
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 3)
             create_run_for_test(instance, job_name=JOB_INGESTION, status=DagsterRunStatus.FAILURE)
@@ -385,7 +375,7 @@ def _reindexation(instance, statut=DagsterRunStatus.SUCCESS) -> None:
 
 
 def _cause_du_rouge(resultat) -> str:
-    """Texte de l'erreur qui a fait rougir le run, chaine des causes comprise."""
+    """Texte de l'erreur qui a fait echouer le run, chaine des causes comprise."""
     echecs = [e for e in resultat.all_events if e.event_type_value == "STEP_FAILURE"]
     assert echecs, "le run n'a pas echoue : il n'y a aucune cause a lire"
     erreur = echecs[0].event_specific_data.error
@@ -397,22 +387,18 @@ def _cause_du_rouge(resultat) -> str:
 
 
 class TestUnEchecDeReindexationNEstPasPerdu:
-    """Le defaut de comportement : le curseur avancait a l'EMISSION de la demande.
+    """Une reindexation echouee est retentee jusqu'a ce qu'elle reussisse.
 
-    Deux chemins menaient a la perte, et le premier etait le chemin nominal :
-    l'agent injoignable ne faisait pas lever l'asset, le run finissait VERT avec
-    une metadonnee « ECHEC », et le curseur avait deja avance ; ou le run
-    lui-meme echouait, meme resultat sans meme la metadonnee. Au tick suivant :
-    « Rien de nouveau n'a ete ingere ». Et remettre le curseur a zero ne
-    sauvait rien, le run_key « reindex-<repere> » etant deterministe et un
-    run_key consomme l'etant pour toujours.
+    Deux mecanismes y concourent. L'asset leve quand l'appel echoue : le run
+    echoue, seul signal qu'une supervision Dagster sait lire. Et le sensor ne
+    garde aucun etat propre : il compare le repere de la derniere ingestion
+    reussie a celui de la derniere reindexation reussie, deux faits deja
+    presents dans l'historique des runs. Tant que la reindexation n'a pas
+    reussi, le sensor rearme, sans limite.
 
-    La reparation tient en deux gestes. L'asset LEVE quand l'appel echoue : le
-    run rougit, ce qui est la seule visibilite qu'une supervision Dagster sait
-    lire. Et le sensor ne tient plus d'etat a lui : il compare le repere de la
-    derniere ingestion reussie a celui de la derniere REINDEXATION REUSSIE, deux
-    faits que l'historique des runs porte deja. Tant que la reindexation n'a pas
-    reussi, le sensor rearme — indefiniment.
+    Un curseur avance a l'emission de la demande perdrait la reindexation des
+    le premier echec : le tick suivant repondrait « Rien de nouveau n'a ete
+    ingere », et un run_key consomme l'est pour toujours.
     """
 
     def test_un_echec_de_reindexation_rougit_son_run(self, espion):
@@ -426,9 +412,8 @@ class TestUnEchecDeReindexationNEstPasPerdu:
         assert "ConnectionError" in _cause_du_rouge(resultat)
 
     def test_une_reindexation_echouee_est_retentee_au_tick_suivant(self):
-        # LE test de la reparation. Avant elle, ce second tick rendait
-        # « Rien de nouveau n'a ete ingere » et la rafale n'etait jamais
-        # reindexee — definitivement, le run_key etant consomme.
+        # Test central : apres un echec, ce second tick doit redemander la
+        # reindexation, et non repondre « Rien de nouveau n'a ete ingere ».
         with DagsterInstance.ephemeral() as instance:
             capteur = _Capteur(instance)
             _rafale(instance, 3)
@@ -439,9 +424,9 @@ class TestUnEchecDeReindexationNEstPasPerdu:
         assert isinstance(second, RunRequest), f"reindexation perdue : {second}"
 
     def test_la_reprise_ne_rejoue_pas_un_run_key_deja_consomme(self):
-        # Dagster cherche un run_key dans TOUT l'historique et refuse de
-        # recreer un run pour un run_key deja vu. Une reprise qui reutilise la
-        # meme cle est une reprise qui n'a pas lieu.
+        # Dagster cherche un run_key dans tout l'historique et refuse de
+        # recreer un run pour un run_key deja vu : une reprise avec la meme cle
+        # n'aurait pas lieu.
         with DagsterInstance.ephemeral() as instance:
             capteur = _Capteur(instance)
             _rafale(instance, 3)
@@ -484,8 +469,8 @@ class TestUnEchecDeReindexationNEstPasPerdu:
         ],
     )
     def test_rien_ne_repart_pendant_qu_une_reindexation_est_en_vol(self, statut):
-        # Sans cette garde, la reprise lancerait un second run de reindexation
-        # a chaque tick pendant que le premier travaille.
+        # Sans ce controle, chaque tick lancerait un nouveau run de
+        # reindexation pendant que le premier travaille.
         with DagsterInstance.ephemeral() as instance:
             capteur = _Capteur(instance)
             _rafale(instance, 3)
@@ -496,33 +481,30 @@ class TestUnEchecDeReindexationNEstPasPerdu:
         assert "deja en vol" in str(resultat.skip_message)
 
     def test_l_echec_de_l_agent_ne_rougit_aucune_ingestion(self, espion, monkeypatch, tmp_path):
-        # La propriete que la reparation ne doit PAS perdre : l'appel vit dans
-        # son propre run, une ingestion reussie reste verte quoi qu'il advienne
-        # de l'agent.
+        # L'appel vit dans son propre run : une ingestion reussie reste reussie
+        # quoi qu'il advienne de l'agent.
         resultats = _ingerer(monkeypatch, tmp_path, 3)
         assert [resultat.success for resultat in resultats] == [True, True, True]
 
 
 class TestToutesLesSourcesComptentDansLeRepere:
-    """Le ``max()`` sur plusieurs sources n'etait garde par rien.
+    """Le repere est le ``max()`` sur toutes les sources, et non celui d'une seule.
 
-    Le harnais de ce fichier appelle ``build_reindex([JOB_INGESTION])`` — UN
-    seul nom de job. Avec une seule source, ``max`` et ``min`` rendent la meme
-    chose : remplacer l'un par l'autre laissait toute la suite verte. Or
-    ``sources.yaml`` en declare trois, et c'est cette configuration-la qui est
-    livree.
+    Le reste de ce fichier appelle ``build_reindex([JOB_INGESTION])``, avec un
+    seul nom de job : ``max`` et ``min`` y rendent la meme chose. Or
+    ``sources.yaml`` declare trois sources.
 
-    Avec ``min``, le repere reste accroche a la source la plus anciennement
-    ingeree : une rafale sur une seconde source ne le fait plus avancer, et
-    n'est jamais reindexee. Le cas se produit des le deuxieme depot de fichiers.
+    Avec ``min``, le repere resterait accroche a la source la plus anciennement
+    ingeree : une rafale sur une seconde source ne le ferait pas avancer, et ne
+    serait jamais reindexee.
     """
 
     AUTRE_JOB = "livres_html_job"
     DEUX = (JOB_INGESTION, AUTRE_JOB)
 
     def test_les_deux_sources_ont_bien_reussi(self):
-        # Sinon le test suivant serait vert faute d'avoir atteint son cas : un
-        # test qui choisit lui-meme son scenario doit prouver qu'il l'a atteint.
+        # Verifie que le scenario du test suivant est bien atteint ; sinon il
+        # passerait sans rien prouver.
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 2)
             _reindexation(instance, statut=DagsterRunStatus.SUCCESS)
@@ -549,9 +531,9 @@ class TestToutesLesSourcesComptentDansLeRepere:
         assert isinstance(resultat, RunRequest), f"seconde source jamais reindexee : {resultat}"
 
     def test_le_cablage_reel_suit_toutes_les_sources_declarees(self):
-        # Le meme enchainement, sur le sensor que definitions.py livre et sur
-        # les sources que sources.yaml declare vraiment — pas sur une liste
-        # ecrite par le test.
+        # Le meme enchainement, sur le sensor que livre definitions.py et sur
+        # les sources reellement declarees dans sources.yaml, et non sur une
+        # liste ecrite par le test.
         from src.pipeline.definitions import defs
 
         sensor_livre = next(c for c in defs.sensors if c.name == REINDEX_SENSOR_NAME)
@@ -572,7 +554,7 @@ class TestToutesLesSourcesComptentDansLeRepere:
 
 
 class TestUrlVide:
-    """Desactiver l'appel est un choix ; lancer des runs vides ne l'est pas."""
+    """Une URL vide desactive l'appel : le sensor saute au lieu de lancer des runs inutiles."""
 
     def test_le_sensor_saute_et_dit_pourquoi(self, monkeypatch):
         monkeypatch.setenv("AGENT_SERVICE_URL", "")
@@ -603,9 +585,9 @@ class TestLAssetDeReindexation:
         assert "ok" in metadata["reindex"].value
 
     def test_un_echec_rougit_le_run_et_le_crie(self, espion):
-        # Voir TestUnEchecDeReindexationNEstPasPerdu pour le pourquoi : un run
-        # vert portant « ECHEC » dans une metadonnee n'alerte personne, et
-        # laissait le sensor croire la rafale traitee.
+        # Voir TestUnEchecDeReindexationNEstPasPerdu : un run reussi portant
+        # « ECHEC » dans une metadonnee ne declenche aucune alerte, et le
+        # sensor croirait la rafale traitee.
         resultat = materialize([lexical_index], raise_on_error=False)
 
         assert resultat.success is False
@@ -622,17 +604,14 @@ class TestLAssetDeReindexation:
 
 
 class TestLeSensorEstLivreArme:
-    """Le lot entier est inerte si le sensor arrive a l'arret.
+    """Le sensor de reindexation est livre actif.
 
-    Un sensor sans ``default_status`` est livre STOPPED : Dagster le charge, il
-    apparait dans l'interface, et il ne tourne jamais. Aucune ingestion ne
-    reindexe plus rien, et rien ne rougit — c'est la panne muette que ce lot
-    existe pour supprimer, revenue par la porte du deploiement.
+    Un sensor sans ``default_status`` est livre STOPPED : Dagster le charge et
+    l'affiche, mais il ne tourne jamais. Plus aucune ingestion n'est alors
+    reindexee, sans aucune erreur.
 
-    Retirer la ligne ``default_status=DefaultSensorStatus.RUNNING`` laissait
-    toute la suite verte. L'assertion porte donc sur l'objet PRODUIT par
-    ``build_reindex`` et sur celui que ``definitions.py`` livre reellement,
-    jamais sur la presence du mot dans la source.
+    L'assertion porte sur l'objet produit par ``build_reindex`` et sur celui que
+    livre ``definitions.py``, et non sur la presence du mot dans la source.
     """
 
     def test_le_sensor_construit_est_arme(self):
@@ -646,8 +625,8 @@ class TestLeSensorEstLivreArme:
         assert capteur.default_status is DefaultSensorStatus.RUNNING
 
     def test_l_arme_ne_vient_pas_du_defaut_de_dagster(self):
-        # Sinon les deux assertions ci-dessus seraient vraies sans que la ligne
-        # existe, et le test serait vert des deux cotes du defaut.
+        # Sinon les deux assertions ci-dessus seraient vraies meme sans la
+        # ligne `default_status=...`.
         @sensor(name="temoin_sans_default_status", job_name=REINDEX_JOB_NAME)
         def temoin(context: SensorEvaluationContext) -> SkipReason:
             return SkipReason("temoin")
@@ -666,9 +645,9 @@ class TestDefinitionsResolvent:
 class TestLeCablageReel:
     """Le sensor doit surveiller TOUTES les sources declarees, pas une liste figee.
 
-    C'est le defaut d'oubli le plus probable de ce montage : ajouter une source
-    dans ``sources.yaml`` et ne pas la brancher au sensor. La reindexation
-    partirait alors au milieu de son ingestion.
+    L'oubli le plus probable : ajouter une source dans ``sources.yaml`` sans la
+    brancher au sensor. La reindexation partirait alors au milieu de son
+    ingestion.
     """
 
     def _sensor_reel(self):
@@ -699,14 +678,13 @@ class TestLeCablageReel:
 
 
 class TestLaClassificationDesStatutsTerminaux:
-    """Registre 4.17 : retirer `CANCELED` de `STATUTS_TERMINES` laissait la
-    suite VERTE, et une ingestion annulee aurait bloque la reindexation POUR
-    TOUJOURS.
+    """Contenu de `STATUTS_TERMINES` (registre 4.17).
 
-    Le test existant (`test_aucun_statut_terminal_ne_bloque`) asserte que les
-    deux ensembles partitionnent `DagsterRunStatus` — vrai des deux cotes du
-    defaut, la soustraction etant faite par le code lui-meme. Ce qui manquait est
-    l'assertion sur le CONTENU, et elle se verifie contre le Dagster EPINGLE.
+    Sans `CANCELED` dans `STATUTS_TERMINES`, une ingestion annulee bloquerait
+    la reindexation pour toujours. Verifier que les deux ensembles partitionnent
+    `DagsterRunStatus` ne suffit pas, car la soustraction est faite par le code
+    lui-meme : ces tests verifient le contenu, contre la version epinglee de
+    Dagster.
     """
 
     def test_les_trois_statuts_terminaux_sont_nommes(self):
@@ -722,13 +700,10 @@ class TestLaClassificationDesStatutsTerminaux:
         )
 
     def test_ils_sont_exactement_ceux_que_dagster_declare_finis(self):
-        """LE TEMOIN, et c'est lui qui survit a une montee de version.
+        """Les statuts terminaux sont exactement ceux que Dagster declare finis.
 
-        Le docstring du module ecrivait « les trois SEULS etats dont un run
-        Dagster ne revient pas » — une phrase d'exhaustivite, qu'une montee de
-        Dagster peut rendre fausse en silence. Cette assertion la remplace par un
-        controle : elle rougit le jour ou Dagster change sa propre liste, au lieu
-        de laisser le sensor reindexer au milieu d'une ingestion.
+        Ce test echoue si une montee de version de Dagster change sa propre
+        liste, au lieu de laisser le sensor reindexer au milieu d'une ingestion.
         """
         from dagster import DagsterRunStatus as Statuts
         from dagster._core.storage.dagster_run import FINISHED_STATUSES
@@ -745,9 +720,9 @@ class TestLaClassificationDesStatutsTerminaux:
     def test_un_statut_non_terminal_est_prudemment_compte_en_vol(self):
         """La soustraction reste le mecanisme : un statut inconnu doit bloquer.
 
-        C'est l'inverse du defaut precedent, et les deux comptent : mal classer
-        un terminal gele la reindexation, mal classer un non-terminal la lance au
-        milieu d'une ingestion.
+        Les deux erreurs comptent : mal classer un statut terminal bloque la
+        reindexation, mal classer un statut non terminal la lance au milieu
+        d'une ingestion.
         """
         assert DagsterRunStatus.STARTED in STATUTS_EN_COURS
         assert DagsterRunStatus.STARTING in STATUTS_EN_COURS
@@ -756,14 +731,12 @@ class TestLaClassificationDesStatutsTerminaux:
 
 
 class TestLeSensorDitDepuisCombienDeTempsIlAttend:
-    """Registre 4.15 : « Aucun delai de garde, aucune ALERTE ».
+    """La raison de saut nomme le run qui bloque et son age (registre 4.15).
 
-    Un run coince en `STARTED` bloque la reindexation indefiniment. Le delai de
-    garde se pose dans `dagster.yaml` — c'est la que la famille entiere se ferme
-    d'un geste. L'ALERTE, elle, est ici : la raison de saut du sensor nommait le
-    job mais pas le run, ni depuis combien de temps il bloque. Un opérateur
-    voyait « Ingestion en cours » a chaque tick, pendant des heures, sans rien
-    qui distingue « ca travaille » de « c'est gele ».
+    Un run bloque en `STARTED` bloque la reindexation. Le delai au-dela duquel
+    il est passe en echec est regle dans `dagster.yaml`. En attendant, la raison
+    de saut du sensor nomme le run et depuis combien de temps il est en cours,
+    pour distinguer un run qui travaille d'un run bloque.
     """
 
     def test_la_raison_de_saut_nomme_le_run_qui_bloque(self):
@@ -777,28 +750,18 @@ class TestLeSensorDitDepuisCombienDeTempsIlAttend:
         assert "run " in message, message
 
     def test_la_raison_de_saut_donne_l_age_du_run_qui_bloque(self):
-        """LE GARDE, ET IL AFFIRMAIT LE CONTRAIRE DE CE QU'IL OBSERVAIT.
+        """La raison de saut donne l'age du run en secondes.
 
-        Ce test prouvait, sur le papier, que la raison de saut donne l'age du
-        run. `mesure` le 1er septembre 2026 : son montage — `_rafale` sur une
-        instance ephemere — ne pose AUCUN `start_time`, donc `_decrire_le_run`
-        prenait la branche DEGRADEE et le message reel disait
+        Le run est demarre par `_demarrer_un_run`, qui pose l'horodatage par le
+        mecanisme de Dagster : c'est la branche qui calcule l'age qui est
+        testee, celle qui tourne en production. Mesure sur l'historique Dagster
+        du poste de developpement (`SELECT status, count(*), count(start_time)
+        FROM runs GROUP BY status`) : 23/23 runs reussis et 67/67 runs echoues
+        ont un `start_time` ; seul un run `QUEUED`, jamais demarre, n'en a pas.
 
-            « Le run <id> est en STARTED, depuis une date inconnue. »
-
-        Ses deux assertions etaient satisfaites par ce message-la : « depuis » y
-        figure, et « s » est satisfait par n'importe quel message — ici par le
-        « S » de STARTED. **La branche qui CALCULE l'age n'etait jamais
-        executee.** C'est celle qui tourne en production : `mesure` sur
-        l'historique Dagster de ce poste, `SELECT status, count(*),
-        count(start_time) FROM runs GROUP BY status` rend **23/23** sur les runs
-        reussis et **67/67** sur les echoues ; seul le run `QUEUED`, jamais
-        demarre, n'en porte pas.
-
-        Le harnais pose donc l'horodatage par le mecanisme REEL de Dagster — un
-        evenement `PIPELINE_START` rapporte a l'instance, ce qui fait aussi
-        passer le run en `STARTED` — et l'assertion porte sur le NOMBRE DE
-        SECONDES, jamais sur la presence d'une lettre.
+        L'assertion porte sur un nombre de secondes, et non sur la presence
+        d'une lettre : un simple « s » serait satisfait par le « S » de STARTED
+        dans le message degrade « depuis une date inconnue ».
         """
         with DagsterInstance.ephemeral() as instance:
             _demarrer_un_run(instance, JOB_INGESTION)
@@ -819,13 +782,11 @@ class TestLeSensorDitDepuisCombienDeTempsIlAttend:
         )
 
     def test_le_montage_pose_bien_l_horodatage_qu_il_croit(self):
-        """LE TEMOIN DU HARNAIS. *Verifie ton harnais avant de croire ton rouge.*
+        """Controle du montage : `_demarrer_un_run` pose bien `start_time`.
 
-        C'est exactement ce qui manquait au test ci-dessus : rien n'observait que
-        `start_time` etait renseigne, donc le test restait vert sur la branche
-        degradee. Si `_demarrer_un_run` cessait de poser l'horodatage, l'assertion
-        « date inconnue » ci-dessus le verrait — mais elle le verrait comme un
-        defaut du CODE, alors que ce serait un defaut du MONTAGE.
+        Si ce n'etait plus le cas, le test precedent echouerait comme si le
+        code etait en defaut, alors que le defaut serait dans le montage. Ce
+        test situe l'erreur.
         """
         with DagsterInstance.ephemeral() as instance:
             _demarrer_un_run(instance, JOB_INGESTION)
@@ -841,18 +802,17 @@ class TestLeSensorDitDepuisCombienDeTempsIlAttend:
             )
 
     def test_un_run_sans_horodatage_est_dit_degrade_et_ne_fait_pas_echouer_le_tick(self):
-        """L'AUTRE BRANCHE, et elle n'est pas morte — elle decrit un etat REEL.
+        """La branche degradee decrit un etat reel : un run jamais demarre.
 
-        `mesure` sur l'historique Dagster de ce poste : le seul run sans
-        `start_time` est celui qui est reste en attente, jamais demarre (registre
-        4.28.c). Un run non demarre n'a pas de date de debut, et il ne doit pas
-        faire echouer le tick du sensor. Sans ce test, « corriger » la branche
-        degradee en la supprimant passerait le garde ci-dessus.
+        Sur l'historique Dagster mesure, le seul run sans `start_time` est reste
+        en attente, jamais demarre (registre 4.28.c). Un tel run ne doit pas
+        faire echouer le tick du sensor. Sans ce test, supprimer la branche
+        degradee passerait le test precedent.
 
-        Ce qui est reproduit ici est l'ABSENCE d'horodatage — une ligne de run
-        sans evenement de demarrage — et non le statut `QUEUED` lui-meme, que
+        Le test reproduit l'absence d'horodatage (une ligne de run sans
+        evenement de demarrage), et non le statut `QUEUED`, que
         `create_run_for_test` refuse de fabriquer sans origine de job distante.
-        C'est bien l'absence qui decide de la branche.
+        C'est l'absence d'horodatage qui determine la branche.
         """
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 1, DagsterRunStatus.STARTED, JOB_INGESTION)
@@ -868,7 +828,7 @@ class TestLeSensorDitDepuisCombienDeTempsIlAttend:
         assert JOB_INGESTION in message, message
 
     def test_rien_n_est_dit_quand_aucun_run_ne_bloque(self):
-        """LE TEMOIN : l'alerte ne doit pas parler sur le chemin nominal."""
+        """Sans run en cours, le sensor emet sa demande au lieu d'une raison de saut."""
         with DagsterInstance.ephemeral() as instance:
             _rafale(instance, 1)
             resultat = _tick(instance)

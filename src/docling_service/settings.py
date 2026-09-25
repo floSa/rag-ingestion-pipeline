@@ -18,27 +18,22 @@ class DoclingSettings(ReglagesDuStockageObjet):
     # ── Stores ───────────────────────────────────────────────────────────────
     # Les quatre reglages du stockage objet — `s3_endpoint`, `s3_access_key`,
     # `s3_secret_key`, `s3_bucket` — viennent de `ReglagesDuStockageObjet`, que
-    # `PipelineSettings` herite aussi. Ils etaient ecrits ici ET la-bas
-    # (registre 4.29.b) ; `s3_endpoint` n'a plus de defaut du tout.
+    # `PipelineSettings` herite aussi (registre 4.29.b). `s3_endpoint` n'a pas
+    # de defaut.
     nebula_host: str = "graphd"
     nebula_port: int = 9669
-    # `NEBULA_USER` et `NEBULA_PASSWORD` existent dans `.env.example` depuis le
-    # depart et n'etaient exposes par AUCUN settings : les quatre sites qui
-    # ouvrent une session ecrivaient ("root", "nebula") en dur, si bien que le
-    # `.env` mentait sur ce qui est reellement lu. Changer le mot de passe du
-    # graphd rendait la pile inutilisable sans qu'aucun reglage ne l'explique.
-    # Les defauts sont ceux de `docker-compose.yml`, donc aucun poste ne change
-    # de comportement : ce sont les identifiants publics d'un graphd de
-    # developpement, pas un secret.
+    # Lus depuis `NEBULA_USER` et `NEBULA_PASSWORD` (`.env.example`). Les
+    # defauts sont ceux de `docker-compose.yml` : les identifiants publics d'un
+    # graphd de developpement, pas un secret.
     nebula_user: str = "root"
     nebula_password: str = "nebula"  # pragma: allowlist secret
 
     chroma_host: str = "chromadb"
     chroma_port: int = 8000
 
-    # Le defaut EST le contrat : aucun litteral a maintenir en double, donc
-    # aucune derive possible entre le code et lui. Reste le seul chemin de
-    # divergence, l'environnement, que verify_model_name() ferme.
+    # Le defaut est le modele du contrat, sans litteral en double. La seule
+    # divergence possible vient de l'environnement, que verify_model_name()
+    # refuse.
     embedding_model_name: str = CONTRACT_MODEL
 
     # ── Connexion NebulaGraph ────────────────────────────────────────────────
@@ -47,32 +42,22 @@ class DoclingSettings(ReglagesDuStockageObjet):
     # Nombre de tentatives de CREATE SPACE : le storaged doit avoir termine son
     # heartbeat d'enregistrement, ce qui peut prendre une minute au demarrage.
     nebula_space_attempts: int = 12
-    # Attente entre les etapes d'amorcage de `init_nebula.py`. C'etaient trois
-    # `time.sleep` ecrits en dur, donc ni ajustables sur un poste lent, ni
-    # neutralisables pour eprouver le script : ses 15 s de pause coutaient
-    # 76 s a la suite de tests (`mesure`). La duree est un fait d'environnement,
-    # pas une propriete du script.
+    # Attente entre les etapes d'amorcage de `init_nebula.py`. Reglable pour
+    # un poste lent, et mise a zero par les tests du script.
     nebula_amorcage_pause_seconds: float = 5.0
 
     # ── Extraction ───────────────────────────────────────────────────────────
     # Pages converties par passe. Les batchs bornent la memoire sur les gros
-    # PDF ; ils ne se chevauchent plus (les ids sont deterministes, un
-    # chevauchement ne servait qu'a re-convertir les memes pages pour rien).
+    # PDF ; ils ne se chevauchent pas (les ids sont deterministes, un
+    # chevauchement ne ferait que re-convertir les memes pages).
     pdf_batch_pages: int = 5
     # Facteur d'agrandissement des crops d'images extraites des PDF.
     image_crop_zoom: float = 2.0
 
     # ── Vectorisation ────────────────────────────────────────────────────────
-    # `CHUNK_SIZE` (450) et `CHUNK_OVERLAP` (75) etaient ici, ET RIEN NE LES
-    # LISAIT (registre 5.1). Le decoupage reel est `HybridChunker`, qui coupe sur
-    # la STRUCTURE du document et sur la fenetre du tokenizer du modele, jamais
-    # sur un compte de caracteres. Le commentaire qui les accompagnait justifiait
-    # 450 par une mesure — « 31 % de troncature a 900, 1,3 % a 450 » — et
-    # documentait donc une constante morte : le chiffre etait peut-etre juste, il
-    # ne decrivait aucun comportement de ce code. `documentation/services/
-    # docling.md` les annoncait de surcroit a l'operateur avec les valeurs 900 et
-    # 150, que ces defauts-ci contredisaient : le debat « 900 contre 450 » etait
-    # vide des deux cotes.
+    # Pas de taille de chunk ni de recouvrement en caracteres : le decoupage
+    # est fait par `HybridChunker`, sur la structure du document et la fenetre
+    # du tokenizer du modele (registre 5.1).
     embedding_batch_size: int = 32
     chroma_upsert_batch: int = 500
     # Plancher en caracteres sous lequel un bloc est ecarte de l'index
@@ -85,16 +70,14 @@ class DoclingSettings(ReglagesDuStockageObjet):
     embed_section_context: bool = True
 
     # ── Graphe ───────────────────────────────────────────────────────────────
-    # Le graphe porte la structure, pas le corpus : on y stocke un apercu du
+    # Le graphe porte la structure, pas le corpus : il stocke un apercu du
     # texte. Le texte integral vit dans ChromaDB, decoupe.
     #
-    # Cette ligne ajoutait « et SANS TRONCATURE ». C'est faux, et deux fois : le
-    # texte STOCKE dans ChromaDB est bien integral, mais le VECTEUR ne l'est pas
-    # — le modele tronque ce qui depasse sa fenetre, et le chiffre est a
-    # `vectors.get_chunker`. Quant au graphe, il coupe a cette limite-ci, ce qui
-    # fait diverger les deux stores en silence sur les elements concernes
-    # (registre 4.23) : `nebula.write_elements` compte desormais les coupes et
-    # emet un avertissement.
+    # Le texte stocke dans ChromaDB est integral ; le vecteur, lui, ne couvre
+    # que la fenetre du modele (chiffres a `vectors.get_chunker`). Le graphe
+    # coupe a cette limite, ce qui fait diverger les deux stores sur les
+    # elements concernes (registre 4.23) : `nebula.write_elements` compte ces
+    # coupes et emet un avertissement.
     graph_text_max_chars: int = 2000
 
     # ── File de jobs ─────────────────────────────────────────────────────────

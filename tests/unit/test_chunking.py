@@ -1,4 +1,4 @@
-"""Tests unitaires pour le decoupage des textes longs."""
+"""Tests de `chunking` : texte encode, forme de l'id de chunk, filtre de contenu."""
 
 from __future__ import annotations
 
@@ -45,19 +45,16 @@ class TestContextualize:
 class TestChunkId:
     """La forme de l'id ChromaDB, qui est une clause du contrat.
 
-    Le garde de la production, lui, vit dans `test_vectors.py` : cette forme
-    etait ecrite DEUX fois, ici et en ligne dans `vectors.build_chunks`, et
-    seule celle-ci etait testee (registre 5.1).
+    Le test du site de production (`vectors.build_chunks`) est dans
+    `test_vectors.py` (registre 5.1).
     """
 
     def test_un_chunk_seul_garde_l_id_nu(self):
-        """LA CLAUSE, et `verify_contract` la compte : 974 ids suffixes sur 4 365.
+        """La clause du contrat, que `verify_contract` compte (974 ids suffixes sur 4 365).
 
-        Ce docstring a d'abord ecrit « sans cela, une reingestion DUPLIQUE au
-        lieu de mettre a jour ». C'est faux depuis le lot 4 : `extract` purge le
-        document par `source_path` avant de le reecrire, donc aucune forme d'id
-        ne laisse d'orphelin (registre 4.31.B3). Ce qui se perdrait est la clause
-        elle-meme.
+        `extract` purge le document par `source_path` avant de le reecrire : une
+        autre forme d'id ne laisserait pas d'orphelin, mais romprait la clause
+        (registre 4.31.B3).
         """
         assert chunk_id("abc1234567", 0, 1) == "abc1234567"
 
@@ -74,7 +71,7 @@ class TestChunkId:
         assert len(set(ids)) == 10
 
     def test_l_element_id_reste_lisible_dans_l_id_du_chunk(self):
-        """Le temoin : le suffixe s'AJOUTE, il ne remplace pas.
+        """Le suffixe s'ajoute a l'element_id, il ne le remplace pas.
 
         `rag-agent-chat` valide `/context/{element_id}` sur `^[a-f0-9]{10}$` et
         lit l'id du chunk dans un champ distinct : un id de chunk qui n'ouvrirait
@@ -84,13 +81,11 @@ class TestChunkId:
 
 
 class TestEmbeddingInputs:
-    """Ce que le MODELE recoit — et le seul site qui en decide.
+    """Ce que le modele recoit, construit a un seul endroit.
 
-    L'instrument de troncature tokenisait le texte STOCKE quand le modele
-    encode le texte PREFIXE du titre : il annoncait 65 chunks au-dela de la
-    fenetre la ou il y en avait 137 (registre 3.4, `mesure` sur 4 365 chunks).
-    Ce n'etait pas une erreur de calcul mais une DIVERGENCE : deux endroits
-    decidaient du meme texte. Il n'y en a plus qu'un, et ces tests le gardent.
+    `index_report` et `vectors` partagent cette fonction. Avec deux
+    constructions, l'instrument comptait 65 chunks au-dela de la fenetre au
+    lieu de 137 (registre 3.4, mesure sur 4 365 chunks).
     """
 
     TEXTES = ["la moyenne y est sensible", "Chunking\n\ndeja prefixe"]
@@ -102,7 +97,7 @@ class TestEmbeddingInputs:
         )
 
     def test_nothing_is_prefixed_when_the_setting_is_off(self):
-        """Le reglage a deux positions, et l'instrument doit dire vrai des deux."""
+        """Le reglage a deux positions ; l'instrument doit etre exact dans les deux."""
         assert embedding_inputs(self.TEXTES, self.METAS, False) == self.TEXTES
 
     def test_a_chunk_that_already_opens_on_its_title_is_left_alone(self):
@@ -123,11 +118,7 @@ class TestEmbeddingInputs:
 class TestHasContent:
     """Le filtre qui decide si un texte merite un vecteur.
 
-    Ces six tests viennent de `test_blocks.py`, retire avec `blocks.py` : le
-    module portait une doctrine de regroupement — « fusionner plutot que jeter »
-    — que la production n'applique plus depuis que `HybridChunker` a remplace
-    `build_blocks`, et `has_content` en etait le seul symbole encore appele
-    (registre 5.2). La couverture le suit ; elle n'est pas perdue.
+    La fonction vient de l'ancien `blocks.py` (registre 5.2).
     """
 
     def test_un_mot_porte_du_contenu(self):

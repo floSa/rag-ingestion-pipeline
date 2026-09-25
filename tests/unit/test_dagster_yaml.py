@@ -1,18 +1,16 @@
-"""Le delai de garde de l'orchestrateur, et le fichier qui le porte.
+"""Le *run monitoring* de Dagster, configure dans `dagster.yaml`.
 
-Registre 4.15 a 4.17 : un run coince en `STARTED` bloque la reindexation
-INDEFINIMENT, sans delai de garde ni alerte, et le *run monitoring* de Dagster
-etait **absent de `dagster.yaml`**. C'est la que la famille entiere se ferme d'un
-geste, plutot qu'au cas par cas dans chaque sensor.
+Registres 4.15 a 4.17 : sans run monitoring, un run bloque en `STARTED` bloque
+la reindexation indefiniment, sans alerte. Le delai au-dela duquel un run est
+declare mort est regle une fois, dans `dagster.yaml`, plutot que dans chaque
+sensor.
 
-**Ce fichier n'est pas un test de texte, et la distinction compte.** Le registre
-laisse ouvert (F7) le fait qu'aucun test de ce depot ne lit le `Makefile`, en
-notant qu'une assertion sur du texte « resterait verte si le script etait renomme,
-deplace ou rendu non executable ». Ici, la configuration EST lue par Dagster et
-par personne d'autre : la valider avec le processeur de configuration de Dagster
-lui-meme, et comparer ses seuils aux reglages reels du pipeline, eprouve donc le
-comportement et non une chaine. Un `dagster.yaml` invalide fait echouer le
-demarrage du daemon — ce test le dit avant.
+Ces tests valident la configuration avec le processeur de configuration de
+Dagster lui-meme, et comparent ses seuils aux reglages reels du pipeline : ils
+testent ce que Dagster lit, pas une chaine de caracteres. Un `dagster.yaml`
+invalide fait echouer le demarrage du daemon ; ces tests le detectent avant.
+Seul `test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree`
+lit du texte, pour la raison donnee dans sa docstring.
 """
 
 from __future__ import annotations
@@ -35,9 +33,9 @@ CHEMIN = RACINE / "dagster.yaml"
 def _sans_separateur_de_milliers(texte: str) -> str:
     """`90 000` et `90\u00a0000` deviennent `90000`.
 
-    La prose ecrit les milliers separes, la configuration non : sans cette
-    normalisation, un garde qui part de la valeur effective ne retrouverait
-    jamais son propre chiffre dans la documentation.
+    La prose separe les milliers, la configuration non : sans cette
+    normalisation, la valeur lue dans la configuration ne serait jamais
+    retrouvee dans la documentation.
     """
     return re.sub(r"(?<=\d)[ \u00a0](?=\d)", "", texte)
 
@@ -45,12 +43,11 @@ def _sans_separateur_de_milliers(texte: str) -> str:
 def _reference_de_l_instance(chemin: Path) -> Any:
     """Resout ce que Dagster lit du `dagster.yaml` livre, sans rien ouvrir.
 
-    `InstanceRef.from_dir` rend des `ConfigurableClassData` — du descriptif, pas
-    des objets : rien n'est instancie, donc aucun des trois stores Postgres que
-    ce fichier declare n'est joint. C'est ce qui rend le controle utilisable dans
-    une suite qui ne sort jamais du disque.
+    `InstanceRef.from_dir` rend des `ConfigurableClassData`, qui decrivent les
+    objets sans les instancier : aucun des trois stores Postgres declares n'est
+    contacte, et la suite reste hors reseau.
 
-    Le fichier est COPIE dans un repertoire jetable : `from_dir` prend son
+    Le fichier est copie dans un repertoire jetable : `from_dir` prend son
     argument pour la racine des artefacts locaux et peut y ecrire.
     """
     import shutil
@@ -82,8 +79,8 @@ class TestLaConfigurationEstCELLEQueDagsterAccepte:
         assert resultat.success, [erreur.message for erreur in resultat.errors or []]
 
     def test_une_cle_inconnue_serait_refusee(self, configuration: dict[str, Any]) -> None:
-        """LE TEMOIN. Sans lui, un schema permissif rendrait le test ci-dessus
-        vrai de n'importe quel fichier, et l'assertion serait creuse."""
+        """Controle negatif : sans lui, un schema permissif validerait
+        n'importe quel fichier, et le test precedent ne prouverait rien."""
         resultat = process_config(
             dagster_instance_config_schema(), {**configuration, "reglage_inexistant": 1}
         )
@@ -92,7 +89,7 @@ class TestLaConfigurationEstCELLEQueDagsterAccepte:
 
 
 class TestLeDelaiDeGardeEstArme:
-    """Le run monitoring etait ABSENT : rien ne reprenait un run orphelin."""
+    """Le run monitoring est active et borne les runs orphelins."""
 
     def test_le_run_monitoring_est_active(self, configuration: dict[str, Any]) -> None:
         assert configuration.get("run_monitoring", {}).get("enabled") is True, (
@@ -116,25 +113,19 @@ class TestLeDelaiDeGardeEstArme:
     def test_la_borne_de_duree_ne_contredit_pas_le_plafond_du_pipeline(
         self, configuration: dict[str, Any]
     ) -> None:
-        """LE GARDE QUI COMPTE, et il compare deux fichiers.
+        """`max_runtime_seconds` est superieur au plafond du pipeline.
 
         `PipelineSettings.extraction_timeout_seconds` est le plafond que le
-        pipeline s'accorde LUI-MEME par document. Un `max_runtime_seconds` plus
-        court tuerait des runs que le pipeline considere encore legitimes, et le
-        developpeur chercherait la cause du mauvais cote — deux plafonds qui se
-        contredisent sont pires qu'un seul.
+        pipeline s'accorde par document. Un `max_runtime_seconds` plus court
+        tuerait des runs que le pipeline considere encore legitimes.
 
-        Ce delai-ci est la DERNIERE ligne : il ne se declenche que quand le
-        plafond du pipeline a lui-meme echoue a se declencher, c'est-a-dire quand
-        le run est reellement gele et non lent.
+        Le run monitoring est le dernier recours : il ne se declenche que si le
+        plafond du pipeline n'a pas agi, c'est-a-dire si le run est bloque et
+        non simplement lent.
 
-        CE GARDE-CI NE TIENT QUE LE PLANCHER, ET C'EST TOUT CE QU'IL DIT.
-        `mesure` de l'audit du lot 9 : porter `max_runtime_seconds` a 500 000
-        laissait la suite ENTIEREMENT VERTE. La borne ne pouvait pas descendre
-        sous le plafond du pipeline, mais elle pouvait etre multipliee par 5,5
-        sans qu'un test bronche. Le plafond est tenu par
-        `test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline`, et le
-        chiffre annonce a la documentation par
+        Ce test ne verifie que la borne basse. La borne haute est verifiee par
+        `test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline`, et la
+        duree annoncee dans la documentation par
         `test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree`.
         """
         borne = configuration["run_monitoring"]["max_runtime_seconds"]
@@ -149,31 +140,20 @@ class TestLeDelaiDeGardeEstArme:
     def test_la_borne_reste_juste_au_dessus_du_plafond_du_pipeline(
         self, configuration: dict[str, Any]
     ) -> None:
-        """LE PLAFOND DE LA BORNE, et il manquait.
+        """`max_runtime_seconds` reste juste au-dessus du plafond du pipeline.
 
-        Le garde precedent tient le PLANCHER : la borne ne peut pas descendre
-        sous le plafond du pipeline. Il ne tenait rien au-dessus. `mesure` de
-        l'audit du lot 9, sur ce fichier : `max_runtime_seconds: 500000` rendait
-        `rc=0` et 925 verts, ZERO rouge. Un facteur 5,5 passait sans un mot.
+        Le test precedent verifie la borne basse. Sans celui-ci, une valeur de
+        500 000 s passait la suite entiere (mesure lors d'un audit).
 
-        POURQUOI CETTE FORME ET PAS UNE EGALITE A 90 000. Une assertion
-        `borne == 90000` tiendrait la valeur, mais elle rougirait aussi bien
-        pour un ajustement legitime que pour un changement de nature, sans rien
-        apprendre de la difference : elle transformerait le fichier en copie du
-        `dagster.yaml`, et un developpeur la recopierait sans y penser. Ce qui
-        merite un garde n'est pas le nombre, c'est la PROPRIETE que
-        `dagster.yaml` revendique en toutes lettres : la borne est posee *juste
-        au-dessus* du plafond du pipeline, parce qu'elle est la DERNIERE ligne
-        et non un second plafond. Cette propriete-la est mesurable, et c'est
-        elle qui se perd quand la borne derive.
+        Le test ne fige pas la valeur (`borne == 90000`) : il verifie la
+        propriete que `dagster.yaml` annonce, a savoir une borne posee *juste
+        au-dessus* du plafond du pipeline, dernier recours et non second
+        plafond independant.
 
-        POURQUOI UN DIXIEME. L'ecart livre vaut 3 600 s sur 86 400, soit 4,2 %.
-        Un dixieme du plafond du pipeline (8 640 s) laisse donc l'ecart PLUS QUE
-        DOUBLER sans rougir : le garde n'interdit pas l'ajustement, il interdit
-        le changement de nature. Au-dela, la borne cesse d'etre la derniere
-        ligne et devient le second plafond independant que le commentaire de
-        `dagster.yaml` dit explicitement vouloir eviter — et c'est alors une
-        DECISION, qui doit s'ecrire ici et pas se glisser dans un nombre.
+        Pourquoi un dixieme : l'ecart actuel vaut 3 600 s sur 86 400, soit
+        4,2 %. Une marge d'un dixieme (8 640 s) laisse l'ecart plus que doubler :
+        un ajustement reste possible, un changement de nature non. Un tel
+        changement est une decision a ecrire dans `dagster.yaml` et ici.
         """
         borne = configuration["run_monitoring"]["max_runtime_seconds"]
         plafond_du_pipeline = PipelineSettings().extraction_timeout_seconds
@@ -191,27 +171,21 @@ class TestLeDelaiDeGardeEstArme:
     def test_la_duree_annoncee_par_la_documentation_est_celle_de_la_valeur_livree(
         self, configuration: dict[str, Any]
     ) -> None:
-        """LA DUREE ANNONCEE EST CELLE DE LA VALEUR LIVREE, aux deux sites.
+        """La duree annoncee par la documentation est celle de la valeur livree.
 
-        Ce garde existe parce que la maladie a eu lieu : trois sites de ce depot
-        ont annonce **24 h** comme prix d'attente d'un run gele, alors que
-        `max_runtime_seconds: 90000` vaut **25 h** — les 24 h etant celles
-        d'`extraction_timeout_seconds`, qui borne le pipeline par document et
-        non le run monitoring. Rien ne rougissait. Registre 4.35.a.
+        Confusion a eviter (registre 4.35.a) : `max_runtime_seconds: 90000`
+        vaut 25 h ; les 24 h sont celles d'`extraction_timeout_seconds`, qui
+        borne le pipeline par document et non le run monitoring.
 
-        Il est assume que c'est un test de TEXTE, ce que le docstring de ce
-        fichier refuse par ailleurs — et la raison de l'exception est que ce qui
-        doit etre eprouve EST une propriete du texte : *la documentation dit la
-        verite sur la valeur*. Il n'existe pas de comportement a observer ici.
-        Ce qui rendrait le test creux serait de l'ecrire sur un litteral ; il
-        part donc de la valeur EFFECTIVE, lue dans la configuration, et exige
-        que chaque site la nomme et en annonce les heures justes.
+        C'est un test de texte, car la propriete verifiee est textuelle : la
+        documentation doit dire la verite sur la valeur. Il part de la valeur
+        effective, lue dans la configuration, et non d'un litteral, et exige que
+        chaque fichier la nomme avec le bon nombre d'heures.
 
-        DEUX SITES, ET PAS CINQ. `dagster.yaml` porte l'arithmetique canonique et
-        `documentation/orchestration.md` est la doc operateur du reglage : ce
-        sont les deux sites qui DONNENT le chiffre. Les autres (README,
-        axes_amelioration, factory) le CITENT, et les faire tous garder par du
-        texte rendrait le garde plus fragile que la chose gardee.
+        Deux fichiers sont verifies : `dagster.yaml`, qui porte l'arithmetique
+        de reference, et `documentation/orchestration.md`, la documentation
+        d'exploitation du reglage. Les autres (README, axes_amelioration,
+        factory) ne font que citer le chiffre.
         """
         borne = configuration["run_monitoring"]["max_runtime_seconds"]
         heures_attendues = borne // 3600
@@ -238,45 +212,28 @@ class TestLeDelaiDeGardeEstArme:
     ) -> None:
         """`DefaultRunLauncher` ne reprend pas un run dont le worker est mort.
 
-        L'armer donnerait un reglage qui ne fait rien — la famille des
-        `CHUNK_SIZE=900` du registre 5.1, dont le debat entier etait vide parce
-        que la variable etait morte. Un run mort est marque en ECHEC, et c'est ce
-        qui libere la reindexation.
+        Armer la reprise donnerait un reglage sans effet (meme cas que la
+        variable morte `CHUNK_SIZE` du registre 5.1). Un run mort est marque en
+        echec, ce qui libere la reindexation.
         """
         assert configuration["run_monitoring"].get("max_resume_run_attempts") == 0
 
     def test_le_launcher_est_bien_celui_que_ce_raisonnement_suppose(self) -> None:
-        """LE TEMOIN du precedent, et il porte son antecedent.
+        """Le launcher effectif est `DefaultRunLauncher`, que suppose le test precedent.
 
-        Le raisonnement ci-dessus ne vaut que pour `DefaultRunLauncher`. Le jour
-        ou ce depot passe a un launcher qui SAIT reprendre — `K8sRunLauncher`,
-        `DockerRunLauncher` — `max_resume_run_attempts: 0` devient un mauvais
-        reglage, et ce test est ce qui le rappellera. *Cherche l'antecedent avant
-        d'auditer le raisonnement.*
+        `max_resume_run_attempts: 0` ne se justifie que pour un launcher qui ne
+        sait pas reprendre un run. Avec un launcher qui le sait
+        (`K8sRunLauncher`, `DockerRunLauncher`), ce reglage deviendrait mauvais,
+        et ce test le signalera.
 
-        **CETTE ASSERTION PORTAIT SUR UN COMMENTAIRE** (registre 4.29.g). Elle
-        etait `"DefaultRunLauncher" in texte`, sur le contenu BRUT du fichier.
-        `mesure` le 2 septembre 2026 : la chaine apparait sur TROIS lignes de
-        `dagster.yaml`, et les trois sont des commentaires —
-        `grep -v` sur les lignes de commentaire puis `grep -c` rend **0**.
-        Le test ne trouvait donc que du commentaire, dans un fichier dont le
-        docstring affirme « ce fichier n'est pas un test de texte, et la
-        distinction compte ». Le docstring avait raison sur le reste du fichier,
-        et faux sur cette assertion-la.
+        Le launcher est lu tel que Dagster le resout depuis le `dagster.yaml`
+        livre, et non cherche dans le texte, ou la chaine n'apparait qu'en
+        commentaire (registre 4.29.g). La resolution par `InstanceRef` n'ouvre
+        aucun store (voir `_reference_de_l_instance`).
 
-        Elle lit desormais le launcher **effectif**, celui que Dagster resout
-        depuis le `dagster.yaml` livre. La resolution est PURE — `InstanceRef`
-        calcule un `ConfigurableClassData` sans instancier — donc aucun store
-        n'est ouvert et aucun Postgres n'est joint : le fichier declare pourtant
-        trois stores Postgres, et les instancier sortirait la suite du disque.
-        Le fichier livre est copie dans un repertoire jetable, `from_dir`
-        pouvant y creer des repertoires d'artefacts.
-
-        La seconde assertion, elle, etait deja substantielle et elle est
-        conservee : `"run_launcher:" not in texte` detecte l'APPARITION d'un bloc
-        explicite, c'est-a-dire exactement l'evenement qui rendrait
-        `max_resume_run_attempts: 0` mauvais. Elle porte le raisonnement ; la
-        premiere ne portait rien.
+        La seconde assertion (`"run_launcher:" not in texte`) detecte
+        l'apparition d'un bloc `run_launcher` explicite, precisement ce qui
+        rendrait `max_resume_run_attempts: 0` a revoir.
         """
         texte = CHEMIN.read_text(encoding="utf-8")
         ref = _reference_de_l_instance(CHEMIN)

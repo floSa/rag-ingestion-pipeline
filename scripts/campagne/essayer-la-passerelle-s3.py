@@ -1,33 +1,28 @@
 #!/usr/bin/env python3
-"""Les huit criteres d'essai d'une passerelle S3, par APPEL DIRECT.
+"""Les huit criteres d'essai d'une passerelle S3, par appel direct.
 
-Ce script est le juge d'un CANDIDAT au stockage objet, quel qu'il soit. Il
-n'interroge aucune console, aucun tableau de bord, aucune page d'etat : il
-fait, pour chaque critere et pour chaque jeu d'identifiants, L'APPEL que le
-pipeline ou l'agent ferait, et il lit le refus dans l'exception. Il a servi une
-fois pour de bon, le 25 septembre 2026 ; il reste utilisable tel quel pour le
-suivant.
+Ce script evalue un candidat au stockage objet, quel qu'il soit. Pour chaque
+critere et chaque jeu d'identifiants, il fait l'appel que le pipeline ou
+l'agent ferait, et lit le refus dans l'exception ; il n'interroge aucune
+console ni page d'etat. Il a servi le 25 septembre 2026 pour valider SeaweedFS,
+et reste utilisable tel quel.
 
-**IL NE CONSTRUIT PAS SES CLIENTS PAR `images.build_client`, ET C'EST
-DELIBERE.** Ce site-la lit les reglages de la pile EN SERVICE. Un essai doit
-pouvoir viser une passerelle candidate, avec DEUX jeux d'identifiants distincts
-et sans toucher a la configuration du depot : ses variables `ESSAI_S3_*` lui
-sont propres, et c'est ce qui rend le controle negatif possible.
+Il ne construit pas ses clients par `images.build_client`, qui lit les
+reglages de la pile en service. Un essai doit viser une passerelle candidate,
+avec deux jeux d'identifiants distincts et sans toucher a la configuration du
+depot : il a donc ses propres variables `ESSAI_S3_*`, ce qui permet aussi le
+controle negatif.
 
-**Pourquoi par appel direct.** Un refus S3 est un 403 `AccessDenied`. Il
-remonte chez `rag-agent-chat` en 404 SILENCIEUX : l'image demandee n'existe
-pas, dit l'ecran, et le corpus a l'air simplement incomplet. Un droit mal pose
-ne se voit donc pas a l'usage ; il se voit ici, ou le code HTTP et le code S3
-sont imprimes tels quels.
+Pourquoi par appel direct : un refus S3 (403 `AccessDenied`) remonte chez
+`rag-agent-chat` en 404 sans message, et le corpus parait simplement
+incomplet. Ici, le code HTTP et le code S3 sont imprimes tels quels.
 
-**Pourquoi `minio-py`.** C'est un client S3 GENERIQUE, et surtout la MEME
-bibliotheque que `src/docling_service/images.py` et que l'agent. Un essai mene
-avec `boto3` ou `aws s3` validerait un dialecte que personne n'emet en
-production : `minio-py` a ses propres
-habitudes, a commencer par le `GetBucketLocation` qu'il envoie avant tout
-echange sur un bucket qu'il ne connait pas encore (`Minio._get_region`). C'est
-le critere 1, et il est ELIMINATOIRE : une passerelle qui ne le sert pas ne
-sert rien du tout, des deux cotes.
+Pourquoi la bibliotheque `minio` (minio-py) : c'est un client S3 generique, et
+celui qu'utilisent `src/docling_service/images.py` et l'agent. `boto3` ou
+`aws s3` valideraient un autre dialecte. minio-py envoie notamment un
+`GetBucketLocation` avant tout echange sur un bucket qu'il ne connait pas
+encore (`Minio._get_region`) : c'est le critere 1, eliminatoire, car une
+passerelle qui ne le sert pas ne sert rien.
 
 Les identifiants viennent de l'environnement, jamais de la ligne de commande :
 un secret passe en argument se lit dans la table des processus.
@@ -38,8 +33,8 @@ un secret passe en argument se lit dans la table des processus.
     ESSAI_S3_RO_ACCESS_KEY=... ESSAI_S3_RO_SECRET_KEY=... \\
     python scripts/campagne/essayer-la-passerelle-s3.py
 
-Le CONTROLE NEGATIF consiste a rejouer la meme commande avec un jeu FAUX : le
-script doit alors sortir en 1. Un essai qui ne sait pas echouer ne prouve rien.
+Controle negatif : rejouer la meme commande avec un jeu d'identifiants faux ;
+le script doit alors sortir en 1.
 
 Sortie : 0 si les sept criteres passent, 1 des qu'un seul echoue. Le critere 8
 (l'empreinte des cles apres reingestion) ne vit pas ici : il se mesure sur le
@@ -62,7 +57,7 @@ from minio import Minio
 from minio.error import S3Error
 
 # Les cles d'epreuve de l'alphabet `[\w\-./]`, plus ce que le corpus reel
-# contient DEJA et qui n'en fait pas partie : l'espace, et le deux-points
+# contient deja et qui n'en fait pas partie : l'espace, et le deux-points
 # pleine chasse `：` (U+FF1A), que les titres de chapitres trainent depuis la
 # source. Une passerelle qui normalise l'un des deux rend une cle differente de
 # celle qu'elle a recue, et le graphe pointe alors dans le vide sans qu'aucune
@@ -148,9 +143,9 @@ def charger_les_reglages(chemin_des_cles: str | None) -> Reglages:
 def construire(reglages: Reglages, *, ecriture: bool) -> Any:
     """Construit un client `minio-py`, comme le pipeline et l'agent le font.
 
-    Aucune region n'est fixee au constructeur, et c'est VOLONTAIRE : la fixer
-    court-circuite le `GetBucketLocation` du critere 1, donc l'essai passerait
-    sur une passerelle qui ne le sert pas, et la production casserait.
+    Aucune region n'est fixee au constructeur, volontairement : la fixer
+    supprimerait le `GetBucketLocation` du critere 1, et l'essai passerait sur
+    une passerelle qui ne le sert pas.
     """
     return Minio(
         reglages.endpoint,
@@ -172,7 +167,7 @@ def demander_la_region(client: Any, bucket: str) -> str:
 
 
 def _refus(appel: Callable[[], Any]) -> tuple[bool, str]:
-    """Execute un appel qui DOIT etre refuse, et rend le refus lisible.
+    """Execute un appel qui doit etre refuse, et rend le refus lisible.
 
     Returns:
         (refuse, description). `description` porte le code HTTP et le code S3
@@ -334,8 +329,8 @@ def critere_5(reglages: Reglages, rw: Any, ro: Any) -> Verdict:
     if echecs:
         raise EchecDeCritereError(f"le jeu lecture seule a pu : {', '.join(echecs)}")
 
-    # `bucket_exists` et `list_objects` restent PERMIS en lecture seule : ce
-    # sont les critere 3, et les refuser casserait l'agent.
+    # `bucket_exists` et `list_objects` restent permis en lecture seule : ils
+    # relevent du critere 3, et les refuser casserait l'agent.
     observations.append(
         "lecture seule / bucket_exists et list_objects : permis, c'est le critere 3"
     )

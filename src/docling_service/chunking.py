@@ -1,27 +1,20 @@
 """Ce que le modele d'embedding recoit, et sous quel identifiant il est ecrit.
 
-**CE MODULE NE DECOUPE PLUS RIEN, ET SON EN-TETE L'AFFIRMAIT ENCORE.** Il
-portait « on decoupe desormais en fenetres recouvrantes, sans rien perdre » et
-exposait `chunk_text`, `DEFAULT_CHUNK_SIZE` et `DEFAULT_CHUNK_OVERLAP` : trois
-symboles **sans aucun appelant en production**, seuls les tests de ce module les
-exercaient (registre 5.1). Le decoupage reel est
+Ce module ne decoupe rien. Le decoupage est fait par
 `HybridChunker(tokenizer=..., max_tokens=modele.max_seq_length)`
-(`vectors.get_chunker`), qui decoupe sur la STRUCTURE du document et non sur un
-compte de caracteres. Le debat « 900 contre 450 » qui a occupe la documentation
-de ce depot etait donc vide : les deux valeurs etaient fausses, parce qu'aucune
-n'etait lue.
+(`vectors.get_chunker`), qui suit la structure du document et non un compte de
+caracteres. Il n'existe donc pas de taille de chunk ni de recouvrement en
+caracteres a regler (registre 5.1).
 
-Ce qui reste ici est ce que la production appelle, et rien d'autre :
+Le module expose ce que la production appelle :
 
 - :func:`contextualize` et :func:`embedding_inputs` — le texte tel que le modele
-  le recoit, a un seul site, partage par `vectors` et par `index_report` ;
+  le recoit, construit a un seul endroit, partage par `vectors` et par
+  `index_report` ;
 - :func:`chunk_id` — la forme de l'identifiant ChromaDB, qui est une clause du
   contrat avec `rag-agent-chat` ;
-- :func:`has_content` — le filtre qui decide si un texte merite un vecteur. Il
-  vivait dans `blocks.py`, dont il etait le SEUL symbole encore appele : le
-  module portait par ailleurs une doctrine de regroupement que la production
-  n'applique plus (registre 5.2), et un module nomme « blocs » qui ne contient
-  aucune notion de bloc est un nom qui ment.
+- :func:`has_content` — le filtre qui decide si un texte merite un vecteur
+  (anciennement dans `blocks.py`, registre 5.2).
 
 Le module ne depend que de la bibliotheque standard : il reste testable sans
 sentence-transformers ni ChromaDB.
@@ -68,17 +61,12 @@ def embedding_inputs(
 ) -> list[str]:
     """Construit exactement ce que le modele d'embedding recoit.
 
-    C'est le SEUL site qui en decide, et c'en est le point. Il y en avait deux :
-    ``vectors.write_elements`` prefixait le titre de section avant d'encoder, et
-    ``index_report`` tokenisait le texte stocke pour compter les troncatures.
-    L'instrument mesurait donc un autre texte que celui qu'il pretendait
-    surveiller, et sous-comptait d'un facteur **2,1** (`mesure` sur le corpus
-    complet). Les deux comptes qui donnent ce facteur vivent a
-    :func:`~src.docling_service.vectors.get_chunker`, leur seul site.
-
-    Corriger le calcul de l'instrument n'aurait ferme que l'ecart du jour : deux
-    endroits qui decident du meme texte finissent par diverger a nouveau. Il n'y
-    en a plus qu'un, et les deux appelants le partagent.
+    C'est le seul endroit qui en decide. ``vectors.write_elements`` (qui
+    encode) et ``index_report`` (qui compte les troncatures) l'appellent tous
+    les deux. Avec deux constructions separees, l'instrument mesurait un autre
+    texte que celui encode et sous-comptait les troncatures d'un facteur 2,1
+    (mesure sur le corpus complet ; les deux comptes sont documentes a
+    :func:`~src.docling_service.vectors.get_chunker`).
 
     Args:
         texts: Textes stockes, dans l'ordre.
@@ -109,50 +97,25 @@ def embedding_inputs(
 
 
 def chunk_id(element_id: str, index: int, count: int) -> str:
-    """Derive l'id ChromaDB d'un chunk, et c'est le SEUL site de cette forme.
+    """Derive l'id ChromaDB d'un chunk. C'est le seul endroit qui fixe cette forme.
 
     Un element tenant en un seul chunk conserve son id nu ; les elements
-    multi-chunks recoivent un suffixe ``#n``. **C'est une clause du contrat, et
-    `verify_contract` la COMPTE** — « ids de chunk suffixes en #n » : 974 sur
-    4 365 sur l'index vivant (`mesure` le 2 septembre 2026). Un suffixe
-    inconditionnel porterait ce compte a 4 365 sur 4 365.
+    multi-chunks recoivent un suffixe ``#n``. C'est une clause du contrat, que
+    `verify_contract` compte (« ids de chunk suffixes en #n ») : 974 sur 4 365
+    sur l'index vivant, mesure le 2 septembre 2026. Un suffixe inconditionnel
+    porterait ce compte a 4 365 sur 4 365.
 
     Le contrat avec ``rag-agent-chat`` est preserve : le consommateur lit
     ``chunk_id`` (l'id ChromaDB) et ``element_id`` (le hash 10 hexa) dans deux
     champs distincts, et ne valide le format ``^[a-f0-9]{10}$`` que sur le
     second.
 
-    **CETTE FONCTION S'APPELAIT `chunk_ids`, RENDAIT UNE LISTE, ET N'AVAIT AUCUN
-    APPELANT** (registre 5.1). Elle n'etait pas pour autant du code mort a
-    amputer : `vectors.build_chunks` reconstruisait la MEME forme par une
-    seconde expression en ligne, et **cette expression-la n'etait gardee par
-    rien**. `mesure` sur `main` a `27a6304`, c'est-a-dire le code d'AVANT ce lot :
-    remplacer l'expression en ligne de `vectors.py` par un suffixe
-    inconditionnel (`f"{element_id}#{ancre.index}"`) laissait la suite
-    ENTIEREMENT VERTE, **857 tests, rc=0**. *(Ce docstring a d'abord ecrit
-    « 862 tests », un compte pris sur l'arbre du lot et non sur celui qu'il
-    decrit — la famille F2 du registre : un nombre exact, mesure, et perime par
-    l'arbre auquel on le rapporte.)*
-
-    **CE QUE CETTE MUTATION COUTE, ET LA PREMIERE REPONSE ETAIT FAUSSE.** Ce
-    docstring a ecrit qu'elle « fait qu'une reingestion DUPLIQUE chaque element ».
-    C'est faux depuis le lot 4 (`a54636c`), et il faut le lire dans le code :
-    `extraction.extract` appelle `storage.forget_document(identity)` **avant** la
-    conversion, et `vectors.delete_document` supprime par
-    ``where={"source_path": ...}``, **jamais par id**. Les chunks du document
-    partent donc en entier avant que les nouveaux ne soient ecrits, quelle que
-    soit la forme de leur id : aucun orphelin. Le seul chemin qui saute la purge
-    est le doublon exact (`_already_ingested`), et il n'ecrit rien non plus.
-
-    Ce que la mutation casse est une **clause du contrat**, et elle est
-    observable : la forme de l'id, que `verify_contract` compte. C'est un
-    compteur d'instrument et non une anomalie levee — raison de plus pour qu'un
-    test la tienne.
-
-    Retirer la fonction aurait donc retire les seuls tests d'une clause du
-    contrat dont le site de production n'a aucun garde. Elle est rendue
-    UNITAIRE — c'est ce que l'appelant demande, un chunk a la fois — et
-    l'appelant la traverse.
+    `vectors.build_chunks` appelle cette fonction pour chaque chunk, ce qui
+    place la forme de l'id sous test (registre 5.1). Une forme erronee ne
+    duplique pas les chunks a la reingestion : `extraction.extract` appelle
+    `storage.forget_document(identity)` avant la conversion, et
+    `vectors.delete_document` supprime par ``where={"source_path": ...}``,
+    jamais par id. Elle casse en revanche la clause du contrat.
 
     Args:
         element_id: Identifiant de l'element dans NebulaGraph.
@@ -172,21 +135,16 @@ def has_content(text: str) -> bool:
     tableau, puce, ponctuation isolee — et n'a rien a faire dans un index
     vectoriel.
 
-    **CE FILTRE JETTE, ET LE MODULE D'OU IL VIENT AFFIRMAIT L'INVERSE.**
-    `blocks.py` ouvrait sur « la reponse retenue suit l'etat de l'art du
-    decoupage pour RAG : **fusionner plutot que jeter** », doctrine de 33 lignes
-    qui decrivait `build_blocks` — sans appelant depuis que `HybridChunker` l'a
-    remplace. Ce que la production fait, `mesure` dans `vectors.build_chunks` :
+    Usage en production, dans `vectors.build_chunks` :
 
         autonome = ancre.count == 1
         if autonome and (not has_content(texte) or len(texte) < min_chunk_chars):
             continue
 
-    Elle JETTE donc, et la borne compte : depuis le lot 4 (registre 4.28.a), le
-    filtre ne s'applique qu'a un chunk qui est le SEUL de son element. Une
-    fenetre du MILIEU d'un texte continu est conservee meme courte, sans quoi
-    l'agent concatenerait un texte troue. L'element ecarte, lui, reste dans
-    NebulaGraph : c'est l'index vectoriel qui est nettoye, pas le document.
+    Le filtre ne s'applique qu'a un chunk qui est le seul de son element
+    (registre 4.28.a). Une fenetre au milieu d'un texte continu est conservee
+    meme courte, sans quoi l'agent concatenerait un texte troue. L'element
+    ecarte reste dans NebulaGraph : seul l'index vectoriel est nettoye.
 
     Args:
         text: Texte a examiner.

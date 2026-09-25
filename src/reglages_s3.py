@@ -1,30 +1,20 @@
-"""Les reglages du stockage objet, et le SEUL site qui les declare.
+"""Les reglages du stockage objet, declares en un seul endroit.
 
-DEUX classes de reglages decident du MEME objet, et c'est le registre 4.29.b :
-le pipeline Dagster TELEVERSE (``src/pipeline/settings.py``), le service
-d'extraction PUBLIE l'adresse (``src/docling_service/settings.py``). Les quatre
-champs etaient ECRITS DEUX FOIS, avec les memes defauts, et leur accord ne
-tenait qu'a deux tests. Un bucket qui derive d'un cote produit un objet qui
-existe et une adresse qui rend 404, sans aucune erreur nulle part. Les deux
-classes heritent desormais de celle-ci : l'accord n'est plus verifie, il est
-STRUCTUREL.
+Deux classes de reglages decident du meme objet (registre 4.29.b) : le pipeline
+Dagster televerse (``src/pipeline/settings.py``), le service d'extraction
+publie l'adresse (``src/docling_service/settings.py``). Un bucket different
+d'un cote produirait un objet present et une adresse qui rend 404, sans erreur.
+Les deux classes heritent donc de celle-ci.
 
-**``S3_ENDPOINT`` N'A AUCUNE VALEUR PAR DEFAUT, ET C'EST LE POINT DU LOT.**
-Elle valait l'adresse du stockage d'alors, ecrite en dur a ces deux sites-la.
-Un poste dont le `.env` ne declarait pas la variable parlait donc au stockage
-nomme dans le code sans l'avoir choisi — y compris ``python -m src.wipe_stores``, qui VIDE le bucket
-qu'on lui designe. Tant que ce defaut a designe le stockage en service, il
-n'etait qu'un raccourci ; le 25 septembre 2026 il a cesse de l'etre, et un
-raccourci qui survit au lieu qu'il designait mene au MAUVAIS stockage.
+``S3_ENDPOINT`` n'a pas de valeur par defaut. Un defaut ecrit dans le code
+ferait parler un poste sans `.env` a un serveur qu'il n'a pas choisi, y compris
+``python -m src.wipe_stores``, qui vide le bucket designe. Un defaut absent fait
+echouer le demarrage ; un defaut faux ferait reussir la purge du mauvais
+stockage.
 
-*Un defaut absent fait echouer le demarrage ; un defaut faux fait REUSSIR la
-purge du mauvais stockage.* C'est toute la difference, et elle ne se rattrape
-pas : la purge ne previent pas, elle rend compte.
-
-Les noms sont GENERIQUES — ``S3_*`` — et ils ne nomment pas plus le successeur
-que le predecesseur. Ce qui parle ici est un protocole, pas un produit ; le
-produit se lit dans la valeur de ``S3_ENDPOINT``, qui est le seul endroit ou
-il ait sa place.
+Les noms ``S3_*`` designent le protocole, pas un produit : le serveur utilise
+se lit dans la valeur de ``S3_ENDPOINT`` (aujourd'hui la passerelle S3 de
+SeaweedFS).
 """
 
 from __future__ import annotations
@@ -56,19 +46,16 @@ MESSAGE_ENDPOINT_MANQUANT = (
 class ReglagesDuStockageObjet(BaseSettings):
     """Les quatre variables du stockage objet, partagees par les deux reglages.
 
-    Les identifiants n'ont AUCUN defaut non plus. Ils valaient la chaine vide,
-    au motif qu'un client sans identifiants echoue a l'appel ; mais il echoue
-    TARD, en 403, un televersement apres l'autre, et c'est ainsi que
-    `dagster-webserver` et `dagster-daemon` — qui ne recevaient pas ces deux
-    variables — auraient perdu les images HTML sans une erreur au demarrage
-    (livraison §4.28.b). Le bucket, lui, garde son defaut : c'est un nom de
-    convention du depot, pas un secret et pas une adresse.
+    Les identifiants n'ont pas de defaut non plus. Un client aux identifiants
+    vides demarre, puis echoue en 403 a chaque televersement : un service qui
+    ne recevrait pas ces variables perdrait les images sans erreur au
+    demarrage (registre 4.28.b). Le bucket garde son defaut : c'est un nom de
+    convention du depot, ni un secret ni une adresse.
     """
 
-    # `validate_default=True` : sans lui, pydantic ne valide PAS une valeur qui
-    # vient du defaut, et le champ absent passerait le validateur ci-dessous
-    # sans le declencher. Le champ serait alors « sans defaut » de nom et
-    # « defaut vide » de fait — exactement ce que ce lot ferme.
+    # `validate_default=True` : sans lui, pydantic ne valide pas une valeur qui
+    # vient du defaut, et un champ absent passerait sans declencher les
+    # validateurs ci-dessous.
     s3_endpoint: str = Field(default="", validate_default=True)
     s3_access_key: str = Field(default="", validate_default=True)
     s3_secret_key: str = Field(default="", validate_default=True)

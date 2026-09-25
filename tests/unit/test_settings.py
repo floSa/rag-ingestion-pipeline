@@ -8,9 +8,9 @@ from pydantic import ValidationError
 from src.pipeline.settings import PipelineSettings
 from src.reglages_s3 import MESSAGE_ENDPOINT_MANQUANT
 
-# L'adresse du stockage objet n'a plus de defaut : toute construction de
-# reglages en exige une. Cette valeur-ci ne designe rien — c'est un temoin, et
-# aucun test de ce fichier n'ouvre de connexion.
+# L'adresse du stockage objet n'a pas de defaut : toute construction de
+# reglages en exige une. Cette valeur ne designe rien de joignable, et aucun
+# test de ce fichier n'ouvre de connexion.
 ENDPOINT_TEMOIN = "stockage-de-controle:8333"
 
 
@@ -43,23 +43,16 @@ class TestPipelineSettingsEnvOverride:
 
 
 class TestLAdresseDuStockageObjetNAAucunDefaut:
-    """LE GARDE DU LOT : `minio:9000` etait le defaut, a DEUX sites.
+    """`S3_ENDPOINT` n'a pas de valeur par defaut, dans aucune des deux classes.
 
-    `settings.py:18` et `settings.py:32` portaient la meme adresse en dur. Tant
-    qu'elle a designe le stockage en service, ce n'etait qu'un raccourci ; le
-    25 septembre 2026 SeaweedFS l'a remplace, et le raccourci a survecu au lieu
-    qu'il designait.
+    Motif : `python -m src.wipe_stores` lit ces reglages et vide le bucket
+    qu'ils designent. Lance dans un environnement sans la variable (shell sans
+    `.env`, conteneur recree sans elle, cron), un defaut en dur lui ferait
+    purger un autre stockage que celui en service, en annoncant une purge
+    reussie. Sans defaut, le demarrage echoue.
 
-    **CE QUE LE DEFAUT RENDAIT POSSIBLE, ET C'EST LE MOTIF DE CE FICHIER.**
-    `python -m src.wipe_stores` lit ces memes reglages et VIDE le bucket qu'ils
-    designent. Lance depuis un poste dont l'environnement ne porte pas la
-    variable — un shell sans `.env`, un conteneur recree sans elle, un cron —
-    il aurait purge l'ANCIEN stockage, en rendant compte d'une purge reussie.
-    Une purge ne previent pas : elle rend compte.
-
-    Un defaut absent fait echouer le demarrage ; un defaut faux fait REUSSIR la
-    purge du mauvais stockage. Les deux classes sont tenues, parce que les deux
-    construisent un client.
+    Les deux classes (`PipelineSettings`, `DoclingSettings`) sont testees, car
+    les deux construisent un client.
     """
 
     CLASSES = (
@@ -78,7 +71,7 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
 
     @pytest.mark.parametrize("chemin", CLASSES)
     def test_sans_s3_endpoint_la_construction_echoue(self, chemin, monkeypatch):
-        """LE GARDE. Un defaut remis ici rend ce test vert et la purge aveugle."""
+        """Sans la variable, la construction echoue en nommant le champ."""
         monkeypatch.delenv("S3_ENDPOINT", raising=False)
 
         with pytest.raises(ValidationError) as leve:
@@ -90,11 +83,11 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
 
     @pytest.mark.parametrize("chemin", CLASSES)
     def test_un_s3_endpoint_vide_echoue_aussi(self, chemin, monkeypatch):
-        """Une variable DECLAREE VIDE est le meme defaut, et pydantic ne la voit pas seul.
+        """Une variable declaree vide est refusee elle aussi.
 
-        Un `.env` qui porte « S3_ENDPOINT= » — la forme exacte de
-        `.env.example` avant qu'on le remplisse — rend une chaine vide, et un
-        champ simplement « requis » l'accepterait.
+        Un `.env` contenant « S3_ENDPOINT= » (la forme de `.env.example` non
+        rempli) donne une chaine vide, qu'un champ simplement « requis »
+        accepterait.
         """
         monkeypatch.setenv("S3_ENDPOINT", "   ")
 
@@ -103,7 +96,7 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
 
     @pytest.mark.parametrize("chemin", CLASSES)
     def test_le_message_dit_quoi_faire(self, chemin, monkeypatch):
-        """Un refus qui ne dit pas quoi faire se contourne en remettant un defaut."""
+        """Le message de refus nomme la variable et le risque qu'elle couvre."""
         monkeypatch.delenv("S3_ENDPOINT", raising=False)
 
         with pytest.raises(ValidationError) as leve:
@@ -118,7 +111,7 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
 
     @pytest.mark.parametrize("chemin", CLASSES)
     def test_une_adresse_declaree_passe(self, chemin, monkeypatch):
-        """LE TEMOIN. Sans lui, une classe inconstructible rendrait tout vert."""
+        """Controle positif : sans lui, une classe inconstructible passerait les tests."""
         monkeypatch.setenv("S3_ENDPOINT", ENDPOINT_TEMOIN)
 
         reglages = self._classe(chemin)(_env_file=None)
@@ -126,10 +119,10 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
         assert reglages.s3_endpoint == ENDPOINT_TEMOIN
 
     def test_aucun_reglage_ne_nomme_plus_le_stockage_retire(self, monkeypatch):
-        """Aucun champ « minio_* » ne subsiste : un renommage partiel serait pire.
+        """Aucun champ « minio_* » ne subsiste.
 
-        Un champ laisse en place continuerait de lire `MINIO_ENDPOINT`, donc de
-        rendre l'ancien `.env` vivant sans que rien ne le dise.
+        Un tel champ lirait encore `MINIO_ENDPOINT`, et un ancien `.env`
+        continuerait d'agir sans que rien ne le signale.
         """
         monkeypatch.setenv("S3_ENDPOINT", ENDPOINT_TEMOIN)
 
@@ -140,16 +133,13 @@ class TestLAdresseDuStockageObjetNAAucunDefaut:
 
 
 class TestLesIdentifiantsDuStockageObjetNOntAucunDefaut:
-    """Le meme garde que l'adresse, pour les deux identifiants (livraison §4.28.b).
+    """Les deux identifiants n'ont pas de defaut non plus (registre 4.28.b).
 
-    `s3_access_key` et `s3_secret_key` valaient « "" » par defaut. Un service
-    qui ne recoit pas les variables — c'etait le cas de `dagster-webserver` et
-    `dagster-daemon`, qui n'avaient que `env_file: .env` alors que le `.env` ne
-    porte pas ces deux noms — construisait donc un client aux identifiants
-    VIDES. Rien n'echouait au demarrage : les televersements d'images HTML
-    rendaient 403 plus tard, un par un, et les images manquaient au corpus.
-
-    Un identifiant absent doit faire echouer le demarrage, comme l'adresse.
+    Avec un defaut vide, un service qui ne recoit pas les variables construit un
+    client aux identifiants vides. Rien n'echoue au demarrage : les
+    televersements d'images HTML rendent 403 plus tard, un par un, et les images
+    manquent au corpus. Un identifiant absent doit donc faire echouer le
+    demarrage, comme l'adresse.
     """
 
     CLASSES = TestLAdresseDuStockageObjetNAAucunDefaut.CLASSES
@@ -158,7 +148,7 @@ class TestLesIdentifiantsDuStockageObjetNOntAucunDefaut:
     @pytest.mark.parametrize("chemin", CLASSES)
     @pytest.mark.parametrize(("variable", "champ"), CHAMPS)
     def test_sans_identifiant_la_construction_echoue(self, chemin, variable, champ, monkeypatch):
-        """LE GARDE. Un defaut vide remis ici rend ce test vert et le televersement muet."""
+        """Sans l'identifiant, la construction echoue."""
         monkeypatch.delenv(variable, raising=False)
 
         with pytest.raises(ValidationError) as leve:
@@ -171,7 +161,7 @@ class TestLesIdentifiantsDuStockageObjetNOntAucunDefaut:
     @pytest.mark.parametrize("chemin", CLASSES)
     @pytest.mark.parametrize(("variable", "champ"), CHAMPS)
     def test_un_identifiant_vide_echoue_aussi(self, chemin, variable, champ, monkeypatch):
-        """« S3_ACCESS_KEY= » dans un environnement est le meme defaut."""
+        """« S3_ACCESS_KEY= » (valeur vide) est refuse aussi."""
         monkeypatch.setenv(variable, "  ")
 
         with pytest.raises(ValidationError):
@@ -179,7 +169,7 @@ class TestLesIdentifiantsDuStockageObjetNOntAucunDefaut:
 
     @pytest.mark.parametrize("chemin", CLASSES)
     def test_des_identifiants_declares_passent(self, chemin, monkeypatch):
-        """LE TEMOIN. Sans lui, une classe inconstructible rendrait tout vert."""
+        """Controle positif : sans lui, une classe inconstructible passerait les tests."""
         monkeypatch.setenv("S3_ACCESS_KEY", "cle-temoin")
         monkeypatch.setenv("S3_SECRET_KEY", "secret-temoin")  # pragma: allowlist secret
 
@@ -190,45 +180,27 @@ class TestLesIdentifiantsDuStockageObjetNOntAucunDefaut:
 
 
 class TestLesDeuxClassesDeReglagesSAccordentSurLeStockageObjet:
-    """Registre 4.29.b — DEUX classes de reglages decident du MEME objet.
+    """Deux classes de reglages decident du meme objet (registre 4.29.b).
 
-    L'objet est televerse avec `PipelineSettings.s3_bucket` / `.s3_endpoint`
-    (`media.py`), et l'adresse publiee est construite par `images.object_url`,
-    qui lit `DoclingSettings` (`images.py`). Les deux lisaient les memes
-    variables et portaient les memes defauts, donc il n'y avait **aucune
-    consequence** — et rien ne gardait leur accord.
+    L'objet est televerse avec `PipelineSettings.s3_bucket` et `.s3_endpoint`
+    (`media.py`) ; son adresse publiee est construite par `images.object_url`,
+    qui lit `DoclingSettings` (`images.py`). Si les deux divergent, l'image est
+    televersee dans un bucket et publiee sous un autre : le televersement
+    reussit, l'adresse est ecrite dans le graphe, et seul l'agent obtient un 404.
 
-    `mesure` le 2 septembre 2026 sur le code livre par le lot 4, mutation
-    appliquee puis revoquee, texte verifie change :
-
-    ==================================================== ================
-    mutation                                             suite entiere
-    ==================================================== ================
-    `PipelineSettings.minio_bucket` -> "autre-bucket"    VERTE, 847 tests
-    `PipelineSettings.minio_endpoint` -> "ailleurs:9000" VERTE, 847 tests
-    ==================================================== ================
-
-    **Une image televersee dans un bucket et publiee sous un autre est un objet
-    qui existe et une adresse qui rend 404** — la panne est silencieuse : le
-    televersement reussit, l'adresse est ecrite dans le graphe, et seul l'agent
-    la voit echouer.
-
-    **CE QUI A CHANGE AU LOT « SANS-MINIO » : L'ACCORD N'EST PLUS VERIFIE, IL
-    EST STRUCTUREL.** Les quatre champs etaient DECLARES DEUX FOIS ; ils vivent
-    desormais a un seul site, `src/reglages_s3.py`, dont les deux classes
-    heritent. Deux declarations peuvent diverger, une seule ne le peut pas. Le
-    premier test tient cette structure ; les deux suivants restent, parce
-    qu'une redeclaration dans une sous-classe masquerait le champ herite sans
-    toucher au module partage.
+    Les quatre champs sont declares une seule fois, dans `src/reglages_s3.py`,
+    dont les deux classes heritent. Le premier test verifie cet heritage ; les
+    suivants verifient les valeurs, car une redeclaration dans une sous-classe
+    masquerait le champ herite sans toucher au module partage.
     """
 
     COUPLES = ("s3_endpoint", "s3_bucket", "s3_access_key", "s3_secret_key")
 
     def test_les_deux_classes_heritent_du_site_unique(self) -> None:
-        """LE GARDE STRUCTUREL, et il passe en premier.
+        """Les deux classes heritent de `ReglagesDuStockageObjet`.
 
-        Une sous-classe qui cesserait d'heriter reprendrait ses propres champs,
-        et les deux tests suivants redeviendraient le seul filet.
+        Une sous-classe qui cesserait d'heriter redeclarerait ses propres
+        champs, et seuls les tests suivants detecteraient une divergence.
         """
         from src.docling_service.settings import DoclingSettings
         from src.pipeline.settings import PipelineSettings
@@ -244,7 +216,7 @@ class TestLesDeuxClassesDeReglagesSAccordentSurLeStockageObjet:
 
     @pytest.mark.parametrize("champ", COUPLES)
     def test_les_defauts_sont_les_memes(self, champ: str, endpoint_declare) -> None:
-        """Un defaut qui deriverait d'un cote rougit ici."""
+        """Les deux classes ont les memes defauts."""
         from src.docling_service.settings import DoclingSettings
         from src.pipeline.settings import PipelineSettings
 
@@ -260,12 +232,11 @@ class TestLesDeuxClassesDeReglagesSAccordentSurLeStockageObjet:
 
     @pytest.mark.parametrize("champ", COUPLES)
     def test_les_deux_classes_lisent_la_meme_variable(self, champ: str, monkeypatch) -> None:
-        """LE TEMOIN, et il ferme un chemin que l'egalite des defauts laisse ouvert.
+        """Les deux classes lisent la meme variable d'environnement.
 
-        Sans lui, les deux classes pourraient s'accorder sur leur defaut et lire
-        deux variables d'environnement differentes : tout poste qui declare la
-        variable verrait une seule des deux bouger, et le test ci-dessus
-        resterait vert.
+        L'egalite des defauts ne suffit pas : les deux classes pourraient avoir
+        le meme defaut et lire deux variables differentes. Declarer la variable
+        ne changerait alors qu'une des deux.
         """
         from src.docling_service.settings import DoclingSettings
         from src.pipeline.settings import PipelineSettings
@@ -286,11 +257,10 @@ class TestLesDeuxClassesDeReglagesSAccordentSurLeStockageObjet:
 
     @pytest.mark.parametrize("champ", COUPLES)
     def test_l_ancienne_variable_n_est_plus_lue(self, champ: str, monkeypatch) -> None:
-        """Un `.env` reste a l'ancien nom ne doit RIEN faire, et surtout pas discretement.
+        """Une variable a l'ancien nom (`MINIO_*`) n'a aucun effet.
 
-        C'est le pendant du renommage : si `MINIO_BUCKET` continuait d'etre lu
-        par un alias oublie, l'ancien `.env` resterait vivant et personne ne
-        saurait lequel des deux noms decide.
+        Si `MINIO_BUCKET` etait encore lu par un alias oublie, un ancien `.env`
+        continuerait d'agir, et on ne saurait plus lequel des deux noms decide.
         """
         from src.docling_service.settings import DoclingSettings
         from src.pipeline.settings import PipelineSettings
