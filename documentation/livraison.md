@@ -592,8 +592,6 @@ questions de ce dépôt ([§4.7](#47-le-jeu-de-questions-et-le-rappel-vectoriel)
 
 ---
 
----
-
 ## 5. Revenir sur MinIO
 
 **MinIO est resté debout avec ses 212 objets pendant toute la bascule** : il n'a
