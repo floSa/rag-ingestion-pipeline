@@ -38,7 +38,8 @@ Le vecteur est par ailleurs calculé sur le texte **précédé du titre de sa se
 | `label` | Tag Docling, pour filtrer par type (`table`, `formula`, `text`…) |
 | `page_no` | **Première** page du chunk, pour citer la référence à l'utilisateur |
 | `page_no_end` | **Dernière** page couverte. Égale à `page_no` sauf pour un élément que Docling a fusionné par-dessus une frontière de page — citer « page N » seule est alors inexact. Ajoutée par le lot 4 ; cette table ne la portait pas |
-| `minio_url` | URL de l'image associée, le cas échéant |
+| `media_url` | Adresse de l'image associée, le cas échéant. **Interne et authentifiée** : l'agent est le proxy, il ne la passe jamais à un navigateur |
+| `object_key` | La clé nue de ce même objet, celle passée à `put_object`. L'adresse porte l'hôte et périme avec lui ; la clé est l'identité de l'objet et lui survit |
 | `reference_id` | Section parente (ou `DOC`) |
 | `language` | Langue du document (`en`, `fr`…), vide si indéterminée. Voir plus bas |
 | `depth` | Profondeur dans la hiérarchie des titres. **Aucun plafond**, et **deux échelles s'y croisent** — c'est `label` qui dit laquelle. Site canonique : `ChunkMetadata.depth` |

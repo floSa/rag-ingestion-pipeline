@@ -44,7 +44,8 @@ des termes qui n'ont pas bouge.
 :func:`armer_les_barrieres` pose DEUX couches, dans cet ordre :
 
 1. :func:`barrer_les_sdk_de_store` fait LEVER les constructeurs des trois SDK —
-   `minio`, `nebula3`, `chromadb` — enumeres depuis le SDK INSTALLE. Apres elle,
+   `minio` (le client S3 generique), `nebula3`, `chromadb` — enumeres depuis le
+   SDK INSTALLE. Apres elle,
    aucune construction de client ne passe dans ce processus, quel que soit le
    chemin : alias d'import, `getattr`, niveau de module, paquet quelconque. Elle
    remplace une derivation AST des porteurs, a laquelle quatre portes neuves sur
@@ -56,7 +57,7 @@ des termes qui n'ont pas bouge.
 
 Les SEULS clients permis sont ceux de LECTURE, construits AVANT l'armement et
 enveloppes : :class:`SessionEnLecture` pour le graphe, :class:`LectureSeule`
-pour MinIO. LA BORNE : un client construit dans un SOUS-PROCESSUS, ou par une
+pour le stockage objet. LA BORNE : un client construit dans un SOUS-PROCESSUS, ou par une
 bibliotheque tierce hors de ces trois SDK, n'est pas atteint.
 
 Ce module s'importe cote hote : aucune dependance lourde au niveau du module,
@@ -176,7 +177,7 @@ class Emission:
         partition_key: Chemin du document relatif a `Datas/`.
         cle: `identity.key`, la cle qui entre dans la formule.
         lignes: Un releve par element, dans l'ordre d'emission.
-        cles_d_objet: Les cles MinIO que la production aurait ecrites.
+        cles_d_objet: Les cles d'objet que la production aurait ecrites.
         empreinte_de_l_entree: SHA-256 du fichier REELLEMENT converti — la copie
             nettoyee pour un HTML. Elle dit, devant un rouge, si c'est l'entree
             ou le code qui a change.
@@ -1275,8 +1276,8 @@ class LectureSeule:
 
     **ELLE ECRIT DANS LE JOURNAL PARTAGE, et c'est la reparation N2 du quatrieme
     audit.** Elle tenait son PROPRE `self._journal`, que personne ne lisait :
-    une ecriture MinIO refusee ici, puis AVALEE par la production, ne devenait
-    aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement, et
+    une ecriture d'objet refusee ici, puis AVALEE par la production, ne
+    devenait aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement, et
     c'est celui-la que les deux enveloppes doivent remplir —
     :class:`SessionEnLecture` le faisait deja.
 
@@ -1324,8 +1325,9 @@ PORTES: tuple[str, ...] = (
     "nebula.NebulaWriter",
     "images.upload_file",
 )
-# `images.get_client` n'est pas une barriere mais un TEMOIN : voir TemoinMinio.
-TEMOIN_MINIO = "images.get_client"
+# `images.get_client` n'est pas une barriere mais un TEMOIN : voir
+# TemoinDuStockageObjet.
+TEMOIN_DU_STOCKAGE = "images.get_client"
 
 # Pour chaque porte, tout ce qui a ete pose a sa place, l'original en tete : un
 # remplacement ulterieur (la capture de `persist` apres sa barriere) doit
@@ -1364,8 +1366,8 @@ def remplacer_partout(nom: str, remplacant: object) -> list[str]:
     return sites
 
 
-class TemoinMinio:
-    """Un client MinIO INERTE : il enregistre `put_object` et leve sur tout le reste.
+class TemoinDuStockageObjet:
+    """Un client S3 INERTE : il enregistre `put_object` et leve sur tout le reste.
 
     **POURQUOI UN TEMOIN ET NON UNE BARRIERE.** `crop_and_upload` est sur le
     chemin NOMINAL d'un PDF. La version precedente le remplacait par une copie
@@ -1373,8 +1375,8 @@ class TemoinMinio:
     None (zone vide, crop en echec), puisque la copie ne croppait pas. Ce temoin
     est pose UNE COUCHE PLUS BAS : `crop_and_upload` de PRODUCTION tourne en
     entier, crop compris, et ses cas None restent les siens. Seul l'envoi est
-    remplace. Les cles enregistrees sont ensuite confrontees au listing de MinIO,
-    en lecture seule, par le script.
+    remplace. Les cles enregistrees sont ensuite confrontees au listing du
+    stockage objet, en lecture seule, par le script.
 
     Toute autre methode leve et se journalise : `remove_object`, `make_bucket`...
     """
@@ -1387,8 +1389,10 @@ class TemoinMinio:
         self.cles.append(object_name)
 
     def __getattr__(self, nom: str) -> Any:
-        self._journal.append(f"{TEMOIN_MINIO}().{nom}")
-        raise BarriereDEcritureError(f"MinIO.{nom} appele : le harnais d'equivalence n'ecrit pas")
+        self._journal.append(f"{TEMOIN_DU_STOCKAGE}().{nom}")
+        raise BarriereDEcritureError(
+            f"client S3 : {nom} appele — le harnais d'equivalence n'ecrit pas"
+        )
 
 
 @dataclass
@@ -1398,14 +1402,14 @@ class Armement:
     Attributes:
         barrieres: Par porte, la fonction qui leve.
         sites: Par porte, les `module.attribut` remplaces.
-        temoin: Le client MinIO inerte.
+        temoin: Le client S3 inerte.
         journal: Chaque porte touchee, meme si la production a avale la levee.
             **Un journal non vide est un rouge**, quel que soit le reste.
     """
 
     barrieres: dict[str, Callable[..., Any]]
     sites: dict[str, list[str]]
-    temoin: TemoinMinio
+    temoin: TemoinDuStockageObjet
     journal: list[str]
     sdk: ArmementDesSdk
 
@@ -1460,8 +1464,8 @@ def armer_les_barrieres(journal: list[str] | None = None) -> Armement:
         barrieres[nom] = barriere(nom)
         sites[nom] = remplacer_partout(nom, barrieres[nom])
 
-    temoin = TemoinMinio(journal)
-    sites[TEMOIN_MINIO] = remplacer_partout(TEMOIN_MINIO, lambda: temoin)
+    temoin = TemoinDuStockageObjet(journal)
+    sites[TEMOIN_DU_STOCKAGE] = remplacer_partout(TEMOIN_DU_STOCKAGE, lambda: temoin)
     return Armement(barrieres=barrieres, sites=sites, temoin=temoin, journal=journal, sdk=sdk)
 
 
@@ -1493,7 +1497,7 @@ def reextraire(
     corpus: Path,
     nettoyes: Path,
     lots: list[list[dict[str, Any]]],
-    temoin: TemoinMinio,
+    temoin: TemoinDuStockageObjet,
 ) -> Emission:
     """Reextrait un document par le chemin de PRODUCTION et rend ce qu'il a EMIS.
 
@@ -1507,7 +1511,7 @@ def reextraire(
         nettoyes: Racine des copies nettoyees : c'est ELLE que le pipeline
             convertit pour un HTML, et non la source.
         lots: La liste que :func:`installer_la_capture` remplit, videe ici.
-        temoin: Le client MinIO inerte, dont les cles sont videes ici.
+        temoin: Le client S3 inerte, dont les cles sont videes ici.
 
     Raises:
         FileNotFoundError: Si la source, ou la copie nettoyee d'un HTML, manque.
@@ -1600,7 +1604,7 @@ class Monde:
         documents_du_corpus: Les partitions que le capteur decouvrirait.
         documents_du_graphe: Les partitions dont le graphe porte un `Document`.
         ids_du_graphe: Par cle de document, les identifiants de ses elements.
-        objets_listes: Par partition, les cles que MinIO LISTE sous le prefixe
+        objets_listes: Par partition, les cles que le stockage objet LISTE sous le prefixe
             de ses crops, ou None si le document n'en produit pas (un HTML : ses
             images sont envoyees par le nettoyage, pas par l'extraction).
         reextraire: Reextrait une partition par le chemin de production.
@@ -1645,8 +1649,9 @@ def _verifier_l_emission(
 ) -> list[str]:
     """Les controles communs aux deux phases, sur l'emission d'UN document.
 
-    L'emission doit etre CELLE du graphe ; les cles d'objet, celles que MinIO
-    liste ; et chaque mutation doit etre vue et attribuee a son terme.
+    L'emission doit etre CELLE du graphe ; les cles d'objet, celles que le
+    stockage objet liste ; et chaque mutation doit etre vue et attribuee a son
+    terme.
     """
     raisons: list[str] = []
     ids = monde.ids_du_graphe(emission.cle)
@@ -1673,7 +1678,7 @@ def _verifier_l_emission(
         dire(f"    cles d'objet emises/listees : {len(emission.cles_d_objet)} / {len(listes)}")
         if set(emission.cles_d_objet) != listes:
             raisons.append(
-                f"{emission.partition_key} : cles d'objet emises != listing MinIO "
+                f"{emission.partition_key} : cles d'objet emises != listing du stockage "
                 f"({sorted(set(emission.cles_d_objet) ^ listes)[:4]})"
             )
 

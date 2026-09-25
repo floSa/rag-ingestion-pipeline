@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Les huit criteres d'essai d'une passerelle S3, par APPEL DIRECT.
 
-Ce script est le juge de la bascule de MinIO vers SeaweedFS. Il n'interroge
-aucune console, aucun tableau de bord, aucune page d'etat : il fait, pour
-chaque critere et pour chaque jeu d'identifiants, L'APPEL que le pipeline ou
-l'agent ferait, et il lit le refus dans l'exception.
+Ce script est le juge d'un CANDIDAT au stockage objet, quel qu'il soit. Il
+n'interroge aucune console, aucun tableau de bord, aucune page d'etat : il
+fait, pour chaque critere et pour chaque jeu d'identifiants, L'APPEL que le
+pipeline ou l'agent ferait, et il lit le refus dans l'exception. Il a servi une
+fois pour de bon, le 25 septembre 2026 ; il reste utilisable tel quel pour le
+suivant.
+
+**IL NE CONSTRUIT PAS SES CLIENTS PAR `images.build_client`, ET C'EST
+DELIBERE.** Ce site-la lit les reglages de la pile EN SERVICE. Un essai doit
+pouvoir viser une passerelle candidate, avec DEUX jeux d'identifiants distincts
+et sans toucher a la configuration du depot : ses variables `ESSAI_S3_*` lui
+sont propres, et c'est ce qui rend le controle negatif possible.
 
 **Pourquoi par appel direct.** Un refus S3 est un 403 `AccessDenied`. Il
 remonte chez `rag-agent-chat` en 404 SILENCIEUX : l'image demandee n'existe
@@ -12,9 +20,10 @@ pas, dit l'ecran, et le corpus a l'air simplement incomplet. Un droit mal pose
 ne se voit donc pas a l'usage ; il se voit ici, ou le code HTTP et le code S3
 sont imprimes tels quels.
 
-**Pourquoi `minio-py`.** C'est la MEME bibliotheque que `src/docling_service/
-images.py` et que l'agent. Un essai mene avec `boto3` ou `aws s3` validerait un
-dialecte que personne n'emet en production : `minio-py` a ses propres
+**Pourquoi `minio-py`.** C'est un client S3 GENERIQUE, et surtout la MEME
+bibliotheque que `src/docling_service/images.py` et que l'agent. Un essai mene
+avec `boto3` ou `aws s3` validerait un dialecte que personne n'emet en
+production : `minio-py` a ses propres
 habitudes, a commencer par le `GetBucketLocation` qu'il envoie avant tout
 echange sur un bucket qu'il ne connait pas encore (`Minio._get_region`). C'est
 le critere 1, et il est ELIMINATOIRE : une passerelle qui ne le sert pas ne

@@ -4,7 +4,7 @@
 
 Microservice FastAPI d'extraction structuree de documents. Utilise Docling (IBM)
 pour l'analyse de layout et PyMuPDF pour le crop d'images. **Seul service a ecrire
-dans NebulaGraph, ChromaDB et MinIO.**
+dans NebulaGraph, ChromaDB et le stockage objet.**
 
 *(Cette phrase disait aussi « seul service avec acces GPU ». Le compose principal
 ne reserve AUCUN GPU — la reservation ecrite en dur rendait le service
@@ -85,9 +85,9 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 
 | Extension            | Traitement                                                              |
 |----------------------|-------------------------------------------------------------------------|
-| `.pdf`               | Conversion par lots de pages, crop des images et tables vers MinIO       |
+| `.pdf`               | Conversion par lots de pages, crop des images et tables vers le stockage |
 | `.html`, `.htm`      | Conversion d'un seul tenant ; les images ont deja ete exportees en amont |
-| `.md`, `.markdown`   | Images extraites vers MinIO, paragraphes recolles, puis conversion       |
+| `.md`, `.markdown`   | Images extraites vers le stockage, paragraphes recolles, puis conversion |
 
 ## Modules
 
@@ -103,7 +103,7 @@ un message qui invite a relancer la partition, plutot que d'attendre indefinimen
 | `ngql.py`       | Echappement et construction des requetes nGQL                         |
 | `vectors.py`    | Embeddings par lots et upsert ChromaDB                                |
 | `chunking.py`   | Ce que le modele d'embedding recoit, la forme de l'id de chunk, le filtre du bruit |
-| `images.py`     | Crop PyMuPDF, envoi de fichiers, export MinIO                         |
+| `images.py`     | Crop PyMuPDF, envoi d'objets, SEUL site du client S3 du depot          |
 
 *(`blocks.py` a ete retire : il portait `build_blocks`, un regroupement maison
 que `HybridChunker` a remplace et que plus rien n'appelait, plus une doctrine de
@@ -128,7 +128,8 @@ Les quatorze : `anchoring.py`, `chunking.py`, `elements.py`, `embedding.py`,
 `nebula.py`, `ngql.py`, `ranking.py`, `storage.py`, `vectors.py`.
 
 **Les quatre autres**, et il y en a quatre : `extraction.py` (`bs4`),
-`images.py` (`minio`), `main.py` (`fastapi`), `settings.py`
+`images.py` (`minio`, la bibliotheque cliente S3), `main.py` (`fastapi`),
+`settings.py`
 (`pydantic_settings`).
 
 > **Cette phrase annoncait ONZE et SEPT, et le sept NIAIT le deverrouillage
@@ -147,7 +148,8 @@ Les quatorze : `anchoring.py`, `chunking.py`, `elements.py`, `embedding.py`,
 > fichier ou il la ferme.
 
 Ce compte n'est pas celui des modules **inimportables** cote hote — `bs4`,
-`minio` et `pydantic_settings` vivent dans le venv du depot, donc trois des
+la bibliotheque cliente S3 et `pydantic_settings` vivent dans le venv du depot,
+donc trois des
 quatre s'importent quand meme, et le seul qui ne s'importe pas est `main.py`
 (`fastapi` absent du venv). Cette propriete-la, elle, est gardee par
 `tests/unit/test_importabilite_cote_hote.py`.
@@ -156,10 +158,10 @@ quatre s'importent quand meme, et le seul qui ne s'importe pas est `main.py`
 
 | Variable             | Description                            | Defaut           |
 |----------------------|----------------------------------------|------------------|
-| MINIO_ENDPOINT       | Endpoint MinIO                         | minio:9000       |
-| MINIO_ROOT_USER      | Access key MinIO                       | (voir .env)      |
-| MINIO_ROOT_PASSWORD  | Secret key MinIO                       | (voir .env)      |
-| MINIO_BUCKET         | Bucket pour les medias                 | documents        |
+| S3_ENDPOINT          | Adresse de la passerelle S3            | **AUCUN** (exige)|
+| S3_ACCESS_KEY        | Cle d'acces au stockage objet          | (voir .env)      |
+| S3_SECRET_KEY        | Cle secrete du stockage objet          | (voir .env)      |
+| S3_BUCKET            | Bucket pour les medias                 | documents        |
 | NEBULA_HOST          | Hostname NebulaGraph                   | graphd           |
 | NEBULA_PORT          | Port NebulaGraph                       | 9669             |
 | CHROMA_HOST          | Hostname ChromaDB                      | chromadb         |
@@ -195,7 +197,8 @@ fonctionnelle dans les deux cas.
 
 ## Dependances
 
-- `minio` (stockage images/tables croppees)
+- le stockage objet (images et tables croppees) — fiche :
+  [`stockage_objet.md`](stockage_objet.md)
 - `graphd` (insertion noeuds NebulaGraph)
 - `chromadb` (vectorisation des elements texte)
 
@@ -221,7 +224,8 @@ fonctionnelle dans les deux cas.
 ## Healthcheck
 
 Le service ne se declare pret qu'une fois les modeles charges, le schema
-NebulaGraph initialise et le bucket MinIO disponible. Le healthcheck compose
+NebulaGraph initialise et le bucket du stockage objet disponible. Le healthcheck
+compose
 interroge `/health` avec un `start_period` de 10 minutes, le temps du premier
 telechargement des modeles.
 

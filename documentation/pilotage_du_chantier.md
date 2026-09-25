@@ -1,5 +1,13 @@
 # Piloter le chantier d'audit et de refonte
 
+> **MinIO est retiré depuis le 25 septembre 2026 ; les mentions qui suivent sont
+> historiques.** Le stockage d'objets est SeaweedFS, le dépôt ne nomme plus aucun
+> serveur — seule `S3_ENDPOINT` le désigne — et le contrat publie `media_url` et
+> `object_key`. Ce fichier n'est **pas** réécrit : ce sont des mesures datées, et
+> les réécrire les falsifierait. L'état courant est à
+> [`etat_des_lieux.md`](etat_des_lieux.md), la procédure de retrait à
+> [`campagnes/2026-09-25-retrait-du-stockage-precedent.md`](campagnes/2026-09-25-retrait-du-stockage-precedent.md).
+
 Ce fichier est le **mandat du pilote**. Il est écrit pour être lu par une
 conversation qui n'a aucun historique : elle arrive, elle lit ceci, elle sait
 où on en est, ce qui a été décidé, pourquoi, et quelle est l'action suivante.

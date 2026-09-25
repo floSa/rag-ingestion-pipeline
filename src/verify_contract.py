@@ -364,8 +364,9 @@ def images_sans_url(urls: Sequence[str | None]) -> int:
     donnees, registre 3.5. Ce compteur la rend seulement bruyante.
 
     Args:
-        urls: Valeurs de ``minio_url`` lues sur les sommets visuels. ``None``
-            est la forme que rend le graphe pour une propriete jamais ecrite.
+        urls: Valeurs d'une colonne de media — ``media_url`` ou ``object_key``
+            — lues sur les sommets visuels. ``None`` est la forme que rend le
+            graphe pour une propriete jamais ecrite.
 
     Returns:
         Le nombre de sommets sans URL.
@@ -563,13 +564,30 @@ def _verifier_le_graphe(metadatas: Sequence[Mapping[str, Any]]) -> list[str]:
 
         anomalies.extend(_verifier_le_tag_document(session))
 
-        urls = _lire_les_urls_visuelles(session)
+        # LES DEUX COLONNES DE MEDIA, ET NON PLUS LA SEULE ADRESSE. Le contrat
+        # publie `media_url` ET `object_key` : une adresse sans cle est un
+        # element a demi renseigne, que rien ne rattrape sans reingestion. Les
+        # deux comptes sont separes parce qu'ils accusent des choses
+        # differentes — une adresse manquante vient de la chaine d'images
+        # (registre 3.5), une cle manquante d'un sommet ecrit AVANT l'arrivee
+        # de la colonne, donc d'une purge ou d'une reingestion qui n'a pas eu
+        # lieu.
+        urls, cles = _lire_les_medias_visuels(session)
         sans_url = images_sans_url(urls)
-        print(f"sommets visuels sans minio_url : {sans_url}/{len(urls)}")
+        print(f"sommets visuels sans media_url : {sans_url}/{len(urls)}")
         if sans_url:
             anomalies.append(
-                f"{sans_url} sommets visuels sur {len(urls)} sans minio_url : "
+                f"{sans_url} sommets visuels sur {len(urls)} sans media_url : "
                 "l'agent ne peut pas les servir (registre 3.5)"
+            )
+        sans_cle = images_sans_url(cles)
+        print(f"sommets visuels sans object_key : {sans_cle}/{len(cles)}")
+        if sans_cle:
+            anomalies.append(
+                f"{sans_cle} sommets visuels sur {len(cles)} sans object_key : "
+                "la cle de l'objet n'a pas ete ecrite. L'adresse porte l'hote et "
+                "perime avec lui ; sans la cle, un consommateur doit defaire "
+                "l'adresse a sa facon pour retrouver l'objet"
             )
 
         anomalies.extend(_verifier_les_ancres(session, metadatas))
@@ -674,7 +692,8 @@ def anomalie_de_colonne(
     de `page_no_end` : « le tag a migre, les donnees non — il faut une
     reingestion pour peupler la colonne ». Or dans le cas mesure le 1er septembre
     2026, **le tag n'avait PAS migre** : `DESCRIBE TAG Paragraph` rendait
-    `label, page_no, text, minio_url, depth` — cinq colonnes, sans `page_no_end`.
+    `label, page_no, <adresse du media>, depth` — cinq colonnes, sans
+    `page_no_end`.
 
     Les deux etats demandent des gestes DIFFERENTS, et c'est pour cela qu'il faut
     les separer :
@@ -790,14 +809,27 @@ def _verifier_le_tag_document(session: Any) -> list[str]:
     return []
 
 
-def _lire_les_urls_visuelles(session: Any) -> list[str | None]:
-    """Lit ``minio_url`` sur tous les sommets Picture et Table."""
+def _lire_les_medias_visuels(session: Any) -> tuple[list[str | None], list[str | None]]:
+    """Lit ``media_url`` ET ``object_key`` sur tous les sommets Picture et Table.
+
+    Les deux colonnes sont lues par la MEME requete, et c'est ce qui rend les
+    deux comptes comparables : deux requetes successives liraient deux etats du
+    graphe, et un ecart entre elles se lirait comme une anomalie de donnees.
+
+    Returns:
+        Les adresses et les cles, dans le meme ordre et de meme longueur.
+        ``None`` est la forme que rend le graphe pour une propriete jamais
+        ecrite.
+    """
     urls: list[str | None] = []
+    cles: list[str | None] = []
     for tag in ("Picture", "Table"):
-        for ligne in _lire(session, f"MATCH (v:{tag}) RETURN v.{tag}.minio_url AS url;"):
-            valeur = ligne[0]
-            urls.append(None if valeur.is_null() else valeur.as_string())
-    return urls
+        requete = f"MATCH (v:{tag}) RETURN v.{tag}.media_url AS url, v.{tag}.object_key AS cle;"
+        for ligne in _lire(session, requete):
+            url, cle = ligne[0], ligne[1]
+            urls.append(None if url.is_null() else url.as_string())
+            cles.append(None if cle.is_null() else cle.as_string())
+    return urls, cles
 
 
 def _verifier_les_ancres(session: Any, metadatas: Sequence[Mapping[str, Any]]) -> list[str]:

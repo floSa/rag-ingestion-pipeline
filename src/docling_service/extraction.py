@@ -3,12 +3,12 @@
 Deux regimes selon le format :
 
 - **PDF** : conversion par batchs de pages pour borner la memoire, avec crop
-  des elements visuels vers MinIO. Les batchs ne se chevauchent plus : les ids
-  etant deterministes, le chevauchement ne faisait que re-convertir les memes
-  pages, soit environ 40 % de temps GPU perdu.
+  des elements visuels vers le stockage objet. Les batchs ne se chevauchent
+  plus : les ids etant deterministes, le chevauchement ne faisait que
+  re-convertir les memes pages, soit environ 40 % de temps GPU perdu.
 - **HTML et Markdown** : conversion d'un seul tenant, sans pagination ni crop.
-  Les images des captures HTML ont deja ete exportees vers MinIO par le
-  pipeline Dagster, on se contente de propager leur URL.
+  Les images des captures HTML ont deja ete televersees par le pipeline
+  Dagster, on se contente de propager leur adresse.
 """
 
 from __future__ import annotations
@@ -254,7 +254,7 @@ def _resolve_image(target: str, note_dir: Path, attachments: dict[str, Path]) ->
 def _upload_markdown_images(
     references: list[ImageReference], note_dir: Path, doc_key: str
 ) -> dict[int, str]:
-    """Envoie sur MinIO les images referencees par une note.
+    """Televerse les images referencees par une note.
 
     Returns:
         Les URL obtenues, indexees par rang de l'image. Une image introuvable
@@ -294,7 +294,7 @@ def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[in
     Deux traitements pour le Markdown, dans cet ordre :
 
     1. **Les images sont sorties du texte** et remplacees par une balise a leur
-       position exacte, puis envoyees sur MinIO. Docling ne reconnait ni la
+       position exacte, puis televersees. Docling ne reconnait ni la
        syntaxe Obsidian ``![[fichier.jpg]]`` ni ``![](chemin)`` : sans cela,
        les images seraient rendues en texte brut et perdues.
     2. **Les paragraphes sont recolles**, Docling convertissant le Markdown
@@ -329,10 +329,11 @@ def _prepared_source(path: Path, type_file: str) -> Iterator[tuple[Path, dict[in
 
 
 def html_image_urls(chemin: Path) -> list[str]:
-    """URL MinIO des images d'un HTML nettoye, dans l'ordre du document.
+    """Adresses des images d'un HTML nettoye, dans l'ordre du document.
 
     **C'est la seule voie qui reste, et voici pourquoi.** `cleaning.py` reecrit
-    `img src` avec l'URL MinIO, mais Docling ne la rend nulle part : `mesure` le
+    `img src` avec l'adresse de l'objet, mais Docling ne la rend nulle part :
+    `mesure` le
     1er septembre 2026 sur 4 chapitres nettoyes convertis dans l'image
     d'extraction, `item.image` vaut `None` sur **24 items `picture` sur 24**, et
     `item.source`, `item.references` et `item.meta` sont vides aussi. Le test
@@ -340,8 +341,9 @@ def html_image_urls(chemin: Path) -> list[str]:
     atteint : la chaine etait rompue en amont de sa propre garde (registre 3.5).
 
     Seuls les `src` en `http` sont rendus. Une image restee en `data:` ou en
-    chemin relatif n'a pas d'objet MinIO : la compter decalerait toutes les URL
-    suivantes d'un rang, et chaque image recevrait celle de sa voisine.
+    chemin relatif n'a aucun objet dans le bucket : la compter decalerait toutes
+    les adresses suivantes d'un rang, et chaque image recevrait celle de sa
+    voisine.
 
     Ne leve jamais : lire ces URL est un confort, et une image sans URL est un
     defaut connu qui se compte. Un document non ingere, lui, est une perte.
@@ -364,6 +366,28 @@ def html_image_urls(chemin: Path) -> list[str]:
         for balise in soupe.find_all("img")
         if str(balise.get("src") or "").startswith("http")
     ]
+
+
+def poser_le_media(element: dict[str, Any], url: str | None) -> None:
+    """Pose l'adresse du media ET sa cle sur un element — LES DEUX ENSEMBLE.
+
+    Le contrat publie les deux champs, et ils decrivent le MEME objet : une
+    adresse sans cle, ou une cle sans adresse, est un element a demi renseigne
+    que rien ne rattrape — le graphe et ChromaDB sont ecrits une fois, et
+    `verify_contract` compte alors un manque sans pouvoir dire lequel des trois
+    chemins d'image l'a produit.
+
+    Les trois chemins passent donc par ici : le crop PDF, la balise Markdown, et
+    la correspondance positionnelle du HTML nettoye. La derivation de la cle a
+    un seul site, `images.object_key`, qui est l'inverse exact de
+    `images.object_url`.
+
+    Args:
+        element: Element en cours de construction, modifie en place.
+        url: Adresse rendue par le televersement, ou None s'il a echoue.
+    """
+    element["media_url"] = url
+    element["object_key"] = images.object_key(url or "")
 
 
 def propager_les_url_dimages(elements: list[dict[str, Any]], urls: list[str], stem: str) -> int:
@@ -412,7 +436,7 @@ def propager_les_url_dimages(elements: list[dict[str, Any]], urls: list[str], st
         return 0
 
     for cible, url in zip(cibles, urls, strict=True):
-        cible["minio_url"] = url
+        poser_le_media(cible, url)
     return len(cibles)
 
 
@@ -452,7 +476,7 @@ def _extract_flat(
             element["text"] = marker.group(2).strip()
             url = image_urls.get(int(marker.group(1)))
             if url:
-                element["minio_url"] = url
+                poser_le_media(element, url)
 
         elements.append(element)
 
@@ -460,7 +484,7 @@ def _extract_flat(
     # `item.image.uri.startswith("http")`, et ce test n'etait JAMAIS atteint :
     # `item.image` vaut `None` sur tous les `picture` rendus depuis un HTML
     # (`mesure`, 0/24). Les 199 images du corpus n'avaient donc aucune
-    # `minio_url`, et l'agent ne sert que ce que le graphe reference — elles
+    # d'adresse, et l'agent ne sert que ce que le graphe reference — elles
     # etaient payees en place et en temps, et inatteignables (registre 3.5).
     #
     # L'URL est desormais lue dans le HTML nettoye, ou `cleaning.py` l'a ecrite,
@@ -936,13 +960,16 @@ def _convert_batch(
             inclassables += int(rang == repli)
         element = accumulator.add_item(item, result.document, heading_rank=rang)
         if element["label"] in VISUAL_LABELS and element["bbox"]:
-            element["minio_url"] = images.crop_and_upload(
-                document,
-                stem,
-                element["page_no"],
-                element["bbox"],
-                element["id"],
-                element["label"],
+            poser_le_media(
+                element,
+                images.crop_and_upload(
+                    document,
+                    stem,
+                    element["page_no"],
+                    element["bbox"],
+                    element["id"],
+                    element["label"],
+                ),
             )
         elements.append(element)
 

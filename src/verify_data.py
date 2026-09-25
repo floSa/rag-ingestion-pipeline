@@ -9,9 +9,9 @@ Les identifiants viennent de la configuration du service (donc de ``.env``) et
 ne sont plus ecrits en dur.
 
 **Ce module faisait ses entrees-sorties a l'IMPORT.** Il n'avait pas de
-``main`` : ouvrir une connexion ChromaDB, lister un bucket MinIO et interroger
-NebulaGraph etaient des instructions de niveau module, executees par le seul
-fait d'importer ``src.verify_data``. Deux consequences, et la seconde est la
+``main`` : ouvrir une connexion ChromaDB, lister un bucket du stockage objet et
+interroger NebulaGraph etaient des instructions de niveau module, executees par
+le seul fait d'importer ``src.verify_data``. Deux consequences, et la seconde est la
 plus couteuse :
 
 - un ``import`` accidentel — un outil qui parcourt le paquet, une completion,
@@ -62,20 +62,32 @@ def verifier_chromadb(settings: Any, echecs: list[str]) -> None:
         report("connexion", str(exc), echecs, ok=False)
 
 
-def verifier_minio(settings: Any, echecs: list[str]) -> None:
-    """Compte les objets du bucket."""
-    from minio import Minio
+def verifier_le_stockage_objet(settings: Any, echecs: list[str]) -> None:
+    """Compte les objets du bucket, et NOMME le serveur interroge.
 
-    print("\n--- MinIO ---")
+    L'adresse est affichee, et ce n'est pas de l'ornement : ce controle nommait
+    un PRODUIT, ecrit dans le code, quelle que soit la passerelle en face. Un
+    controle avant-vol qui nomme un serveur qu'il n'interroge pas ne rassure sur
+    rien, et il a rassure a tort pendant toute une bascule. Le seul endroit ou
+    le produit ait sa place est la valeur de ``S3_ENDPOINT``, et c'est elle qui
+    est affichee.
+
+    Le client est construit par ``images.build_client``, seul site de
+    construction du depot. L'import reste DANS la fonction, comme les deux
+    autres controles : ce module doit rester importable sans les clients de
+    stores (voir l'en-tete).
+    """
+    from src.docling_service.images import build_client
+
+    print(f"\n--- Stockage objet ({settings.s3_endpoint}) ---")
     try:
-        client = Minio(
-            settings.minio_endpoint,
-            access_key=settings.minio_root_user,
-            secret_key=settings.minio_root_password,
-            secure=False,
+        client = build_client(
+            settings.s3_endpoint,
+            settings.s3_access_key,
+            settings.s3_secret_key,
         )
-        objets = list(client.list_objects(settings.minio_bucket, recursive=True))
-        report(f"objets dans '{settings.minio_bucket}'", str(len(objets)), echecs)
+        objets = list(client.list_objects(settings.s3_bucket, recursive=True))
+        report(f"objets dans '{settings.s3_bucket}'", str(len(objets)), echecs)
     except Exception as exc:
         report("connexion", str(exc), echecs, ok=False)
 
@@ -118,7 +130,7 @@ def main() -> None:
     settings = get_settings()
     echecs: list[str] = []
     verifier_chromadb(settings, echecs)
-    verifier_minio(settings, echecs)
+    verifier_le_stockage_objet(settings, echecs)
     verifier_nebula(settings, echecs)
 
     print()

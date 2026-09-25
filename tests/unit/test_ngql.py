@@ -219,13 +219,14 @@ class TestElementVertexValue:
         "page_no": 7,
         "page_no_end": 7,
         "text": "Chunking",
-        "minio_url": "",
+        "media_url": "",
+        "object_key": "",
         "depth": 2,
     }
 
     def test_the_depth_reaches_the_values_expression(self):
         rendu = element_vertex_value(self.ELEMENT, max_chars=2000)
-        assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", 2)'
+        assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", "", 2)'
 
     def test_page_no_end_falls_back_on_page_no_and_not_on_zero(self):
         """Un element d'une seule page FINIT sur elle.
@@ -235,12 +236,43 @@ class TestElementVertexValue:
         """
         sans_fin = {k: v for k, v in self.ELEMENT.items() if k != "page_no_end"}
         rendu = element_vertex_value(sans_fin, max_chars=2000)
-        assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", 2)'
+        assert rendu == '"0011223344":("section_header", 7, 7, "Chunking", "", "", 2)'
 
     def test_an_element_spanning_a_page_boundary_writes_its_last_page(self):
         """Le cas mesure du registre 4.22 : Docling fusionne par-dessus une page."""
         rendu = element_vertex_value({**self.ELEMENT, "page_no_end": 8}, max_chars=2000)
-        assert rendu == '"0011223344":("section_header", 7, 8, "Chunking", "", 2)'
+        assert rendu == '"0011223344":("section_header", 7, 8, "Chunking", "", "", 2)'
+
+    def test_l_adresse_et_la_cle_atteignent_toutes_deux_l_expression(self):
+        """Le contrat publie DEUX champs de media, et le graphe doit porter les deux.
+
+        Un element visuel dont seule l'adresse serait ecrite est a demi
+        renseigne, et rien ne le rattrape : le graphe est ecrit une fois. Ce
+        test asserte les VALEURS, et non la presence des noms dans
+        `VERTEX_PROPERTIES` — une colonne declaree et jamais ecrite reste vide.
+        """
+        rendu = element_vertex_value(
+            {
+                **self.ELEMENT,
+                "media_url": "http://stockage:8333/documents/images/l/a.png",
+                "object_key": "images/l/a.png",
+            },
+            max_chars=2000,
+        )
+
+        assert '"http://stockage:8333/documents/images/l/a.png"' in rendu
+        assert '"images/l/a.png"' in rendu
+
+    def test_un_element_sans_visuel_ecrit_deux_valeurs_vides(self):
+        """L'absence se lit comme une absence des DEUX cotes, jamais comme un decalage."""
+        sans = {
+            cle: valeur
+            for cle, valeur in self.ELEMENT.items()
+            if cle not in ("media_url", "object_key")
+        }
+        assert element_vertex_value(sans, max_chars=2000) == element_vertex_value(
+            self.ELEMENT, max_chars=2000
+        )
 
     def test_a_root_heading_writes_zero_and_not_an_empty_value(self):
         """depth = 0 est une VALEUR, pas une absence : un faux None l'effacerait."""
@@ -340,7 +372,8 @@ class TestChaqueColonneRecoitSonTYPE:
         "page_no": "int",
         "page_no_end": "int",
         "text": "string",
-        "minio_url": "string",
+        "media_url": "string",
+        "object_key": "string",
         "depth": "int",
     }
 
@@ -424,7 +457,7 @@ class TestMissingVertexColumns:
         assert missing_vertex_columns(VERTEX_PROPERTIES) == ()
 
     def test_the_missing_column_is_named(self):
-        lues = ("label", "page_no", "page_no_end", "text", "minio_url")
+        lues = ("label", "page_no", "page_no_end", "text", "media_url", "object_key")
         assert missing_vertex_columns(lues) == ("depth",)
 
     def test_a_space_written_before_page_no_end_is_reported_as_incomplete(self):
@@ -435,7 +468,7 @@ class TestMissingVertexColumns:
         exactement le piege que le lot 3 a subi sur `depth` — un `init_schema()`
         qui rend True alors que onze tags sur douze ont migre.
         """
-        avant_ce_lot = ("label", "page_no", "text", "minio_url", "depth")
+        avant_ce_lot = ("label", "page_no", "text", "media_url", "object_key", "depth")
         assert missing_vertex_columns(avant_ce_lot) == ("page_no_end",)
 
     def test_extra_columns_are_not_a_gap(self):

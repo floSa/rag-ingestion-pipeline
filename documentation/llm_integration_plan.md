@@ -4,7 +4,7 @@
 
 Le pipeline d'ingestion (`rag-ingestion-pipeline`) est complet :
 documents PDF/HTML -> extraction structuree (Docling) -> graphe de connaissances
-(NebulaGraph) + base vectorielle (ChromaDB) + medias (MinIO).
+(NebulaGraph) + base vectorielle (ChromaDB) + medias (stockage objet S3).
 
 L'agent RAG sera un **projet separe** qui consomme ces stores en lecture.
 Ce document est le contrat d'interface entre les deux projets.
@@ -43,7 +43,7 @@ Utilisateur
     | 6. Pour chaque chunk selectionne :
     |    - NebulaGraph: remonter PARENT_OF jusqu'au section_header
     |    - NebulaGraph: redescendre pour recuperer tous les enfants de la section
-    |    - MinIO: recuperer les images/tables de la section
+    |    - Stockage objet: recuperer les images/tables de la section
     v
 [Enriched Context Builder]
     |
@@ -83,7 +83,8 @@ Chaque resultat contient dans ses metadatas :
 - `graph_node_id` : ID du noeud NebulaGraph (= `element_id`)
 - `element_id` : hash sha256[:10] de l'element
 - `page_position`, `ref_position` : position dans la page et sous le parent
-- `minio_url` : URL de l'image/table si applicable
+- `media_url` : adresse de l'image/table si applicable
+- `object_key` : la cle nue du meme objet
 
 ### 3.2 Reranking
 
@@ -165,17 +166,21 @@ Caption: Figure 3 - Example of table structure prediction.
 GO FROM "section_header_id" OVER PARENT_OF
 YIELD properties($$).label AS label,
       properties($$).text AS text,
-      properties($$).minio_url AS minio_url,
+      properties($$).media_url AS media_url,
+      properties($$).object_key AS object_key,
       properties(edge).sequence AS seq
 | ORDER BY $-.seq ASC;
 ```
 
 **Phase 3 — Recuperer les images/tables**
 
-Pour chaque enfant ayant un `minio_url` non vide :
-- Telecharger l'image depuis MinIO
+Pour chaque enfant ayant un `media_url` non vide :
+- Telecharger l'image depuis le stockage objet — par `object_key`, qui est
+  l'identite de l'objet, plutot qu'en defaisant l'adresse a la main
 - L'encoder en base64 pour injection dans le prompt (LLM multimodal)
-- Ou fournir l'URL pour affichage dans la reponse
+- Ou re-servir l'objet a l'affichage. **L'adresse ne va JAMAIS au navigateur** :
+  elle est interne et authentifiee, un `GET` anonyme y rend 403, et l'agent est
+  le proxy
 
 **Resultat** : au lieu d'un chunk isole de 500 caracteres, le modele recoit
 la section complete avec sa hierarchie, ses images, et ses tableaux.
@@ -215,8 +220,8 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 
 1. **Extraction des citations** : parser les `[src:ELEMENT_ID]` pour construire
    la liste des sources utilisees
-2. **Inclusion des images** : pour chaque `[img:ELEMENT_ID]`, recuperer l'URL
-   MinIO et l'attacher a la reponse
+2. **Inclusion des images** : pour chaque `[img:ELEMENT_ID]`, recuperer l'objet
+   et l'attacher a la reponse
 3. **Validation guardrails** : verifier que la reponse ne contient pas de PII,
    que chaque affirmation a une citation, etc.
 
@@ -238,7 +243,8 @@ Le modele dispose d'un tool `search_vectors(query: str)` qui :
 | metadata.source_path   | string | Chemin complet relatif à `Datas/`, identité unique du document |
 | metadata.label         | string | Label Docling de l'ancre (text, table, code, ...) |
 | metadata.page_no       | int    | Numero de page (1 pour les formats non pagines) |
-| metadata.minio_url     | string | URL MinIO si image/table ("" sinon) |
+| metadata.media_url     | string | Adresse de l'objet si image/table ("" sinon). **Interne et authentifiee**, jamais servie telle quelle a un navigateur |
+| metadata.object_key    | string | La cle NUE du meme objet, celle passee a `put_object`. L'adresse porte l'hote et perime avec lui ; la cle est l'identite de l'objet et lui survit |
 | metadata.reference_id  | string | Section parente, ou `DOC`            |
 | metadata.page_no_end   | int    | DERNIERE page du chunk. Egale a `page_no` sauf pour un element que Docling a fusionne par-dessus une frontiere de page : citer « page N » seule est alors inexact |
 | metadata.language      | string | Code ISO 639-1 du document (`en`, `fr`...), vide si indeterminee |
@@ -307,7 +313,7 @@ une evolution du pipeline.
 | Tag            | Proprietes                                      |
 |----------------|-------------------------------------------------|
 | Document       | `filename`: string, `type_file`: string, `total_pages`: int, `collection`: string, `source_path`: string, `language`: string, `content_hash`: string |
-| les **11** tags d'element — SectionHeader, Paragraph, Table, Picture, ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter | `label`: string, `page_no`: int, `page_no_end`: int, `text`: string, `minio_url`: string, `depth`: int |
+| les **11** tags d'element — SectionHeader, Paragraph, Table, Picture, ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter | `label`: string, `page_no`: int, `page_no_end`: int, `text`: string, `media_url`: string, `object_key`: string, `depth`: int |
 
 > **Ce bloc annoncait DEUX propriétés sur `Document` et CINQ sur les tags
 > d'élément.** `mesuré` le 2 septembre 2026 (`ngql.DOCUMENT_PROPERTIES`,
@@ -413,15 +419,18 @@ GO FROM "element_id" OVER LINKED_TO
 YIELD dst(edge) AS linked, properties(edge).relation AS rel;
 ```
 
-### 4.3 MinIO — Bucket `documents`
+### 4.3 Stockage objet — Bucket `documents`
 
 | Champ         | Description                                        |
 |---------------|----------------------------------------------------|
-| Endpoint      | `minio:9000` (interne) ou via override              |
+| Endpoint      | la valeur de `S3_ENDPOINT` — `seaweedfs:8333` sur la pile en service. **Aucune valeur par defaut** |
 | Bucket        | `documents`                                         |
 | Object path   | `images/{filename_stem}/{element_id}_{type}.png`    |
 | Content-Type  | `image/png`                                         |
-| Acces         | Via SDK MinIO (S3-compatible), credentials dans .env |
+| Acces         | Par un client S3 generique, avec le jeu d'identifiants **en lecture seule** cote agent. Credentials dans `.env` |
+
+**Le depot ne nomme le serveur nulle part** : seul `S3_ENDPOINT` le designe, et
+c'est ce qui a permis d'en changer sans qu'une ligne de televersement bouge.
 
 ### 4.4 Schemas Pydantic (reutilisables)
 
@@ -441,7 +450,8 @@ class DocumentElement(BaseModel):
     bbox: BoundingBox | None = None
     text: str = ""
     order: int = 0
-    minio_url: str | None = None
+    media_url: str | None = None
+    object_key: str | None = None
     content: str | None = None
     reference_id: str = "DOC"      # ID du parent
     page_position: int = 0
@@ -522,7 +532,7 @@ agent-llm-rag/
             state.py           # AgentState dataclass
             retriever.py       # ChromaDB query + reranking
             graph_context.py   # Reconstruction via NebulaGraph
-            minio_client.py    # Recuperation images MinIO
+            objets_client.py   # Recuperation des images du stockage objet
             llm.py             # Client LLM (Claude/GPT)
             tools.py           # Tool search_vectors pour l'agentic loop
             guardrails.py      # Validation input/output
@@ -596,13 +606,13 @@ L'agent doit acceder aux 3 stores de donnees. Deux options :
 L'agent tourne sur `rag_network` et accede directement :
 - ChromaDB : `http://chromadb:8000`
 - NebulaGraph : `graphd:9669`
-- MinIO : `minio:9000`
+- Stockage objet : la valeur de `S3_ENDPOINT` (`seaweedfs:8333`)
 
 **Option B — Acces externe** (prod ou projet separe)
 Exposer les ports via `docker-compose.override.yml` du projet d'ingestion :
 - ChromaDB : `http://localhost:8080`
 - NebulaGraph : `localhost:9669`
-- MinIO : `localhost:9000`
+- Stockage objet : le port publie par l'override
 
 Les credentials sont les memes que dans `.env` du projet d'ingestion.
 
@@ -618,10 +628,10 @@ NEBULA_HOST=graphd
 NEBULA_PORT=9669
 NEBULA_USER=root
 NEBULA_PASSWORD=nebula
-MINIO_ENDPOINT=minio:9000
-MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=            # meme que le projet d'ingestion
-MINIO_BUCKET=documents
+S3_ENDPOINT=seaweedfs:8333      # aucune valeur par defaut : sans elle, ca ne demarre pas
+S3_ACCESS_KEY=                  # le jeu LECTURE SEULE, pas celui du pipeline
+S3_SECRET_KEY=
+S3_BUCKET=documents
 
 # --- LLM ---
 ANTHROPIC_API_KEY=              # ou OPENAI_API_KEY
@@ -665,7 +675,7 @@ LANGFUSE_SECRET_KEY=
 - Client NebulaGraph (nebula3-python)
 - Algorithme de remontee PARENT_OF -> section_header
 - Algorithme de descente -> enfants de la section
-- Recuperation images MinIO
+- Recuperation des images du stockage objet
 - Assemblage du contexte enrichi en markdown structure
 
 ### Phase 4 — LLM Generation (2 jours)

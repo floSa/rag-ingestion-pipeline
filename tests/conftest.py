@@ -11,6 +11,34 @@ from src.pipeline.schemas import (
     ExtractedDocument,
 )
 
+# L'adresse du stockage objet n'a AUCUNE valeur par defaut : `S3_ENDPOINT`
+# manquante fait echouer la construction des reglages, et c'est tout l'objet du
+# lot de retrait (`src/reglages_s3.py`). La suite se place donc dans un
+# environnement CONFIGURE, comme la production, plutot que de compter sur un
+# defaut qui n'existe plus.
+#
+# La valeur ne designe rien de joignable, et c'est voulu : aucun test unitaire
+# n'ouvre de connexion. Un test qui croirait en ouvrir une echouerait sur une
+# resolution de nom, ce qui se lit.
+#
+# ELLE EST POSEE PAR `monkeypatch`, donc elle entre dans `os.environ` : les
+# tests qui lancent un SOUS-PROCESSUS (`test_wipe_stores`, `test_verify_data`,
+# `test_importabilite_cote_hote`) en heritent, et c'est ce qu'il faut — ils
+# eprouvent un module qui construit ses reglages au demarrage.
+#
+# LE GARDE DU DEFAUT ABSENT N'EN SOUFFRE PAS : `test_settings.py` retire la
+# variable lui-meme, et c'est la que le refus est asserte.
+ENDPOINT_DE_TEST = "stockage-de-test:8333"
+
+
+@pytest.fixture(autouse=True)
+def _environnement_de_stockage(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Declare la configuration du stockage objet pour toute la suite."""
+    monkeypatch.setenv("S3_ENDPOINT", ENDPOINT_DE_TEST)
+    monkeypatch.setenv("S3_BUCKET", "documents")
+    monkeypatch.setenv("S3_ACCESS_KEY", "cle-d-acces-de-test")
+    monkeypatch.setenv("S3_SECRET_KEY", "cle-secrete-de-test")  # pragma: allowlist secret
+
 
 @pytest.fixture()
 def sample_metadata() -> DocumentMetadata:

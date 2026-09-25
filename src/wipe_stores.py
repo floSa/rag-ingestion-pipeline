@@ -34,7 +34,7 @@ detruisait le corpus ou les stores. Le sous-repertoire est desormais la constant
 protege contre un `source_dir` mal regle, qui reste un reglage legitime. Le
 detail et le motif du refus dur sont a son docstring.
 
-**Les trois stores, pas deux.** Le bucket MinIO etait laisse intact : les crops
+**Les trois stores, pas deux.** Le bucket etait laisse intact : les crops
 d'images des ingestions precedentes y survivaient a toute purge. Ce n'est pas
 une fuite — l'agent ne sert que les objets references par le graphe
 (``RESTRICT_MEDIA_TO_GRAPH=true``), donc un objet dont le noeud a disparu est
@@ -69,7 +69,7 @@ def purge_collection(client: Any, nom: str) -> None:
 
 
 def purge_bucket(client: Any, bucket: str) -> int:
-    """Vide un bucket MinIO de tous ses objets.
+    """Vide un bucket du stockage objet de tous ses objets.
 
     ``recursive=True`` n'est pas un detail : sans lui, ``list_objects`` ne rend
     que les prefixes de premier niveau et la purge laisse derriere elle tout le
@@ -80,7 +80,7 @@ def purge_bucket(client: Any, bucket: str) -> int:
     erreur non consommee est une suppression qu'on croit faite.
 
     Args:
-        client: Client MinIO.
+        client: Client S3.
         bucket: Nom du bucket a vider.
 
     Returns:
@@ -173,8 +173,8 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     - `cleaned_html` ne peut pas s'executer pour elle : son controle d'existence
       porte sur la SOURCE, et la source n'existe plus.
 
-    **Et un orphelin est perime SANS RECOURS.** Il porte les URL MinIO de ses
-    images — `cleaning.py` reecrit les `img src` — et la purge du bucket, trois
+    **Et un orphelin est perime SANS RECOURS.** Il porte les adresses d'objets
+    de ses images — `cleaning.py` reecrit les `img src` — et la purge du bucket, trois
     blocs plus haut dans le meme `main()`, vient de supprimer les objets qu'elles
     designent. Or `cleaned_html` est le SEUL chemin qui re-televerse ces images
     (`mesure` de la campagne du 2 septembre 2026 : 0 objet dans le bucket avant
@@ -192,9 +192,9 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     partition dynamique — mesure et commande au registre 4.34.g, site canonique
     de ce chiffre.
 
-    Ce que cette purge retire est donc le seul artefact derive qui porte des URL
-    MinIO mortes, ce qui est plus etroit que la phrase precedente, et ce qui se
-    garde.
+    Ce que cette purge retire est donc le seul artefact derive qui porte des
+    adresses d'objets mortes, ce qui est plus etroit que la phrase precedente, et
+    ce qui se garde.
 
     Le garde de cette propriete est `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`,
     dans `tests/unit/test_factory.py` : il tient les DEUX natures, celle qui est
@@ -228,7 +228,8 @@ def purge_cleaned(repertoire: Path, racine: Path) -> int:
     Sur ce poste, `Datas/` porte le corpus VERSIONNE — 25 fichiers,
     57 381 999 octets, dont le contenu entre dans le calcul d'`element_id`
     (contrat, exigences 2 et 3) — **et** `Datas/database/`, les bind mounts de
-    ChromaDB, Nebula, MinIO et Postgres, c'est-a-dire l'antecedent mesure du
+    ChromaDB, Nebula, le stockage objet et Postgres, c'est-a-dire l'antecedent
+    mesure du
     chantier. `rmtree` ne lit pas `.gitignore` : aucun garde-fou git ne s'y
     opposerait.
 
@@ -345,16 +346,22 @@ def main() -> None:
         print(f"ChromaDB : {exc}")
         echecs.append("ChromaDB")
 
-    print("\n--- MinIO ---")
+    # L'ADRESSE EST ANNONCEE AVANT LA PURGE, ET C'EST LE GARDE-FOU LE PLUS
+    # SIMPLE DE CE SCRIPT. Ce bloc disait le nom d'un produit, ecrit dans le
+    # code : il l'aurait dit a l'identique en vidant un tout autre serveur.
+    # L'operateur voit desormais CE QUI VA ETRE VIDE, et il le voit avant le
+    # compte, pas apres. `S3_ENDPOINT` n'a par ailleurs plus de valeur par
+    # defaut (`src/reglages_s3.py`) : sans elle, on n'arrive meme pas ici.
+    print(f"\n--- Stockage objet ({settings.s3_endpoint}) ---")
     try:
-        supprimes = purge_bucket(images.get_client(), settings.minio_bucket)
-        print(f"{supprimes} objets supprimes du bucket {settings.minio_bucket}")
+        supprimes = purge_bucket(images.get_client(), settings.s3_bucket)
+        print(f"{supprimes} objets supprimes du bucket {settings.s3_bucket}")
     except Exception as exc:
         # LARGEUR VOULUE, meme motif que ci-dessus : le graphe doit encore etre
-        # tente. `minio` leve `S3Error`, mais aussi les erreurs reseau de
+        # tente. Le SDK leve `S3Error`, mais aussi les erreurs reseau de
         # `urllib3` qui n'en descendent pas. L'echec est nomme et compte.
-        print(f"MinIO : {exc}")
-        echecs.append("MinIO")
+        print(f"Stockage objet : {exc}")
+        echecs.append("Stockage objet")
 
     print("\n--- NebulaGraph ---")
     writer = get_writer()

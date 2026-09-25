@@ -152,7 +152,12 @@ def element_vertex_value(element: Mapping[str, Any], max_chars: int) -> str:
             # page finit sur elle, et un 0 y serait faux.
             int(element.get("page_no_end") or element["page_no"]),
             str(element.get("text") or "")[:max_chars],
-            str(element.get("minio_url") or ""),
+            str(element.get("media_url") or ""),
+            # La CLE de l'objet, a cote de son adresse. L'adresse porte l'hote,
+            # donc elle perime au premier deplacement du stockage ; la cle est
+            # l'identite de l'objet et lui survit. Elle vaut "" sur un element
+            # sans visuel, comme l'adresse.
+            str(element.get("object_key") or ""),
             int(element.get("depth") or 0),
         ),
     )
@@ -270,13 +275,35 @@ VID_MAX_BYTES = 256
 # il etait arrive sans les compter lui-meme. Et le substitut suppose — la
 # metadonnee `depth` de ChromaDB — ne substitue rien : aucun `section_header`
 # n'est jamais un chunk (registre 4.24, mesure).
-VERTEX_PROPERTIES = ("label", "page_no", "page_no_end", "text", "minio_url", "depth")
+#
+# **LA COLONNE D'ADRESSE A PORTE LE NOM D'UN PRODUIT**, et le graphe le
+# publiait a l'agent. Elle s'appelle `media_url` : un contrat nomme ce qu'il
+# publie, pas le logiciel qui le sert. `object_key` l'accompagne depuis le meme
+# geste — l'adresse porte l'hote et perime avec lui, la cle est l'identite de
+# l'objet et survit.
+#
+# **RENOMMER UNE COLONNE SE PAYE D'UNE PURGE, ET CE N'EST PAS UN DETAIL.**
+# Nebula conserve l'historique de schema d'un tag et n'autorise jamais une
+# colonne supprimee a revenir sous le meme nom (voir
+# :func:`missing_vertex_columns`) : `ALTER TAG ... ADD` pose bien les deux
+# nouvelles colonnes sur un space existant, mais l'ancienne y RESTE, a NULL sur
+# tout sommet reecrit. Le seul etat propre est le `DROP SPACE` de
+# `wipe_stores`, suivi du redemarrage qui rejoue `init_schema`.
+VERTEX_PROPERTIES = (
+    "label",
+    "page_no",
+    "page_no_end",
+    "text",
+    "media_url",
+    "object_key",
+    "depth",
+)
 
 # Le type nGQL de chaque colonne de VERTEX_PROPERTIES, dans le meme ordre. Les
 # deux tuples sont lus ensemble par :func:`tag_schema_statements` : les
 # desaligner produit un CREATE TAG qui n'a pas les colonnes que les INSERT
 # ecrivent, donc un rejet du graphd sur chaque element.
-VERTEX_TYPES = ("string", "int", "int", "string", "string", "int")
+VERTEX_TYPES = ("string", "int", "int", "string", "string", "string", "int")
 
 DOCUMENT_PROPERTIES = (
     "filename",

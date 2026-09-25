@@ -64,7 +64,8 @@ class TestDocumentElement:
         assert elem.text == ""
         assert elem.order == 0
         assert elem.bbox is None
-        assert elem.minio_url is None
+        assert elem.media_url is None
+        assert elem.object_key is None
         assert elem.content is None
         assert elem.reference_id == "DOC"
         assert elem.page_position == 0
@@ -80,11 +81,13 @@ class TestDocumentElement:
         elem = DocumentElement(
             id="z",
             label="table",
-            minio_url="http://minio/img.png",
+            media_url="http://stockage:8333/documents/img.png",
+            object_key="img.png",
             content="| col1 | col2 |",
             type="resource",
         )
-        assert elem.minio_url == "http://minio/img.png"
+        assert elem.media_url == "http://stockage:8333/documents/img.png"
+        assert elem.object_key == "img.png"
         assert elem.content == "| col1 | col2 |"
         assert elem.type == "resource"
 
@@ -197,7 +200,13 @@ class TestChunkMetadata:
             "filename",
             "label",
             "page_no",
-            "minio_url",
+            # Le contrat publie l'ADRESSE et la CLE. La premiere s'est appelee
+            # du nom d'un produit, ce qui obligeait a renommer une propriete du
+            # graphe et une metadonnee de chaque chunk le jour ou le produit
+            # changeait ; la seconde est l'identite de l'objet, qui survit au
+            # deplacement du stockage.
+            "media_url",
+            "object_key",
             "page_position",
             "ref_position",
         }

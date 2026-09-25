@@ -73,7 +73,7 @@ def _init_graph() -> None:
 
 
 def _init_objects() -> None:
-    """S'assure que le bucket MinIO existe."""
+    """S'assure que le bucket du stockage objet existe."""
     _readiness["objects_ready"] = images.ensure_bucket()
 
 

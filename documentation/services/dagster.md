@@ -24,7 +24,8 @@ service Docling, construction du graphe de connaissances, vectorisation.
 
 - `postgres-dagster` (metadonnees, curseurs des sensors)
 - `docling-service` (extraction et persistance via HTTP)
-- `minio` (export des images inline des captures HTML, pendant le nettoyage)
+- le stockage objet (export des images inline des captures HTML, pendant le
+  nettoyage) — fiche : [`stockage_objet.md`](stockage_objet.md)
 
 Dagster n'ecrit ni dans ChromaDB ni dans NebulaGraph : c'est le service
 d'extraction qui persiste dans les trois stores.
@@ -35,7 +36,7 @@ Une factory genere les assets par source declaree dans `sources.yaml`, prefixes
 par le nom de la source :
 
 - `{source}/cleaned_html` — sources `html` uniquement : nettoyage universel du
-  document et export des images inline vers MinIO ;
+  document et export des images inline vers le stockage objet ;
 - `{source}/extracted_document` — soumet le document au service Docling, suit
   le job jusqu'a son terme, et publie le bilan (elements, chunks, pages, duree)
   dans les metadonnees de l'asset.

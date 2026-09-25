@@ -62,7 +62,7 @@ coexistent, et Docling n'en reconnait aucune — il les rend en texte brut.
 
 Les liens sont donc extraits **avant** la conversion et remplaces par une
 balise placee exactement ou etait l'image. Apres conversion, la balise redevient
-un element de type `picture` portant l'URL du fichier envoye sur MinIO.
+un element de type `picture` portant l'adresse et la cle de l'objet televerse.
 
 La position compte autant que l'image : l'element occupe le meme rang dans
 l'ordre de lecture, si bien que la legende qui suit la figure lui reste
@@ -234,7 +234,8 @@ Une table Docling ne porte pas de texte : son `text` vaut `None` et le contenu v
 une structure dediee. Faute d'export explicite, les tables ressortaient vides de
 l'extraction — presentes dans le graphe, mais introuvables par la recherche vectorielle.
 Leur contenu est desormais recupere via `export_to_markdown()`, ce qui les rend
-interrogeables en texte tout en conservant, pour les PDF, le crop image sur MinIO.
+interrogeables en texte tout en conservant, pour les PDF, le crop image dans le
+stockage d'objets.
 
 ### 6. Liaison legende -> ressource
 
@@ -248,14 +249,18 @@ Pour les elements visuels d'un PDF (`picture`, `table`, `figure`, `graphic`), le
 1. Utilise le document **PyMuPDF** deja ouvert pour le fichier — une seule ouverture par
    document, et non une par image ;
 2. Crop aux coordonnees de la bounding box, avec un facteur de zoom (`IMAGE_CROP_ZOOM`) ;
-3. Pousse le PNG sur le bucket MinIO `documents` ;
-4. Stocke l'URL resultante dans `minio_url`.
+3. Pousse le PNG sur le bucket `documents` du stockage d'objets ;
+4. Stocke l'adresse resultante dans `media_url`, **et la cle nue dans
+   `object_key`**. Les deux sont posees d'un seul geste, par
+   `extraction.poser_le_media` : un element a demi renseigne n'est rattrape par
+   rien, le graphe etant ecrit une fois.
 
 **Attention** : Docling raisonne en axe Y Bottom-Left, PyMuPDF en Top-Left. La conversion
 de coordonnees est faite dans `images.crop_and_upload`.
 
-Les images des captures HTML, elles, ont deja ete exportees vers MinIO par l'asset de
-nettoyage en amont : le service se contente de propager leur URL.
+Les images des captures HTML, elles, ont deja ete televersees par l'asset de
+nettoyage en amont : le service se contente de propager leur adresse, lue dans le
+HTML nettoye, et d'en deriver la cle.
 
 ### 8. Persistance
 
@@ -397,8 +402,9 @@ Reglable par `EMBED_SECTION_CONTEXT`.
 }
 ```
 
-Les elements visuels portent en plus `minio_url`. `bbox` vaut `null` pour les formats
-non pagines (HTML, Markdown), qui n'ont pas de coordonnees.
+Les elements visuels portent en plus `media_url` et `object_key`. `bbox` vaut
+`null` pour les formats non pagines (HTML, Markdown), qui n'ont pas de
+coordonnees.
 
 ## Configuration Docling
 
@@ -410,8 +416,9 @@ converter = DocumentConverter(
 ```
 
 L'OCR et la reconstruction de structure de tables sont desactives : ils multiplient le
-temps de conversion, et les tables sont de toute facon croppees en image et poussees sur
-MinIO. A reactiver seulement si le corpus contient des scans.
+temps de conversion, et les tables sont de toute facon croppees en image et
+poussees sur le stockage d'objets. A reactiver seulement si le corpus contient
+des scans.
 
 ## Problemes connus et solutions
 
@@ -419,7 +426,7 @@ MinIO. A reactiver seulement si le corpus contient des scans.
   autres services. Solution : limite a 10 Go, `do_table_structure=False`,
   `PDF_BATCH_PAGES=5`, et le backend Docling est dechargé entre deux lots.
 
-- **Crop muet** : les images n'arrivaient pas sur MinIO, sans erreur. Cause : axe Y
+- **Crop muet** : les images n'arrivaient pas dans le bucket, sans erreur. Cause : axe Y
   inverse entre Docling (Bottom-Left) et PyMuPDF (Top-Left).
 
 - **Formules LaTeX perdues** : l'echappement nGQL traitait le guillemet mais pas

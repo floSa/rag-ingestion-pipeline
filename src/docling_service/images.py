@@ -1,8 +1,20 @@
-"""Crop des elements visuels d'un PDF et export vers MinIO.
+"""Crop des elements visuels d'un PDF et export vers le stockage objet.
 
 Le document PDF est passe en argument au lieu d'etre rouvert : la version
 initiale faisait un ``fitz.open()`` du fichier entier pour chaque image, soit
 des centaines d'ouvertures d'un livre de 400 pages.
+
+**CE MODULE EST LE SEUL DU DEPOT QUI CONSTRUIT UN CLIENT S3**, et c'est
+delibere. `pipeline/media.py` en construisait un second, avec ses propres
+reglages et son propre ``secure=`` : deux sites pour la meme decision, donc
+deux facons d'en changer. :func:`build_client` est desormais le seul, et il
+est le seul endroit du depot ou le nom du SDK apparaisse en dehors de
+`verify_data`.
+
+Le SDK s'appelle ``minio`` (minio-py) et il RESTE : c'est un client S3
+generique, qui parle a n'importe quelle passerelle S3 — c'est par lui que la
+pile a bascule sans changer une ligne de televersement. Son nom ne dit rien du
+serveur en face, que seul ``S3_ENDPOINT`` designe.
 """
 
 from __future__ import annotations
@@ -14,28 +26,66 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from minio import Minio
 
 from src.docling_service.settings import get_settings
+from src.reglages_s3 import MESSAGE_ENDPOINT_MANQUANT
 
 logger = logging.getLogger(__name__)
 
-_client: Minio | None = None
+# Le type du client S3, sous un nom qui ne designe pas un produit. Il existe
+# pour que `pipeline/media.py` puisse annoter le sien sans importer le SDK :
+# le depot n'a qu'UN site qui nomme la bibliotheque, et c'est ce module-ci.
+ClientS3 = Minio
+
+_client: ClientS3 | None = None
 _client_lock = threading.Lock()
 
 
-def get_client() -> Minio:
-    """Retourne le client MinIO partage, cree au premier appel."""
+def build_client(
+    endpoint: str, access_key: str, secret_key: str, *, secure: bool = False
+) -> ClientS3:
+    """Construit un client S3 — LE SEUL SITE DE CONSTRUCTION DU DEPOT.
+
+    Le refus sur une adresse vide est ici en plus des reglages, et ce n'est pas
+    une redite : cette fonction est PUBLIQUE, et un appelant qui lui passerait
+    une adresse lue ailleurs contournerait la validation de
+    `ReglagesDuStockageObjet`. Un client sans adresse ne leve pas a la
+    construction — il leve a l'appel, sur une erreur de resolution de nom qui
+    ne dit pas ce qui manque.
+
+    Args:
+        endpoint: ``hote:port`` de la passerelle S3, sans schema.
+        access_key: Cle d'acces.
+        secret_key: Cle secrete.
+        secure: TLS. Faux : la passerelle est jointe sur le reseau Docker
+            interne, ou elle n'est pas exposee, et aucun certificat n'y est
+            emis. Un deploiement qui la sortirait de ce reseau doit passer
+            vrai, et c'est le seul site ou la question se pose.
+
+    Returns:
+        Un client S3 pret a l'emploi.
+
+    Raises:
+        ValueError: Si l'adresse est vide.
+    """
+    if not endpoint.strip():
+        raise ValueError(MESSAGE_ENDPOINT_MANQUANT)
+    return Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
+
+
+def get_client() -> ClientS3:
+    """Retourne le client S3 partage du service d'extraction, cree au premier appel."""
     global _client
     with _client_lock:
         if _client is None:
             settings = get_settings()
-            _client = Minio(
-                settings.minio_endpoint,
-                access_key=settings.minio_root_user,
-                secret_key=settings.minio_root_password,
-                secure=False,
+            _client = build_client(
+                settings.s3_endpoint,
+                settings.s3_access_key,
+                settings.s3_secret_key,
             )
         return _client
 
@@ -50,17 +100,25 @@ def ensure_bucket(max_attempts: int = 15, wait_seconds: float = 5.0) -> bool:
     for attempt in range(1, max_attempts + 1):
         try:
             client = get_client()
-            if not client.bucket_exists(settings.minio_bucket):
-                client.make_bucket(settings.minio_bucket)
-                logger.info("Bucket MinIO '%s' cree.", settings.minio_bucket)
+            if not client.bucket_exists(settings.s3_bucket):
+                client.make_bucket(settings.s3_bucket)
+                logger.info("Bucket '%s' cree sur %s.", settings.s3_bucket, settings.s3_endpoint)
             else:
-                logger.info("Bucket MinIO '%s' pret.", settings.minio_bucket)
+                logger.info("Bucket '%s' pret sur %s.", settings.s3_bucket, settings.s3_endpoint)
             return True
         except Exception as exc:
-            logger.warning("MinIO indisponible (%s), tentative %d/%d", exc, attempt, max_attempts)
+            logger.warning(
+                "Stockage objet %s indisponible (%s), tentative %d/%d",
+                settings.s3_endpoint,
+                exc,
+                attempt,
+                max_attempts,
+            )
             if attempt < max_attempts:
                 time.sleep(wait_seconds)
-    logger.error("MinIO injoignable apres %d tentatives.", max_attempts)
+    logger.error(
+        "Stockage objet %s injoignable apres %d tentatives.", settings.s3_endpoint, max_attempts
+    )
     return False
 
 
@@ -76,8 +134,10 @@ def object_url(object_name: str) -> str:
     - un `GET` **anonyme** rend **403 AccessDenied**, et pas seulement hors du
       reseau Docker : depuis un conteneur DANS `rag_network` aussi. Ce n'est donc
       pas un probleme de resolution de nom, c'est le bucket qui n'est pas public ;
-    - `minio_endpoint` vaut `minio:9000` par defaut, un nom de service Docker :
-      hors du reseau, il ne resout pas.
+    - l'adresse est un nom de service Docker : hors du reseau, il ne resout
+      pas. Elle avait de surcroit une VALEUR PAR DEFAUT a l'epoque de cette
+      mesure, celle du stockage d'alors ; le defaut n'existe plus, et
+      `S3_ENDPOINT` est desormais exige — `src/reglages_s3.py` dit pourquoi.
 
     « 0 URL morte » dependait donc entierement de la methode de lecture, et
     c'etait le vrai defaut du constat : une mesure juste, presentee sans sa
@@ -86,9 +146,10 @@ def object_url(object_name: str) -> str:
     **CE QUE L'AGENT PEUT EN FAIRE, et c'est la decision.** `rag-agent-chat` se
     raccroche a `rag_network` et porte `RESTRICT_MEDIA_TO_GRAPH=true` : il ne
     sert que ce que le graphe reference. Il est donc le PROXY, et cette adresse
-    est faite pour lui : il resout `minio:9000`, lit l'objet avec ses
-    identifiants S3, et le re-sert a son client. Il ne doit jamais passer cette
-    adresse telle quelle a un navigateur.
+    est faite pour lui : il resout le nom de service, lit l'objet avec ses
+    identifiants S3 — son propre jeu, en lecture seule — et le re-sert a son
+    client. Il ne doit jamais passer cette adresse telle quelle a un
+    navigateur.
 
     **Les deux autres issues ont ete ECARTEES, et pour des motifs mesurables :**
 
@@ -101,8 +162,10 @@ def object_url(object_name: str) -> str:
       s'afficher sans qu'aucune erreur ne le dise — c'est-a-dire exactement la
       famille de defaut que ce lot ferme, plantee volontairement.
 
-    L'hote reste un reglage (`MINIO_ENDPOINT`) : un deploiement qui expose MinIO
-    sous un autre nom stocke une adresse atteignable de la, sans changer de code.
+    L'hote reste un reglage (`S3_ENDPOINT`) : un deploiement qui expose la
+    passerelle sous un autre nom stocke une adresse atteignable de la, sans
+    changer de code. C'est ce qui a permis la bascule du 25 septembre 2026 —
+    aucune ligne de ce module n'a change, seule la valeur du reglage.
 
     **C'est aussi le SEUL site de cette forme.** `pipeline/media.py` la
     reconstruisait a l'identique par une seconde f-string : deux sites pour la
@@ -112,10 +175,48 @@ def object_url(object_name: str) -> str:
         object_name: Cle de l'objet dans le bucket.
 
     Returns:
-        L'adresse interne de l'objet.
+        L'adresse interne de l'objet, en style CHEMIN
+        (``http://hote:port/bucket/cle``). La forme est celle que
+        :func:`object_key` sait inverser exactement.
     """
     settings = get_settings()
-    return f"http://{settings.minio_endpoint}/{settings.minio_bucket}/{object_name}"
+    return f"http://{settings.s3_endpoint}/{settings.s3_bucket}/{object_name}"
+
+
+def object_key(url: str) -> str:
+    """La cle NUE d'un objet, retrouvee depuis l'adresse que le contrat publie.
+
+    **POURQUOI LE CONTRAT PORTE LA CLE A COTE DE L'ADRESSE.** L'adresse contient
+    l'hote, donc elle PERIME : la bascule du 25 septembre 2026 a change l'hote
+    de 212 objets d'un coup, et tout consommateur qui voulait atteindre l'objet
+    devait defaire l'adresse a sa facon pour en extraire la cle. Defaire une
+    forme est une regle, et une regle recopiee chez trois consommateurs est
+    trois regles. La cle, elle, ne bouge pas d'un stockage a l'autre : c'est
+    elle l'identite de l'objet, et c'est ce que `object_key` publie.
+
+    **C'EST L'INVERSE EXACT DE :func:`object_url`, ET C'EST VERIFIABLE.** Cette
+    derniere est une concatenation pure, sans encodage : la cle apparait telle
+    quelle dans le chemin. La retrouver, c'est donc retirer le schema, l'hote et
+    le premier segment — le bucket — et ne RIEN decoder. Un ``unquote`` ici
+    rendrait une cle differente de celle passee a ``put_object`` des qu'un nom
+    porterait un ``%``, et `stat_object` rendrait alors 404 sur un objet
+    present. `sanitize_key` borne par ailleurs les cles a ``[A-Za-z0-9/_.-]``,
+    donc le cas ne se presente pas aujourd'hui ; la regle vaut pour le jour ou
+    il se presenterait.
+
+    Args:
+        url: Adresse produite par :func:`object_url`, ou chaine vide.
+
+    Returns:
+        La cle, exactement telle qu'elle a ete passee a ``put_object``. Chaine
+        vide si l'adresse est vide ou ne porte pas de cle sous un bucket : une
+        absence se lit comme une absence, et non comme une cle fausse.
+    """
+    if not url:
+        return ""
+    chemin = urlsplit(url).path.lstrip("/")
+    _bucket, separateur, cle = chemin.partition("/")
+    return cle if separateur else ""
 
 
 _CONTENT_TYPES: dict[str, str] = {
@@ -131,12 +232,12 @@ _CONTENT_TYPES: dict[str, str] = {
 
 
 def sanitize_key(value: str) -> str:
-    """Rend un chemin utilisable comme prefixe d'objet MinIO."""
+    """Rend un chemin utilisable comme prefixe d'objet dans le bucket."""
     return re.sub(r"[^A-Za-z0-9/_.-]+", "_", value).strip("/_")
 
 
 def upload_file(source: Path, doc_key: str, index: int) -> str | None:
-    """Envoie un fichier image du disque vers MinIO.
+    """Envoie un fichier image du disque vers le stockage objet.
 
     Sert aux images des documents Markdown, qui vivent a cote de la note au
     lieu d'etre embarquees. Les images des PDF passent par ``crop_and_upload``,
@@ -160,14 +261,14 @@ def upload_file(source: Path, doc_key: str, index: int) -> str | None:
     object_name = f"images/md/{sanitize_key(doc_key)}/{index:04d}_{sanitize_key(source.name)}"
     try:
         get_client().put_object(
-            get_settings().minio_bucket,
+            get_settings().s3_bucket,
             object_name,
             io.BytesIO(payload),
             length=len(payload),
             content_type=_CONTENT_TYPES.get(extension, "application/octet-stream"),
         )
     except Exception as exc:
-        logger.warning("Upload MinIO echoue (%s) : %s", object_name, exc)
+        logger.warning("Upload vers le stockage objet echoue (%s) : %s", object_name, exc)
         return None
 
     return object_url(object_name)
@@ -181,7 +282,7 @@ def crop_and_upload(
     image_id: str,
     element_type: str,
 ) -> str | None:
-    """Extrait la zone d'une page PDF en PNG et l'envoie sur MinIO.
+    """Extrait la zone d'une page PDF en PNG et l'envoie sur le stockage objet.
 
     Args:
         doc: Document PyMuPDF deja ouvert.
@@ -222,14 +323,14 @@ def crop_and_upload(
     object_name = f"images/{pdf_stem}/{image_id}_{element_type}.png"
     try:
         get_client().put_object(
-            get_settings().minio_bucket,
+            get_settings().s3_bucket,
             object_name,
             io.BytesIO(payload),
             length=len(payload),
             content_type="image/png",
         )
     except Exception as exc:
-        logger.warning("Upload MinIO echoue (%s) : %s", object_name, exc)
+        logger.warning("Upload vers le stockage objet echoue (%s) : %s", object_name, exc)
         return None
 
     return object_url(object_name)

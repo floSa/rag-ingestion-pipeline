@@ -36,7 +36,7 @@ TAG_MAP: dict[str, str] = {
     "title": "SectionHeader",
 }
 
-# Elements dont on exporte un crop image vers MinIO.
+# Elements dont on exporte un crop image vers le stockage objet.
 VISUAL_LABELS: set[str] = {"picture", "table", "figure", "graphic"}
 
 # Labels correspondant a des en-tetes de section (cf. TAG_MAP). Sert a batir la

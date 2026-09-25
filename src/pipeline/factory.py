@@ -62,7 +62,7 @@ if TYPE_CHECKING:
 
 from src.docling_service.elements import cleaned_path
 from src.pipeline.cleaning import clean_html_file
-from src.pipeline.media import MinioImageExporter
+from src.pipeline.media import ExportateurDImages
 
 # IMPORTES, ET NON RECOPIES. `STATUTS_EN_COURS` se definit par SOUSTRACTION des
 # trois etats terminaux : une enumeration en dur des etats actifs serait une
@@ -335,10 +335,10 @@ def _build_html_assets(
 
         dest_path = cleaned_path(settings.source_dir, context.partition_key)
 
-        exporter: MinioImageExporter | None = None
+        exporter: ExportateurDImages | None = None
         if source.cleaning.export_images:
             doc_key = Path(context.partition_key).with_suffix("").as_posix()
-            exporter = MinioImageExporter(doc_key=doc_key)
+            exporter = ExportateurDImages(doc_key=doc_key)
 
         report = clean_html_file(source_path, dest_path, source.cleaning, image_exporter=exporter)
 

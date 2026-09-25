@@ -31,7 +31,8 @@ Mettre a jour regulierement et re-auditer.
 
 ## Isolation reseau
 
-- Les services internes (ChromaDB, MinIO, NebulaGraph, PostgreSQL, Docling) ne sont
+- Les services internes (ChromaDB, le stockage d'objets, NebulaGraph, PostgreSQL,
+  Docling) ne sont
   pas exposes sur l'hote (`expose:` au lieu de `ports:`)
 - Seuls Dagster (3000) et Nebula Studio (7001) sont accessibles depuis l'hote
 - `docker-compose.override.yml` (non commite) permet d'exposer les ports en debug

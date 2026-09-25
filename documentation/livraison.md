@@ -11,9 +11,9 @@
 > leur raison, au [§9](#9-chaque-commande-de-ce-document--exécutée-ou-non).
 >
 > **Le stockage d'objets est SeaweedFS**, en service depuis le 25 septembre
-> 2026, 08:15 UTC. MinIO est toujours debout, intact, et c'est le retour
-> arrière. Lisez le [§6](#6-à-savoir-avant-de-toucher) **avant** de toucher à
-> quoi que ce soit.
+> 2026, 08:15 UTC. Le dépôt ne le nomme nulle part : il parle à une
+> **passerelle S3**, et seule `S3_ENDPOINT` désigne le serveur. Lisez le
+> [§6](#6-à-savoir-avant-de-toucher) **avant** de toucher à quoi que ce soit.
 
 ---
 
@@ -38,7 +38,6 @@ autre dépôt et lit ces trois stores.
 | `nebula-studio` | console du graphe | `:7001` |
 | `chromadb` | l'index vectoriel | `chromadb:8000` |
 | **`seaweedfs`** | **le stockage d'objets, par sa passerelle S3** | **`seaweedfs:8333`** |
-| `minio` | **le retour arrière** — debout, intact, avec ses 212 objets | `minio:9000` |
 
 Le débit est cadencé à deux niveaux : la file Dagster (`max_concurrent_runs: 2`
 dans `dagster.yaml`) et le service Docling, qui ne convertit **qu'un document à
@@ -70,7 +69,8 @@ Le site canonique est le **§0 du [registre](axes_amelioration.md)**. Ce qui est
 |---|---|---|
 | les chunks et leurs métadonnées | ChromaDB, collection `rag_documents` | `element_id` déterministe, 10 caractères hexadécimaux |
 | la structure du document | NebulaGraph, space `rag_space` | `depth` mélange deux échelles, `label` dit laquelle ; `sequence` repart à 0 par document |
-| l'adresse des images | propriété **`minio_url`** des sommets `Picture` et `Table` | `http://seaweedfs:8333/documents/<clé>` depuis la bascule — **les clés, elles, n'ont pas changé** |
+| l'adresse des images | propriété **`media_url`** des sommets `Picture` et `Table` | `http://<S3_ENDPOINT>/<bucket>/<clé>`. **Interne et authentifiée** : un `GET` anonyme y rend 403, l'agent est le proxy, elle ne va jamais à un navigateur |
+| la **clé** de ces mêmes objets | propriété **`object_key`** des mêmes sommets | la clé NUE, celle passée à `put_object`. L'adresse porte l'hôte et **périme** avec lui ; la clé est l'identité de l'objet et lui survit |
 | le modèle d'embedding | `EMBEDDING_MODEL_NAME` | **doit être identique des deux côtés** : un désaccord ne lève aucune erreur et rend des passages plausibles et faux |
 
 **Et une chose qui n'est pas dans les stores : `POST /reindex`.** En **fin
@@ -106,11 +106,10 @@ versionné.
 
 | Variable | Ce qu'elle décide |
 |---|---|
-| `MINIO_ROOT_USER` | **DEUX RÔLES — voir le [§6.2](#62-les-variables-minio_-configurent-deux-choses-à-la-fois)** : configure le serveur `minio` **et** authentifie auprès de ce que `MINIO_ENDPOINT` désigne. Porte aujourd'hui la clé d'accès **RW de SeaweedFS** |
-| `MINIO_ROOT_PASSWORD` | idem — porte la clé secrète RW de SeaweedFS |
-| `MINIO_ENDPOINT` | l'adresse du stockage d'objets. **Vaut `seaweedfs:8333`** depuis la bascule |
-| `MINIO_BUCKET` | `documents` — **inchangé par la bascule** |
-| `SEAWEEDFS_RW_ACCESS_KEY` | jeu **écriture** : le pipeline (`docling-service`, `wipe_stores`). Actions `Admin, Read, Write, List, Tagging` |
+| `S3_ENDPOINT` | l'adresse du stockage d'objets — `seaweedfs:8333`. **AUCUNE valeur par défaut : sans elle, rien ne démarre**, voir le [§6.2](#62-ladresse-du-stockage-na-aucune-valeur-par-défaut) |
+| `S3_BUCKET` | `documents` |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | ce que le **client** présente. **Ne les écrivez pas dans le `.env`** : `docker-compose.yml` les dérive du jeu RW ci-dessous — une seule valeur, deux noms, un seul endroit qui la porte |
+| `SEAWEEDFS_RW_ACCESS_KEY` | identité du **serveur** — jeu **écriture** : le pipeline (`docling-service`, `wipe_stores`). Actions `Admin, Read, Write, List, Tagging`. C'est lui que `docker-compose.yml` passe en `S3_ACCESS_KEY` |
 | `SEAWEEDFS_RW_SECRET_KEY` | idem |
 | `SEAWEEDFS_RO_ACCESS_KEY` | jeu **lecture seule** : `rag-agent-chat`. Actions `Read, List`, **rien d'autre** |
 | `SEAWEEDFS_RO_SECRET_KEY` | idem |
@@ -144,9 +143,10 @@ docker compose up -d --build
 ```
 
 > **Mais pas sur une pile déjà en service.** Un `docker compose up -d` **nu**
-> recrée tout ce dont la configuration a changé, **`minio` compris**, et cela
-> détruit le retour arrière. Sur une pile en service, on **nomme les services**
-> — voir le [§6.2](#62-les-variables-minio_-configurent-deux-choses-à-la-fois).
+> recrée tout ce dont la configuration a changé, y compris ce qu'on ne voulait
+> pas toucher. Sur une pile en service, on **nomme les services**, et on ajoute
+> `--no-deps` — voir le
+> [§6.3](#63-docker-compose-up-sans---no-deps-redémarre-les-dépendances).
 
 ### 2.4 La santé des services
 
@@ -239,25 +239,33 @@ C'est le §4.42.a du registre.
 ### 3.3 La purge, et les DEUX redémarrages qui la suivent
 
 `wipe_stores` **vide les trois stores et le HTML nettoyé**. Il vise ce que
-`MINIO_ENDPOINT` désigne, et rien d'autre — **donc SeaweedFS aujourd'hui**.
+`S3_ENDPOINT` désigne, et rien d'autre.
 
-> **Mais ce réglage a une valeur par défaut, et cette valeur est MinIO.**
-> `mesuré le 25 septembre 2026` sur le code : `minio_endpoint: str =
-> "minio:9000"` (`src/docling_service/settings.py:18`, et la même à
-> `src/pipeline/settings.py:32`). `wipe_stores` lit ce réglage par
-> `get_settings()`. **Donc un `.env` absent, ou un `.env` qui aurait perdu sa
-> ligne `MINIO_ENDPOINT`, ferait purger MinIO** — c'est-à-dire le retour
-> arrière — **sans une erreur et sans un avertissement.** C'est le même défaut
-> de conception qu'au [§6.2](#62-les-variables-minio_-configurent-deux-choses-à-la-fois),
-> vu par son autre bout, et le [§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_)
-> le ferme. En attendant, le garde-fou est le compte annoncé, juste en dessous.
+> **Ce réglage avait une valeur par défaut, et elle a survécu au serveur
+> qu'elle désignait.** Un `.env` absent, ou un `.env` qui aurait perdu cette
+> ligne, faisait donc purger le **mauvais** stockage — sans une erreur et sans
+> un avertissement. Le défaut a été **retiré** : la construction des réglages
+> échoue si `S3_ENDPOINT` manque, **avant qu'aucun client ne soit bâti**, donc
+> avant toute suppression, avec un message qui nomme la variable et dit quoi
+> faire. *Un défaut absent fait échouer le démarrage ; un défaut faux fait
+> réussir la purge du mauvais stockage.*
+>
+> **Et la purge annonce désormais l'adresse qu'elle vide**, avant le compte et
+> non après : `--- Stockage objet (seaweedfs:8333) ---`. Ce bloc disait le nom
+> d'un produit, écrit dans le code ; il l'aurait dit à l'identique en vidant un
+> tout autre serveur.
+>
+> **Les instruments se lancent par `docker compose run --no-deps`, et non par
+> `docker run --env-file .env`.** Le `.env` ne porte pas `S3_ACCESS_KEY` ni
+> `S3_SECRET_KEY` : c'est `docker-compose.yml` qui les dérive du jeu RW. Un
+> `docker run --env-file .env` les laissait vides — la purge rendait 403 sur le
+> stockage objet — et, depuis que les réglages refusent un identifiant vide,
+> il ne démarre plus. `compose run` reçoit la même dérivation que le service ;
+> `--no-deps` ne démarre rien d'autre, et `--rm` efface le conteneur.
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  -v "$PWD/Datas":/opt/dagster/app/Datas \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.wipe_stores
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.wipe_stores
 ```
 
 **Puis, obligatoirement :**
@@ -271,13 +279,9 @@ service. Sans ce redémarrage, la réingestion écrit contre un schéma incomple
 Le journal doit porter les deux lignes :
 
 ```
-INFO [src.docling_service.images] Bucket MinIO 'documents' pret.
+INFO [src.docling_service.images] Bucket 'documents' pret sur seaweedfs:8333.
 INFO [src.docling_service.nebula] Schema semantique NebulaGraph pret.
 ```
-
-*(« MinIO » est le nom de la bibliothèque `minio-py`, pas celui du serveur. Le
-serveur est SeaweedFS. C'est cosmétique, et c'est le lot de renommage du
-[§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_).)*
 
 **Puis, tout aussi obligatoirement, le conteneur `agent-api` de
 `rag-agent-chat`** — il vit dans l'autre dépôt, et c'est là qu'on le redémarre :
@@ -297,10 +301,9 @@ partie de la purge au même titre que celui de `docling-service`
 ([§6.6](#66-après-chaque-purge-redémarrer-aussi-lagent)).
 
 **Le compte que la purge annonce est un signal d'arrêt.** Sur la pile en
-service, elle doit annoncer **212 objets supprimés** — ce sont ceux de
-SeaweedFS. Le jour d'une bascule, où SeaweedFS est neuf, l'attendu est **0**, et
-un « 212 » voudrait dire que l'endpoint n'a pas changé, c'est-à-dire **que MinIO
-vient d'être purgé**.
+service, elle doit annoncer **212 objets supprimés**, sous l'adresse
+`seaweedfs:8333` qu'elle vient d'afficher. Un autre compte, ou une autre
+adresse, arrête la procédure : on ne réingère pas par-dessus un doute.
 
 > `wipe_stores` **n'est pas exécuté par ce document** : il écrit. Voir le
 > [§9](#9-chaque-commande-de-ce-document--exécutée-ou-non).
@@ -310,9 +313,9 @@ vient d'être purgé**.
 ## 4. Vérifier
 
 **Tout ce qui suit est en lecture seule et n'écrit dans aucun store.** Les
-chiffres sont ceux du 25 septembre 2026 entre 09:01 et 09:05 UTC, **derrière
-SeaweedFS**, et ils sont **identiques** à ceux de la campagne du matin, prise
-derrière MinIO.
+chiffres sont ceux du 25 septembre 2026 entre 09:01 et 09:05 UTC, et ils sont
+**identiques** à ceux de la campagne du matin, prise derrière le stockage
+précédent.
 
 ### 4.1 La porte qualité
 
@@ -380,15 +383,18 @@ cles = sorted({o.object_name for o in client.list_objects(bucket, recursive=True
 empreinte = hashlib.sha256(("\n".join(cles) + "\n").encode("utf-8")).hexdigest()
 ```
 
-**Sa borne, et elle compte.** L'agent calcule la sienne à partir des `minio_url`
+**Sa borne, et elle compte.** L'agent calcule la sienne à partir des adresses
 du **graphe** ; ce dépôt la calcule à partir du **bucket**. Les deux s'accordent
 parce que les deux ensembles sont **égaux** — 212 de part et d'autre, remesuré
 ce jour — et **non** parce que la recette serait la même par construction.
 
+*(Le graphe publie désormais `object_key` à côté de `media_url` : la clé y est
+lisible sans défaire l'adresse, ce qui retire la dernière raison qu'avait un
+consommateur de refaire cette dérivation chez lui.)*
+
 Et le témoin propre à la bascule, `mesuré le 25 septembre 2026 à 09:05 UTC` :
-les **212** sommets porteurs d'une `minio_url` (209 `Picture` + 3 `Table`) la
-portent **tous** sous `http://seaweedfs:8333/documents/`, et **zéro** sous
-`http://minio:9000/`.
+les **212** sommets porteurs d'une adresse de média (209 `Picture` + 3 `Table`)
+la portent **tous** sous `http://seaweedfs:8333/documents/`.
 
 ### 4.3 `comparer` contre l'instantané
 
@@ -396,16 +402,14 @@ L'instantané fige les `element_id` des trois stores dans un fichier versionné.
 `comparer` confronte l'état vivant à cet instantané, **dans les deux sens**.
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \
+docker compose run --rm --no-deps -T \
+  -v "$PWD/scripts":/app/scripts:ro \
   -v "$PWD/documentation/campagnes":/app/documentation/campagnes:ro \
   -v "$PWD/Datas":/corpus:ro \
   -v /tmp/sp-comparer:/sp \
   -v "$PWD/Datas/.cleaned":/sp/cleaned:ro \
-  -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache:ro \
-  --env-file "$PWD/.env" -e COMMIT_MESURE="$(git rev-parse HEAD)" \
-  -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service \
+  -e COMMIT_MESURE="$(git rev-parse HEAD)" -e PYTHONPATH=/app -w /app \
+  docling-service \
   python scripts/campagne/verifier-l-equivalence-des-identifiants.py \
     comparer documentation/campagnes/2026-09-24-instantane-des-identifiants
 ```
@@ -428,7 +432,7 @@ OK : l'ensemble deplace est exactement l'ensemble declare.
 `scripts/campagne/essayer-la-passerelle-s3.py` est le **juge** de la passerelle.
 Il n'interroge aucune console : pour chaque critère et **chaque jeu
 d'identifiants**, il fait **l'appel** que le pipeline ou l'agent ferait, avec la
-**même bibliothèque** (`minio-py`), et il lit le refus dans l'exception.
+**même bibliothèque cliente S3**, et il lit le refus dans l'exception.
 
 **Pourquoi par appel direct, et c'est le point de tout le script** : un refus S3
 est un **403 `AccessDenied`**, et il remonte chez l'agent en **404 silencieux**.
@@ -460,10 +464,8 @@ script : il se mesure sur le store réel, au [§4.2](#42-les-huit-comptes-et-lem
 ### 4.5 `verify_contract` — le contrat avec l'agent
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.verify_contract
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.verify_contract
 ```
 
 `mesuré le 25 septembre 2026 à 09:01 UTC`, derrière SeaweedFS, **`rc=1`** :
@@ -484,10 +486,11 @@ inversions de page dans l'ordre: 0
 sommets sans depth             : 0/15173
 sommets sans page_no_end       : 0/15173
 colonnes du tag Document       : 7, manquantes aucune
-sommets visuels sans minio_url : 52/264
+sommets visuels sans media_url : 52/264
+sommets visuels sans object_key : 52/264
 ancres presentes dans le graphe : 3750/3750
 
-ANOMALIE : 52 sommets visuels sur 264 sans minio_url
+ANOMALIE : 52 sommets visuels sur 264 sans media_url
 ```
 
 **`rc=1` est l'ATTENDU sur ce corpus, et c'est la seule anomalie connue.** Ce
@@ -495,15 +498,15 @@ sont les 52 tables HTML du §4.32.b : une table HTML est du texte, il n'y a rien
 à téléverser. C'est le **compteur** qui fusionne deux chemins, pas la chaîne
 d'images qui est cassée. `verify_contract` **ne peut pas rendre 0** ici. Un
 `rc=1` accompagné d'une **autre** ligne d'anomalie, ou d'un autre chiffre que
-52/264, est un vrai défaut.
+52/264, est un vrai défaut. **Le compte d'`object_key` doit être le même que
+celui de `media_url`** : les deux sont posés d'un seul geste, et un écart entre
+eux dirait qu'un chemin d'image en a oublié un.
 
 ### 4.6 `index_report` — l'index vectoriel
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service python -m src.index_report
+docker compose run --rm --no-deps -T -e PYTHONPATH=/app -w /app \
+  docling-service python -m src.index_report
 ```
 
 `mesuré le 25 septembre 2026 à 09:01 UTC`, **`rc=0`**, et **identique à la
@@ -519,12 +522,11 @@ Les deux scripts se lancent avec le même montage — `src`, `scripts`,
 `documentation` en lecture seule, plus le volume des modèles :
 
 ```bash
-docker run --rm --network rag_network \
-  -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \
+docker compose run --rm --no-deps -T \
+  -v "$PWD/scripts":/app/scripts:ro \
   -v "$PWD/documentation":/app/documentation:ro \
-  -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache:ro \
-  --env-file "$PWD/.env" -e HOME=/tmp -e PYTHONPATH=/app -w /app \
-  rag-ingestion-pipeline-docling-service \
+  -e PYTHONPATH=/app -w /app \
+  docling-service \
   python scripts/campagne/verifier-le-jeu-de-questions.py \
     documentation/campagnes/2026-09-02-jeu-de-questions.yaml
 ```
@@ -539,7 +541,8 @@ ancrages a verifier       : 44
 Jeu valide : les 44 ancrages concordent avec l'index, champ par champ.
 ```
 
-**Les 44 ancrages concordent**, derrière SeaweedFS comme derrière MinIO.
+**Les 44 ancrages concordent**, derrière SeaweedFS comme derrière le stockage
+précédent.
 
 Et le rappel, même montage, `python scripts/campagne/mesurer-le-rappel-vectoriel.py
 documentation/campagnes/2026-09-02-jeu-de-questions.yaml` —
@@ -575,16 +578,15 @@ vérifie là-bas, pas ici.
 |---|---|
 | le `.env` de l'agent | pointe `seaweedfs:8333`, avec le jeu **LECTURE SEULE** |
 | le témoin `temoin-bascule/bascule-2026-09-25.txt` | **lu** par le client de l'agent, SHA-256 `39e06d1d6e344080d078ef44f086452726def1cd0daf93feac07922a29e75ae0` |
-| son journal | « MinIO connecté : seaweedfs:8333 » et « Proxy média : 212 objets autorisés » |
+| son journal | la connexion au store à `seaweedfs:8333`, et « Proxy média : 212 objets autorisés » |
 | `GET /media/…/086f1173cb_picture.png` | **200**, octets **identiques** à ceux d'avant la bascule |
 | les ancrages | **267**, **0 désaccord** |
 | l'empreinte des 212 clés, vue de l'agent | `c91f5be6…` |
 | le graphe, vu de l'agent | **23** `Document`, **15 173** arêtes |
 | `POST /reindex` | **4 367** chunks |
 
-**Son retour arrière est son ancien `.env`, copié hors de son dépôt.** Il est
-symétrique du nôtre ([§5](#5-revenir-sur-minio)) et il est à lui : ce dépôt ne
-le tient pas.
+**Son retour arrière est son ancien `.env`, copié hors de son dépôt.** Il est à
+lui : ce dépôt ne le tient pas.
 
 **Ce que cela ne dit toujours pas** : la qualité des réponses de l'agent n'est
 pas mesurée ici, et les 267 ancrages sont les siens, pas les 44 du jeu de
@@ -592,47 +594,41 @@ questions de ce dépôt ([§4.7](#47-le-jeu-de-questions-et-le-rappel-vectoriel)
 
 ---
 
-## 5. Revenir sur MinIO
+## 5. Revenir en arrière
 
-**MinIO est resté debout avec ses 212 objets pendant toute la bascule** : il n'a
-été ni arrêté, ni recréé, ni purgé, et rien n'y a été écrit. C'est ce qui rend
-le retour arrière possible.
+**Le retour arrière est le CORPUS, et il n'est rien d'autre.** `Datas/` porte
+les 25 fichiers sources, versionnés, et ce sont eux qui décident de tout : les
+`element_id` dérivent de leur contenu et de leur chemin, les 212 objets sont
+leurs images, les 4 367 chunks leur texte. **Une purge suivie d'une réingestion
+régénère les trois stores à l'identique** — c'est exactement ce que
+`comparer` contre l'instantané établit, `DEPLACES 0`
+([§4.3](#43-comparer-contre-linstantané)).
 
-**La sauvegarde de l'ancien `.env` est à `~/.env.avant-seaweedfs-2026-09-25`**
-(présent, en `0600`, `mesuré le 25 septembre 2026`). Elle porte l'ancien
-`MINIO_ENDPOINT=minio:9000` et **l'ancien jeu d'identifiants MinIO** — sans
-elle, il n'y a pas de retour arrière, parce que le `.env` en service porte
-désormais le jeu SeaweedFS sous les noms `MINIO_ROOT_USER` /
-`MINIO_ROOT_PASSWORD`.
+**Il y a eu, un temps, un second stockage gardé debout « au cas où ».** Il a été
+retiré. Un serveur maintenu en vie sans être mesuré est un serveur dont la
+configuration dérive en silence : le `.env` en service ne portait plus ses
+identifiants, si bien qu'un `docker compose up -d` **nu** — qui recrée tout ce
+dont la configuration a changé — l'aurait redémarré avec les mauvaises clés et
+aurait rendu ses objets inaccessibles sans un mot. Le retour arrière avait donc
+un mode de perte silencieux, et c'est la définition de ce que ce dépôt refuse.
 
-La procédure, résumée du **§4.8** de
-[`campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md),
-qui en est le site canonique :
+**Ce que ce retour arrière coûte : une purge et une réingestion complète.** Ce
+n'est pas un basculement instantané, et il ne peut pas l'être : `images.py`
+stocke l'adresse `http://{S3_ENDPOINT}/{S3_BUCKET}/{clé}` **dans le graphe**,
+donc changer d'endpoint change toutes les adresses stockées. **Les clés, elles,
+ne changent pas** — c'est ce que le critère 8 établit, et c'est pourquoi le
+contrat publie désormais `object_key` à côté de l'adresse.
 
-1. **Remettre l'ancien `.env`.** Les quatre `SEAWEEDFS_*` peuvent rester : elles
-   ne servent plus qu'au service `seaweedfs`, qu'on laisse tourner à vide.
-2. **Recréer les mêmes services, dans le même ordre, `minio` toujours exclu** :
-   `docker compose up -d --force-recreate dagster-daemon dagster-webserver`,
-   puis `docker compose up -d --force-recreate docling-service`.
-   **`--force-recreate` et non `restart`** : un `restart` ne relit pas le `.env`.
-3. **Purger** ([§3.3](#33-la-purge-et-les-deux-redémarrages-qui-la-suivent)). Elle visera
-   de nouveau MinIO et doit annoncer **212 objets supprimés**.
-4. **Redémarrer `docling-service`**, puis **réingérer par le marqueur**
-   ([§3.2](#32-réingérer--le-marqueur-sur-le-curseur)) avec une **autre**
-   étiquette, par exemple `reingerer:<date>-retour-arriere`.
-5. **Reprendre les mesures** du [§4](#4-vérifier). Les huit comptes et
-   l'empreinte doivent revenir aux **mêmes valeurs** : ce sont les mêmes des
-   deux côtés.
+La procédure est celle du [§3](#3-ingérer-et-réingérer), sans variante : purge,
+redémarrage de `docling-service`, redémarrage d'`agent-api`, marqueur de
+réingestion avec une étiquette **neuve**, puis les mesures du
+[§4](#4-vérifier). Les huit comptes et l'empreinte des 212 clés doivent revenir
+aux mêmes valeurs.
 
-**Le point de non-retour est l'étape 3, la purge.** Avant elle, il suffit de
-remettre le `.env` et de recréer les trois services. Après elle, les stores sont
-vides et la réingestion est obligatoire, dans un sens comme dans l'autre.
-
-**Ce que le retour arrière coûte : une purge et une réingestion complète.** Ce
-n'est pas un basculement instantané, et il ne peut pas l'être : `images.py:118`
-stocke l'adresse `http://{MINIO_ENDPOINT}/{MINIO_BUCKET}/{clé}` **dans le
-graphe**, donc changer l'endpoint change toutes les adresses stockées. **Les
-clés, elles, ne changent pas** — c'est ce que le critère 8 établit.
+**Changer de stockage d'objets ne demande pas de code** : le dépôt ne nomme
+aucun serveur, seule `S3_ENDPOINT` le désigne. Le juge d'un candidat est
+`scripts/campagne/essayer-la-passerelle-s3.py`, avec ses huit critères et ses
+deux jeux d'identifiants ([§4.4](#44-la-passerelle-s3-et-ses-huit-critères)).
 
 ---
 
@@ -680,24 +676,39 @@ dans le Postgres de Dagster. Ce n'est pas un geste de routine, et il n'est pas
 écrit ici parce qu'il **écrit** : tant qu'on ne le fait pas, retenir que l'état
 en base l'emporte sur le code suffit.
 
-### 6.2 Les variables `MINIO_*` configurent DEUX choses à la fois
+### 6.2 L'adresse du stockage n'a AUCUNE valeur par défaut
 
-`MINIO_ROOT_USER` et `MINIO_ROOT_PASSWORD` sont lues par **deux consommateurs
-qui n'ont rien à voir** :
+`S3_ENDPOINT` **doit** être dans le `.env`. Sans elle, la construction des
+réglages échoue — le service d'extraction ne démarre pas, `wipe_stores` ne purge
+rien, `verify_data` n'interroge rien — avec un message qui nomme la variable et
+dit quoi faire.
 
-- le service `minio` de `docker-compose.yml`, qui s'en **configure lui-même** ;
-- `DoclingSettings`, qui s'en **authentifie** auprès de ce que `MINIO_ENDPOINT`
-  désigne — aujourd'hui **`seaweedfs:8333`**.
+**Ce n'est pas une rigidité, c'est un garde-fou, et il a une histoire.** Ce
+réglage avait un défaut écrit dans le code, à deux sites : l'adresse du stockage
+d'alors. Elle est restée juste tant qu'elle a désigné le stockage en service.
+Le jour où le stockage a changé, elle a cessé de pointer vers l'ancien
+« au pire » et s'est mise à pointer vers le **mauvais**. Or `wipe_stores` lit ce
+même réglage et **vide** le bucket qu'il désigne : lancé depuis un shell sans
+`.env`, depuis un conteneur recréé sans elle, ou depuis une tâche planifiée, il
+aurait purgé le mauvais serveur **en rendant compte d'une purge réussie**.
 
-**Conséquence, et c'est la règle la plus importante de ce document : ne recréez
-jamais `minio` avec le `.env` actuel.** Il repartirait avec les identifiants
-**SeaweedFS**, ses 212 objets deviendraient inaccessibles, et **le retour
-arrière serait perdu**.
+*Un défaut absent fait échouer le démarrage ; un défaut faux fait RÉUSSIR la
+purge du mauvais stockage.* Une purge ne prévient pas : elle rend compte.
 
-Ce qui recrée `minio` sans le nommer : **`docker compose up -d` nu**, qui recrée
-tout ce dont la configuration a changé. **On nomme les services.** Ce n'est pas
-une précaution de style : c'est ce qui sépare une bascule d'une perte du retour
-arrière. C'est le §4.43.c du registre, et le [§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_) le ferme.
+Le site du refus et son motif sont à `src/reglages_s3.py` ; le garde est
+`tests/unit/test_settings.py::TestLAdresseDuStockageObjetNAAucunDefaut`, et il
+tient les **deux** classes de réglages, puisque les deux construisent un client.
+
+**Second garde-fou, au même endroit** : `wipe_stores` **affiche l'adresse qu'il
+s'apprête à vider**, avant le compte et non après
+(`--- Stockage objet (seaweedfs:8333) ---`).
+
+**Et les identifiants ne sont écrits qu'une fois.** `SEAWEEDFS_RW_*` déclare les
+identités du **serveur** ; `docker-compose.yml` en **dérive** `S3_ACCESS_KEY` et
+`S3_SECRET_KEY`, ce que le **client** présente. Recopier la même clé sous deux
+noms dans le `.env` ferait deux valeurs à tenir d'accord, et le jour où elles
+divergeraient le serveur rendrait 403 sur une pile dont la configuration aurait
+l'air juste.
 
 ### 6.3 `docker compose up` sans `--no-deps` redémarre les dépendances
 
@@ -786,84 +797,65 @@ n'est masqué.
 | **la CLI Dagster ne sait pas LIRE un curseur** | `dagster sensor cursor` n'offre que `--set` et `--delete`. On peut poser le marqueur de réingestion par une commande officielle, mais ni vérifier ce qu'on écrase, ni constater qu'il a été consommé. Le geste de lecture est au [§3.2](#32-réingérer--le-marqueur-sur-le-curseur) | §4.42.a |
 | **les 886 `FAILURE` de l'historique — expliqués et CLOS** | **tous** des `agent_reindex_job`, **une seule cause** 886 fois sur 886 : une `ReindexError` sur le `POST /reindex` vers un service d'agent **absent** du poste. **Aucun run d'ingestion n'a jamais échoué.** Cinq fenêtres (68 / 498 / 9 / 59 / 252, somme **886**, seuil de découpe **300 s**), et **aucun échec depuis le 3 septembre 2026, 08:37 UTC** | §4.43.a |
 
-**Et le défaut de conception, qui n'est pas dans ce tableau parce qu'il est le
-premier des prochaines étapes** : `MINIO_*` configure le serveur MinIO **et**
-authentifie auprès de SeaweedFS ([§6.2](#62-les-variables-minio_-configurent-deux-choses-à-la-fois),
-§4.43.c).
+**Et le défaut de conception qui occupait cette place est FERMÉ** : une même
+variable configurait le serveur de stockage **et** authentifiait le client
+auprès de lui (§4.43.c). Les deux rôles sont désormais deux jeux de noms, et le
+second est **dérivé** du premier dans `docker-compose.yml`, sans qu'aucune
+valeur soit recopiée ([§6.2](#62-ladresse-du-stockage-na-aucune-valeur-par-défaut)).
 
 ---
 
 ## 8. Prochaines étapes, dans l'ordre
 
-### 8.1 Renommer le contrat — découpler `MINIO_*` de `SEAWEEDFS_*`
+### 8.1 Le renommage du contrat — FAIT
 
-**Décidé** : le renommage se fait, et il est un lot **à part**. Les noms cibles
-sont écrits — `OBJECT_STORE_ENDPOINT`, `OBJECT_STORE_ACCESS_KEY`,
-`OBJECT_STORE_SECRET_KEY`, `OBJECT_STORE_BUCKET` pour l'**accès client**, et des
-variables **distinctes** pour la **configuration du serveur** MinIO tant qu'il
-est conservé. Le contrat gagne `object_key` à côté de l'URL, et `minio_url`
-devient **`media_url`**.
+**Les trois premières étapes de cette liste sont faites.** Elles formaient un
+seul lot, et il a été livré : le renommage des variables, le renommage du
+contrat publié, le retrait du stockage précédent et le regroupement du code S3
+sur un seul site.
 
-**Reste à décider** : la **fenêtre de compatibilité** — publier les deux
-propriétés en parallèle pendant un temps, ou basculer d'un coup ; et **qui de
-l'agent ou du pipeline bouge en premier**.
+**Ce que cela a changé, et qui touche les deux dépôts :**
 
-**Qui est touché** : **les deux dépôts.** `MINIO_ENDPOINT`, `MINIO_ROOT_USER`,
-`MINIO_ROOT_PASSWORD` et `MINIO_BUCKET` **sont** le contrat avec
-`rag-agent-chat` : le renommage **se coordonne avec son pilote, il ne se décrète
-pas ici**. Emporter dans ce lot les deux effets cosmétiques du même défaut : la
-ligne de journal `Bucket MinIO 'documents' pret.` et le titre `--- MinIO ---` de
-`wipe_stores`.
+| Avant | Maintenant |
+|---|---|
+| des variables qui nommaient un produit et configuraient **deux** choses | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` — **génériques**, et le jeu du serveur reste distinct |
+| une adresse de stockage **par défaut**, dans le code | **aucune** — le démarrage échoue si elle manque ([§6.2](#62-ladresse-du-stockage-na-aucune-valeur-par-défaut)) |
+| une propriété du graphe nommée d'après un produit | **`media_url`**, plus **`object_key`** qui porte la clé nue |
+| **deux** chemins S3, chacun avec son client | **un seul site de construction**, `images.build_client` |
 
-**Pourquoi ce rang** : c'est ce qui rend `minio` recréable sans perdre le retour
-arrière, donc **ce qui débloque l'étape suivante**.
+**L'ordre de déploiement est impératif, et il est écrit** dans
+[`campagnes/2026-09-25-retrait-du-stockage-precedent.md`](campagnes/2026-09-25-retrait-du-stockage-precedent.md) :
+l'agent sert **d'abord** une version qui lit la nouvelle propriété — et
+l'ancienne à défaut — et ce n'est qu'ensuite que ce dépôt réingère. L'inverse
+rendrait ses images muettes le temps de la réingestion, sans une erreur.
 
-### 8.2 Retirer MinIO, après une période d'observation
+### 8.2 La variante d'assainisseur de clé, et le radical non assaini
 
-**Décidé** : MinIO est **conservé tant que le pilote ne dit pas de le retirer**.
+**Ce point reste ouvert, et il n'a pas été emporté par le regroupement.**
+`images.sanitize_key` autorise le point dans une clé d'objet, ce qui laisse
+passer des segments `..` ; la variante de `media.py` (`[A-Za-z0-9/_-]`) ne les
+laisse pas. Et `crop_and_upload` écrit
+`f"images/{pdf_stem}/{image_id}_{element_type}.png"` **sans passer `pdf_stem`
+par `sanitize_key`**, alors qu'`upload_file` l'assainit bien vingt lignes plus
+haut.
 
-**Reste à décider** : la **durée** de l'observation, et **ce qu'on observe** —
-ce qui n'a pas été mesuré sur SeaweedFS est nommé et ne doit pas se lire comme
-acquis : ni débit, ni latence, ni tenue en charge, ni durabilité. Le volume a
-survécu à **une** recréation de conteneur ; rien n'a été mesuré sur un
-redémarrage de la machine, une coupure en cours d'écriture, ou un disque plein.
-`-master.volumeSizeLimitMB=1024` et `-volume.max=0` sont des réglages de confort
-mono-nœud, **choisis et non éprouvés**.
+**Reste à décider** : unifier demande une **réingestion si une clé change**, et
+l'empreinte des 212 clés est le témoin qui le dira. Le corpus actuel n'expose
+ni l'un ni l'autre défaut ; un nom de PDF mal formé exposerait le second.
 
-**Qui est touché** : ce dépôt. **Retirer MinIO retire le retour arrière** : à ne
-faire qu'après le [§8.1](#81-renommer-le-contrat--découpler-minio_-de-seaweedfs_),
-et après que l'agent sert effectivement ses images depuis SeaweedFS — ce qui,
-**depuis le 25 septembre 2026 à 09:02 UTC, a été vu** et mesuré chez lui
-([§4.8](#48-lagent-sert-ses-images-depuis-seaweedfs--mesuré-chez-lui)). **Cette
-condition-là est donc levée ; l'autre ne l'est pas** : la durée d'observation
-reste à décider, et rien n'a été mesuré sur le débit, la latence ni la
-durabilité.
+**Qui est touché** : ce dépôt seul, **sauf si une clé change** — alors l'agent
+l'est aussi, son empreinte se calculant à partir de ce que le graphe publie.
 
-### 8.3 Regrouper le code S3 sur un seul site
+### 8.3 La période d'observation du stockage d'objets
 
-**Décidé** : il y a **deux** chemins S3, et c'est un de trop.
-`src/pipeline/media.py` téléverse les images des HTML nettoyés ;
-`src/docling_service/images.py` téléverse celles des PDF et des Markdown, et
-**construit les URL publiées**. Chacun a son client, son assainisseur de clé et
-ses types MIME.
+**Reste à décider** : **ce qu'on observe**. Ce qui n'a pas été mesuré est nommé
+et ne doit pas se lire comme acquis : ni débit, ni latence, ni tenue en charge,
+ni durabilité. Le volume a survécu à **une** recréation de conteneur ; rien n'a
+été mesuré sur un redémarrage de la machine, une coupure en cours d'écriture, ou
+un disque plein. `-master.volumeSizeLimitMB=1024` et `-volume.max=0` sont des
+réglages de confort mono-nœud, **choisis et non éprouvés**.
 
-**La variante d'assainisseur à garder est celle de `media.py`** — `_sanitize_key`
-(`media.py:29`), dont la classe autorisée est `[A-Za-z0-9/_-]`. Celle
-d'`images.py` (`sanitize_key`, `images.py:133`) autorise **en plus le point**,
-ce qui laisse passer des segments `..` dans une clé d'objet.
-
-**Et `images.py:222` n'assainit pas le radical du document.** La clé des crops
-de PDF s'y écrit `f"images/{pdf_stem}/{image_id}_{element_type}.png"`, **sans
-passer `pdf_stem` par `sanitize_key`** — alors que `upload_file`, vingt lignes
-plus haut (`images.py:160`), l'assainit bien. Le corpus actuel ne l'expose pas ;
-un nom de PDF mal formé le ferait.
-
-**Reste à décider** : où vit le site unique, et si l'unification passe par une
-réingestion — **elle en demande une si une clé change**, et l'empreinte des 212
-clés est le témoin qui le dira.
-
-**Qui est touché** : ce dépôt seul, **sauf si une clé change** : alors l'agent
-est touché aussi, puisque son empreinte se calcule à partir des URL du graphe.
+**Qui est touché** : ce dépôt.
 
 ### 8.4 Les sources enfichables
 
@@ -907,7 +899,7 @@ aujourd'hui fortuite.
 | `docker compose ps` | 2.4 | 09:00 | 11 services debout, `seaweedfs` et `docling-service` `healthy` |
 | `make all` (précédé d'`uv sync`) | 4.1 | 09:02 → 09:03 | **rc=0** — 1 084 tests, mypy 43 fichiers, 35 mutations rouges, 85 fichiers formatés |
 | les huit comptes + empreinte des clés | 4.2 | 09:05 | **les neuf attendus, à l'unité et à l'empreinte près** |
-| les `minio_url` du graphe, par tag | 4.2 | 09:05 | **212** sous `seaweedfs:8333`, **0** sous `minio:9000` |
+| les adresses de média du graphe, par tag | 4.2 | 09:05 | **212** sous `seaweedfs:8333` |
 | `comparer` contre l'instantané | 4.3 | 09:03:45 → 09:05:11 | **rc=0**, 23 / 23, **`DEPLACES 0`** |
 | `python -m src.verify_contract` | 4.5 | 09:01 | **rc=1**, la **seule** anomalie connue : 52/264 |
 | `python -m src.index_report` | 4.6 | 09:01 | **rc=0**, identique à la campagne du matin |
@@ -915,7 +907,6 @@ aujourd'hui fortuite.
 | `mesurer-le-rappel-vectoriel.py` | 4.7 | 09:01:50 → 09:02:26 | **rc=0** — 55,3 / 61,7 / 72,3 / 80,9 % |
 | `dagster sensor --help`, `dagster sensor cursor --help` | 3.2, 6.1 | 09:03 | `cursor` n'a que `--set` / `--delete` ; aucune commande de retour à `DECLARED_IN_CODE` |
 | la lecture des quatre curseurs | 3.2 | 09:02 | les quatre capteurs à **`RUNNING`**, marqueurs consommés |
-| `ls ~/.env.avant-seaweedfs-2026-09-25` | 5 | 09:06 | **présent**, `0600` — contenu **jamais lu ni cité** |
 
 **Rejouées une seconde fois au moment de la fusion**, en lecture seule, le
 25 septembre 2026 **entre 09:33 et 09:40 UTC**, pour vérifier que ce document
@@ -926,12 +917,11 @@ dit encore vrai après les corrections de la journée :
 | `docker compose ps` | 2.4 | **oui** — 11 services, `seaweedfs` et `docling-service` `healthy` |
 | `make all` (précédé d'`uv sync`) | 4.1 | **oui** — `rc=0`, **1 084** tests, mypy **43** fichiers, **35** mutations rejouées **35 rouges**, « arbre de travail intact », **85** fichiers déjà formatés. **Rejoué APRÈS les corrections de ce document** : les trois gardes qui lisent le `README` et `orchestration.md` passent |
 | les huit comptes + empreinte | 4.2 | **oui** — 15 196 / 23 / 7 251 / 1 748 / 4 963 / 15 173 / 4 367 / 212, empreinte identique |
-| les `minio_url` par tag | 4.2 | **oui** — 209 `Picture` + 3 `Table` sous `seaweedfs:8333`, **0** sous `minio:9000` |
+| les adresses de média par tag | 4.2 | **oui** — 209 `Picture` + 3 `Table` sous `seaweedfs:8333` |
 | `comparer` contre l'instantané | 4.3 | **oui** — `rc=0`, même `INSTANTANE e945893b…`, 23 / 23, `DEPLACES 0` |
 | `python -m src.verify_contract` | 4.5 | **oui** — `rc=1`, sortie identique **ligne pour ligne**, 52/264 |
 | `python -m src.index_report` | 4.6 | **oui** — `rc=0`, 4 367 / 23, médiane 299, 137 tronqués (3,1 %), labels identiques |
 | la lecture des quatre curseurs | 3.2, 6.1 | **oui** — les quatre à `RUNNING`, aucun marqueur `reingerer:` résiduel |
-| `ls ~/.env.avant-seaweedfs-2026-09-25` | 5 | **oui** — présent, `0600`, contenu **jamais lu** |
 
 **Une seule section exécutée le matin n'a pas été rejouée ici** : le jeu de
 questions et le rappel vectoriel ([§4.7](#47-le-jeu-de-questions-et-le-rappel-vectoriel)).
@@ -948,7 +938,7 @@ même index à la même taille.
 | `docker compose restart docling-service` | 3.3 | **redémarre un service** |
 | `dagster sensor cursor … --set 'reingerer:…'` | 3.2 | **ÉCRIT un curseur, et déclenche 23 runs** |
 | `essayer-la-passerelle-s3.py` | 4.4 | **ÉCRIT — critère 5, les cinq écritures, et il crée son bucket d'essai.** Joué et passé le 25 septembre 2026, compte rendu de la bascule, §2–§3 |
-| toute la procédure du **§5** | 5 | **c'est le retour arrière : il purge et réingère.** Sa validité tient de sa symétrie avec la bascule, qui, elle, a été exécutée et mesurée |
+| toute la procédure du **§5** | 5 | **c'est le retour arrière : il purge et réingère.** Sa validité tient de ce que la purge et la réingestion ont, elles, été exécutées et mesurées le matin même |
 | `find Datas … -print` | 6.5 | non rejouée ici ; le chiffre cité (**25**, et 0 `mtime` récent) est du 25 septembre 2026, registre §4.41 |
 | `docker compose exec <service> printenv` | 6.4 | non jouée : elle lirait une **valeur du `.env`**, et ce document n'en cite aucune |
 | tout le [§4.8](#48-lagent-sert-ses-images-depuis-seaweedfs--mesuré-chez-lui) | 4.8 | **hors de ce dépôt** : la mesure est celle du pilote de `rag-agent-chat`, faite chez lui. Ce dépôt n'a ni son `.env` ni son conteneur |

@@ -37,9 +37,12 @@ autre dépôt et lit ces trois stores.**
   (`Document > Section > Text > Image/Table`), avec le Studio.
 - **[ChromaDB](https://www.trychroma.com/)** — la recherche par le sens,
   embeddings locaux (`SentenceTransformers`).
-- **[SeaweedFS](https://github.com/seaweedfs/seaweedfs)** — le stockage d'objets,
-  par sa passerelle S3 (`seaweedfs:8333`). **Il a remplacé MinIO le 25 septembre
-  2026** ; MinIO reste debout, intact, comme retour arrière.
+- **[SeaweedFS](https://github.com/seaweedfs/seaweedfs)** — le stockage
+  d'objets, par sa passerelle S3 (`seaweedfs:8333`). Le dépôt ne le nomme nulle
+  part : il parle à une **passerelle S3** par un client générique, et seule la
+  variable `S3_ENDPOINT` désigne le serveur — c'est ce qui permet d'en changer
+  sans toucher au code. L'historique du remplacement est à
+  [`documentation/services/stockage_objet.md`](documentation/services/stockage_objet.md).
 - Tout tourne en conteneurs, par Docker Compose, **sur processeur** — le GPU est
   une surcouche facultative.
 
@@ -87,11 +90,11 @@ Puis la purge, le redémarrage de `docling-service` et la relecture du curseur :
 **§3 de [`documentation/livraison.md`](documentation/livraison.md)**.
 
 > **Sur une pile déjà en service, ne jouez pas `docker compose up -d` nu** : il
-> recrée tout ce dont la configuration a changé, **`minio` compris**, et cela
-> détruit le retour arrière. Le détail, et les quatre autres pièges qui ne font
-> pas de bruit, sont au **§6 de
-> [`documentation/livraison.md`](documentation/livraison.md)** — à lire avant de
-> toucher à une pile existante.
+> recrée tout ce dont la configuration a changé, et un service recréé sans
+> l'avoir voulu est un service qu'on croyait stable. Nommez les services à
+> recréer. Le détail, et les autres pièges qui ne font pas de bruit, sont au
+> **§6 de [`documentation/livraison.md`](documentation/livraison.md)** — à lire
+> avant de toucher à une pile existante.
 
 ## Vérifier
 

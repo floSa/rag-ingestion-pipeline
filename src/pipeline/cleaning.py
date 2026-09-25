@@ -367,13 +367,13 @@ def preclean_html(
     Concu pour les captures SingleFile : elements caches, chrome de page,
     attributs ``style``, handlers ``on*`` sont supprimes, ce qui divise la
     taille du fichier avant extraction. Les images ``data:`` au-dela d'un
-    seuil sont exportees via ``image_exporter`` (src reecrit avec l'URL),
+    seuil sont exportees via ``image_exporter`` (src reecrit avec leur adresse),
     ou supprimees si aucun exporteur n'est fourni / si l'export echoue.
 
     Args:
         raw: HTML brut.
         options: Options de nettoyage de la source.
-        image_exporter: Destination des images base64 volumineuses (MinIO).
+        image_exporter: Destination des images base64 volumineuses (stockage objet).
 
     Returns:
         HTML allege, structure du contenu intacte.
@@ -529,7 +529,7 @@ def clean_html(
     Args:
         raw: HTML brut (capture SingleFile, export editeur, etc.).
         options: Options de nettoyage de la source.
-        image_exporter: Destination des images base64 volumineuses (MinIO).
+        image_exporter: Destination des images base64 volumineuses (stockage objet).
 
     Returns:
         Le HTML nettoye et le :class:`CleaningReport` associe.
@@ -619,7 +619,7 @@ def clean_html_file(
         source_path: Fichier HTML source.
         dest_path: Destination du HTML nettoye (les dossiers sont crees).
         options: Options de nettoyage de la source.
-        image_exporter: Destination des images base64 volumineuses (MinIO).
+        image_exporter: Destination des images base64 volumineuses (stockage objet).
 
     Returns:
         Le :class:`CleaningReport` du nettoyage.

@@ -1,6 +1,6 @@
 """Tests de la purge des stores.
 
-Le test qui compte est celui du bucket MinIO : c'est le store que la purge
+Le test qui compte est celui du bucket d'objets : c'est le store que la purge
 oubliait, et le mode d'echec est silencieux. Une purge qui laisse des objets
 derriere elle ne leve rien, ne journalise rien, et rend un compte qui a l'air
 juste — c'est en cela qu'elle ressemble aux autres pannes de cette chaine.
@@ -27,15 +27,15 @@ from src.wipe_stores import (
 )
 
 
-class ObjetMinio:
-    """Objet MinIO minimal, tel que ``list_objects`` le rend."""
+class ObjetDuBucket:
+    """Objet minimal, tel que ``list_objects`` le rend."""
 
     def __init__(self, object_name: str) -> None:
         self.object_name = object_name
 
 
-class FauxMinio:
-    """Client MinIO qui reproduit la difference entre listage plat et recursif.
+class FauxClientS3:
+    """Client S3 qui reproduit la difference entre listage plat et recursif.
 
     C'est le point du test : ``list_objects(recursive=False)`` ne rend que les
     prefixes de premier niveau — ``images/`` — et jamais les objets qu'ils
@@ -53,9 +53,9 @@ class FauxMinio:
 
     def list_objects(self, bucket: str, recursive: bool = False):
         if recursive:
-            return [ObjetMinio(nom) for nom in self.objets]
+            return [ObjetDuBucket(nom) for nom in self.objets]
         prefixes = sorted({nom.split("/", 1)[0] + "/" for nom in self.objets if "/" in nom})
-        return [ObjetMinio(prefixe) for prefixe in prefixes]
+        return [ObjetDuBucket(prefixe) for prefixe in prefixes]
 
     def remove_object(self, bucket: str, nom: str) -> None:
         if nom not in self.objets:
@@ -76,39 +76,39 @@ OBJETS = [
 
 class TestPurgeBucket:
     def test_supprime_tous_les_objets(self):
-        client = FauxMinio(OBJETS)
+        client = FauxClientS3(OBJETS)
         assert purge_bucket(client, "documents") == len(OBJETS)
         assert client.objets == []
 
     def test_le_bucket_est_reellement_vide_apres(self):
         # Asserte l'etat du store, pas la valeur de retour : un compte juste
         # sur un bucket encore plein serait vert.
-        client = FauxMinio(OBJETS)
+        client = FauxClientS3(OBJETS)
         purge_bucket(client, "documents")
         assert list(client.list_objects("documents", recursive=True)) == []
 
     def test_descend_dans_les_prefixes(self):
         # Le defaut historique : un listage plat ne voit que « images/ » et la
         # purge laisse tout le contenu derriere elle.
-        client = FauxMinio(OBJETS)
+        client = FauxClientS3(OBJETS)
         purge_bucket(client, "documents")
         assert all(nom in client.supprimes for nom in OBJETS)
 
     def test_bucket_absent_ne_leve_pas(self):
-        client = FauxMinio([], existe=False)
+        client = FauxClientS3([], existe=False)
         assert purge_bucket(client, "documents") == 0
 
     def test_bucket_deja_vide(self):
-        client = FauxMinio([])
+        client = FauxClientS3([])
         assert purge_bucket(client, "documents") == 0
 
     def test_un_echec_de_suppression_remonte(self):
         # Une purge partielle est pire qu'une purge absente : on croit repartir
         # propre et on re-ingere par-dessus des restes.
-        client = FauxMinio(OBJETS)
+        client = FauxClientS3(OBJETS)
 
         def refuse(bucket: str, nom: str) -> None:
-            raise OSError("MinIO injoignable")
+            raise OSError("stockage objet injoignable")
 
         client.remove_object = refuse
         with pytest.raises(OSError):
@@ -171,9 +171,9 @@ class TestPurgeCollection:
 #
 # Les tests ci-dessus exercent les trois fonctions de purge. Ils ne touchent pas
 # a main(), qui porte pourtant les deux moities du titre du commit 7d587b0 :
-# « purger AUSSI le bucket MinIO » et « ECHOUER sur une purge partielle ». Trois
-# mutations y survivaient : remplacer sys.exit(1) par sys.exit(0), retirer le
-# bloc MinIO, ou ne plus ajouter « MinIO » a la liste des echecs.
+# « purger AUSSI le bucket d'objets » et « ECHOUER sur une purge partielle ».
+# Trois mutations y survivaient : remplacer sys.exit(1) par sys.exit(0), retirer
+# le bloc du stockage objet, ou ne plus l'ajouter a la liste des echecs.
 #
 # On teste ce point d'entree dans un SOUS-PROCESSUS, et non par import. Deux
 # raisons, la premiere seule suffirait :
@@ -189,8 +189,8 @@ class TestPurgeCollection:
 #     et l'ordre des tests deviendrait significatif.
 #
 # Les bouchons sont donc de vrais paquets, ecrits sur disque et places en tete
-# de PYTHONPATH. Ils shuntent aussi `minio`, present lui, mais dont le client
-# ouvrirait une connexion reseau.
+# de PYTHONPATH. Ils shuntent aussi `minio` — la bibliotheque cliente S3,
+# presente elle, mais dont le client ouvrirait une connexion reseau.
 
 RACINE_DEPOT = Path(__file__).resolve().parents[2]
 
@@ -238,16 +238,16 @@ class Minio:
         pass
 
     def bucket_exists(self, bucket):
-        if doit_echouer("minio"):
-            raise RuntimeError("minio injoignable")
+        if doit_echouer("stockage"):
+            raise RuntimeError("stockage objet injoignable")
         return True
 
     def list_objects(self, bucket, recursive=False):
-        trace("minio list_objects recursive=%s" % recursive)
+        trace("stockage list_objects recursive=%s" % recursive)
         return [_Objet("images/livre/1.png"), _Objet("images/livre/2.png")]
 
     def remove_object(self, bucket, nom):
-        trace("minio remove_object " + nom)
+        trace("stockage remove_object " + nom)
 """,
     "minio/error.py": """
 class S3Error(Exception):
@@ -300,6 +300,8 @@ def _purger(
     echecs: str = "",
     source_dir: str = "",
     cleaned_subdir: str | None = None,
+    reglages: dict[str, str] | None = None,
+    attendre_des_gestes: bool = True,
 ):
     """Lance ``python -m src.wipe_stores`` pour de bon, stores bouchonnes.
 
@@ -308,10 +310,17 @@ def _purger(
             ``.env`` dedans, donc les reglages sont ceux du code et non ceux du
             poste.
         echecs: Stores qui doivent echouer, separes par des virgules, parmi
-            ``chroma``, ``minio`` et ``nebula``.
+            ``chroma``, ``stockage`` et ``nebula``.
         source_dir: Racine des donnees, dont le sous-repertoire ``.cleaned`` est
             purge. Par defaut un chemin inexistant sous ``tmp_path``, pour
             qu'aucun test ne touche au corpus du poste.
+        reglages: Variables d'environnement supplementaires posees pour le
+            sous-processus, appliquees en dernier. Une valeur vide DECLARE la
+            variable vide, ce qui n'est pas la meme chose que l'omettre.
+        attendre_des_gestes: Faux quand le cas eprouve est justement qu'aucun
+            store n'est touche. Le harnais ne le verifie pas lui-meme — c'est
+            au test de dire ce qu'il attend — mais le nommer evite qu'un
+            « aucun geste » passe pour un bouchon mal cable.
         cleaned_subdir: Valeur posee dans ``CLEANED_SUBDIR``. ``None`` retire la
             variable de l'environnement herite. **Ce n'est plus un reglage** : le
             sous-repertoire est une constante du code (registre 4.29.a). Le
@@ -345,6 +354,7 @@ def _purger(
         environnement["CLEANED_SUBDIR"] = cleaned_subdir
     else:
         environnement.pop("CLEANED_SUBDIR", None)
+    environnement.update(reglages or {})
 
     processus = subprocess.run(
         [sys.executable, "-m", "src.wipe_stores"],
@@ -401,15 +411,47 @@ class TestMainPurgeLesTroisStores:
         _, gestes = _purger(tmp_path)
         assert "chroma delete_collection rag_documents" in gestes
 
-    def test_le_bucket_minio_est_purge(self, tmp_path):
-        # La moitie du titre de 7d587b0 : « purger AUSSI le bucket MinIO ».
-        # Retirer le bloc MinIO de main() laissait la suite verte.
+    def test_le_bucket_dobjets_est_purge(self, tmp_path):
+        # La moitie du titre de 7d587b0 : « purger AUSSI le bucket ».
+        # Retirer le bloc du stockage objet de main() laissait la suite verte.
         _, gestes = _purger(tmp_path)
-        assert "minio list_objects recursive=True" in gestes
-        assert [geste for geste in gestes if geste.startswith("minio remove_object")] == [
-            "minio remove_object images/livre/1.png",
-            "minio remove_object images/livre/2.png",
+        assert "stockage list_objects recursive=True" in gestes
+        assert [geste for geste in gestes if geste.startswith("stockage remove_object")] == [
+            "stockage remove_object images/livre/1.png",
+            "stockage remove_object images/livre/2.png",
         ]
+
+    def test_la_purge_annonce_l_adresse_du_stockage_qu_elle_vide(self, tmp_path):
+        """Ce bloc disait le nom d'un PRODUIT, ecrit dans le code.
+
+        Il l'aurait dit a l'identique en vidant un tout autre serveur. Et cette
+        commande-ci SUPPRIME : l'operateur doit voir ce qui va etre vide avant
+        le compte, pas apres.
+        """
+        processus, _ = _purger(tmp_path, reglages={"S3_ENDPOINT": "un-autre-stockage:9999"})
+
+        assert processus.returncode == 0, processus.stdout + processus.stderr
+        assert "--- Stockage objet (un-autre-stockage:9999) ---" in processus.stdout
+
+    def test_sans_s3_endpoint_la_purge_ne_commence_pas(self, tmp_path):
+        """LE GARDE DU LOT, sur le chemin qui le motive.
+
+        `S3_ENDPOINT` avait une valeur par defaut — l'adresse du stockage
+        d'alors, ecrite dans le code — et cette commande VIDE le bucket qu'on
+        lui designe. Lancee dans un environnement qui ne porte pas
+        la variable, elle aurait vide l'ANCIEN stockage en rendant compte d'une
+        purge reussie — une purge ne previent pas, elle rend compte.
+
+        Le defaut a disparu : la construction des reglages leve avant que le
+        premier client ne soit bati, donc avant toute suppression.
+        """
+        processus, gestes = _purger(
+            tmp_path, reglages={"S3_ENDPOINT": ""}, attendre_des_gestes=False
+        )
+
+        assert processus.returncode != 0
+        assert "S3_ENDPOINT" in processus.stdout + processus.stderr
+        assert gestes == [], f"un store a ete touche malgre l'absence d'adresse : {gestes}"
 
     def test_le_space_nebula_est_supprime(self, tmp_path):
         _, gestes = _purger(tmp_path)
@@ -431,12 +473,12 @@ class TestUnePurgePartielleEchoue:
     des restes.
     """
 
-    def test_un_bucket_minio_en_echec_fait_sortir_en_un(self, tmp_path):
+    def test_un_bucket_dobjets_en_echec_fait_sortir_en_un(self, tmp_path):
         # Le store le plus recemment ajoute a main(), donc celui dont
         # l'oubli dans la liste des echecs se verrait le moins.
-        processus, _ = _purger(tmp_path, echecs="minio")
+        processus, _ = _purger(tmp_path, echecs="stockage")
         assert processus.returncode == 1
-        assert "PURGE INCOMPLETE : MinIO" in processus.stdout
+        assert "PURGE INCOMPLETE : Stockage objet" in processus.stdout
 
     def test_chromadb_en_echec_fait_sortir_en_un(self, tmp_path):
         processus, _ = _purger(tmp_path, echecs="chroma")
@@ -453,13 +495,13 @@ class TestUnePurgePartielleEchoue:
         # les deux autres stores doivent bien avoir ete vides.
         processus, gestes = _purger(tmp_path, echecs="chroma")
         assert processus.returncode == 1
-        assert "minio list_objects recursive=True" in gestes
+        assert "stockage list_objects recursive=True" in gestes
         assert any("DROP SPACE IF EXISTS" in geste for geste in gestes)
 
     def test_tous_les_stores_en_echec_sont_nommes(self, tmp_path):
-        processus, _ = _purger(tmp_path, echecs="chroma,minio,nebula")
+        processus, _ = _purger(tmp_path, echecs="chroma,stockage,nebula")
         assert processus.returncode == 1
-        assert "PURGE INCOMPLETE : ChromaDB, MinIO, NebulaGraph" in processus.stdout
+        assert "PURGE INCOMPLETE : ChromaDB, Stockage objet, NebulaGraph" in processus.stdout
 
 
 class TestLeHtmlNettoyeEstPurgeAussi:
@@ -474,7 +516,7 @@ class TestLeHtmlNettoyeEstPurgeAussi:
 
     Ce que cette purge retire, et elle seule, ce sont les ORPHELINS : les copies
     nettoyees des documents que le corpus n'a plus. Rien ne les reecrit, rien ne
-    les efface, et apres la purge du bucket elles pointent des objets MinIO que
+    les efface, et apres la purge du bucket elles pointent des objets que
     seul `cleaned_html` restaurerait — pour un document qui n'existe plus.
 
     Les tests ci-dessous gardent le GESTE : ce que la purge retire, ce qu'elle
@@ -635,7 +677,8 @@ class TestUneCibleHorsDeLaRacineEstREFUSEE:
     Sur ce poste, `Datas/` porte le corpus VERSIONNE — 25 fichiers, 57 381 999
     octets — dont le contenu entre dans le calcul d'`element_id` (contrat,
     exigences 2 et 3), **et** `Datas/database/`, les bind mounts de ChromaDB,
-    Nebula, MinIO et Postgres, c'est-a-dire l'antecedent mesure du chantier.
+    Nebula, le stockage objet et Postgres, c'est-a-dire l'antecedent mesure du
+    chantier.
     `rmtree` ne lit pas `.gitignore` : aucun garde-fou git ne s'y opposerait.
 
     **LE REFUS EST DUR, ET C'EST UNE DECISION.** Pas un avertissement, pas un
@@ -728,7 +771,7 @@ class TestUneCibleHorsDeLaRacineEstREFUSEE:
 
         assert acheve.returncode == 1
         assert any("chroma delete_collection" in geste for geste in gestes), gestes
-        assert any("minio remove_object" in geste for geste in gestes), gestes
+        assert any("stockage remove_object" in geste for geste in gestes), gestes
         assert any("DROP SPACE" in geste for geste in gestes), gestes
 
     def test_le_sous_repertoire_livre_est_accepte_et_purge(self, tmp_path: Path) -> None:
