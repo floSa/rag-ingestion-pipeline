@@ -242,7 +242,7 @@ for s in DagsterInstance.get().all_instigator_state():
 
 C'est le §4.42.a du registre.
 
-### 3.3 La purge, et les DEUX redémarrages qui la suivent
+### 3.3 La purge, et le redémarrage qui la suit
 
 `wipe_stores` **vide les trois stores et le HTML nettoyé**. Il vise ce que
 `S3_ENDPOINT` désigne, et rien d'autre.
@@ -289,22 +289,14 @@ INFO [src.docling_service.images] Bucket 'documents' pret sur seaweedfs:8333.
 INFO [src.docling_service.nebula] Schema semantique NebulaGraph pret.
 ```
 
-**Puis, tout aussi obligatoirement, le conteneur `agent-api` de
-`rag-agent-chat`** — il vit dans l'autre dépôt, et c'est là qu'on le redémarre :
-
-```bash
-docker compose restart agent-api    # dans le depot rag-agent-chat
-```
-
-**Sans lui, l'agent est cassé en silence.** Sa session NebulaGraph est ouverte
-depuis son démarrage ; la purge a joué `DROP SPACE` puis recréé le schéma, et
-cette session-là répond alors `SemanticError: Unknown tag`. **Son proxy
-`/media` rend 404 sur TOUTES les images, pendant que son `/health` reste
-VERT** — c'est-à-dire que rien ne signale la panne. C'est un **défaut de
-`rag-agent-chat`**, rapporté par son pilote le 25 septembre 2026 ; un lot le
-corrige chez eux. **Jusque-là, le redémarrage est obligatoire**, et il fait
-partie de la purge au même titre que celui de `docling-service`
-([§6.6](#66-après-chaque-purge-redémarrer-aussi-lagent)).
+**Ne PAS redémarrer `agent-api` après une purge.** Depuis le 25 septembre
+2026, l'agent détecte la purge et rouvre sa session NebulaGraph lui-même (son
+journal : « Session NebulaGraph périmée … réouverture du pool »). Son `/health`
+passe au ROUGE pendant la purge, et c'est normal. Relever son `/health` et un
+`GET /media/<clé>` cinq minutes après la fin de la réingestion. Ne redémarrer
+que s'il est encore rouge. La reprise après recréation du schéma n'a pas encore
+été mesurée : la prochaine purge le fera
+([§6.6](#66-après-une-purge-ne-pas-redémarrer-lagent)).
 
 **Le compte que la purge annonce est un signal d'arrêt.** Sur la pile en
 service, elle doit annoncer **212 objets supprimés**, sous l'adresse
@@ -626,8 +618,7 @@ ne changent pas** — c'est ce que le critère 8 établit, et c'est pourquoi le
 contrat publie désormais `object_key` à côté de l'adresse.
 
 La procédure est celle du [§3](#3-ingérer-et-réingérer), sans variante : purge,
-redémarrage de `docling-service`, redémarrage d'`agent-api`, marqueur de
-réingestion avec une étiquette **neuve**, puis les mesures du
+redémarrage de `docling-service`, marqueur de réingestion avec une étiquette **neuve**, puis les mesures du
 [§4](#4-vérifier). Les huit comptes et l'empreinte des 212 clés doivent revenir
 aux mêmes valeurs.
 
@@ -738,7 +729,7 @@ environnement**. Après toute modification du `.env`, c'est
 docker compose exec <service> printenv <VARIABLE>
 ```
 
-La seule exception est le `restart` **après une purge** ([§3.3](#33-la-purge-et-les-deux-redémarrages-qui-la-suivent)),
+La seule exception est le `restart` **après une purge** ([§3.3](#33-la-purge-et-le-redémarrage-qui-la-suit)),
 où ce qu'on veut est justement de rejouer `init_schema()` sans changer
 l'environnement.
 
@@ -761,31 +752,21 @@ doit **écarter `.cleaned`**, faute de quoi elle rend 47 au lieu de 25 :
 find Datas -path 'Datas/.cleaned' -prune -o \( -name '*.pdf' -o -name '*.html' \) -print
 ```
 
-### 6.6 Après CHAQUE purge, redémarrer aussi l'agent
+### 6.6 Après une purge, NE PAS redémarrer l'agent
 
-La purge impose **deux** redémarrages, pas un. Celui de `docling-service` est
-dans ce dépôt ([§3.3](#33-la-purge-et-les-deux-redémarrages-qui-la-suivent)) ; **le second
-est dans l'autre** :
+**Ne PAS redémarrer `agent-api` après une purge.** Depuis le 25 septembre 2026,
+l'agent détecte la purge et rouvre sa session NebulaGraph lui-même (son
+journal : « Session NebulaGraph périmée … réouverture du pool »). Son `/health`
+passe au ROUGE pendant la purge, et c'est normal. Relever son `/health` et un
+`GET /media/<clé>` cinq minutes après la fin de la réingestion. Ne redémarrer
+que s'il est encore rouge. La reprise après recréation du schéma n'a pas encore
+été mesurée : la prochaine purge le fera.
+
+Le redémarrage, s'il faut y venir, se joue dans l'autre dépôt :
 
 ```bash
-docker compose restart agent-api    # dans le depot rag-agent-chat
+docker compose restart agent-api    # dans le depot rag-agent-chat, et seulement si /health est encore rouge
 ```
-
-`agent-api` ouvre sa session NebulaGraph **à son démarrage** et la garde. Après
-un `DROP SPACE` suivi d'une recréation du schéma, cette session répond
-`SemanticError: Unknown tag`, et **son proxy `/media` rend 404 sur toutes les
-images**.
-
-**Ce qui rend ce défaut coûteux, c'est son silence** : `/health` reste **VERT**.
-Rien ne dit que l'agent est cassé. L'écran montre un corpus sans ses figures, ce
-qui est exactement l'apparence d'un 403 mal posé
-([§4.4](#44-la-passerelle-s3-et-ses-huit-critères)) — **deux causes très
-différentes, une seule apparence.** Avant de soupçonner les droits S3 après une
-purge, redémarrez `agent-api`.
-
-C'est un **défaut de `rag-agent-chat`**, pas de ce dépôt, rapporté par son
-pilote le **25 septembre 2026** ; un lot le corrige chez eux. Ce dépôt ne peut
-ni le corriger ni le vérifier — il peut seulement ne pas l'oublier.
 
 ---
 
@@ -894,6 +875,14 @@ aujourd'hui fortuite.
 
 **Qui est touché** : ce dépôt seul. Aucun n'est visible de l'agent.
 
+### 8.6 La bibliothèque cliente S3
+
+**Reste à faire** : remplacer la bibliothèque cliente `minio` (minio-py) par
+`boto3`, pour qu'aucune trace du nom ne subsiste.
+
+**Qui est touché** : ce dépôt seul — `images.build_client` est le seul site de
+construction ([§8.1](#81-le-renommage-du-contrat--fait)).
+
 ---
 
 ## 9. Chaque commande de ce document : exécutée ou non
@@ -968,7 +957,7 @@ que seul `docker-compose.yml` dérive.
 | `find Datas … -print` | 6.5 | non rejouée ici ; le chiffre cité (**25**, et 0 `mtime` récent) est du 25 septembre 2026, registre §4.41 |
 | `docker compose exec <service> printenv` | 6.4 | non jouée : elle lirait une **valeur du `.env`**, et ce document n'en cite aucune |
 | tout le [§4.8](#48-lagent-sert-ses-images-depuis-seaweedfs--mesuré-chez-lui) | 4.8 | **hors de ce dépôt** : la mesure est celle du pilote de `rag-agent-chat`, faite chez lui. Ce dépôt n'a ni son `.env` ni son conteneur |
-| `docker compose restart agent-api` | 3.3, 6.6 | **redémarre un service, et dans l'AUTRE dépôt** |
+| `docker compose restart agent-api` | 6.6 | **redémarre un service, et dans l'AUTRE dépôt** — et ne se joue plus que si son `/health` est encore rouge cinq minutes après la réingestion |
 
 ---
 

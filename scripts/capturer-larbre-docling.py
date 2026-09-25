@@ -25,9 +25,9 @@ Le nettoyage et la conversion vivent dans DEUX images differentes — c'est la
 chaine reelle : Dagster nettoie, Docling convertit — donc l'image d'extraction
 n'a pas ``trafilatura``. Il faut l'ajouter au conteneur jetable :
 
-    docker run --rm --network rag_network -v "$PWD":/travail -w /travail \\
-      --env-file .env -e HOME=/tmp -e PYTHONPATH=/travail \\
-      rag-ingestion-pipeline-docling-service sh -c \\
+    docker compose run --rm --no-deps -T -v "$PWD":/travail -w /travail \\
+      -e PYTHONPATH=/travail \\
+      docling-service sh -c \\
       'pip install --quiet trafilatura==2.2.0 readability-lxml==0.8.4.1 \\
          beautifulsoup4==4.15.0 && \\
        python /travail/scripts/capturer-larbre-docling.py [--verifier]'

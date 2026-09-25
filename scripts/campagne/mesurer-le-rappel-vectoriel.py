@@ -14,13 +14,11 @@ Ce que cette mesure est, et ce qu'elle n'est pas — a lire avant tout chiffre :
 **Le geste**, celui du registre section 4.27 — monter le `src` de la branche
 mesuree, jamais celui du clone principal :
 
-    docker run --rm --network rag_network \\
-      -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \\
+    docker compose run --rm --no-deps -T \\
+      -v "$PWD/scripts":/app/scripts:ro \\
       -v "$PWD/documentation":/app/documentation:ro \\
-      -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache \\
-      --env-file <clone principal>/.env \\
-      -e HOME=/tmp -e PYTHONPATH=/app -w /app \\
-      rag-ingestion-pipeline-docling-service \\
+      -e PYTHONPATH=/app -w /app \\
+      docling-service \\
       python scripts/campagne/mesurer-le-rappel-vectoriel.py \\
         documentation/campagnes/2026-09-02-jeu-de-questions.yaml 5,10,20,50
 
