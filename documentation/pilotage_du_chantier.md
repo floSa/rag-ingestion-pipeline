@@ -568,6 +568,45 @@ au [§1 du registre](axes_amelioration.md).
 
 ## 5. Où on en est
 
+### 5.0 Le lot 11 est fusionné — 25 septembre 2026
+
+`main` = **`2918ccc`** (fusion `--no-ff` de `claude/reingestion-empty-elements-e8882f`,
+sommet `4398784`, 20 commits, arbre `1ff7d1e`). Porte qualité rejouée **sur le
+commit de fusion lui-même**, dans un arbre de travail détaché : `make all`,
+rc=**0**, **1 084 tests passés**, **35 mutations rejouées, toutes rouges**.
+
+Ce que le lot met dans `main` : le harnais d'équivalence des `element_id`
+(`src/equivalence_des_identifiants.py`, **qu'aucun module de production
+n'importe** — c'est le pilote qui le lance), les scripts `scripts/campagne/*.py`
+et `scripts/rejouer-les-mutations.py` avec leurs tests, la table des mutations,
+l'instantané versionné
+`documentation/campagnes/2026-09-24-instantane-des-identifiants/`
+(empreinte `e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d`),
+le registre §4.36 à §4.41, et un `Makefile` dont `lint`, `typecheck`, `format`
+et `format-check` voient désormais `scripts/`, et dont `all` appelle `mutations`.
+
+**La décision du 24 septembre 2026, prise par le pilote : option (a).** On ne
+touche pas aux puces vides. La réparation **sort du plan** : le motif et les six
+options chiffrées sont au registre (§4.37). Ce qui est livré n'est donc pas une
+réparation, c'est l'**instrument** qui permettra de constater que la réingestion
+ne déplace rien.
+
+**La fusion est un déploiement, et il a été observé.** Les conteneurs montent
+`./src` depuis ce clone et le démon tourne avec ses quatre capteurs armés :
+quatre minutes de surveillance après la fusion, **quatre recyclages du serveur
+de code**, **zéro erreur de chargement**, les quatre capteurs évalués et tous
+`skipped`, **zéro run créé** (958 avant, 958 après), `docling-service` toujours
+`healthy`, et les **huit comptes des stores identiques** au relevé d'avant.
+
+**Prochaine étape : la campagne.** Purge, puis réingestion **sans aucun
+changement du code d'extraction**, puis `comparer` contre l'instantané figé.
+**Zéro `element_id` déplacé est le résultat attendu** — et c'est la seule
+manière de le savoir, puisque la décision (a) laisse l'extraction en l'état.
+
+**La branche n'est pas supprimée** : elle est sortie dans l'arbre de travail
+`.claude/worktrees/reingestion-empty-elements-e8882f`.
+
+
 ### 5.1 Les branches — il n'y en a plus qu'une
 
 | Réf | Pointe | Rôle |

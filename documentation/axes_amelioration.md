@@ -4600,8 +4600,12 @@ chantier C est exact au dernier chiffre.
 empreinte `e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d`,
 octet pour octet — `mesuré` au début et à la fin de cette reprise par
 `sha256sum .../MANIFESTE.tsv`. **Aucun document du corpus ne porte un `mtime`
-du jour** : `find Datas \( -name '*.pdf' -o -name '*.html' \) -newermt
-"2026-09-24 00:00"` rend **0** sur **25** fichiers.
+du jour** : `find Datas -path 'Datas/.cleaned' -prune -o \( -name '*.pdf' -o
+-name '*.html' \) -newermt "2026-09-24 00:00" -print` rend **0** sur **25**
+fichiers. *(L'exclusion de `Datas/.cleaned/` n'est pas un détail : sans elle la
+commande rend **47**, parce que ce répertoire porte 22 copies produites par
+l'étape de nettoyage, qui ne sont pas le corpus. Corrigé le 25 septembre 2026,
+§4.41.)*
 
 **Porte qualité**, `mesuré` le 24 septembre 2026 : `make all`, rc=0, **1 053
 tests passés** (1 013 sur `f717565`), plus **27 mutations rejouées, 27 rouges**
@@ -5122,6 +5126,55 @@ pour l'origine au lancement suivant — c'était le défaut de la version d'avan
 §4.39.c, qui mutait en place. **Ce qu'elle coûte** : de l'espace disque jusqu'au
 prochain nettoyage de `/tmp`, et un fichier de code muté lisible par qui lit
 `/tmp`. Ce n'est pas rattrapé, et c'est **accepté** ici plutôt que tu.
+
+
+### 4.41 → OUVERT APRÈS FUSION — les cinq points non bloquants que la vérification finale a laissés
+
+**Le lot 11 est fusionné dans `main` le 25 septembre 2026** (`--no-ff`,
+`2918ccc`, 20 commits, arbre `1ff7d1e`). La vérification finale qui l'a déclaré
+fusionnable n'a rien trouvé de bloquant, mais elle a laissé **cinq** constats.
+Ils sont inscrits ici parce qu'ils survivent à la fusion : aucun n'est traité.
+
+**a — 25 septembre 2026 — la borne ChromaDB du §4.40.f et du §4.40.h.2 est
+écrite FAUSSE, dans le sens prudent.** Les deux paragraphes annoncent les
+**7 fabriques `chromadb`** comme « tenues par le seul rebondage des noms ». La
+mesure dit l'inverse : les 7 fabriques **capturées avant l'armement** lèvent,
+**9 essais sur 9**, et elles sont tenues par **chacune des deux couches prise
+séparément**. La borne écrite est donc plus pessimiste que la barrière réelle.
+Un registre qui sous-promet reste un registre qui se trompe : à corriger aux
+deux sites.
+
+**b — 25 septembre 2026 — deux gardes n'ont pas d'entrée dans la table des
+mutations.** `B1` (l'exclusion de `__pycache__`, §4.40.a) et `N1` (la portée de
+`format-check`, §4.40.d) sont des comportements livrés et testés, mais
+`tests/mutations/table-des-mutations.json` ne porte **aucune mutation** qui les
+exerce. Les 35 mutations rouges de la porte ne disent donc rien de ces deux
+lignes-là.
+
+**c — 25 septembre 2026 — `A6-b` n'exerce aucune référence capturée avant
+l'armement.** La mutation porte son nom d'un cas — la référence prise **avant**
+que la barrière ne soit armée — qu'elle ne construit pas. Elle est rouge, et
+elle est rouge pour une autre raison que celle que son intitulé annonce.
+
+**d — 25 septembre 2026 — la couverture de `chromadb.api.async_client` est
+FORTUITE.** `AsyncClient` n'est atteint que par **héritage de
+`SharedSystemClient`**, qui est le nom réellement rebondi. Aucun test ne tient
+cette couverture : elle tombe le jour où `chromadb` change sa hiérarchie, et
+rien ne rougira.
+
+**e — 25 septembre 2026 — « 3 classes sur 20 noms publics » doit se lire « 3 sur
+20 CLASSES publiques ».** Le module en expose **39 noms publics** mesurés, dont
+20 classes. La phrase est écrite à **deux sites**, et elle compare un numérateur
+de classes à un dénominateur de noms.
+
+**Et la commande de comptage du corpus, corrigée ici même.** Le §4.40 la citait
+sans exclusion : `find Datas \( -name '*.pdf' -o -name '*.html' \)` rend **47**,
+parce que `Datas/.cleaned/` porte **22 copies produites** par l'étape de
+nettoyage. Le corpus en compte **25**. La commande juste écarte `.cleaned` —
+`find Datas -path 'Datas/.cleaned' -prune -o \( -name '*.pdf' -o -name '*.html'
+\) -print` —, et c'est elle qui est désormais au §4.40. `mesuré` le 25 septembre
+2026 : 47 sans l'exclusion, 25 avec, 22 dans `.cleaned`, et **0** fichier du
+corpus portant un `mtime` postérieur au 24 septembre 2026.
 
 
 ## 5. Ouvert — le code mort, et la doctrine qu'il fait mentir

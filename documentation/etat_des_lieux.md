@@ -6,7 +6,8 @@
 > Ce document se lit **sans lancer le projet**. Il ne remplace aucune page
 > détaillée : il dit l'état, renvoie, et s'arrête.
 >
-> Dernière mesure : **3 septembre 2026**, sur `main`. Chaque chiffre ci-dessous a
+> Dernière mesure : **3 septembre 2026**, sur `main` — sauf le §7 bis,
+> `mesuré` le **25 septembre 2026** sur le commit de fusion du lot 11. Chaque chiffre ci-dessous a
 > été relevé par une commande dont la sortie a été lue, puis **reproduit par une
 > conversation indépendante**. Un chiffre non remesuré est signalé comme tel.
 
@@ -173,10 +174,37 @@ Deux bornes à connaître :
 
 > Le jeu : [`campagnes/2026-09-02-jeu-de-questions.yaml`](campagnes/2026-09-02-jeu-de-questions.yaml)
 
+## 7 bis. Le lot 11 — fusionné le 25 septembre 2026
+
+`main` = **`2918ccc`**. Porte qualité rejouée sur le commit de fusion :
+`make all`, rc=**0**, **1 084 tests passés**, **35 mutations rouges**.
+
+Le lot n'ajoute **aucun** chemin de production : `src/equivalence_des_identifiants.py`
+n'est importé par aucun module du pipeline. C'est un **instrument** — il fige les
+`element_id` des trois stores dans un instantané versionné
+(`documentation/campagnes/2026-09-24-instantane-des-identifiants/`, empreinte
+`e945893b1021e2f1aa3809434a889443ed9fb85e2a7e290cd329f077687f0f6d`) et sait
+comparer un état vivant à cet instantané, dans les deux sens.
+
+**Tranché le 24 septembre 2026 — option (a) : on ne touche pas aux puces vides.**
+La réparation **sort du plan**. Le registre porte le motif et les six options
+chiffrées (§4.37), et les cinq points non bloquants restés ouverts après la
+fusion (§4.41).
+
+**Ce qui vient ensuite est la campagne** : purge, réingestion **sans aucun
+changement du code d'extraction**, puis `comparer` contre l'instantané. Le
+résultat attendu est **zéro `element_id` déplacé** — ce qui, s'il est constaté,
+retire le dernier doute sur la stabilité des identifiants entre deux ingestions.
+
+
 ## 8. Ce qu'il reste à faire, par ordre
 
 **Ce dépôt-ci est arrivé au bout de son plan.** Les six lots du chantier sont
-fusionnés. Ce qui suit n'est pas commencé.
+fusionnés, et le lot 11 l'est depuis le 25 septembre 2026 (§7 bis). **Ce qui
+vient en premier n'est plus dans ce tableau : c'est la campagne** — purge,
+réingestion sans changement du code d'extraction, puis `comparer` contre
+l'instantané figé, zéro `element_id` déplacé attendu. Ce qui suit n'est pas
+commencé.
 
 | | Ce que c'est | Qui | Pourquoi ce rang |
 |---|---|---|---|
