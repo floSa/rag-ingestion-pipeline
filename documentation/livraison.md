@@ -14,6 +14,12 @@
 > 2026, 08:15 UTC. Le dépôt ne le nomme nulle part : il parle à une
 > **passerelle S3**, et seule `S3_ENDPOINT` désigne le serveur. Lisez le
 > [§6](#6-à-savoir-avant-de-toucher) **avant** de toucher à quoi que ce soit.
+>
+> **MinIO est retiré, et supprimé**, le 25 septembre 2026 entre 13:36 et
+> 13:55 UTC : variables `S3_*`, contrat `media_url` + `object_key`, purge,
+> réingestion, mesures toutes égales, puis conteneur, données et images
+> supprimés. Le compte rendu est
+> [`campagnes/2026-09-25-retrait-du-stockage-precedent.md`](campagnes/2026-09-25-retrait-du-stockage-precedent.md), §11.
 
 ---
 
@@ -929,6 +935,26 @@ Ils chargent le modèle d'embedding et coûtent plusieurs minutes ; leurs chiffr
 restent ceux de 09:01 UTC, et `index_report` — qui, lui, a été rejoué — tient le
 même index à la même taille.
 
+**Exécutées au déploiement du retrait de MinIO**, le 25 septembre 2026
+après-midi, **y compris celles qui écrivent** — c'était l'objet du déploiement.
+Le détail est au §11 du
+[compte rendu](campagnes/2026-09-25-retrait-du-stockage-precedent.md) :
+
+| Commande | § | Heure UTC | Résultat |
+|---|---|---|---|
+| `docker compose up -d --force-recreate --no-deps` des trois services | 6.3 | 13:37 | rc=0 ; 0 `MINIO_*`, `S3_*` présentes et non vides dans les trois |
+| `docker compose run … python -m src.wipe_stores` | 3.3 | 13:38 | **rc=0**, `seaweedfs:8333`, **212 objets supprimés** |
+| `docker compose restart docling-service` | 3.3 | 13:38 | `healthy` ; `media_url` et `object_key` au schéma, plus de `minio_url` |
+| `dagster sensor cursor … --set 'reingerer:2026-09-25-sans-minio'` | 3.2 | 13:39 | **23 runs créés, tous `SUCCESS`**, puis `agent_reindex` `SUCCESS` (4 367 chunks) |
+| `docker restart rag-agent-api` | 6.6 | 13:40 | `healthy` ; `GET /media/<clé>` → 200 |
+| les huit comptes + empreinte + champs de média | 4.2 | 13:47 | **tous égaux** ; 212 `media_url`, 212 `object_key` = clés du bucket, 0 `minio_url` |
+| `comparer` contre l'instantané | 4.3 | 13:48 | **rc=0**, 23 / 23, **`DEPLACES 0`** |
+| `python -m src.verify_contract` | 4.5 | 13:50 | **rc=1**, 52/264 pour **les deux** champs, seule anomalie |
+
+Les formes `docker compose run` ci-dessus sont celles du §4 : **`docker run
+--env-file .env` ne démarre plus**, le `.env` ne portant pas les identifiants
+que seul `docker-compose.yml` dérive.
+
 **NON exécutées, et pourquoi :**
 
 | Commande | § | Raison |
@@ -972,11 +998,11 @@ fait.
 5. **Les trois réserves de `sequence` ne sont pas écrites côté agent.** Le garde
    existe ici, l'explication manque là-bas (§5.3 de
    [`etat_des_lieux.md`](etat_des_lieux.md)).
-6. **Aucune commande de ce document qui écrit n'a été exécutée par lui**, et la
-   liste en est au [§9](#9-chaque-commande-de-ce-document--exécutée-ou-non). La
-   purge, la réingestion et le retour arrière sont **écrits**, pas **rejoués**
-   aujourd'hui — mais la purge et la réingestion l'ont été le matin même, à la
-   bascule, et le retour arrière est leur symétrique.
+6. **La purge et la réingestion ont été exécutées au retrait de MinIO**, le
+   25 septembre 2026 après-midi, et mesurées ([§9](#9-chaque-commande-de-ce-document--exécutée-ou-non)).
+   Ce qui reste **écrit sans être rejoué** : `docker compose up -d --build`, la
+   passerelle S3 (§4.4), le jeu de questions et le rappel (§4.7), rejoués le
+   matin seulement.
 7. **Le retour à `DECLARED_IN_CODE` n'est ni écrit ni essayé**
    ([§6.1](#61-les-capteurs-sont-passés-de-declared_in_code-à-running)). Ce qui
    est mesuré est qu'aucune commande `dagster sensor` ne le propose.

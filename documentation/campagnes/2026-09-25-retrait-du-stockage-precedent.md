@@ -1,10 +1,11 @@
-# Retrait de MinIO — la procédure de déploiement
+# Retrait de MinIO — la procédure, et son compte rendu
 
-> **Ce document est une PROCÉDURE, pas un compte rendu.** Il est écrit le
-> 25 septembre 2026, avant tout déploiement. **Rien de ce qu'il décrit n'a été
-> exécuté** : la branche est préparée, le `.env` du clone principal n'a pas été
-> modifié, aucun service n'a été recréé ni arrêté, aucune purge n'a eu lieu,
-> et MinIO tourne toujours.
+> **Ce document est une PROCÉDURE, puis un COMPTE RENDU.** Les §1 à §10 sont la
+> procédure, écrite le 25 septembre 2026 avant tout déploiement. **Elle a été
+> exécutée le même jour, entre 13:36 et 13:55 UTC** : le compte rendu, avec
+> chaque mesure réellement relevée et chaque suppression, est au
+> [§11](#11-compte-rendu-dexécution--25-septembre-2026). **MinIO ne tourne plus,
+> son conteneur, ses données et ses images sont supprimés.**
 >
 > C'est un fichier daté de `campagnes/` : il nomme MinIO, et il doit le faire —
 > une procédure de retrait qui ne nommerait pas ce qu'elle retire ne serait pas
@@ -283,12 +284,130 @@ survit à son usage est un fichier d'identifiants qui traîne.
 
 ## 10. NON VÉRIFIÉ
 
-1. **Aucune étape de ce document n'a été exécutée.** La branche est préparée,
-   `make all` y est vert dans un worktree, et rien d'autre.
-2. **Les attendus du §8 sont ceux de la campagne du 25 septembre 2026 au matin**,
-   reportés ici. Ils sont *attendus*, pas *mesurés après ce lot*.
+1. **~~Aucune étape de ce document n'a été exécutée.~~** Écrit avant le
+   déploiement ; **toutes l'ont été** le 25 septembre 2026 après-midi (§11).
+2. **Les attendus du §8 sont ceux de la campagne du 25 septembre 2026 au matin.**
+   Ils ont été **remesurés après ce lot**, et ils concordent tous (§11.4).
 3. **La fenêtre de compatibilité de l'agent n'est pas vérifiable d'ici.** Que
    `rag-agent-chat` lise bien `media_url` puis `minio_url` à défaut se constate
    chez lui, avant tout le reste.
 4. **La suppression du bucket témoin n'a pas de commande écrite ici** : elle
    demande un client S3 et le jeu RW, dont ce document ne cite aucune valeur.
+
+---
+
+## 11. Compte rendu d'exécution — 25 septembre 2026
+
+Exécuté depuis le clone principal, heures UTC. Toutes les commandes ont été
+lancées **sans tube derrière le processus mesuré** : chaque `rc` est celui du
+processus.
+
+### 11.1 Le correctif préalable, sur la branche — `54c5968`
+
+**Un défaut trouvé à la relecture, avant toute fusion.** Dagster téléverse
+lui-même les images HTML (`src/pipeline/media.py`), mais la branche ne dérivait
+`S3_ACCESS_KEY` / `S3_SECRET_KEY` que pour `docling-service`, et les réglages
+leur donnaient `""` par défaut. Déployée telle quelle, elle aurait téléversé les
+199 images HTML **aux identifiants vides** : 403 à chaque image, et aucune
+erreur au démarrage (§4.28.b).
+
+- `dagster-webserver` et `dagster-daemon` reçoivent désormais les quatre `S3_*`,
+  dérivés du même jeu RW. Vérifié par `docker compose config` sur un `.env`
+  témoin aux valeurs factices, supprimé aussitôt.
+- `s3_access_key` / `s3_secret_key` n'ont plus de défaut vide : même garde que
+  `s3_endpoint`, dix tests **rouges avant**, verts après.
+- **Même défaut hors du compose** : les instruments lancés par
+  `docker run --env-file .env` (purge, `verify_contract`, `index_report`,
+  `comparer`, jeu de questions) ne recevaient pas les identifiants — la purge
+  aurait rendu 403 sur le stockage objet. Ils se lancent désormais par
+  `docker compose run --rm --no-deps`, qui reçoit la même dérivation.
+- `make all` dans un worktree : **rc=0**, 1 136 tests, mypy 44 fichiers,
+  35 mutations rouges, 87 fichiers formatés.
+
+### 11.2 L'état avant, la fusion, la bascule des noms
+
+| Relevé avant, 13:35 | Valeur |
+|---|---|
+| les huit comptes | 15 196 / 23 / 7 251 / 1 748 / 4 963 / 15 173 / 4 367 / 212 |
+| empreinte des clés | `c91f5be6e24fbcba5f4a744119bf8da65fed44b7ecac79cce0ae1b027ed0b994` |
+| runs Dagster | 1 006, **0** en cours |
+| corpus (`htms/`, `pdfs/` ; `.cleaned` exclu) | 25 fichiers, contenu `f279af8b…ea431` |
+
+1. 13:37 — les quatre capteurs `dagster sensor stop`, rc=0, lus `STOPPED`.
+2. `.env` sauvegardé hors du dépôt, mode 600.
+3. `git merge --no-ff claude/remove-minio-seaweedfs-b89e35` → `b170ed8`.
+4. `.env` : `S3_ENDPOINT` et `S3_BUCKET` ajoutées, les quatre `MINIO_*` retirées.
+5. `docker compose up -d --force-recreate --no-deps dagster-webserver
+   dagster-daemon docling-service`, rc=0.
+6. Dans les trois conteneurs : **0** variable `MINIO_*`, `S3_ENDPOINT=seaweedfs:8333`,
+   `S3_BUCKET=documents`, `S3_ACCESS_KEY` et `S3_SECRET_KEY` **non vides**
+   (longueurs 32 et 56). Code location `LOADED`, aucune erreur au journal du
+   démon ni du webserver ; `docling-service` : `Bucket 'documents' pret sur
+   seaweedfs:8333.` **Aucun retour arrière nécessaire.**
+
+### 11.3 Purge et réingestion
+
+- 13:38 — `docker compose run --rm --no-deps -T … docling-service python -m
+  src.wipe_stores`, **rc=0** : `--- Stockage objet (seaweedfs:8333) ---`,
+  **`212 objets supprimes du bucket documents`**, collection et space supprimés,
+  22 fichiers retirés de `.cleaned`.
+- `docker compose restart docling-service`, `healthy`. `DESCRIBE TAG Picture` et
+  `DESCRIBE TAG Table` : `media_url` **et** `object_key` ; **aucun** des
+  12 tags ne porte `minio_url`.
+- 13:39 — les quatre capteurs relancés, marqueur `reingerer:2026-09-25-sans-minio`
+  posé sur `livres_html_sensor` et `pdfs_sensor`.
+- `docker restart rag-agent-api` (le second redémarrage, `livraison.md` §6.6) —
+  un redémarrage, pas une recréation.
+- **23 runs créés** (1 006 → 1 029) : 22 `livres_html_job` + 1 `pdfs_job`, **tous
+  `SUCCESS`** à 13:46 ; puis `agent_reindex_job` **`SUCCESS`**, journal
+  « rag-agent-chat reindexe : 4367 chunks ». 1 030 runs au total.
+
+### 11.4 Les mesures — attendu / mesuré, 13:47 → 13:50
+
+| Mesure | Attendu | Mesuré |
+|---|---|---|
+| les huit comptes | 15 196 / 23 / 7 251 / 1 748 / 4 963 / 15 173 / 4 367 / 212 | **identiques** |
+| empreinte des clés | `c91f5be6…7ed0b994` | **`c91f5be6…7ed0b994`** |
+| `media_url` | 212, sous `http://seaweedfs:8333/documents/` | **212 / 212**, 0 sous `minio:9000` |
+| `object_key` | 212, ensemble = clés du bucket | **212 distinctes, ensemble ÉGAL** |
+| `minio_url` dans le graphe | 0 | **0** — ni dans le schéma (12 tags), ni dans les données |
+| ChromaDB | `media_url` là où était `minio_url` | **4** chunks portent `media_url` et `object_key` — autant que de `minio_url` avant ; **0** `minio_url` |
+| `Datas/.cleaned/` | 22 fichiers, 199 images toutes au bucket | **22**, **199** URL, **0** absente, **0** vers `minio:9000` |
+| `comparer` | 23 / 23, `DEPLACES 0`, rc=0 | **`DOCUMENTS COMPARES 23 / 23`**, **`DEPLACES 0, DECLARES 0`**, **rc=0** |
+| `verify_contract` | rc=1, seule l'anomalie connue | **rc=1** — 52/264 sans `media_url`, **52/264** sans `object_key` : les deux comptes égaux |
+| corpus | identique à l'octet | **identique** : 25 fichiers, mêmes contenus, tailles et `mtime` |
+
+Et chez l'agent : `GET /media/<clé>` sur une image HTML réingérée → **200**,
+49 572 octets.
+
+### 11.5 Les suppressions — après les mesures, toutes vertes
+
+| Geste | Résultat |
+|---|---|
+| conteneur `rag-ingestion-pipeline-minio-1` (image `minio/minio:latest`) | `docker stop` puis `docker rm`, rc=0 |
+| son montage, lu dans `docker inspect` : `Datas/database/minio` → `/data` | supprimé par son **chemin exact** (294 fichiers, 31 Mo, dont une partie à root) ; corpus identique avant **et** après |
+| image `minio/minio:latest` | supprimée — aucun conteneur ne l'utilisait |
+| image `minio/mc:latest` | supprimée — aucun conteneur ne l'utilisait, aucune référence sur la machine |
+| bucket `temoin-bascule` sur SeaweedFS | son objet `bascule-2026-09-25.txt`, puis le bucket ; `documents` garde ses 212 objets |
+| `~/.env.avant-seaweedfs-2026-09-25`, `~/.env.avant-sans-minio-2026-09-25` | `shred -u` |
+
+`docker ps -a`, `docker images`, `docker volume ls` : **plus rien** de MinIO.
+`git grep -i minio` hors des pièces datées : la bibliothèque cliente `minio`
+(dépendances, `images.py`), les gardes et leurs tests
+(`equivalence_des_identifiants.py`, tests, table des mutations), les deux
+scripts de campagne, et la ligne d'historique de `services/stockage_objet.md`.
+
+### 11.6 NON VÉRIFIÉ
+
+1. **Le `.env` de `rag-agent-chat` porte encore les noms `MINIO_*`** (vu dans
+   son conteneur, noms seulement ; `MINIO_ENDPOINT` vaut `seaweedfs:8333`). Il
+   sert bien les images ; son renommage est l'affaire de l'autre dépôt.
+2. **Les scripts de campagne documentent encore la forme `docker run
+   --env-file .env`** dans leur docstring (`mesurer-le-rappel-vectoriel.py`,
+   `verifier-le-jeu-de-questions.py`, `verifier-l-equivalence-des-identifiants.py`,
+   `capturer-larbre-docling.py`) : elle ne démarre plus. La forme juste est au
+   §4 de `livraison.md`.
+3. **Ni le jeu de questions ni le rappel vectoriel n'ont été rejoués** après ce
+   déploiement ; `comparer` et les huit comptes tiennent le même index.
+4. **Aucune question n'a été posée à l'agent** : un seul `GET /media` a été
+   essayé.
