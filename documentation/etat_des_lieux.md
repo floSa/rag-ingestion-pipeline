@@ -14,8 +14,8 @@
 > §7 ter, `mesuré` le **25 septembre 2026**, le premier sur le commit de fusion
 > du lot 11, le second après la **bascule vers SeaweedFS**, dont les quatre
 > instruments ont été **remesurés le 25 septembre 2026 à 09:01 UTC**. **Le
-> stockage d'objets n'est plus MinIO** : lisez le §7 ter avant de brancher quoi
-> que ce soit. Chaque chiffre ci-dessous a
+> stockage d'objets est SeaweedFS, et le contrat a été renommé** : lisez le
+> §7 ter avant de brancher quoi que ce soit. Chaque chiffre ci-dessous a
 > été relevé par une commande dont la sortie a été lue, puis **reproduit par une
 > conversation indépendante**. Un chiffre non remesuré est signalé comme tel.
 
@@ -212,88 +212,84 @@ résultat attendu est **zéro `element_id` déplacé** — ce qui, s'il est cons
 retire le dernier doute sur la stabilité des identifiants entre deux ingestions.
 
 
-## 7 ter. SeaweedFS remplace MinIO — en service depuis le 25 septembre 2026
+## 7 ter. Le stockage d'objets — en service depuis le 25 septembre 2026
 
-**Le stockage d'objets du pipeline n'est plus MinIO : c'est SeaweedFS**, par sa
-passerelle S3, à l'adresse `seaweedfs:8333`. La solution a été **retenue par le
-propriétaire du chantier** en début de semaine du 21 septembre 2026, et elle est
-en service depuis le 25.
+**Le stockage d'objets du pipeline est SeaweedFS**, par sa passerelle S3, à
+l'adresse `seaweedfs:8333`. La solution a été **retenue par le propriétaire du
+chantier** en début de semaine du 21 septembre 2026, et elle est en service
+depuis le 25. Le compte rendu de la bascule, avec ses mesures horodatées, est
+[`campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md) ;
+la fiche du service est
+[`services/stockage_objet.md`](services/stockage_objet.md).
 
-**Ce qui change pour qui lit ce document depuis `rag-agent-chat` :**
+**Le dépôt ne nomme le serveur nulle part.** Il parle à une **passerelle S3**,
+par un client générique, construit à un seul site
+(`src/docling_service/images.py:build_client`). Seule la variable `S3_ENDPOINT`
+désigne le serveur en face. C'est cette propriété qui a rendu la bascule
+possible sans qu'une ligne de téléversement bouge, et c'est elle qu'il faut
+préserver.
 
-| | Avant | Maintenant |
-|---|---|---|
-| adresse du store | `minio:9000` | **`seaweedfs:8333`** |
-| bucket | `documents` | **`documents`** — inchangé |
-| noms des variables | `MINIO_ENDPOINT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET` | **les mêmes** — le renommage est un lot à part |
-| identifiants | un seul jeu racine, partagé | **deux jeux** : le pipeline écrit, **l'agent LIT** |
-| clés d'objet | 212 | **les mêmes 212, à la clé près** |
-| `minio_url` dans le graphe | `http://minio:9000/documents/…` | **`http://seaweedfs:8333/documents/…`** |
-
-**Trois choses à faire côté agent, et une à savoir.**
-
-1. **Son `.env` reçoit `MINIO_ENDPOINT=seaweedfs:8333`** et le **jeu lecture
-   seule** — pas celui du pipeline. Les deux jeux ont des droits distincts :
-   l'agent peut `GetBucketLocation`, `ListBucket`, `GetObject` et `StatObject`,
-   et **rien d'autre**.
-2. **Un témoin l'attend** pour vérifier sans rien deviner : bucket
-   `temoin-bascule`, objet `bascule-2026-09-25.txt`. S'il se lit avec le jeu
-   lecture seule, la passerelle sert l'agent.
-3. **Les adresses stockées dans le graphe ont changé, les clés non.** Si l'agent
-   reconstruit l'URL à partir de la clé, il n'a que l'endpoint à changer ; s'il
-   lit `minio_url` telle quelle, il n'a rien à faire d'autre que basculer son
-   `.env`.
-
-**Ces trois choses ont été faites, et mesurées chez l'agent le 25 septembre
-2026 entre 09:00 et 09:02 UTC.** La mesure est celle de **son pilote**, dans son
-dépôt ; elle est reprise ici parce qu'elle clôt le point, et le détail est au
-**§4.8 de [`livraison.md`](livraison.md)** :
+**Ce qui compte pour qui lit ce document depuis `rag-agent-chat` :**
 
 | | |
 |---|---|
-| son `.env` | pointe `seaweedfs:8333`, jeu **lecture seule** |
-| le témoin `bascule-2026-09-25.txt` | **lu**, SHA-256 `39e06d1d…5ae0` |
-| son journal | « MinIO connecté : seaweedfs:8333 », « Proxy média : 212 objets autorisés » |
-| `GET /media/…/086f1173cb_picture.png` | **200**, octets identiques à avant la bascule |
-| ancrages / graphe / index | **267** ancrages **0 désaccord** ; **23** `Document`, **15 173** arêtes ; `POST /reindex` → **4 367** chunks |
+| adresse du store | la valeur de `S3_ENDPOINT` — `seaweedfs:8333` |
+| bucket | `documents` |
+| nom des variables | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` — **génériques**, ils ne nomment aucun produit |
+| valeur par défaut de l'adresse | **aucune.** Sans `S3_ENDPOINT`, rien ne démarre — voir plus bas |
+| identifiants | **deux jeux aux droits distincts** : le pipeline écrit, **l'agent LIT** |
+| ce que le graphe publie | `media_url` (l'adresse) **et** `object_key` (la clé nue) |
 
-**Son retour arrière est son ancien `.env`, copié hors de son dépôt** — le
-symétrique du nôtre, et il lui appartient.
+**Trois choses à faire côté agent, et deux à savoir.**
 
-**Et un défaut d'exploitation est sorti de cette bascule, qui n'est pas dans ce
-dépôt mais qui contraint son exploitation** : après **chaque** purge, le
-conteneur `agent-api` doit être **redémarré**. Sa session NebulaGraph, ouverte à
-son démarrage, répond `SemanticError: Unknown tag` une fois le schéma recréé, et
-**son proxy `/media` rend alors 404 sur toutes les images pendant que
-`/health` reste VERT**. Un lot le corrige chez eux ; jusque-là c'est un geste
-obligatoire de la procédure de purge (§3.3 et §6.6 de
-[`livraison.md`](livraison.md)).
+1. **Son `.env` reçoit `S3_ENDPOINT=seaweedfs:8333`** et le **jeu lecture
+   seule** — pas celui du pipeline. Les deux jeux ont des droits distincts :
+   l'agent peut `GetBucketLocation`, `ListBucket`, `GetObject` et `StatObject`,
+   et **rien d'autre**.
+2. **Il lit `media_url`, et non plus le champ qui portait le nom d'un produit.**
+   Un contrat public nomme ce qu'il publie, pas le logiciel qui le sert. La
+   propriété du graphe, la métadonnée ChromaDB et le modèle Pydantic ont changé
+   ensemble.
+3. **Il peut lire `object_key`**, arrivée avec ce renommage : c'est la clé nue
+   de l'objet, celle passée à `put_object`. **L'adresse porte l'hôte, donc elle
+   périme** — la bascule a changé l'hôte de 212 objets d'un coup. La clé, elle,
+   est l'identité de l'objet et lui survit ; l'agent n'a plus à défaire
+   l'adresse pour retrouver ce qu'il veut lire.
 
-**Et la chose à savoir, parce qu'elle ne fait pas de bruit** : un refus de droit
-est un **403 `AccessDenied`**, et il remonte chez l'agent en **404 silencieux**.
-L'écran dit « image absente », et le corpus a simplement l'air incomplet. Un jeu
-d'identifiants mal posé ne se voit donc **pas à l'usage** : il se voit par appel
-direct, ce que fait `scripts/campagne/essayer-la-passerelle-s3.py`.
+**La première chose à savoir, parce qu'elle ne fait pas de bruit** : un refus de
+droit est un **403 `AccessDenied`**, et il remonte chez l'agent en **404
+silencieux**. L'écran dit « image absente », et le corpus a simplement l'air
+incomplet. Un jeu d'identifiants mal posé ne se voit donc **pas à l'usage** : il
+se voit par appel direct, ce que fait
+`scripts/campagne/essayer-la-passerelle-s3.py`.
 
-**MinIO est conservé, debout, avec ses 212 objets — c'est le retour arrière.**
-Il n'a été ni arrêté, ni recréé, ni purgé pendant la bascule, et rien n'y a été
-écrit. Tant qu'il est là, on peut revenir ; le retour coûte une purge et une
-réingestion complète, parce que les adresses vivent dans le graphe. La
-procédure est au §4.8 du compte rendu,
-[`campagnes/2026-09-25-bascule-seaweedfs.md`](campagnes/2026-09-25-bascule-seaweedfs.md).
+**La seconde : l'adresse du store n'a plus de valeur par défaut, et c'est
+délibéré.** Elle en avait une, écrite dans le code à deux sites, et cette
+adresse est restée juste tant qu'elle a désigné le stockage en service. Or
+`python -m src.wipe_stores` lit ces mêmes réglages et **vide** le bucket qu'ils
+désignent : lancé sans `.env`, il aurait purgé le mauvais serveur en rendant
+compte d'une purge réussie. *Un défaut absent fait échouer le démarrage ; un
+défaut faux fait réussir la purge du mauvais stockage.* Le refus nomme la
+variable et dit quoi faire (`src/reglages_s3.py`).
+
+**Il n'y a plus de serveur gardé debout comme retour arrière.** Le retour
+arrière est le **corpus** : `Datas/` porte les 25 fichiers sources, et une purge
+suivie d'une réingestion régénère les trois stores et les 212 objets. Un second
+serveur maintenu en vie « au cas où » est un serveur que personne ne mesure et
+dont la configuration dérive en silence.
 
 **Ce que la bascule a coûté à l'index : rien.** Les huit comptes, l'empreinte
 des 212 clés et `comparer` contre l'instantané rendent exactement ce qu'ils
-rendaient sur MinIO. Les mesures sont au **§4.43** du registre.
+rendaient avant. Les mesures sont au **§4.43** du registre.
 
-**Et les quatre instruments que la bascule n'avait PAS rejoués l'ont été,
-derrière SeaweedFS**, en lecture seule, le **25 septembre 2026 entre 09:01 et
-09:02 UTC**. Les quatre rendent, **au dixième et à la ligne près**, ce qu'ils
-rendaient à la campagne du matin :
+**Et les quatre instruments que la bascule n'avait PAS rejoués l'ont été**, en
+lecture seule, le **25 septembre 2026 entre 09:01 et 09:02 UTC**. Les quatre
+rendent, **au dixième et à la ligne près**, ce qu'ils rendaient à la campagne du
+matin :
 
-| Instrument | Résultat derrière SeaweedFS, 25/09/2026 |
+| Instrument | Résultat, 25/09/2026 |
 |---|---|
-| `verify_contract` | **`rc=1`** sur la **seule** anomalie connue — 52 sommets visuels sur 264 sans `minio_url` (§4.32.b). Les dix-sept autres lignes sont identiques |
+| `verify_contract` | **`rc=1`** sur la **seule** anomalie connue — 52 sommets visuels sur 264 sans adresse de média (§4.32.b). Les dix-sept autres lignes sont identiques |
 | `index_report` | **`rc=0`**, identique : 4 367 chunks, 23 documents, médiane 299, 137 tronqués (3,1 %), `text` 2 604 / `code` 975 / `list_item` 484 / `table` 196 / `caption` 108, 4 367 `en` |
 | `verifier-le-jeu-de-questions.py` | **`rc=0`** — **les 44 ancrages concordent** avec l'index, champ par champ |
 | `mesurer-le-rappel-vectoriel.py` | **`rc=0`** — micro **55,3 / 61,7 / 72,3 / 80,9 %** à k = 5, 10, 20, 50 |
@@ -301,11 +297,11 @@ rendaient à la campagne du matin :
 Remesurés le même jour à 09:05 UTC : les **huit comptes**, l'**empreinte des 212
 clés** (`c91f5be6…0994`) et `comparer` contre l'instantané (**23 / 23,
 `DEPLACES 0`, `rc=0`**) — tous égaux. Et les **212** sommets porteurs d'une
-`minio_url` (209 `Picture`, 3 `Table`) la portent **tous** sous
-`http://seaweedfs:8333/documents/`, **zéro** sous `minio:9000`.
+adresse de média (209 `Picture`, 3 `Table`) la portent **tous** sous
+`http://seaweedfs:8333/documents/`.
 
 > **Le mode d'emploi de tout cela** — lancer, ingérer, réingérer, vérifier,
-> revenir sur MinIO, les pièges qui ne font pas de bruit, les défauts connus et
+> revenir en arrière, les pièges qui ne font pas de bruit, les défauts connus et
 > les prochaines étapes : [`livraison.md`](livraison.md).
 
 **Ce qui n'a PAS été mesuré**, et ne doit pas se lire comme acquis : ni débit,
@@ -324,8 +320,7 @@ frontière des deux dépôts.
 
 | | Ce que c'est | Qui | Pourquoi ce rang |
 |---|---|---|---|
-| **1** | **basculer l'agent sur SeaweedFS** — son `.env` prend `MINIO_ENDPOINT=seaweedfs:8333` et le jeu **lecture seule** (§7 ter) | **`rag-agent-chat`** | le pipeline écrit déjà là-bas. Tant que l'agent vise `minio:9000`, il sert un store **figé**, et il le fera **sans une erreur** : un 403 remonte en 404 silencieux |
-| **2** | découpler les variables `MINIO_*` — une seule configure le serveur MinIO **et** authentifie auprès de SeaweedFS (§4.43.c du registre) | les deux dépôts | c'est le contrat entre eux : il se coordonne, il ne se décrète pas d'un seul côté |
+| **1** | **prendre le contrat renommé** — `S3_*` dans son `.env`, `media_url` et `object_key` dans ce qu'il lit (§7 ter) | **`rag-agent-chat`** | le pipeline écrit déjà ainsi. **L'ordre est impératif** : l'agent doit d'abord servir une version qui lit `media_url`, et l'ancien champ à défaut, avant que ce dépôt ne réingère |
 | **3** | écrire les trois réserves de `sequence` côté agent (§5.3 ci-dessus) | **`rag-agent-chat`** | le garde existe ici, l'explication manque là-bas. Petit, et ça débloque l'agent |
 | **4** | écrire sous une clé provisoire puis basculer, pour qu'une conversion ratée ne retire plus un document sain (§4.29.i) | ce dépôt | amélioration franche, mais c'est un chantier. La campagne dira si la panne est fréquente |
 | **5** | le second tour de questions — les pièges | humain | c'est la strate où l'on écrit le plus facilement un faux piège. Demande une relecture humaine |
@@ -338,9 +333,9 @@ registre porte le contrat mot pour mot.
 > **Ce tableau ordonne par la frontière entre les deux dépôts.** Les prochaines
 > étapes **de ce dépôt-ci**, chacune avec ce qui est déjà décidé, ce qui reste à
 > décider et qui est touché, sont au **§8 de
-> [`livraison.md`](livraison.md)** — renommer le contrat, retirer MinIO,
-> regrouper le code S3, les sources enfichables, les points du §4.41. Le rang 2
-> ci-dessus et le §8.1 de `livraison.md` sont **le même lot**.
+> [`livraison.md`](livraison.md)** — les sources enfichables, les points du
+> §4.41. Le renommage du contrat et le retrait de l'ancien stockage, qui
+> occupaient les deux premiers rangs, sont **faits**.
 
 ## 9. Les cinq choses à ne pas faire
 

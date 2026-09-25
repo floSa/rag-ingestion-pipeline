@@ -54,7 +54,10 @@ class CleaningOptions(BaseModel):
     )
     export_images: bool = Field(
         default=True,
-        description="Exporter les images base64 volumineuses vers MinIO au lieu de les supprimer.",
+        description=(
+            "Exporter les images base64 volumineuses vers le stockage objet "
+            "au lieu de les supprimer."
+        ),
     )
     min_text_chars: int = Field(
         default=250,

@@ -19,7 +19,7 @@ from src.pipeline.sources import CleaningOptions, ExtractionProfile
 
 
 class FakeExporter:
-    """Exporteur d'images factice pour les tests (pas de MinIO)."""
+    """Exporteur d'images factice pour les tests (aucun stockage objet)."""
 
     def __init__(self, fail: bool = False):
         self.fail = fail
@@ -29,7 +29,7 @@ class FakeExporter:
         self.calls.append((payload, mime, index))
         if self.fail:
             return None
-        return f"http://minio:9000/documents/images/html/test/img_{index:04d}.png"
+        return f"http://stockage-de-test:8333/documents/images/html/test/img_{index:04d}.png"
 
 
 FAKE_DATA_URI = "data:image/png;base64," + "A" * 10_000
@@ -618,11 +618,11 @@ class TestUnNettoyageQuiJetteLeTexteLeDitDesormais:
 
 
 class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
-    """Registre 4.25 : la forme de l'adresse MinIO avait DEUX sites.
+    """Registre 4.25 : la forme de l'adresse d'objet avait DEUX sites.
 
-    `images.object_url` et `MinioImageExporter.__call__` la construisaient par
+    `images.object_url` et `ExportateurDImages.__call__` la construisaient par
     deux f-strings identiques. C'est la forme que le CONTRAT publie — l'agent lit
-    `minio_url` — donc deux sites sont deux facons de deriver, sur la seule
+    `media_url` — donc deux sites sont deux facons de deriver, sur la seule
     propriete qu'aucun des deux ne peut verifier chez l'autre.
 
     `mesure` : faire reconstruire son URL a `media.py` — en `https` au lieu de
@@ -631,9 +631,9 @@ class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
 
     def test_l_url_rendue_est_exactement_celle_du_site_unique(self, monkeypatch):
         from src.docling_service.images import object_url
-        from src.pipeline.media import MinioImageExporter
+        from src.pipeline.media import ExportateurDImages
 
-        exporteur = MinioImageExporter(doc_key="htms/livre/chapitre")
+        exporteur = ExportateurDImages(doc_key="htms/livre/chapitre")
         monkeypatch.setattr(
             exporteur, "_get_client", lambda: type("C", (), {"put_object": lambda *a, **k: None})()
         )
@@ -646,12 +646,12 @@ class TestLExporteurDImagesUtiliseLeSiteUniqueDeLUrl:
         """LE TEMOIN : sans lui, un exporteur qui rend toujours une URL passerait,
         et le graphe porterait des adresses d'objets jamais televerses — le
         registre 4.28.b, cree a la main."""
-        from src.pipeline.media import MinioImageExporter
+        from src.pipeline.media import ExportateurDImages
 
         def refuse(*a, **k):
-            raise RuntimeError("minio injoignable")
+            raise RuntimeError("stockage objet injoignable")
 
-        exporteur = MinioImageExporter(doc_key="htms/livre/chapitre")
+        exporteur = ExportateurDImages(doc_key="htms/livre/chapitre")
         monkeypatch.setattr(
             exporteur, "_get_client", lambda: type("C", (), {"put_object": refuse})()
         )

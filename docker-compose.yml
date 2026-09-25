@@ -68,29 +68,16 @@ services:
     networks:
       - rag_network
 
-  # Object Storage (interne uniquement)
-  minio:
-    image: minio/minio:latest
-    restart: unless-stopped
-    expose:
-      - "9000"
-      - "9001"
-    env_file: .env
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - ./Datas/database/minio:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - rag_network
-
   # Object Storage — SeaweedFS (interne uniquement)
   #
-  # AJOUTE A COTE DE MinIO, pas a sa place : les deux tournent pendant la
-  # bascule, et MinIO reste debout avec ses objets tant que le retour arriere
-  # n'est pas ecarte. Le pipeline et l'agent parlent tous deux S3 par
-  # `minio-py` ; seul l'endpoint change.
+  # LE SEUL STOCKAGE OBJET DE LA PILE depuis le 25 septembre 2026. Il en a
+  # cohabite un autre pendant la bascule, le temps que le retour arriere soit
+  # ecarte ; ce n'est plus le cas, et son service, son volume et ses variables
+  # ont quitte ce fichier. Le retour arriere ne passe plus par un serveur garde
+  # debout : le CORPUS regenere tout, par purge et reingestion.
+  #
+  # Le pipeline et l'agent parlent S3 par un client generique : rien ne nomme
+  # le serveur dans le code, seul `S3_ENDPOINT` le designe.
   #
   # AUCUN SECRET DANS LE DEPOT. SeaweedFS veut un fichier d'identites
   # (`-s3.config`), donc un fichier qui porte des cles. Il est ECRIT AU
@@ -99,10 +86,10 @@ services:
   # Le rendu passe par un heredoc et non par des arguments : une cle passee en
   # argument se lit dans `docker inspect` et dans la table des processus.
   #
-  # DEUX JEUX D'IDENTIFIANTS AUX DROITS DISTINCTS, ce que MinIO ne donnait pas
-  # ici : le pipeline ecrit (`Admin` est necessaire a `make_bucket`), l'agent
-  # ne fait que lire et lister. SeaweedFS n'a pas de console proprietaire pour
-  # les declarer : ce fichier EST la declaration.
+  # DEUX JEUX D'IDENTIFIANTS AUX DROITS DISTINCTS, ce que le stockage precedent
+  # ne donnait pas ici : le pipeline ecrit (`Admin` est necessaire a
+  # `make_bucket`), l'agent ne fait que lire et lister. SeaweedFS n'a pas de
+  # console proprietaire pour les declarer : ce fichier EST la declaration.
   seaweedfs:
     image: chrislusf/seaweedfs:3.80
     restart: unless-stopped
@@ -263,17 +250,27 @@ services:
       - docling_models:/tmp/.cache
     env_file: .env
     environment:
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-      - MINIO_BUCKET=${MINIO_BUCKET}
+      # LES IDENTIFIANTS SONT DERIVES DU JEU RW, PAS RECOPIES DANS LE `.env`.
+      # `SEAWEEDFS_RW_*` declare les identites du SERVEUR, quelques lignes plus
+      # haut dans ce meme fichier ; `S3_ACCESS_KEY` / `S3_SECRET_KEY` sont ce
+      # que le CLIENT presente. Ecrire deux fois la meme cle dans le `.env`
+      # ferait deux valeurs a tenir d'accord, et le jour ou elles divergeraient
+      # le serveur rendrait 403 sur une pile dont la configuration aurait l'air
+      # juste. Une seule valeur, deux noms, un seul endroit qui la porte.
+      #
+      # Le jeu RW, et non RO : le pipeline ECRIT (`make_bucket` exige `Admin`).
+      # Le jeu RO est celui de `rag-agent-chat`, qui n'est pas de cette pile.
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_ACCESS_KEY=${SEAWEEDFS_RW_ACCESS_KEY}
+      - S3_SECRET_KEY=${SEAWEEDFS_RW_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
       - NEBULA_HOST=${NEBULA_HOST}
       - NEBULA_PORT=${NEBULA_PORT}
       - CHROMA_HOST=${CHROMA_HOST}
       - CHROMA_PORT=${CHROMA_PORT}
       - HOME=/tmp
     # Le service n'est « healthy » qu'une fois les modeles charges, le schema
-    # NebulaGraph initialise et le bucket MinIO pret. start_period genereux :
+    # NebulaGraph initialise et le bucket pret. start_period genereux :
     # le premier demarrage telecharge les modeles Docling et l'embedding.
     healthcheck:
       test:

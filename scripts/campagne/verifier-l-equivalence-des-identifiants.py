@@ -59,7 +59,7 @@ ensuite a tous leurs sites, comme seconde couche.
 
 Les SEULS clients du processus sont ceux de LECTURE, construits AVANT
 l'armement et enveloppes : la session Nebula ne laisse passer que des verbes de
-lecture, le client MinIO que `list_objects`.
+lecture, le client du stockage objet que `list_objects`.
 
 Le code de sortie EST le comportement : 0 si tout concorde, 1 sinon, 2 sur un
 usage faux.
@@ -178,32 +178,38 @@ class Graphe:
         self._pool.close()
 
 
-def client_minio_en_lecture(journal: list[str]) -> LectureSeule:
-    """Le client MinIO du harnais, construit AVANT l'armement et enveloppe.
+def client_du_stockage_en_lecture(journal: list[str]) -> LectureSeule:
+    """Le client S3 du harnais, construit AVANT l'armement et enveloppe.
 
-    Apres l'armement, `minio.Minio` leve. Ce client-ci survit donc a la
+    Il passe par `images.build_client`, seul site de construction du depot :
+    un second appel direct au SDK ici serait un second endroit ou le `secure=`
+    et l'ordre des arguments se decident.
+
+    Apres l'armement, `minio.Minio` leve — c'est le SDK, pas le serveur, que la
+    barriere vise. Ce client-ci survit donc a la
     barriere, et c'est pour cela qu'il est enveloppe : SEULE `list_objects`
     passe, tout le reste leve et entre au JOURNAL PARTAGE — celui-la meme sur
     lequel `figer` et `comparer` rougissent. L'enveloppe tenait auparavant son
     propre journal, que personne ne lisait (reparation N2).
     """
-    from minio import Minio
+    from src.docling_service.images import build_client
 
     return LectureSeule(
-        Minio(
-            os.environ["MINIO_ENDPOINT"],
-            access_key=os.environ["MINIO_ROOT_USER"],
-            secret_key=os.environ["MINIO_ROOT_PASSWORD"],
-            secure=False,
+        build_client(
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_ACCESS_KEY"],
+            os.environ["S3_SECRET_KEY"],
         ),
         {"list_objects"},
-        "minio du harnais",
+        "stockage objet du harnais",
         journal,
     )
 
 
 def objets_listes(client: LectureSeule, partition_key: str) -> set[str] | None:
-    """Les cles que MinIO LISTE sous le prefixe des crops d'un PDF. LECTURE SEULE.
+    """Les cles que le stockage objet LISTE sous le prefixe des crops d'un PDF.
+
+    LECTURE SEULE.
 
     None pour un HTML : ses images sont envoyees par le NETTOYAGE, sous une cle
     qui ne porte pas d'`element_id`, et l'extraction n'en produit aucune.
@@ -215,7 +221,7 @@ def objets_listes(client: LectureSeule, partition_key: str) -> set[str] | None:
     prefixe = f"images/{document_identity(partition_key).filename}/"
     return {
         str(objet.object_name)
-        for objet in client.list_objects(os.environ["MINIO_BUCKET"], prefix=prefixe, recursive=True)
+        for objet in client.list_objects(os.environ["S3_BUCKET"], prefix=prefixe, recursive=True)
     }
 
 
@@ -263,10 +269,10 @@ def main() -> int:
     # LES CLIENTS DE LECTURE SE CONSTRUISENT AVANT L'ARMEMENT, et pas autrement :
     # apres, `minio.Minio` et `ConnectionPool` LEVENT. Ce sont les SEULS clients
     # de store du processus, et chacun porte sa propre borne — verbes de lecture
-    # pour la session Nebula, `list_objects` seule pour MinIO.
+    # pour la session Nebula, `list_objects` seule pour le stockage objet.
     journal: list[str] = []
     graphe = Graphe(journal)
-    minio_en_lecture = client_minio_en_lecture(journal)
+    stockage_en_lecture = client_du_stockage_en_lecture(journal)
 
     armement = armer_les_barrieres(journal)
     sites = sum(len(s) for s in armement.sites.values())
@@ -286,7 +292,7 @@ def main() -> int:
             documents_du_corpus=documents_du_corpus,
             documents_du_graphe=graphe.documents,
             ids_du_graphe=graphe.ids,
-            objets_listes=lambda cle: objets_listes(minio_en_lecture, cle),
+            objets_listes=lambda cle: objets_listes(stockage_en_lecture, cle),
             reextraire=lambda cle: reextraire(
                 cle, CORPUS, SCRATCHPAD / "cleaned", lots, armement.temoin
             ),

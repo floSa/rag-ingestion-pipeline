@@ -418,7 +418,7 @@ class TestCeQueLaPurgeDuNettoyeRetireVRAIMENT:
     """
 
     CONTENU = "Du contenu reel qui doit survivre au nettoyage. " * 40
-    PERIME = "<html><body><p>PERIME : pointe des objets MinIO supprimes</p></body></html>"
+    PERIME = "<html><body><p>PERIME : pointe des objets supprimes</p></body></html>"
 
     def _asset(self, tmp_path, monkeypatch):
         """L'asset `cleaned_html` livre, arme sur un faux corpus jetable."""

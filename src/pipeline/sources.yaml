@@ -5,7 +5,7 @@
 #   name : identifiant unique (minuscules, chiffres, underscores)
 #   glob : motif de recherche relatif au dossier Datas/
 #   type : pdf | html | md
-#     pdf : converti page par page, images decoupees et exportees vers MinIO
+#     pdf : converti page par page, images decoupees et exportees vers le stockage objet
 #     html : nettoye (boilerplate, bruit SingleFile, images inline) puis extrait
 #     md : extrait directement — le Markdown est deja propre, il n'y a ni
 #          boilerplate a retirer ni image inline a exporter
@@ -13,7 +13,7 @@
 #     extra_remove_selectors : selecteurs CSS a supprimer en plus des heuristiques
 #     min_text_chars / min_text_ratio : seuils d'acceptation du nettoyage
 #     max_data_uri_bytes : taille au-dela de laquelle les images inline data:
-#       sont exportees vers MinIO (ou supprimees si export_images: false)
+#       sont exportees vers le stockage objet (ou supprimees si export_images: false)
 #     export_images : true par defaut
 #     profiles : profils d'extraction dedies a un site, prioritaires sur le
 #       mode generique (article/main, trafilatura, readability)

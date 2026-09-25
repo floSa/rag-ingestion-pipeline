@@ -1,7 +1,8 @@
 """Le controle avant-vol ne doit rien faire tant qu'on ne l'appelle pas.
 
 ``verify_data`` n'avait pas de ``main`` : ouvrir une connexion ChromaDB, lister
-un bucket MinIO et interroger NebulaGraph etaient des instructions de niveau
+un bucket du stockage objet et interroger NebulaGraph etaient des instructions
+de niveau
 module. Un simple ``import`` declenchait les trois controles et pouvait appeler
 ``sys.exit(1)`` — et rien n'etait testable, puisqu'un test qui importe le module
 aurait exige les trois stores debout (registre 4.5).
@@ -56,14 +57,17 @@ class HttpClient:
     def get_collection(self, nom):
         return _Collection()
 """,
+    # Le bouchon porte le nom du PAQUET, `minio` : c'est la bibliotheque
+    # cliente S3, qui reste. La cle d'echec, elle, nomme le STORE — c'est de lui
+    # que parle le reste de ce fichier.
     "minio/__init__.py": """
 from _bouchon_vd import doit_echouer
 
 
 class Minio:
     def __init__(self, endpoint, access_key=None, secret_key=None, secure=False):
-        if doit_echouer("minio"):
-            raise RuntimeError("minio injoignable")
+        if doit_echouer("stockage"):
+            raise RuntimeError("stockage objet injoignable")
 
     def list_objects(self, bucket, recursive=False):
         return [object(), object()]
@@ -129,7 +133,7 @@ def _controler(tmp_path: Path, echecs: str = "", reglages: dict[str, str] | None
         tmp_path: Repertoire de travail du sous-processus. Pas de `.env` dedans,
             donc les reglages sont ceux du code et non ceux du poste.
         echecs: Stores qui doivent echouer, separes par des virgules, parmi
-            `chroma`, `minio`, `nebula` et `nebula_requete`.
+            `chroma`, `stockage`, `nebula` et `nebula_requete`.
         reglages: Variables d'environnement a poser pour le sous-processus.
             `NEBULA_USER` et `NEBULA_PASSWORD` sont d'abord RETIRES de
             l'environnement herite : sans ce retrait, un poste qui les declare
@@ -220,11 +224,42 @@ class TestLesBouchonsFonctionnent:
         acheve = _controler(tmp_path)
         assert acheve.returncode == 0, acheve.stdout + acheve.stderr
         assert "--- ChromaDB ---" in acheve.stdout
-        assert "--- MinIO ---" in acheve.stdout
+        assert "--- Stockage objet (" in acheve.stdout
         assert "--- NebulaGraph ---" in acheve.stdout
         # Les valeurs viennent bien des bouchons, donc les controles ont TOURNE.
         assert "4365" in acheve.stdout
         assert "15196" in acheve.stdout
+
+
+class TestLeControleNommeLeServeurQuIlInterroge:
+    """Ce bloc affichait le nom d'un PRODUIT, ecrit dans le code.
+
+    Il l'aurait affiche a l'identique en interrogeant un tout autre serveur : un
+    controle avant-vol qui nomme un serveur qu'il ne joint pas ne rassure sur
+    rien, et il a rassure a tort pendant toute une bascule. Ce qui est affiche
+    est desormais `S3_ENDPOINT`, c'est-a-dire la seule valeur qui designe
+    reellement ce qui est interroge.
+    """
+
+    def test_l_adresse_configuree_est_dans_la_sortie(self, tmp_path):
+        acheve = _controler(tmp_path, reglages={"S3_ENDPOINT": "un-autre-stockage:9999"})
+
+        assert acheve.returncode == 0, acheve.stdout + acheve.stderr
+        assert "--- Stockage objet (un-autre-stockage:9999) ---" in acheve.stdout
+
+    def test_sans_s3_endpoint_le_controle_ne_demarre_pas(self, tmp_path):
+        """LE GARDE DU DEFAUT ABSENT, sur le chemin d'un vrai processus.
+
+        `S3_ENDPOINT` n'a plus de valeur par defaut : sans elle, `get_settings()`
+        leve avant le premier appel a un store. Un controle avant-vol qui
+        repartirait sur une adresse ecrite dans le code dirait « les trois
+        stores repondent » a propos du mauvais.
+        """
+        environnement = {"S3_ENDPOINT": ""}
+        acheve = _controler(tmp_path, reglages=environnement)
+
+        assert acheve.returncode != 0
+        assert "S3_ENDPOINT" in acheve.stdout + acheve.stderr
 
 
 class TestLesIdentifiantsDuGrapheViennentDesReglages:
@@ -285,8 +320,8 @@ class TestLeCodeDeSortieEstLeComportement:
         assert acheve.returncode == 1
         assert "controle(s) en echec" in acheve.stdout
 
-    def test_un_minio_injoignable_fait_sortir_en_un(self, tmp_path):
-        acheve = _controler(tmp_path, echecs="minio")
+    def test_un_stockage_objet_injoignable_fait_sortir_en_un(self, tmp_path):
+        acheve = _controler(tmp_path, echecs="stockage")
         assert acheve.returncode == 1
 
     def test_un_graphd_injoignable_fait_sortir_en_un(self, tmp_path):
@@ -305,7 +340,7 @@ class TestLeCodeDeSortieEstLeComportement:
 
     def test_le_bilan_nomme_les_controles_en_echec(self, tmp_path):
         """Le code de sortie dit QU'il y a un probleme ; le bilan dit lequel."""
-        acheve = _controler(tmp_path, echecs="chroma,minio")
+        acheve = _controler(tmp_path, echecs="chroma,stockage")
         assert acheve.returncode == 1
         assert "2 controle(s) en echec" in acheve.stdout
         assert "connexion" in acheve.stdout

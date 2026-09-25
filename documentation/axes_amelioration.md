@@ -1,5 +1,13 @@
 # Registre des axes d'amélioration
 
+> **MinIO est retiré depuis le 25 septembre 2026 ; les mentions qui suivent sont
+> historiques.** Le stockage d'objets est SeaweedFS, le dépôt ne nomme plus aucun
+> serveur — seule `S3_ENDPOINT` le désigne — et le contrat publie `media_url` et
+> `object_key`. Ce fichier n'est **pas** réécrit : ce sont des mesures datées, et
+> les réécrire les falsifierait. L'état courant est à
+> [`etat_des_lieux.md`](etat_des_lieux.md), la procédure de retrait à
+> [`campagnes/2026-09-25-retrait-du-stockage-precedent.md`](campagnes/2026-09-25-retrait-du-stockage-precedent.md).
+
 Ce fichier est la mémoire du chantier d'audit et de refonte du pipeline
 d'ingestion. **Chaque ligne y est vérifiable dans le code** : un constat sans
 preuve `fichier:ligne` n'a pas sa place ici, et un constat corrigé se déplace

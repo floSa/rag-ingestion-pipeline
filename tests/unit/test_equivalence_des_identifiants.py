@@ -43,7 +43,7 @@ from src.equivalence_des_identifiants import (
     MUTATIONS,
     PORTES,
     SITE_D_APPEL,
-    TEMOIN_MINIO,
+    TEMOIN_DU_STOCKAGE,
     BarriereDEcritureError,
     Bilan,
     Controle,
@@ -505,7 +505,7 @@ class TestLesClesDObjet:
         """M22 : seule la branche « disparue » etait tenue.
 
         Une cle d'objet APPARUE que la declaration n'explique pas, c'est un crop
-        de plus dans MinIO sous un identifiant que personne n'a annonce.
+        de plus dans le bucket sous un identifiant que personne n'a annonce.
         """
         raisons = raisons_des_cles_d_objet(
             "p",
@@ -688,7 +688,7 @@ class TestFigerRefuseDEcrireUnInstantaneFaux:
         assert figer(monde, tmp_path, {"date": "t"}, [], sortie.append) == 1
         assert any("mutation filename : NON VU" in ligne for ligne in sortie), sortie
 
-    def test_des_cles_d_objet_que_minio_ne_liste_pas_sont_rouges(self, tmp_path):
+    def test_des_cles_d_objet_que_le_stockage_ne_liste_pas_sont_rouges(self, tmp_path):
         emission = _une_emission()
         monde = _monde([emission], objets={emission.partition_key: set()})
 
@@ -1102,7 +1102,7 @@ print(json.dumps({"originaux": sorted(originaux), "encore_lies": encore_lies,
                   "sdk_absents": armement.sdk.absents}))
 """
 
-DECLAREES = json.dumps([*PORTES, TEMOIN_MINIO])
+DECLAREES = json.dumps([*PORTES, TEMOIN_DU_STOCKAGE])
 
 # LES CINQ PORTES NEUVES DE L'AUDIT, plus les deux variantes de ce lot. Chacune
 # est un programme COMPLET : il arme, puis tente de construire un client par un
@@ -1161,17 +1161,17 @@ import porte_neuve
 import os
 
 for nom, valeur in (
-    ("MINIO_ENDPOINT", "h"),
-    ("MINIO_ROOT_USER", "a"),
-    ("MINIO_ROOT_PASSWORD", "b"),
-    ("MINIO_BUCKET", "seau"),
+    ("S3_ENDPOINT", "h"),
+    ("S3_ACCESS_KEY", "a"),
+    ("S3_SECRET_KEY", "b"),
+    ("S3_BUCKET", "seau"),
 ):
     os.environ.setdefault(nom, valeur)
-from src.pipeline.media import MinioImageExporter
+from src.pipeline.media import ExportateurDImages
 
-MinioImageExporter("un-document")._get_client()
+ExportateurDImages("un-document")._get_client()
 """,
-    "client d'ADMINISTRATION MinIO": _ARMER
+    "client d'ADMINISTRATION du SDK": _ARMER
     + """
 from minio import MinioAdmin
 
@@ -1259,7 +1259,7 @@ CLIENT_DE_LECTURE_SURVIT = (
 import json
 
 # Une methode de LECTURE sur le client construit avant l'armement. L'appel part
-# sur le reseau et echoue — il n'y a pas de MinIO en face — et c'est le verdict
+# sur le reseau et echoue — il n'y a aucun serveur en face — et c'est le verdict
 # recherche : la BARRIERE ne s'est pas interposee.
 from src.equivalence_des_identifiants import BarriereDEcritureError
 
@@ -1617,7 +1617,7 @@ class TestLesClientsDeLectureDuHarnais:
                 raise AssertionError("appele")
 
         journal: list[str] = []
-        enveloppe = LectureSeule(Faux(), {"list_objects"}, "minio du harnais", journal)
+        enveloppe = LectureSeule(Faux(), {"list_objects"}, "stockage objet du harnais", journal)
 
         assert enveloppe.list_objects("seau") == ["vu"]
         with pytest.raises(BarriereDEcritureError, match="LECTURE SEULE"):
@@ -1627,7 +1627,7 @@ class TestLesClientsDeLectureDuHarnais:
         """Le journal de l'enveloppe est celui de l'ARMEMENT, reparation N2.
 
         Elle tenait son propre `self._journal`, que personne ne lisait : une
-        ecriture MinIO refusee ici, puis AVALEE par la production, ne devenait
+        ecriture d'objet refusee ici, puis AVALEE par la production, ne devenait
         aucun rouge. `figer` et `comparer` rougissent sur le journal d'armement,
         et c'est celui-la qu'on lui passe desormais — comme a
         :class:`SessionEnLecture`, qui le faisait deja.
@@ -1635,12 +1635,12 @@ class TestLesClientsDeLectureDuHarnais:
         from src.equivalence_des_identifiants import BarriereDEcritureError, LectureSeule
 
         journal: list[str] = ["une entree qui precede"]
-        enveloppe = LectureSeule(object(), {"list_objects"}, "minio du harnais", journal)
+        enveloppe = LectureSeule(object(), {"list_objects"}, "stockage objet du harnais", journal)
 
         with contextlib.suppress(BarriereDEcritureError):
             enveloppe.remove_object("seau", "cle")
 
-        assert journal == ["une entree qui precede", "minio du harnais.remove_object"]
+        assert journal == ["une entree qui precede", "stockage objet du harnais.remove_object"]
 
     @pytest.mark.parametrize(
         "requete",
@@ -1905,7 +1905,7 @@ print(json.dumps(resultat))
         )
         assert releve["capture_apres"] == 1, "l'element invalide ne doit pas etre capture"
 
-    def test_le_temoin_minio_enregistre_l_envoi_et_refuse_le_reste(self):
+    def test_le_temoin_du_stockage_enregistre_l_envoi_et_refuse_le_reste(self):
         """`crop_and_upload` reste celui de la production ; seul l'envoi est remplace."""
         releve = _executer(
             """

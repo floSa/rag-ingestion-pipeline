@@ -49,7 +49,13 @@ class DocumentElement(BaseModel):
     bbox: BoundingBox | None = None
     text: str = ""
     order: int = 0
-    minio_url: str | None = None
+    # Adresse de l'objet visuel, et CLE de ce meme objet. Ce champ a porte le
+    # NOM DU PRODUIT qui stockait les octets, ce qui obligeait a renommer une
+    # propriete du graphe et une metadonnee de tous les chunks le jour ou le
+    # produit changeait. `object_key` est arrive avec ce renommage-la — voir
+    # `ChunkMetadata.object_key`, site du motif.
+    media_url: str | None = None
+    object_key: str | None = None
     content: str | None = None
     reference_id: str = "DOC"
     # Profondeur dans la hierarchie des titres : 0 pour un titre de premier
@@ -114,13 +120,33 @@ class ChunkMetadata(BaseModel):
     # des que les deux diffèrent (registre 4.22).
     page_no: int = 0
     page_no_end: int = 0
-    # Adresse de l'objet MinIO — INTERNE et AUTHENTIFIEE, jamais publique. Un
+    # Adresse de l'objet visuel — INTERNE et AUTHENTIFIEE, jamais publique. Un
     # `GET` anonyme y rend **403**, y compris depuis un conteneur du reseau
     # `rag_network` (`mesure`), et l'hote est un nom de service Docker qui ne
     # resout pas au-dehors. L'agent est le PROXY : il lit l'objet avec ses
-    # identifiants S3 et le re-sert. Il ne passe jamais cette adresse a un
-    # navigateur. Registre 4.25, et `images.object_url` en est le seul site.
-    minio_url: str = ""
+    # identifiants S3 — son propre jeu, en lecture seule — et le re-sert. Il ne
+    # passe jamais cette adresse a un navigateur. Registre 4.25, et
+    # `images.object_url` en est le seul site.
+    #
+    # **CE CHAMP A PORTE LE NOM D'UN PRODUIT, ET C'ETAIT LE DEFAUT DE FOND.**
+    # Un contrat public nommait le logiciel qui stockait les octets. Le
+    # 25 septembre 2026 ce logiciel a change, et le nom a rendu faux tout ce
+    # qu'il touchait :
+    # une propriete du graphe, une metadonnee sur chaque chunk, et le vocabulaire
+    # de l'agent. Un contrat nomme ce qu'il publie — une adresse de media — et
+    # non le logiciel qui la sert. C'est ce que `media_url` dit.
+    media_url: str = ""
+    # **LA CLE NUE DE L'OBJET, ET ELLE EST ARRIVEE PAR LA MEME PORTE.**
+    # `media_url` porte l'hote, donc elle PERIME : la bascule a change l'hote de
+    # 212 objets d'un coup. Un consommateur qui veut atteindre l'objet — le
+    # relire, le compter, le rapprocher d'un listing — devait jusqu'ici defaire
+    # l'adresse lui-meme, chacun a sa facon. La cle, elle, est l'identite de
+    # l'objet et survit au deplacement du stockage.
+    #
+    # C'est EXACTEMENT ce qui a ete passe a `put_object`, sans reencodage :
+    # `images.object_key` est l'inverse exact de `images.object_url`, et son
+    # docstring dit pourquoi un `unquote` y serait un defaut.
+    object_key: str = ""
     reference_id: str = "DOC"
     # Profondeur dans la hierarchie des titres. C'est le nombre d'aretes
     # ``PARENT_OF`` qui separent l'element de la racine de son document, et

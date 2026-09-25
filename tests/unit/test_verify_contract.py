@@ -223,10 +223,10 @@ class TestImagesSansUrl:
     """
 
     def test_every_image_carries_an_url(self):
-        assert images_sans_url(["http://minio:9000/documents/a.png"]) == 0
+        assert images_sans_url(["http://stockage-de-test:8333/documents/a.png"]) == 0
 
     def test_an_empty_url_is_counted(self):
-        assert images_sans_url(["", "http://minio:9000/documents/a.png", ""]) == 2
+        assert images_sans_url(["", "http://stockage-de-test:8333/documents/a.png", ""]) == 2
 
     def test_a_null_url_reads_as_absent(self):
         assert images_sans_url([None, ""]) == 2
@@ -762,7 +762,9 @@ def _session_dun_graphe_sain(
             "depth AS valeur": _Resultat([[depth]]),
             "DESCRIBE TAG Document": _Resultat([[c] for c in DOCUMENT_PROPERTIES]),
             "DESCRIBE TAG ": _Resultat([[c] for c in colonnes_des_tags]),
-            "minio_url AS url": _Resultat([["http://minio:9000/documents/a.png"]]),
+            "media_url AS url": _Resultat(
+                [["http://stockage-de-test:8333/documents/a.png", "a.png"]]
+            ),
             "MATCH (v) WHERE id(v) IN": _Resultat([[1]]),
         }
     )

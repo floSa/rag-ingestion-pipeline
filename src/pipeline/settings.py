@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+
+from src.reglages_s3 import ReglagesDuStockageObjet
 
 
-class PipelineSettings(BaseSettings):
+class PipelineSettings(ReglagesDuStockageObjet):
     """Variables d'environnement du pipeline d'ingestion.
 
-    Les credentials des stores (MinIO, Nebula, Chroma) vivent dans
+    Les credentials des stores (stockage objet, Nebula, Chroma) vivent dans
     ``src.docling_service.settings`` : seul le service Docling y ecrit.
     """
 
@@ -27,12 +29,10 @@ class PipelineSettings(BaseSettings):
     # document retirait la constante.
     docling_service_url: str = "http://docling-service:8000"
 
-    # MinIO : utilise uniquement pour exporter les images base64 des captures
-    # HTML (le service Docling gere lui-meme les images des PDF).
-    minio_endpoint: str = "minio:9000"
-    minio_root_user: str = ""
-    minio_root_password: str = ""
-    minio_bucket: str = "documents"
+    # Les quatre reglages du stockage objet viennent de
+    # `ReglagesDuStockageObjet`, partage avec `DoclingSettings`. Le pipeline ne
+    # s'en sert que pour exporter les images base64 des captures HTML : le
+    # service Docling gere lui-meme celles des PDF.
 
     # Suivi des jobs d'extraction. L'extraction est asynchrone : Dagster
     # soumet le document puis interroge le service jusqu'a son terme, plutot

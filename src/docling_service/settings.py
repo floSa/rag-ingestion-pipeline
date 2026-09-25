@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
 
 from src.docling_service.embedding import CONTRACT_MODEL
+from src.reglages_s3 import ReglagesDuStockageObjet
 
 
-class DoclingSettings(BaseSettings):
+class DoclingSettings(ReglagesDuStockageObjet):
     """Variables d'environnement du service d'extraction Docling."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # ── Stores ───────────────────────────────────────────────────────────────
-    minio_endpoint: str = "minio:9000"
-    minio_root_user: str = ""
-    minio_root_password: str = ""
-    minio_bucket: str = "documents"
-
+    # Les quatre reglages du stockage objet — `s3_endpoint`, `s3_access_key`,
+    # `s3_secret_key`, `s3_bucket` — viennent de `ReglagesDuStockageObjet`, que
+    # `PipelineSettings` herite aussi. Ils etaient ecrits ici ET la-bas
+    # (registre 4.29.b) ; `s3_endpoint` n'a plus de defaut du tout.
     nebula_host: str = "graphd"
     nebula_port: int = 9669
     # `NEBULA_USER` et `NEBULA_PASSWORD` existent dans `.env.example` depuis le

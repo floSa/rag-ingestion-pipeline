@@ -49,7 +49,7 @@ noeuds (Document, SectionHeader, Paragraph, Table, Picture...) et relations
 > | Ce que ce bloc disait | Mesuré |
 > |---|---|
 > | `Document(filename string, type_file string)` — **2** propriétés | **7** : `filename`, `type_file`, `total_pages`, `collection`, `source_path`, `language`, `content_hash` |
-> | les 11 tags d'élément portent `label, page_no, text, minio_url, depth` — **5** colonnes | **6** : `page_no_end` manquait |
+> | les 11 tags d'élément portent cinq colonnes, dont l'adresse du média | **6** : `page_no_end` manquait |
 >
 > `source_path` est **l'exigence 3 du contrat** — l'identité d'un document — et
 > elle manquait du tag documenté. `page_no_end`, elle, a été ajoutée par le
@@ -68,10 +68,10 @@ CREATE TAG Document(filename string, type_file string, total_pages int,
 -- `VERTEX_PROPERTIES` / `VERTEX_TYPES` dans `src/docling_service/ngql.py` : les
 -- deux tuples sont lus ENSEMBLE par `tag_schema_statements()`, qui genere ce qui
 -- suit. Ne recopie pas cette liste ailleurs.
-CREATE TAG SectionHeader(label string, page_no int, page_no_end int, text string, minio_url string, depth int);
-CREATE TAG Paragraph(label string, page_no int, page_no_end int, text string, minio_url string, depth int);
-CREATE TAG Table(label string, page_no int, page_no_end int, text string, minio_url string, depth int);
-CREATE TAG Picture(label string, page_no int, page_no_end int, text string, minio_url string, depth int);
+CREATE TAG SectionHeader(label string, page_no int, page_no_end int, text string, media_url string, object_key string, depth int);
+CREATE TAG Paragraph(label string, page_no int, page_no_end int, text string, media_url string, object_key string, depth int);
+CREATE TAG Table(label string, page_no int, page_no_end int, text string, media_url string, object_key string, depth int);
+CREATE TAG Picture(label string, page_no int, page_no_end int, text string, media_url string, object_key string, depth int);
 -- ... (ListItem, Caption, Code, Formula, Footnote, PageHeader, PageFooter)
 
 -- `depth` est arrivee au lot 3 : l'agent pouvait remonter les PARENT_OF mais ne
@@ -87,6 +87,20 @@ ALTER TAG SectionHeader ADD (page_no_end int); -- ajoutee par le lot 4, meme reg
 -- ATTENTION : `init_schema()` n'est joue qu'AU DEMARRAGE du service. Redemarrer
 -- `docling-service` AVANT toute reingestion, sans quoi les INSERT visent un tag
 -- qui n'a pas la colonne.
+
+-- LES DEUX COLONNES DE MEDIA, ET CE QU'ELLES ONT COUTE. Le sommet a longtemps
+-- porte UNE colonne d'adresse, nommee d'apres le PRODUIT qui stockait les
+-- octets. Le 25 septembre 2026 le produit a change, et le nom a rendu faux ce
+-- qu'un contrat public annoncait. Elles sont deux depuis : `media_url`, ce que
+-- l'agent affiche, et `object_key`, la cle NUE de l'objet — l'adresse porte
+-- l'hote et perime avec lui, la cle est l'identite de l'objet et lui survit.
+--
+-- CE RENOMMAGE S'EST PAYE D'UNE PURGE, et il ne pouvait pas se payer autrement.
+-- `ALTER TAG ... ADD` pose bien les deux colonnes neuves sur un space existant,
+-- mais l'ancienne Y RESTE — Nebula n'autorise jamais une colonne supprimee a
+-- revenir — et elle y reste a NULL sur tout sommet reecrit. Le seul etat propre
+-- est le `DROP SPACE` de `python -m src.wipe_stores`, suivi du redemarrage qui
+-- rejoue `init_schema()`.
 
 -- Une colonne SUPPRIMEE ne revient jamais. Nebula garde l'historique de schema
 -- d'un tag et refuse le ré-ajout avec « Schema exisited before! » (`mesure`,

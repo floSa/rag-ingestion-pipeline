@@ -30,7 +30,7 @@ from typing import Any
 
 import pytest
 
-from src.docling_service import extraction
+from src.docling_service import extraction, images
 from src.docling_service.elements import DocumentIdentity
 
 # PyMuPDF n'est pas dans le venv du depot : le PDF est bouchonne. Seule sa
@@ -484,9 +484,9 @@ class TestLeCompteurDePagesPerduesEstGardeASonSiteDAppel:
 
 
 class TestLesUrlDImagesHtmlAtteignentLeGraphe:
-    """Registre 3.5 : 199 images de capture HTML sans `minio_url` dans le graphe.
+    """Registre 3.5 : 199 images de capture HTML sans adresse dans le graphe.
 
-    `cleaning.py` reecrit `img src` avec l'URL MinIO ; `extraction.py` ne
+    `cleaning.py` reecrit `img src` avec l'adresse de l'objet ; `extraction.py` ne
     propageait cette URL que si `item.image.uri` commence par `http`. Cette
     description du code est exacte et TROMPEUSE comme cause : le test du prefixe
     n'est JAMAIS atteint, parce que `item.image` vaut `None`.
@@ -510,8 +510,8 @@ class TestLesUrlDImagesHtmlAtteignentLeGraphe:
 
     HTML_NETTOYE = (
         "<html><body><h1>Chapitre</h1>"
-        '<p>Avant.</p><img src="http://minio:9000/documents/images/html/livre/img_0000.png"/>'
-        '<p>Milieu.</p><img src="http://minio:9000/documents/images/html/livre/img_0001.png"/>'
+        '<p>Avant.</p><img src="http://stockage-de-test:8333/documents/images/html/livre/img_0000.png"/>'
+        '<p>Milieu.</p><img src="http://stockage-de-test:8333/documents/images/html/livre/img_0001.png"/>'
         "<p>Apres.</p></body></html>"
     )
 
@@ -520,12 +520,12 @@ class TestLesUrlDImagesHtmlAtteignentLeGraphe:
         chemin.write_text(self.HTML_NETTOYE, encoding="utf-8")
 
         assert extraction.html_image_urls(chemin) == [
-            "http://minio:9000/documents/images/html/livre/img_0000.png",
-            "http://minio:9000/documents/images/html/livre/img_0001.png",
+            "http://stockage-de-test:8333/documents/images/html/livre/img_0000.png",
+            "http://stockage-de-test:8333/documents/images/html/livre/img_0001.png",
         ]
 
     def test_les_src_qui_ne_sont_pas_des_url_sont_ignores(self, tmp_path: Path) -> None:
-        """Une image restee en `data:` ou en chemin relatif n'a pas d'objet MinIO.
+        """Une image en `data:` ou en chemin relatif n'a aucun objet dans le bucket.
 
         La compter fausserait la correspondance positionnelle et decalerait
         toutes les URL suivantes d'un rang.
@@ -533,13 +533,13 @@ class TestLesUrlDImagesHtmlAtteignentLeGraphe:
         chemin = tmp_path / "chapitre.html"
         chemin.write_text(
             '<html><body><img src="data:image/png;base64,AAAA"/>'
-            '<img src="http://minio:9000/documents/images/html/livre/img_0000.png"/>'
+            '<img src="http://stockage-de-test:8333/documents/images/html/livre/img_0000.png"/>'
             '<img src="../images/local.png"/></body></html>',
             encoding="utf-8",
         )
 
         assert extraction.html_image_urls(chemin) == [
-            "http://minio:9000/documents/images/html/livre/img_0000.png"
+            "http://stockage-de-test:8333/documents/images/html/livre/img_0000.png"
         ]
 
     def test_un_html_sans_image_rend_une_liste_vide(self, tmp_path: Path) -> None:
@@ -555,22 +555,71 @@ class TestLesUrlDImagesHtmlAtteignentLeGraphe:
         assert extraction.html_image_urls(tmp_path / "absent.html") == []
 
 
+class TestLAdresseEtLaCleSontPoseesEnsemble:
+    """Le contrat publie DEUX champs de media, et ils vont par paire.
+
+    Un element dont seule l'adresse serait renseignee est a demi ecrit, et rien
+    ne le rattrape : le graphe et ChromaDB sont ecrits une fois par ingestion.
+    Les TROIS chemins d'image — crop PDF, balise Markdown, correspondance
+    positionnelle du HTML — passent par `poser_le_media`, qui est le seul site
+    de la paire. Trois sites seraient trois facons d'en oublier un.
+    """
+
+    def test_l_adresse_et_la_cle_sont_posees_du_meme_geste(self) -> None:
+        element: dict[str, Any] = {"label": "picture"}
+
+        extraction.poser_le_media(element, "http://stockage-de-test:8333/documents/images/l/a.png")
+
+        assert element["media_url"] == "http://stockage-de-test:8333/documents/images/l/a.png"
+        assert element["object_key"] == "images/l/a.png"
+
+    def test_la_cle_est_celle_qui_a_ete_passee_a_put_object(self) -> None:
+        """Elle est derivee de l'adresse, et `images.object_key` en est l'inverse exact.
+
+        Elle ne peut donc pas diverger de ce que le televersement a ecrit : les
+        deux valeurs viennent de la meme chaine.
+        """
+        cle = "images/htms/Un_livre/Preface/img_0000.png"
+
+        element: dict[str, Any] = {"label": "picture"}
+        extraction.poser_le_media(element, images.object_url(cle))
+
+        assert element["object_key"] == cle
+
+    def test_un_televersement_en_echec_ne_pose_ni_adresse_ni_cle(self) -> None:
+        """LE TEMOIN : une cle posee sur un objet jamais ecrit serait pire que rien.
+
+        `crop_and_upload` rend None sur une zone vide ou un envoi refuse. La
+        cle doit suivre l'adresse dans son absence, sans quoi le graphe
+        porterait l'identite d'un objet qui n'existe pas.
+        """
+        element: dict[str, Any] = {"label": "picture"}
+
+        extraction.poser_le_media(element, None)
+
+        assert element["media_url"] is None
+        assert element["object_key"] == ""
+
+
 class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
     """Le garde qui rend la correspondance positionnelle defendable."""
 
-    URLS = ["http://minio:9000/a.png", "http://minio:9000/b.png"]
+    URLS = [
+        "http://stockage-de-test:8333/documents/a.png",
+        "http://stockage-de-test:8333/documents/b.png",
+    ]
 
     def test_les_url_sont_posees_dans_l_ordre_quand_les_comptes_concordent(self) -> None:
         elements = [
-            {"label": "text", "minio_url": ""},
-            {"label": "picture", "minio_url": ""},
-            {"label": "text", "minio_url": ""},
-            {"label": "picture", "minio_url": ""},
+            {"label": "text", "media_url": ""},
+            {"label": "picture", "media_url": ""},
+            {"label": "text", "media_url": ""},
+            {"label": "picture", "media_url": ""},
         ]
         posees = extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
 
         assert posees == 2
-        assert [e["minio_url"] for e in elements] == ["", self.URLS[0], "", self.URLS[1]]
+        assert [e["media_url"] for e in elements] == ["", self.URLS[0], "", self.URLS[1]]
 
     def test_aucune_url_n_est_posee_quand_les_comptes_divergent(self) -> None:
         """LE GARDE, et c'est lui qui rend la methode defendable.
@@ -580,20 +629,20 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
         un desaccord, on refuse plutot que de deviner.
         """
         elements = [
-            {"label": "picture", "minio_url": ""},
-            {"label": "picture", "minio_url": ""},
-            {"label": "picture", "minio_url": ""},
+            {"label": "picture", "media_url": ""},
+            {"label": "picture", "media_url": ""},
+            {"label": "picture", "media_url": ""},
         ]
         posees = extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
 
         assert posees == 0
-        assert all(e["minio_url"] == "" for e in elements), (
+        assert all(e["media_url"] == "" for e in elements), (
             "trois images pour deux URL : poser les deux premieres attribuerait "
             "une illustration au mauvais passage"
         )
 
     def test_un_desaccord_est_journalise_avec_ses_deux_comptes(self, caplog) -> None:
-        elements = [{"label": "picture", "minio_url": ""} for _ in range(3)]
+        elements = [{"label": "picture", "media_url": ""} for _ in range(3)]
 
         with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
             extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
@@ -603,7 +652,7 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
 
     def test_le_chemin_nominal_ne_journalise_rien(self, caplog) -> None:
         """LE TEMOIN : une alerte a chaque chapitre rendrait la vraie invisible."""
-        elements = [{"label": "picture", "minio_url": ""} for _ in range(2)]
+        elements = [{"label": "picture", "media_url": ""} for _ in range(2)]
 
         with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
             extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
@@ -617,19 +666,19 @@ class TestLaCorrespondancePositionnelleEstGardeeParUnRefus:
         image recevrait l'URL destinee a la table.
         """
         elements = [
-            {"label": "table", "minio_url": ""},
-            {"label": "picture", "minio_url": ""},
-            {"label": "picture", "minio_url": ""},
+            {"label": "table", "media_url": ""},
+            {"label": "picture", "media_url": ""},
+            {"label": "picture", "media_url": ""},
         ]
         posees = extraction.propager_les_url_dimages(elements, self.URLS, "chapitre")
 
         assert posees == 2
-        assert elements[0]["minio_url"] == ""
-        assert elements[1]["minio_url"] == self.URLS[0]
+        assert elements[0]["media_url"] == ""
+        assert elements[1]["media_url"] == self.URLS[0]
 
     def test_aucune_url_du_tout_ne_journalise_pas_et_ne_pose_rien(self, caplog) -> None:
         """Un chapitre sans image : le cas nominal de la moitie du corpus."""
-        elements = [{"label": "text", "minio_url": ""}]
+        elements = [{"label": "text", "media_url": ""}]
 
         with caplog.at_level(logging.WARNING, logger="src.docling_service.extraction"):
             assert extraction.propager_les_url_dimages(elements, [], "chapitre") == 0
@@ -653,7 +702,7 @@ class TestLaCompositionEstGardee:
 
     HTML_NETTOYE = (
         "<html><body><h1>Chapitre</h1>"
-        '<img src="http://minio:9000/documents/images/html/livre/img_0000.png"/>'
+        '<img src="http://stockage-de-test:8333/documents/images/html/livre/img_0000.png"/>'
         "</body></html>"
     )
 
@@ -704,12 +753,27 @@ class TestLaCompositionEstGardee:
 
         images = [e for e in elements if e["label"] == "picture"]
         assert images, elements
-        assert images[0]["minio_url"] == (
-            "http://minio:9000/documents/images/html/livre/img_0000.png"
+        assert images[0]["media_url"] == (
+            "http://stockage-de-test:8333/documents/images/html/livre/img_0000.png"
         ), (
             "l'URL du HTML nettoye n'atteint pas le sommet Picture : c'est le "
             "registre 3.5, et les 199 images du corpus etaient dans ce cas"
         )
+
+    def test_la_cle_de_l_objet_atteint_elle_aussi_l_element_persiste(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Le contrat publie la cle, et c'est sur ce chemin-ci qu'elle est derivee.
+
+        L'adresse du HTML nettoye est LUE, pas construite : c'est le seul des
+        trois chemins ou la cle ne vient pas du televersement lui-meme. Si elle
+        devait manquer quelque part, ce serait ici.
+        """
+        elements = self._convertir(tmp_path, monkeypatch, ["text", "picture"])
+
+        images_persistees = [e for e in elements if e["label"] == "picture"]
+        assert images_persistees, elements
+        assert images_persistees[0]["object_key"] == "images/html/livre/img_0000.png"
 
     def test_un_element_qui_n_est_pas_une_image_ne_recoit_pas_d_url(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -718,7 +782,7 @@ class TestLaCompositionEstGardee:
         elements = self._convertir(tmp_path, monkeypatch, ["text", "picture"])
 
         textes = [e for e in elements if e["label"] == "text"]
-        assert textes and all(not e.get("minio_url") for e in textes), elements
+        assert textes and all(not e.get("media_url") for e in textes), elements
 
     def test_un_desaccord_de_comptes_laisse_les_images_sans_url(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -728,7 +792,7 @@ class TestLaCompositionEstGardee:
 
         images = [e for e in elements if e["label"] == "picture"]
         assert len(images) == 2
-        assert all(not e.get("minio_url") for e in images), (
+        assert all(not e.get("media_url") for e in images), (
             "devant un desaccord, aucune URL ne doit etre posee : une URL fausse "
             "servirait l'illustration d'un autre passage"
         )

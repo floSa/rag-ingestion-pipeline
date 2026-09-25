@@ -17,7 +17,7 @@ déclaré en externe côté agent).
 | storaged          | nebula-storaged:v3.6.0 | 9779         | —                | NebulaGraph — stockage distribué        |
 | graphd            | nebula-graphd:v3.6.0   | 9669         | — (expose only)  | NebulaGraph — moteur de requête         |
 | nebula-studio     | nebula-studio:v3.8.0   | 7001         | 7001             | UI de visualisation du graphe           |
-| minio             | minio (pinned)         | 9000, 9001   | — (expose only)  | Object storage S3-compatible            |
+| seaweedfs         | seaweedfs:3.80         | 8333         | — (expose only)  | Stockage d'objets, passerelle S3        |
 | postgres-dagster  | postgres:15-alpine     | 5432         | — (expose only)  | Métadonnées Dagster                     |
 | dagster-webserver | Dockerfile.dagster     | 3000         | 3000             | UI Dagster                              |
 | dagster-daemon    | Dockerfile.dagster     | —            | —                | Exécution des sensors et runs           |
@@ -33,11 +33,13 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
    partition + un run ; la file Dagster en exécute deux à la fois
 3. **Pre-process** (HTML uniquement) : nettoyage universel — pré-passe d'hygiène puis
    comparaison de candidats (conteneurs sémantiques, trafilatura, readability-lxml) ;
-   les images base64 volumineuses partent sur MinIO et leur `src` est réécrit
+   les images base64 volumineuses partent sur le stockage d'objets et leur `src`
+   est réécrit
 4. **Soumission** : l'asset poste le chemin au service Docling, qui met le document en
    file et rend un `job_id` ; l'asset suit l'avancement jusqu'au terme
 5. **Extraction** : Docling analyse le layout — les PDF par lots de pages, HTML et
-   Markdown d'un seul tenant — et PyMuPDF crop les images et tableaux vers MinIO
+   Markdown d'un seul tenant — et PyMuPDF crop les images et tableaux vers le
+   stockage d'objets
 6. **Flush NebulaGraph** : nœuds et hiérarchie `Document → SectionHeader → Éléments`
    (chaque élément rattaché au dernier en-tête rencontré), écrits par INSERT groupés ;
    tout échec nGQL fait échouer le job — pas de perte silencieuse
@@ -95,5 +97,5 @@ Pour le debug local, `docker-compose.override.yml` expose les ports internes.
 | `Datas/.cleaned/`          | HTML nettoyés (générés par le pipeline) |
 | `Datas/database/chromadb/` | Persistence ChromaDB                 |
 | `Datas/database/nebula/`   | Persistence NebulaGraph              |
-| `Datas/database/minio/`    | Persistence MinIO                    |
+| `Datas/database/seaweedfs/`| Persistence du stockage d'objets     |
 | `Datas/database/postgres/` | Persistence PostgreSQL (Dagster)     |

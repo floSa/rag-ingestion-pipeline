@@ -4,24 +4,25 @@
 > 25 septembre 2026 quand le `README` est devenu un point d'entrée d'une page.
 > Rien n'y a été réécrit : ce sont les mêmes sections, au même contenu.
 >
-> **Deux avertissements avant de lire.** Ce texte est antérieur à la bascule
-> vers SeaweedFS : partout où il écrit **MinIO**, lisez **SeaweedFS**
-> (`seaweedfs:8333`), sauf là où MinIO est nommé comme le retour arrière. Et
-> les chiffres qu'il porte sont ceux de leur date, pas d'aujourd'hui — les
-> chiffres datés et remesurés sont à [`etat_des_lieux.md`](etat_des_lieux.md)
-> et à [`livraison.md`](livraison.md).
+> **Un avertissement avant de lire.** Les chiffres que ce texte porte sont ceux
+> de leur date, pas d'aujourd'hui — les chiffres datés et remesurés sont à
+> [`etat_des_lieux.md`](etat_des_lieux.md) et à
+> [`livraison.md`](livraison.md). Le stockage d'objets, lui, n'est plus nommé
+> par ce document ni par le code : le dépôt parle à une **passerelle S3**, et
+> seule `S3_ENDPOINT` désigne le serveur — fiche :
+> [`services/stockage_objet.md`](services/stockage_objet.md).
 >
 > **Ce que la relecture du 25 septembre 2026 a trouvé, et ce qu'elle a fait.**
 > Les commandes de ce document ont été relues une à une — **quatorze blocs**.
 > Le dépouillement :
 >
-> - **aucune adresse `minio:9000`**, **aucune console MinIO**, **aucun
->   identifiant MinIO**, **aucune commande `mc`** : ce document n'en a jamais
->   porté. `mesuré le 25 septembre 2026` par `grep` sur les motifs
->   `minio:9000`, `localhost:900`, `minioadmin`, `MINIO_ROOT_*` et `mc <verbe>`.
-> - **une phrase était factuellement fausse** — « il s'adresse à `chromadb`,
->   `graphd` et `minio` par leur nom de service » — et elle est **corrigée**
->   sur place, plus bas.
+> - **aucune adresse de store en dur**, **aucune console**, **aucun
+>   identifiant**, **aucune commande `mc`** : ce document n'en a jamais porté.
+>   `mesuré le 25 septembre 2026` par `grep` sur les motifs d'adresse,
+>   d'identifiant par défaut et de client en ligne de commande.
+> - **une phrase était factuellement fausse** — elle nommait le stockage
+>   d'objets par un nom de service qui n'était plus le sien — et elle est
+>   **corrigée** sur place, plus bas.
 > - **deux commandes ne sont pas vérifiables depuis ce document** parce
 >   qu'elles **écrivent** ; elles portent désormais la marque **« antérieur à la
 >   bascule, non vérifié »**, avec le renvoi vers le geste qui, lui, a été
@@ -32,9 +33,10 @@
 >   atteint pas. **Un des douze a été rejoué** pour ne pas se payer de mots :
 >   `docker compose exec docling-service python -m src.verify_data`,
 >   `mesuré le 25 septembre 2026 à 09:38 UTC`, **`rc=0`** — 4 367 chunks,
->   **212** objets, 15 196 nœuds, 23 documents. *(Son titre de section dit
->   encore `--- MinIO ---` : c'est le nom de la bibliothèque, le serveur
->   interrogé est bien SeaweedFS — §8.1 de [`livraison.md`](livraison.md).)*
+>   **212** objets, 15 196 nœuds, 23 documents. *(Son titre de section nommait
+>   alors un produit écrit dans le code ; il affiche désormais l'adresse
+>   réellement interrogée, ce qui est la seule chose qui dise ce qu'on a
+>   mesuré.)*
 
 ---
 
@@ -57,7 +59,7 @@ Ajouter une source (ex: un site capturé avec [SingleFile](https://github.com/gi
 
 | `type` | Chaîne d'assets | Quand l'utiliser |
 |---|---|---|
-| `pdf` | extraction directe, par lots de pages, images croppées vers MinIO | Livres et documents paginés |
+| `pdf` | extraction directe, par lots de pages, images croppées vers le stockage d'objets | Livres et documents paginés |
 | `html` | nettoyage universel puis extraction | Captures de sites, livres découpés en chapitres HTML |
 | `md` | extraction directe | Markdown déjà propre : notes, exports, documentation |
 
@@ -73,13 +75,13 @@ Deux points méritent d'être connus.
 
 **Docling convertit le Markdown ligne par ligne.** Un fichier dont les paragraphes sont coupés à 80 colonnes produirait donc un élément par ligne, et la recherche porterait sur des fragments de 75 caractères. Les paragraphes sont pour cette raison recollés avant conversion — sans toucher au fichier source, et en laissant intacts blocs de code, tableaux, listes, titres et retours à la ligne explicites.
 
-**Un Markdown ne contient jamais ses images, il les désigne.** Les deux syntaxes sont reconnues — `![[fichier.jpg|1000]]` d'Obsidian et `![légende](chemin)` du standard — et les images sont envoyées sur MinIO puis rattachées à leur place exacte dans le document. Corollaire : **copiez le dossier entier**, notes *et* pièces jointes. Une note copiée seule perd ses figures.
+**Un Markdown ne contient jamais ses images, il les désigne.** Les deux syntaxes sont reconnues — `![[fichier.jpg|1000]]` d'Obsidian et `![légende](chemin)` du standard — et les images sont téléversées puis rattachées à leur place exacte dans le document. Corollaire : **copiez le dossier entier**, notes *et* pièces jointes. Une note copiée seule perd ses figures.
 
 ### Nettoyage HTML universel
 
 Les sources HTML passent par un nettoyage en étages, sans configuration par site :
 1. **Formules mathématiques** : les formules rendues (KaTeX, MathJax v2/v3, MathML) sont remplacées par leur source LaTeX — `$...$` (inline) ou `$$...$$` (bloc) — récupérée dans le DOM avant toute suppression. Sans ça, le rendu web produit du texte dupliqué illisible.
-2. **Pré-passe d'hygiène** : suppression des scripts, styles, éléments cachés (`sf-hidden`, `display:none`), chrome de page (nav, rôles ARIA), commentaires, icônes inline (< 4 Ko) et décorations d'ancres dans les titres. Les **images base64 volumineuses sont exportées vers MinIO** et leur `src` réécrit (comme les crops PDF) ; les `header`, `footer` et `aside` internes à un `<article>`/`<main>` sont conservés — le premier porte le titre de chapitre, le dernier les encadrés du livre (interviews, notes, avertissements).
+2. **Pré-passe d'hygiène** : suppression des scripts, styles, éléments cachés (`sf-hidden`, `display:none`), chrome de page (nav, rôles ARIA), commentaires, icônes inline (< 4 Ko) et décorations d'ancres dans les titres. Les **images base64 volumineuses sont exportées vers le stockage d'objets** et leur `src` réécrit (comme les crops PDF) ; les `header`, `footer` et `aside` internes à un `<article>`/`<main>` sont conservés — le premier porte le titre de chapitre, le dernier les encadrés du livre (interviews, notes, avertissements).
 3. **Extraction de contenu** : un profil par site (s'il est déclaré) gagne directement ; sinon les conteneurs sémantiques HTML5 (`<article>`, `<main>`) font autorité ; sinon [trafilatura](https://trafilatura.readthedocs.io/) et readability-lxml sont comparés et le plus complet gagne. Si aucun `<h1>` ne survit, le titre de la page est réinjecté (structure propre pour Docling).
 4. **Garde-fou** : si trop peu de texte est extrait, le HTML pré-nettoyé est conservé tel quel (rien n'est perdu) et un warning apparaît dans les logs Dagster.
 
@@ -90,7 +92,7 @@ Les sources HTML passent par un nettoyage en étages, sans configuration par sit
 | Poids du fichier | 2,77 Mo | 61,6 Ko |
 | Caractères de texte | 34 704 | 34 316 |
 | Blocs de code | 186 | 186 |
-| Images | 13 | 13 (déplacées sur MinIO) |
+| Images | 13 | 13 (déplacées sur le stockage d'objets) |
 | Tableaux | conservés | conservés |
 
 **Le texte perd environ 1 %**, et ce 1 % est le chrome du lecteur : « Table of contents », « Search », « Sign out ». Code, images, tableaux et titres passent intégralement.
@@ -230,11 +232,11 @@ docker compose logs -f docling-service
 docker compose exec docling-service python -m src.wipe_stores
 ```
 
-> **Corrigé le 25 septembre 2026.** Cette phrase écrivait « `chromadb`, `graphd`
-> et **`minio`** ». C'est faux depuis la bascule : `wipe_stores` vise ce que
-> `MINIO_ENDPOINT` désigne, et cette variable **vaut `seaweedfs:8333`**. Le nom
-> de la variable, lui, n'a pas changé — c'est le défaut de conception du §6.2 de
-> [`livraison.md`](livraison.md), et le renommage est un lot à part.
+> **Corrigé le 25 septembre 2026.** Cette phrase nommait le stockage d'objets
+> par un nom de service qui n'était plus le sien. `wipe_stores` vise ce que
+> `S3_ENDPOINT` désigne, et **rien d'autre** — il affiche d'ailleurs cette
+> adresse avant de compter ce qu'il supprime. Cette variable **n'a aucune
+> valeur par défaut** : sans elle, la purge ne commence pas.
 >
 > **Et la commande ci-dessus est marquée « antérieur à la bascule, non
 > vérifié ».** Elle n'a pas été rejouée : **elle écrit**, elle vide les trois
@@ -294,14 +296,14 @@ docker compose exec dagster-daemon dagster sensor cursor -w /opt/dagster/app/src
 L'étiquette est libre : une date, un motif. La seule règle est qu'elle soit **neuve
 à chaque geste**.
 
-Il purge **quatre** choses, et non trois. Cette phrase disait « les trois stores — collection ChromaDB, space NebulaGraph et bucket MinIO » : c'était une phrase d'exhaustivité, et le lot 4 l'a rendue fausse en ajoutant la quatrième sans la compter ici. Le compte est `mesuré` sur la sortie du script, qui titre chacune (`--- ChromaDB ---`, `--- MinIO ---`, `--- NebulaGraph ---`, `--- HTML nettoyé ---`) :
+Il purge **quatre** choses, et non trois. Cette phrase disait « les trois stores — collection ChromaDB, space NebulaGraph et bucket d'objets » : c'était une phrase d'exhaustivité, et le lot 4 l'a rendue fausse en ajoutant la quatrième sans la compter ici. Le compte est `mesuré` sur la sortie du script, qui titre chacune (`--- ChromaDB ---`, `--- Stockage objet (<adresse>) ---`, `--- NebulaGraph ---`, `--- HTML nettoyé ---`) :
 
 | Ce qui est purgé | Pourquoi il y est |
 |---|---|
 | la collection ChromaDB `rag_documents` | les vecteurs |
 | le space NebulaGraph `rag_space` | le graphe |
-| le bucket MinIO `documents` | les crops d'images ; ils survivaient à toute purge avant le lot 4 |
-| `Datas/.cleaned/` | **les orphelins, et rien d'autre.** Cette case a dit pendant quatre lots que « l'asset `cleaned_html` ne se rematérialise pas si son fichier existe déjà » : **c'est faux**, `mesuré` le 22 septembre 2026 en appelant le corps livré de l'asset deux fois sur une copie temporaire — une destination au contenu périmé est **réécrite**. Ce qu'une réingestion ne réécrit jamais, ce sont les copies nettoyées des documents que le corpus n'a **plus** : rien ne les relit, rien ne les efface, et après la purge du bucket elles pointent des objets MinIO que seul `cleaned_html` restaurerait — pour un document qui n'existe plus. *(Elles ne sont pas le seul résidu d'un document disparu : sa partition dynamique Dagster survit elle aussi, et `wipe_stores` n'y touche pas — §4.34.g. Elles sont le seul qui porte des URL MinIO mortes.)* Registre §4.33.a ; gardé par `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`, qui tient les **deux** natures, celle qui est réécrite et celle qui survit |
+| le bucket `documents` du stockage d'objets | les crops d'images ; ils survivaient à toute purge avant le lot 4 |
+| `Datas/.cleaned/` | **les orphelins, et rien d'autre.** Cette case a dit pendant quatre lots que « l'asset `cleaned_html` ne se rematérialise pas si son fichier existe déjà » : **c'est faux**, `mesuré` le 22 septembre 2026 en appelant le corps livré de l'asset deux fois sur une copie temporaire — une destination au contenu périmé est **réécrite**. Ce qu'une réingestion ne réécrit jamais, ce sont les copies nettoyées des documents que le corpus n'a **plus** : rien ne les relit, rien ne les efface, et après la purge du bucket elles pointent des objets que seul `cleaned_html` restaurerait — pour un document qui n'existe plus. *(Elles ne sont pas le seul résidu d'un document disparu : sa partition dynamique Dagster survit elle aussi, et `wipe_stores` n'y touche pas — §4.34.g. Elles sont le seul qui porte des adresses d'objets mortes.)* Registre §4.33.a ; gardé par `TestCeQueLaPurgeDuNettoyeRetireVRAIMENT`, qui tient les **deux** natures, celle qui est réécrite et celle qui survit |
 
 **Le sous-répertoire `.cleaned` n'est pas configurable, et c'est délibéré.** `CLEANED_SUBDIR` a été un réglage annoncé dans `.env.example`, et il décidait à lui seul de la cible de ce `rmtree`. Quatre valeurs faisaient viser `Datas/` ou son parent, et deux autres, **bien contenues donc acceptées par le garde**, en détruisaient le contenu : `mesuré` sur un faux corpus jetable, `htms` emportait 24 des 25 fichiers du corpus versionné et `database` les cinq stores. Toute valeur autre que le défaut déplaçait de surcroît les `element_id` de tout le corpus, en silence — le nettoyage écrivait selon le réglage, l'identité du document retirait la constante. Le sous-répertoire est désormais une constante du code ; le contrôle de containment, lui, **reste** : `SOURCE_DIR` demeure un réglage, et une racine mal réglée fait toujours sortir le script en 1 plutôt que de supprimer ce qu'elle désigne. **Et une seconde borne a été posée par le lot 9** : `purge_cleaned` est une fonction **publique**, et son garde ne tenait plus que par la constante de son appelant — une cible comme `Datas/htms`, strictement contenue dans la racine, passait. Elle refuse désormais toute cible qui n'est pas `SOURCE_DIR/.cleaned` ou l'un de ses descendants, par un refus **distinct** (`CibleHorsDuNettoyeError`) : le premier accuse `SOURCE_DIR`, le second accuse l'argument, et les deux ne s'instruisent pas au même endroit.
 
@@ -316,7 +318,8 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 >
 > **ÉTAT DU POSTE, ET IL PÉRIME — c'est un état, pas une propriété du code.**
 > `mesuré` le **1er septembre 2026** : `DESCRIBE TAG Paragraph` rendait
-> `label, page_no, text, minio_url, depth` — la colonne **n'existait pas**.
+> `label, page_no, text, <adresse du média>, depth` — la colonne **n'existait
+> pas**.
 > `mesuré` le **2 septembre 2026**, après un redémarrage de `docling-service` qui
 > a joué `init_schema()` : `DESCRIBE TAG Paragraph` et `DESCRIBE TAG SectionHeader`
 > rendent **six** colonnes, `page_no_end` comprise, et **7 251 sommets `Paragraph`
@@ -346,7 +349,7 @@ Le space NebulaGraph étant supprimé, redémarrez ensuite le service pour qu'il
 > sont à NULL, réingérer ». Les deux états demandaient des gestes différents et
 > se présentaient sous la même phrase.
 
-> Le bucket MinIO était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'une des **quatre** purges résiste — les trois stores *et* `Datas/.cleaned/` : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes. *(Cette phrase disait « les trois stores », trente-cinq lignes sous le tableau qui en compte quatre. `mesuré` sur le code : quatre branches alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par `test_un_echec_de_purge_du_html_fait_sortir_en_un`.)*
+> Le bucket était auparavant laissé intact, et les crops d'images des ingestions précédentes s'y accumulaient. Ce n'était pas une fuite — l'agent ne sert que les objets référencés par le graphe (`RESTRICT_MEDIA_TO_GRAPH=true`), donc un objet dont le nœud a disparu est déjà inaccessible — mais c'était de la place perdue à chaque réingestion. Le script sort en **code d'erreur** si l'une des **quatre** purges résiste — les trois stores *et* `Datas/.cleaned/` : une purge partielle est pire qu'une purge absente, on croit repartir propre et on réingère par-dessus des restes. *(Cette phrase disait « les trois stores », trente-cinq lignes sous le tableau qui en compte quatre. `mesuré` sur le code : quatre branches alimentent `echecs` dans `wipe_stores.main`, et la quatrième est gardée par `test_un_echec_de_purge_du_html_fait_sortir_en_un`.)*
 
 ```bash
 docker compose restart docling-service
@@ -409,15 +412,15 @@ docker compose exec docling-service python -m src.index_report
 | chunks vectorisés | **4 365** |
 | sommets de graphe | **15 196**, dont 23 `Document` |
 | arêtes `PARENT_OF` | **15 173** |
-| objets MinIO | **13** |
-| `Datas/database/` | **≈ 388 Mo** — NebulaGraph 257, PostgreSQL 78, ChromaDB 51, MinIO 1,8 |
+| objets du bucket | **13** |
+| `Datas/database/` | **≈ 388 Mo** — NebulaGraph 257, PostgreSQL 78, ChromaDB 51, stockage d'objets 1,8 |
 | corpus source | 25 fichiers, 57 381 999 o |
 
 *(Cette section annonçait « 42 documents, 750 Mo, 23 741 nœuds, 5 592 chunks », mesurés sur le **corpus de référence** — mixte français/anglais, avec 6 notes Markdown et un PDF de 280 pages. Ce corpus n'existe plus, le registre §1 le déclare mort, et `Datas/mds/` est vide : aucun de ces chiffres n'était reproductible. Registre §6.9.)*
 
 **Et deux réserves, sans lesquelles cette table induirait en erreur :**
 
-- **les 13 objets MinIO ne sont pas représentatifs.** Le corpus porte **199 images** dans ses captures HTML, et la chaîne qui les téléverse est rompue : elles ne sont ni dans le bucket, ni référencées par le graphe (registre §3.5, §4.28.b). Les 13 objets présents sont tous des crops du PDF. Une extrapolation bâtie sur cette ligne **sous-estimerait donc massivement** le poids des médias ;
+- **les 13 objets du bucket ne sont pas représentatifs.** Le corpus porte **199 images** dans ses captures HTML, et la chaîne qui les téléverse est rompue : elles ne sont ni dans le bucket, ni référencées par le graphe (registre §3.5, §4.28.b). Les 13 objets présents sont tous des crops du PDF. Une extrapolation bâtie sur cette ligne **sous-estimerait donc massivement** le poids des médias ;
 - **une taille de répertoire n'est pas une mesure de contenu.** Les 78 Mo de PostgreSQL sont l'historique Dagster, qui ne suit pas le corpus ; et le registre §4.27 avertit qu'un store peut peser lourd en étant vide. Ces tailles disent ce que le disque porte, pas ce que l'index contient.
 
 **Aucune extrapolation n'est donnée ici, et c'est délibéré.** Cette section annonçait « de l'ordre de 15 à 25 Go pour 300 livres » sans dire de quoi c'était dérivé. Un chiffre par livre tiré d'un corpus de deux ouvrages dont la chaîne d'images est cassée serait `supposé` déguisé en `calculé` — et le chantier a déjà payé une décision de plan fondée sur un raisonnement plausible jamais mesuré (registre §4.28.e).
@@ -495,7 +498,7 @@ RAG_Assistant/
 │   │   ├── hierarchy.py        # Arbre des titres : pile et profondeur
 │   │   ├── ranking.py          # Rang d'un titre (parent Docling, level, police)
 │   │   ├── language.py         # Détection de la langue par mots-outils
-│   │   └── images.py           # Crop PyMuPDF et export MinIO
+│   │   └── images.py           # Crop PyMuPDF, export d'objets, SEUL client S3
 │   └── pipeline/               # Orchestration Dagster
 │       ├── sources.yaml        # Déclaration des sources (1 bloc = 1 source)
 │       ├── sources.py          # Modèles de configuration des sources
@@ -743,14 +746,15 @@ La fermeture honnête est un hook `pre-push` ; elle est ouverte au registre.
 #### Ce que `detect-secrets` protège, et ce qu'il ne protège pas
 
 À ne pas survendre. `.env` porte les identifiants du stockage d'objets et de
-PostgreSQL — *depuis la bascule, les variables nommées `MINIO_*` portent les
-clés **SeaweedFS**, §6.2 de [`livraison.md`](livraison.md)* — mais
+PostgreSQL — *les variables `S3_*` portent ce que le CLIENT présente, et
+`SEAWEEDFS_RW_*` / `SEAWEEDFS_RO_*` les identités du SERVEUR ; `docker-compose.yml`
+dérive les premières des secondes, sans recopier de valeur* — mais
 **un hook `pre-commit` ne voit que les fichiers indexés, et `.env` est dans
 `.gitignore` : il n'est donc jamais indexé, et installer ce hook ne le fera
 jamais scanner.** Le gain est ailleurs, et il est réel : empêcher qu'un secret
 parte un jour dans un fichier **versionné**. Aujourd'hui `docker-compose.yml`
-passe par `${MINIO_ROOT_PASSWORD}` et ne porte aucun secret en clair (`mesuré`,
-31 août 2026).
+passe par des variables d'environnement et ne porte aucun secret en clair
+(`mesuré`, 31 août 2026).
 
 Il n'y a **pas de baseline**. Le dépôt en portait une, `.secrets.baseline`,
 générée le 30 avril 2026 et jamais regénérée ; le lot 0b l'a supprimée après
@@ -971,6 +975,6 @@ septième.
 | ChromaDB | Base vectorielle | Apache-2.0 |
 | Nebula Graph | Graphe de connaissances | Apache-2.0 |
 | PostgreSQL | Métadonnées Dagster | PostgreSQL License (open-source) |
-| MinIO | Stockage d'objets | AGPL-3.0 |
+| SeaweedFS | Stockage d'objets | Apache-2.0 |
 | requests | Client HTTP | Apache-2.0 |
 | **Ce projet** | Code applicatif | MIT — Copyright (c) 2026 floSa `<à confirmer : aucun fichier LICENSE présent>` |

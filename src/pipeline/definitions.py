@@ -2,7 +2,7 @@
 
 Les sources sont declarees dans ``sources.yaml`` : la factory genere pour
 chacune ses partitions, assets, job et sensor. La persistance (NebulaGraph,
-ChromaDB, MinIO) est assuree par le service Docling lui-meme.
+ChromaDB, stockage objet) est assuree par le service Docling lui-meme.
 
 S'y ajoute un objet qui n'appartient a aucune source : la reindexation de
 ``rag-agent-chat``. Elle est declenchee par son propre sensor, qui surveille
