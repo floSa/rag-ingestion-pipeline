@@ -19,15 +19,14 @@ Il tourne DANS l'image d'extraction — `docling` et `chromadb` n'appartiennent
 pas aux dependances du depot. Le `src` monte est celui de la branche MESUREE
 (registre 4.27) :
 
-    docker run --rm --network rag_network \\
-      -v "$PWD/src":/app/src:ro -v "$PWD/scripts":/app/scripts:ro \\
+    docker compose run --rm --no-deps -T \\
+      -v "$PWD/scripts":/app/scripts:ro \\
       -v "$PWD/documentation/campagnes":/app/documentation/campagnes:ro \\
-      -v "<clone principal>/Datas":/corpus:ro \\
+      -v "$PWD/Datas":/corpus:ro \\
       -v "<un scratchpad>":/sp \\
-      -v /var/lib/docker/volumes/rag-ingestion-pipeline_docling_models/_data:/tmp/.cache:ro \\
-      --env-file <clone principal>/.env -e COMMIT_MESURE="$(git rev-parse HEAD)" \\
-      -e HOME=/tmp -e PYTHONPATH=/app -w /app \\
-      rag-ingestion-pipeline-docling-service \\
+      -v "$PWD/Datas/.cleaned":/sp/cleaned:ro \\
+      -e COMMIT_MESURE="$(git rev-parse HEAD)" -e PYTHONPATH=/app -w /app \\
+      docling-service \\
       python scripts/campagne/verifier-l-equivalence-des-identifiants.py \\
         comparer documentation/campagnes/<date>-instantane-des-identifiants
 
